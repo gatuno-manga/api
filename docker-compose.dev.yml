@@ -1,0 +1,99 @@
+
+services:
+  api:
+    image: gatuno-api
+    container_name: gatuno-api
+    build:
+      context: ./back
+      dockerfile: Dockerfile.dev
+    ports:
+      - "${API_PORT}:3000"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - DB_PORT=${DB_INTERNAL_PORT}
+      - DB_TYPE=mysql
+      - DB_HOST=database
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - DB_NAME=${DB_NAME}
+    volumes:
+      - ./back/src:/usr/src/app/src
+      - ./back/.env:/usr/src/app/.env
+      - api-data:/usr/src/app/data
+    depends_on:
+      - database
+      - selenium-hub
+      - chrome
+    restart: unless-stopped
+
+  database:
+    image: mysql:8.0
+    container_name: gatuno-database
+    ports:
+      - "${DB_EXTERNAL_PORT}:${DB_INTERNAL_PORT}"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASS}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASS}
+    volumes:
+      - database-data:/var/lib/mysql
+    command: >
+      --default-authentication-plugin=mysql_native_password
+    restart: unless-stopped
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: gatuno-phpmyadmin
+    ports:
+      - "${PHPMYADMIN_PORT}:80"
+    environment:
+      PMA_HOST: database
+      PMA_USER: ${DB_USER}
+      PMA_PASSWORD: ${DB_PASS}
+    depends_on:
+      - database
+
+  selenium-hub:
+    image: selenium/hub:latest
+    ports:
+      - "4442:4442"
+      - "4443:4443"
+      - "4444:4444"
+    environment:
+      # - SE_ROUTER_USERNAME=admin
+      - SE_ROUTER_PASSWORD=admin
+      - SE_MAX_SESSION=10
+
+  chrome:
+    image: selenium/node-chrome:latest
+    shm_size: 4g
+    depends_on:
+      - selenium-hub
+    environment:
+      - SE_EVENT_BUS_HOST=selenium-hub
+      - SE_EVENT_BUS_PUBLISH_PORT=4442
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+
+  app:
+    image: gatuno-app
+    container_name: gatuno-app
+    build:
+      context: ./front
+      dockerfile: Dockerfile.dev
+    ports:
+      - "${APP_PORT}:3000"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+    volumes:
+      - ./front/src:/usr/src/app/src
+      - ./front/.env:/usr/src/app/.env
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  database-data:
+    driver: local
+  api-data:
+    driver: local

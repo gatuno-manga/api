@@ -1,0 +1,32 @@
+# ---- Estágio 1: Base ----
+# Instala todas as dependências (incluindo as de desenvolvimento)
+# Esta camada será cacheada e só será reconstruída se package.json mudar.
+FROM node:22-alpine AS base
+WORKDIR /usr/src/app
+COPY package*.json ./
+RUN npm ci
+
+# ---- Estágio 2: Builder ----
+# Constrói a aplicação a partir do código-fonte.
+FROM base AS builder
+COPY . .
+RUN npm run build
+
+# ---- Estágio 3: Produção ----
+# A imagem final, pequena e segura.
+FROM node:22-alpine AS production
+WORKDIR /usr/src/app
+
+# Instala APENAS as dependências de produção.
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+# Copia os artefatos compilados do estágio 'builder'.
+COPY --from=builder /usr/src/app/dist ./dist
+
+# Cria um usuário não-root para executar a aplicação por segurança.
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
+
+# Comando para iniciar a aplicação.
+CMD ["node", "dist/main.js"]
