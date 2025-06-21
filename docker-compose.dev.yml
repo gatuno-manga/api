@@ -1,4 +1,3 @@
-
 services:
   api:
     image: gatuno-api
@@ -10,7 +9,7 @@ services:
       - "${API_PORT}:3000"
     environment:
       - NODE_ENV=${NODE_ENV}
-      - DB_PORT=${DB_INTERNAL_PORT}
+      - DB_PORT=3306
       - DB_TYPE=mysql
       - DB_HOST=database
       - DB_USER=${DB_USER}
@@ -30,7 +29,7 @@ services:
     image: mysql:8.0
     container_name: gatuno-database
     ports:
-      - "${DB_EXTERNAL_PORT}:${DB_INTERNAL_PORT}"
+      - "${DB_EXTERNAL_PORT}:3306"
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASS}
       MYSQL_DATABASE: ${DB_NAME}
@@ -57,9 +56,9 @@ services:
   selenium-hub:
     image: selenium/hub:latest
     ports:
-      - "4442:4442"
-      - "4443:4443"
-      - "4444:4444"
+      - "${SELENIUM_HUB_PORT_1}:4442"
+      - "${SELENIUM_HUB_PORT_2}:4443"
+      - "${SELENIUM_HUB_PORT_3}:4444"
     environment:
       # - SE_ROUTER_USERNAME=admin
       - SE_ROUTER_PASSWORD=admin
@@ -72,8 +71,8 @@ services:
       - selenium-hub
     environment:
       - SE_EVENT_BUS_HOST=selenium-hub
-      - SE_EVENT_BUS_PUBLISH_PORT=4442
-      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+      - SE_EVENT_BUS_PUBLISH_PORT=${SELENIUM_HUB_PORT_1}
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=${SELENIUM_HUB_PORT_2}
 
   app:
     image: gatuno-app
@@ -82,12 +81,12 @@ services:
       context: ./front
       dockerfile: Dockerfile.dev
     ports:
-      - "${APP_PORT}:3000"
+      - "${APP_PORT}:4200"
     environment:
       - NODE_ENV=${NODE_ENV}
     volumes:
       - ./front/src:/usr/src/app/src
-      - ./front/.env:/usr/src/app/.env
+      - ./front/public:/usr/src/app/public
     depends_on:
       - api
     restart: unless-stopped
