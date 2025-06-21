@@ -1,78 +1,108 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Builder, Browser } from 'selenium-webdriver';
-import { Options } from 'selenium-webdriver/chrome';
-import axios from 'axios';
+import {
+	Builder,
+	Browser,
+	Capabilities,
+	WebDriver,
+	By,
+} from 'selenium-webdriver';
 import * as fs from 'fs/promises';
-import * as fsSync from 'fs';
 import { v4 as uuidv4 } from 'uuid';
+import * as path from 'path';
 
 @Injectable()
 export class ScrapingService {
 	private readonly logger = new Logger(ScrapingService.name);
+	private downloadDir = path.resolve('/usr/src/app/data');
+	private readonly DOWNLOAD_TIMEOUT_MS = 30000; // 30 seconds
+
 	async createInstance() {
-		const options = new Options();
-		options.setUserPreferences({
-			'profile.default_content_setting_values.notifications': 2, // Block notifications
-			'profile.default_content_setting_values.popups': 0, // Disable pop-ups
-			'profile.default_content_setting_values.geolocation': 2, // Block geolocation
-			'profile.default_content_setting_values.media_stream_camera': 2, // Block camera access
-			'profile.default_content_setting_values.media_stream_mic': 2, // Block microphone access
+		this.logger.log(this.downloadDir);
+
+		const chromeCapabilities = Capabilities.chrome();
+		chromeCapabilities.set('goog:chromeOptions', {
+			prefs: {
+				'download.default_directory': this.downloadDir,
+				'download.prompt_for_download': false,
+				directory_upgrade: true,
+				'profile.default_content_settings.popups': 0,
+				'profile.default_content_setting_values.notifications': 2,
+				'profile.default_content_setting_values.geolocation': 2,
+				'profile.default_content_setting_values.media_stream_camera': 2,
+				'profile.default_content_setting_values.media_stream_mic': 2,
+				// 'profile.default_content_setting_values.images': 2, // Block images
+				// 'profile.default_content_setting_values.javascript': 2, // Block JavaScript
+				'profile.default_content_setting_values.plugins': 2, // Block plugins
+			},
+			args: [
+				'--disable-web-security',
+				'--disable-site-isolation-trials',
+				'--disable-features=IsolateOrigins,site-per-process',
+				'--disable-blink-features=AutomationControlled',
+				'--disable-infobars',
+				'--disable-dev-shm-usage',
+				'--no-sandbox',
+				'--window-size=1920,1080',
+				'--disable-extensions',
+				'--disable-popup-blocking',
+			],
 		});
-		options.addArguments('--disable-web-security'); // Disable web security
-		options.addArguments('--disable-site-isolation-trials'); // Disable site isolation trials
-		options.addArguments(
-			'--disable-features=IsolateOrigins,site-per-process',
-		); // Disable site isolation features
-		options.addArguments('--disable-blink-features=AutomationControlled'); // Disable automation detection
-		options.addArguments('--disable-infobars'); // Disable infobars
-		options.addArguments('--disable-dev-shm-usage'); // Overcome limited resource problems
-		options.addArguments('--no-sandbox'); // Bypass OS security
-		// options.addArguments('--headless'); // Run in headless mode
-		// options.addArguments('--disable-gpu'); // Disable GPU hardware acceleration
-		options.addArguments('--window-size=1920,1080'); // Set window size
-		options.addArguments('--disable-extensions'); // Disable extensions
-		options.addArguments('--disable-popup-blocking'); // Disable popup blocking
 
 		return await new Builder()
 			.usingServer('http://selenium-hub:4444/wd/hub')
 			.forBrowser(Browser.CHROME)
-			.setChromeOptions(options)
+			.withCapabilities(chromeCapabilities)
 			.build();
 	}
 
-	private async downloadImage(
-		url: string,
-		folderPath: string,
-	): Promise<string> {
+	private async downloadImageAsBase64(
+		driver: WebDriver,
+		imageUrl: string,
+	): Promise<string | null> {
+		this.logger.log(`Baixando ${imageUrl} como Base64 via navegador...`);
 		try {
-			this.logger.log(`Baixando imagem de ${url}`);
-			this.logger.log(`Baixando imagem de ${new URL(url).pathname}`);
-			this.logger.log(`Salvando imagem em ${folderPath}`);
-			const fileName =
-				uuidv4() +
-				'.' +
-				new URL(url).pathname.split('/').pop()?.split('.')[1];
+			const base64String = await driver.executeAsyncScript(
+				`
+                const url = arguments[0];
+                const callback = arguments[1]; // Callback para retornar o resultado ao WebDriver
 
-			this.logger.log(`Nome do arquivo: ${fileName}`);
-			const filePath = `${folderPath}/${fileName}`;
-			if (!fsSync.existsSync(folderPath)) {
-				await fs.mkdir(folderPath, { recursive: true });
-			}
-			const response = await axios.get<ArrayBuffer>(url, {
-				responseType: 'arraybuffer',
-			});
-			await fs.writeFile(filePath, Buffer.from(response.data));
-			this.logger.log(`✅ Imagem baixada e salva em ${filePath}`);
-			return `localhost:3000/data/${fileName}`;
-		} catch (error: any) {
-			this.logger.error(
-				`❌ Falha ao baixar a imagem ${url}. Erro: ${error?.message ?? error}`,
+                fetch(url)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok.');
+                        }
+                        return response.blob();
+                    })
+                    .then(blob => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            // Retorna apenas a parte de dados da string Base64
+                            callback(reader.result.split(',')[1]);
+                        };
+                        reader.onerror = () => {
+                            callback(null); // Sinaliza erro
+                        };
+                        reader.readAsDataURL(blob);
+                    })
+                    .catch(error => {
+                        console.error('Erro no script do navegador:', error);
+                        callback(null); // Sinaliza erro
+                    });
+            `,
+				imageUrl,
 			);
-			return '';
+
+			return base64String as string | null;
+		} catch (error) {
+			this.logger.error(
+				`Falha ao executar script de download para ${imageUrl}`,
+				error,
+			);
+			return null;
 		}
 	}
 
-	async scrapePages(url: string) {
+	async scrapePages(url: string): Promise<string[]> {
 		const driver = await this.createInstance();
 		try {
 			await driver.get(url);
@@ -84,32 +114,53 @@ export class ScrapingService {
 				'window.scrollTo(0, document.body.scrollHeight);',
 			);
 			await driver.sleep(2000);
-			const imageElements = await driver.findElements({
-				css: 'img',
-			});
-			this.logger.log(
-				`Encontradas ${imageElements.length} imagens na página.`,
-			);
-			const imageUrls: string[] = [];
-			for (const img of imageElements) {
-				const src = await img.getAttribute('src');
-				if (
+			const { until } = await import('selenium-webdriver');
+			await driver.wait(until.elementLocated(By.css('img')), 15000);
+			const imageElements = await driver.findElements(By.css('img'));
+			const imageUrls = (
+				await Promise.all(
+					imageElements.map((img) => img.getAttribute('src')),
+				)
+			).filter(
+				(src) =>
 					src &&
-					(src.startsWith('http://') || src.startsWith('https://'))
-				) {
-					imageUrls.push(src);
+					(src.startsWith('http://') || src.startsWith('https://')),
+			);
+
+			this.logger.log(
+				`Encontradas ${imageUrls.length} URLs de imagem válidas. Iniciando downloads.`,
+			);
+
+			const successfulPaths: string[] = [];
+			for (const imageUrl of imageUrls) {
+				const base64Data = await this.downloadImageAsBase64(
+					driver,
+					imageUrl,
+				);
+
+				if (base64Data) {
+					const extension =
+						path.extname(new URL(imageUrl).pathname) || '.jpg';
+					const fileName = `${uuidv4()}${extension}`;
+					const filePath = path.join(this.downloadDir, fileName);
+
+					await fs.writeFile(filePath, base64Data, 'base64');
+
+					const publicPath = `http://localhost:3000/data/${fileName}`;
+					successfulPaths.push(publicPath);
+					this.logger.log(`Imagem salva em: ${filePath}`);
 				}
 			}
-			const paths: string[] = [];
-			for (const url of imageUrls) {
-				paths.push(await this.downloadImage(url, '/usr/src/app/data'));
-			}
-			return paths;
+
+			return successfulPaths;
 		} catch (error) {
-			this.logger.error('Error during scraping:', error);
+			this.logger.error(
+				'Ocorreu um erro durante o processo de scraping.',
+				error,
+			);
+			throw error;
 		} finally {
 			await driver.quit();
 		}
-		this.logger.log('Scraping test completed successfully.');
 	}
 }
