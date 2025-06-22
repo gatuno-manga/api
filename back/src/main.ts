@@ -8,6 +8,7 @@ async function bootstrap() {
 	const app = await NestFactory.create<NestExpressApplication>(AppModule);
 	configPipe(app);
 	app.setGlobalPrefix('api');
+	configureCors(app);
 	app.useStaticAssets(join(__dirname, '..', 'data'), {
 		prefix: '/data/',
 	});
@@ -21,5 +22,9 @@ function configPipe(app: INestApplication) {
 			whitelist: true,
 		}),
 	);
+}
+
+function configureCors(app: INestApplication) {
+	app.enableCors();
 }
 bootstrap();
