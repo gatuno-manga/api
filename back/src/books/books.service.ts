@@ -49,10 +49,14 @@ export class BooksService {
 	}
 
 	async getOne(id: string) {
-		return this.bookRepository.findOne({
+		const book = await this.bookRepository.findOne({
 			where: { id },
 			relations: ['chapters'],
 		});
+		if (book && book.chapters) {
+			book.chapters = book.chapters.sort((a, b) => a.index - b.index);
+		}
+		return book;
 	}
 
 	async getChapter(idBook: string, idChapter: string) {
