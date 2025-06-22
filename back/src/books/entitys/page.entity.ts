@@ -3,7 +3,7 @@ import {
 	Entity,
 	JoinColumn,
 	ManyToOne,
-	PrimaryColumn,
+	PrimaryGeneratedColumn,
 	Relation,
 	Unique,
 } from 'typeorm';
@@ -12,7 +12,10 @@ import { Chapter } from './chapter.entity';
 @Entity('pages')
 @Unique(['index', 'chapter'])
 export class Page {
-	@PrimaryColumn()
+	@PrimaryGeneratedColumn()
+	id: number;
+
+	@Column()
 	index: number;
 
 	@ManyToOne(() => Chapter, {
