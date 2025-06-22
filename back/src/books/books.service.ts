@@ -87,7 +87,7 @@ export class BooksService {
 				});
 				return page;
 			});
-			await this.pageRepository.save(chapter.pages);
+			// await this.chapterRepository.save(chapter);
 			this.logger.log(
 				`Páginas salvas para o capítulo: ${chapter.title} do livro: ${book.title}`,
 			);
