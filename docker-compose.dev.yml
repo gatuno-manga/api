@@ -62,17 +62,17 @@ services:
     environment:
       # - SE_ROUTER_USERNAME=admin
       - SE_ROUTER_PASSWORD=admin
-      - SE_MAX_SESSION=10
 
   chrome:
     image: selenium/node-chrome:latest
-    shm_size: 4g
+    shm_size: 5g
     depends_on:
       - selenium-hub
     environment:
       - SE_EVENT_BUS_HOST=selenium-hub
       - SE_EVENT_BUS_PUBLISH_PORT=${SELENIUM_HUB_PORT_1}
       - SE_EVENT_BUS_SUBSCRIBE_PORT=${SELENIUM_HUB_PORT_2}
+      - SE_NODE_MAX_SESSIONS=4
 
   app:
     image: gatuno-app
