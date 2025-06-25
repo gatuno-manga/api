@@ -1,12 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ScrapingService } from 'src/scraping/scraping.service';
 import { Book } from './entitys/book.entity';
 import { Repository } from 'typeorm';
 import { Page } from './entitys/page.entity';
 import { CreateBookDto } from './dto/create-book.dto';
-import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Chapter } from './entitys/chapter.entity';
+import { Tag } from './entitys/tags.entity';
 
 @Injectable()
 export class BooksService {
@@ -18,15 +18,39 @@ export class BooksService {
 		private readonly pageRepository: Repository<Page>,
 		@InjectRepository(Chapter)
 		private readonly chapterRepository: Repository<Chapter>,
-		private readonly scrapingService: ScrapingService,
+		@InjectRepository(Tag)
+		private readonly tagRepository: Repository<Tag>,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	async createBook(dto: CreateBookDto) {
+		let tags: Tag[] = [];
+		if (dto.tags && dto.tags.length > 0) {
+			tags = await Promise.all(
+				dto.tags.map(async (tagName: string) => {
+					let tag = await this.tagRepository.findOne({
+						where: { name: tagName },
+					});
+					if (!tag) {
+						tag = this.tagRepository.create({ name: tagName });
+						await this.tagRepository.save(tag);
+					}
+					return tag;
+				}),
+			);
+		}
+
 		const book = this.bookRepository.create({
 			title: dto.title,
+			originalUrl: dto.originalUrl,
+			alternativeTitle: dto.alternativeTitle,
+			coverUrl: dto.coverUrl,
+			description: dto.description,
+			publication: dto.publication,
+			tags: tags,
 		});
 		await this.bookRepository.save(book);
+
 		book.chapters = [];
 		if (dto.chapters && dto.chapters.length > 0) {
 			let count = 1;
@@ -64,37 +88,5 @@ export class BooksService {
 			where: { id: idChapter, book: { id: idBook } },
 			relations: ['pages'],
 		});
-	}
-
-	@OnEvent('book.created')
-	async handleBookCreatedEvent(book: Book) {
-		this.logger.log(`Iniciando o scraping para o livro: ${book.title}`);
-		for (const chapter of book.chapters) {
-			const pages = await this.scrapingService.scrapePages(
-				chapter.originalUrl,
-			);
-			if (!pages) {
-				this.logger.warn(
-					`Nenhuma página encontrada para o capítulo: ${chapter.title}`,
-				);
-				continue;
-			}
-			let index = 1;
-			chapter.pages = pages.map((pageContent) => {
-				const page = this.pageRepository.create({
-					path: pageContent,
-					index: index++,
-				});
-				return page;
-			});
-			// await this.chapterRepository.save(chapter);
-			this.logger.log(
-				`Páginas salvas para o capítulo: ${chapter.title} do livro: ${book.title}`,
-			);
-		}
-		book.scrapingStatus = 'ready';
-		await this.bookRepository.save(book);
-		this.logger.log(`Scraping concluído para o livro: ${book.title}`);
-		this.eventEmitter.emit('book.scraped', book);
 	}
 }

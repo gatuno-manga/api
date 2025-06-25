@@ -1,8 +1,9 @@
-import { IsString, IsUrl } from 'class-validator';
+import { IsOptional, IsString, IsUrl } from 'class-validator';
 
 export class CreateChapterDto {
 	@IsString()
-	title: string;
+	@IsOptional()
+	title?: string;
 
 	@IsUrl()
 	url: string;

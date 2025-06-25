@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { Book } from './book.entity';
 import { Page } from './page.entity';
+import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 
 @Entity('chapters')
 @Unique(['index', 'book'])
@@ -17,7 +18,9 @@ export class Chapter {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
-	@Column()
+	@Column({
+		nullable: true,
+	})
 	title: string;
 
 	@Column()
@@ -25,6 +28,13 @@ export class Chapter {
 
 	@Column()
 	index: number;
+
+	@Column({
+		type: 'enum',
+		enum: ScrapingStatus,
+		default: ScrapingStatus.PROCESS,
+	})
+	scrapingStatus: ScrapingStatus;
 
 	@ManyToOne(() => Book, {
 		onDelete: 'CASCADE',
