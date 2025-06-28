@@ -10,6 +10,7 @@ export const validationSchema = Joi.object({
 		.max(65535)
 		.default(3000)
 		.description('The port on which the application will run'),
+	SELENIUM_URL: Joi.string().uri().required(),
 	DB_TYPE: Joi.string().required(),
 	DB_NAME: Joi.string().required(),
 	DB_HOST: Joi.string().required(),

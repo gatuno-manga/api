@@ -9,6 +9,7 @@ services:
       - "${API_PORT}:3000"
     environment:
       - NODE_ENV=${NODE_ENV}
+      - SELENIUM_URL=http://selenium-hub:4444/wd/hub
       - DB_PORT=3306
       - DB_TYPE=mysql
       - DB_HOST=database
@@ -22,7 +23,6 @@ services:
     depends_on:
       - database
       - selenium-hub
-      - chrome
     restart: unless-stopped
 
   database:
@@ -60,19 +60,22 @@ services:
       - "${SELENIUM_HUB_PORT_2}:4443"
       - "${SELENIUM_HUB_PORT_3}:4444"
     environment:
-      # - SE_ROUTER_USERNAME=admin
       - SE_ROUTER_PASSWORD=admin
 
-  chrome:
-    image: selenium/node-chrome:latest
+  node-docker:
+    image: selenium/node-docker:latest
     shm_size: 5g
     depends_on:
       - selenium-hub
     environment:
       - SE_EVENT_BUS_HOST=selenium-hub
-      - SE_EVENT_BUS_PUBLISH_PORT=${SELENIUM_HUB_PORT_1}
-      - SE_EVENT_BUS_SUBSCRIBE_PORT=${SELENIUM_HUB_PORT_2}
+      - SE_EVENT_BUS_PUBLISH_PORT=4442
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
       - SE_NODE_MAX_SESSIONS=4
+    volumes:
+      - ./config.toml:/opt/bin/config.toml
+      - /var/run/docker.sock:/var/run/docker.sock
+      - selenium-data:/opt/selenium/assets
 
   app:
     image: gatuno-app
@@ -93,6 +96,8 @@ services:
 
 volumes:
   database-data:
+    driver: local
+  selenium-data:
     driver: local
   api-data:
     driver: local

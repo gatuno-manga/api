@@ -1,12 +1,13 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { BooksService } from './books.service';
 import { CreateBookDto } from './dto/create-book.dto';
+import { BookPageOptionsDto } from './dto/book-page-options.dto';
 
 @Controller('books')
 export class BooksController {
 	constructor(private readonly booksService: BooksService) {}
-	@Get() getAllBooks() {
-		return this.booksService.getAllBooks();
+	@Get() getAllBooks(@Query() pageOptions: BookPageOptionsDto) {
+		return this.booksService.getAllBooks(pageOptions);
 	}
 	@Post()
 	createBook(@Body() dto: CreateBookDto) {

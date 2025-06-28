@@ -1,0 +1,8 @@
+[docker]
+configs = [
+  "selenium/standalone-chrome:latest", "{\"browserName\": \"chrome\"}",
+  "selenium/standalone-firefox:latest", "{\"browserName\": \"firefox\"}",
+  "selenium/standalone-edge:latest", "{\"browserName\": \"MicrosoftEdge\"}"
+]
+
+url = "unix:///var/run/docker.sock"

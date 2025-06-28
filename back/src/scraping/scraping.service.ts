@@ -5,20 +5,21 @@ import {
 	Capabilities,
 	WebDriver,
 	By,
+	until,
 } from 'selenium-webdriver';
 import * as fs from 'fs/promises';
 import { v4 as uuidv4 } from 'uuid';
 import * as path from 'path';
+import { AppConfigService } from 'src/app-config/app-config.service';
 
 @Injectable()
 export class ScrapingService {
 	private readonly logger = new Logger(ScrapingService.name);
 	private downloadDir = path.resolve('/usr/src/app/data');
-	private readonly DOWNLOAD_TIMEOUT_MS = 30000; // 30 seconds
+
+	constructor(private readonly appConfigService: AppConfigService) {}
 
 	async createInstance() {
-		this.logger.log(this.downloadDir);
-
 		const chromeCapabilities = Capabilities.chrome();
 		chromeCapabilities.set('goog:chromeOptions', {
 			prefs: {
@@ -49,13 +50,13 @@ export class ScrapingService {
 		});
 
 		return await new Builder()
-			.usingServer('http://selenium-hub:4444/wd/hub')
+			.usingServer(this.appConfigService.seleniumUrl)
 			.forBrowser(Browser.CHROME)
 			.withCapabilities(chromeCapabilities)
 			.build();
 	}
 
-	private async downloadImageAsBase64(
+	private async fetchImageAsBase64(
 		driver: WebDriver,
 		imageUrl: string,
 	): Promise<string | null> {
@@ -102,6 +103,42 @@ export class ScrapingService {
 		}
 	}
 
+	private async waitForAllImagesLoaded(
+		driver: WebDriver,
+		timeout = 20000,
+	): Promise<void> {
+		const pollInterval = 500;
+		const maxTries = Math.ceil(timeout / pollInterval);
+		let tries = 0;
+
+		while (tries < maxTries) {
+			const allLoaded = await driver.executeScript<boolean>(`
+				return Array.from(document.images).every(img => img.complete && img.naturalWidth > 0);
+			`);
+			if (allLoaded) return;
+			await driver.sleep(pollInterval);
+			tries++;
+		}
+		throw new Error('Timeout esperando todas as imagens carregarem');
+	}
+
+	private async getImageUrls(driver: WebDriver): Promise<string[]> {
+		const imageElements = await driver.findElements(By.css('img'));
+		return (
+			await Promise.all(
+				imageElements.map((img) => img.getAttribute('src')),
+			)
+		).filter(
+			(src) =>
+				src &&
+				(src.startsWith('http://') || src.startsWith('https://')),
+		);
+	}
+
+	private getPublicPath(fileName: string): string {
+		return `http://localhost:3000/data/${fileName}`;
+	}
+
 	async scrapePages(url: string): Promise<string[]> {
 		const driver = await this.createInstance();
 		try {
@@ -113,46 +150,34 @@ export class ScrapingService {
 			await driver.executeScript(
 				'window.scrollTo(0, document.body.scrollHeight);',
 			);
-			await driver.sleep(2000);
-			const { until } = await import('selenium-webdriver');
-			await driver.wait(until.elementLocated(By.css('img')), 15000);
-			const imageElements = await driver.findElements(By.css('img'));
-			const imageUrls = (
-				await Promise.all(
-					imageElements.map((img) => img.getAttribute('src')),
-				)
-			).filter(
-				(src) =>
-					src &&
-					(src.startsWith('http://') || src.startsWith('https://')),
-			);
+			await driver.sleep(500);
+			await this.waitForAllImagesLoaded(driver);
+
+			const imageUrls = await this.getImageUrls(driver);
 
 			this.logger.log(
 				`Encontradas ${imageUrls.length} URLs de imagem válidas. Iniciando downloads.`,
 			);
 
-			const successfulPaths: string[] = [];
-			for (const imageUrl of imageUrls) {
-				const base64Data = await this.downloadImageAsBase64(
-					driver,
-					imageUrl,
-				);
+			const successfulPaths = await Promise.all(
+				imageUrls.map(async (imageUrl) => {
+					const base64Data = await this.fetchImageAsBase64(
+						driver,
+						imageUrl,
+					);
+					if (!base64Data) return null;
 
-				if (base64Data) {
 					const extension =
 						path.extname(new URL(imageUrl).pathname) || '.jpg';
 					const fileName = `${uuidv4()}${extension}`;
 					const filePath = path.join(this.downloadDir, fileName);
-
 					await fs.writeFile(filePath, base64Data, 'base64');
-
-					const publicPath = `http://localhost:3000/data/${fileName}`;
-					successfulPaths.push(publicPath);
 					this.logger.log(`Imagem salva em: ${filePath}`);
-				}
-			}
+					return this.getPublicPath(fileName);
+				}),
+			);
 
-			return successfulPaths;
+			return successfulPaths.filter(Boolean) as string[];
 		} catch (error) {
 			this.logger.error(
 				'Ocorreu um erro durante o processo de scraping.',

@@ -13,6 +13,13 @@ export class AppConfigService {
 		return this.config.get<number>('PORT') || 3000;
 	}
 
+	get seleniumUrl(): string {
+		return (
+			this.config.get<string>('SELENIUM_URL') ||
+			'http://localhost:4444/wd/hub'
+		);
+	}
+
 	get database() {
 		return {
 			type: this.config.get<string>('DB_TYPE'),
