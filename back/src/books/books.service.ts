@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Book } from './entitys/book.entity';
 import { Repository } from 'typeorm';
@@ -23,11 +23,9 @@ export class BooksService {
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
-	async createBook(dto: CreateBookDto) {
-		let tags: Tag[] = [];
-		if (dto.tags && dto.tags.length > 0) {
-			tags = await Promise.all(
-				dto.tags.map(async (tagName: string) => {
+	private async findOrCreateTags(tagNames: string[]): Promise<Tag[]> {
+		return Promise.all(
+			tagNames.map(async (tagName) => {
 					let tag = await this.tagRepository.findOne({
 						where: { name: tagName },
 					});
@@ -40,6 +38,26 @@ export class BooksService {
 			);
 		}
 
+	private createChaptersFromDto(
+		chaptersDto: CreateChapterDto[],
+		book: Book,
+	): Chapter[] {
+		let count = 1;
+		return chaptersDto.map((chapterDto) =>
+			this.chapterRepository.create({
+				title: chapterDto.title,
+				originalUrl: chapterDto.url,
+				index: count++,
+				book,
+			}),
+		);
+	}
+
+	async createBook(dto: CreateBookDto) {
+		const tags =
+			dto.tags && dto.tags.length > 0
+				? await this.findOrCreateTags(dto.tags)
+				: [];
 		const book = this.bookRepository.create({
 			title: dto.title,
 			originalUrl: dto.originalUrl,
@@ -47,25 +65,16 @@ export class BooksService {
 			coverUrl: dto.coverUrl,
 			description: dto.description,
 			publication: dto.publication,
-			tags: tags,
+			tags,
 		});
-		await this.bookRepository.save(book);
 
-		book.chapters = [];
 		if (dto.chapters && dto.chapters.length > 0) {
-			let count = 1;
-			book.chapters = dto.chapters.map((chapterDto) => {
-				const chapter = this.chapterRepository.create({
-					title: chapterDto.title,
-					originalUrl: chapterDto.url,
-					index: count++,
-				});
-				return chapter;
-			});
+			book.chapters = this.createChaptersFromDto(dto.chapters, book);
 		}
-		const saveBook = await this.bookRepository.save(book);
-		this.eventEmitter.emit('book.created', saveBook);
-		return saveBook;
+
+		const savedBook = await this.bookRepository.save(book);
+		this.eventEmitter.emit('book.created', savedBook);
+		return savedBook;
 	}
 
 	getAllBooks() {
@@ -76,9 +85,11 @@ export class BooksService {
 		const book = await this.bookRepository.findOne({
 			where: { id },
 			relations: ['chapters'],
+			order: { chapters: { index: 'ASC' } },
 		});
-		if (book && book.chapters) {
-			book.chapters = book.chapters.sort((a, b) => a.index - b.index);
+		if (!book) {
+			this.logger.warn(`Book with id ${id} not found`);
+			throw new NotFoundException(`Book with id ${id} not found`);
 		}
 		return book;
 	}
