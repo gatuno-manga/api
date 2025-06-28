@@ -14,7 +14,8 @@ import * as path from 'path';
 export class ScrapingService {
 	private readonly logger = new Logger(ScrapingService.name);
 	private downloadDir = path.resolve('/usr/src/app/data');
-	private readonly DOWNLOAD_TIMEOUT_MS = 30000; // 30 seconds
+
+	constructor(private readonly appConfigService: AppConfigService) {}
 
 	async createInstance() {
 		this.logger.log(this.downloadDir);
@@ -49,7 +50,7 @@ export class ScrapingService {
 		});
 
 		return await new Builder()
-			.usingServer('http://selenium-hub:4444/wd/hub')
+			.usingServer(this.appConfigService.seleniumUrl)
 			.forBrowser(Browser.CHROME)
 			.withCapabilities(chromeCapabilities)
 			.build();

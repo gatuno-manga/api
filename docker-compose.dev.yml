@@ -9,6 +9,7 @@ services:
       - "${API_PORT}:3000"
     environment:
       - NODE_ENV=${NODE_ENV}
+      - SELENIUM_URL=http://selenium-hub:4444/wd/hub
       - DB_PORT=3306
       - DB_TYPE=mysql
       - DB_HOST=database
