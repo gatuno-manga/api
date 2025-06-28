@@ -7,6 +7,10 @@ import { CreateBookDto } from './dto/create-book.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Chapter } from './entitys/chapter.entity';
 import { Tag } from './entitys/tags.entity';
+import { CreateChapterDto } from './dto/create-chapter.dto';
+import { MetadataPageDto } from 'src/pages/metadata-page.dto';
+import { PageDto } from 'src/pages/page.dto';
+import { BookPageOptionsDto } from './dto/book-page-options.dto';
 
 @Injectable()
 export class BooksService {
@@ -26,17 +30,17 @@ export class BooksService {
 	private async findOrCreateTags(tagNames: string[]): Promise<Tag[]> {
 		return Promise.all(
 			tagNames.map(async (tagName) => {
-					let tag = await this.tagRepository.findOne({
-						where: { name: tagName },
-					});
-					if (!tag) {
-						tag = this.tagRepository.create({ name: tagName });
-						await this.tagRepository.save(tag);
-					}
-					return tag;
-				}),
-			);
-		}
+				let tag = await this.tagRepository.findOne({
+					where: { name: tagName },
+				});
+				if (!tag) {
+					tag = this.tagRepository.create({ name: tagName });
+					await this.tagRepository.save(tag);
+				}
+				return tag;
+			}),
+		);
+	}
 
 	private createChaptersFromDto(
 		chaptersDto: CreateChapterDto[],
@@ -77,11 +81,28 @@ export class BooksService {
 		return savedBook;
 	}
 
-	getAllBooks() {
-		return this.bookRepository.find();
+	async getAllBooks(options: BookPageOptionsDto): Promise<PageDto<any>> {
+		const [books, total] = await this.bookRepository.findAndCount({
+			relations: ['chapters'],
+			skip: (options.page - 1) * options.limit,
+			take: options.limit,
+		});
+		const data = books.map((book) => {
+			const { chapters, ...rest } = book;
+			return {
+				...rest,
+				chapterCount: chapters ? chapters.length : 0,
+			};
+		});
+		const metadata = new MetadataPageDto();
+		metadata.total = total;
+		metadata.page = options.page;
+		metadata.lastPage = Math.ceil(total / options.limit);
+
+		return new PageDto(data, metadata);
 	}
 
-	async getOne(id: string) {
+	async getOne(id: string): Promise<Book> {
 		const book = await this.bookRepository.findOne({
 			where: { id },
 			relations: ['chapters'],
