@@ -5,7 +5,6 @@ import {
 	Capabilities,
 	WebDriver,
 	By,
-	until,
 } from 'selenium-webdriver';
 import * as fs from 'fs/promises';
 import { v4 as uuidv4 } from 'uuid';
@@ -178,6 +177,34 @@ export class ScrapingService {
 			);
 
 			return successfulPaths.filter(Boolean) as string[];
+		} catch (error) {
+			this.logger.error(
+				'Ocorreu um erro durante o processo de scraping.',
+				error,
+			);
+			throw error;
+		} finally {
+			await driver.quit();
+		}
+	}
+
+	async scrapeSingleImage(url: string, imageUrl: string): Promise<string> {
+		const driver = await this.createInstance();
+		try {
+			await driver.get(url);
+
+			const base64Data = await this.fetchImageAsBase64(driver, imageUrl);
+			if (!base64Data) {
+				throw new Error(`Falha ao baixar a imagem: ${imageUrl}`);
+			}
+
+			const extension =
+				path.extname(new URL(imageUrl).pathname) || '.jpg';
+			const fileName = `${uuidv4()}${extension}`;
+			const filePath = path.join(this.downloadDir, fileName);
+			await fs.writeFile(filePath, base64Data, 'base64');
+			this.logger.log(`Imagem salva em: ${filePath}`);
+			return this.getPublicPath(fileName);
 		} catch (error) {
 			this.logger.error(
 				'Ocorreu um erro durante o processo de scraping.',

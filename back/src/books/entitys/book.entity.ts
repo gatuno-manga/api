@@ -22,6 +22,11 @@ export class Book {
 	title: string;
 
 	@Column({
+		nullable: true,
+	})
+	cover: string;
+
+	@Column({
 		type: 'json',
 		nullable: true,
 	})

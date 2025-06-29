@@ -7,6 +7,7 @@ import {
 } from 'class-validator';
 import { CreateChapterDto } from './create-chapter.dto';
 import { Type } from 'class-transformer';
+import { CoverBookDto } from './cover-book.dto';
 
 export class CreateBookDto {
 	@IsString()
@@ -25,8 +26,9 @@ export class CreateBookDto {
 	description?: string;
 
 	@IsOptional()
-	@IsString()
-	coverUrl?: string;
+	@ValidateNested()
+	@Type(() => CoverBookDto)
+	cover?: CoverBookDto;
 
 	@IsOptional()
 	@IsNumber()

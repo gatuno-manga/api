@@ -11,6 +11,7 @@ import { CreateChapterDto } from './dto/create-chapter.dto';
 import { MetadataPageDto } from 'src/pages/metadata-page.dto';
 import { PageDto } from 'src/pages/page.dto';
 import { BookPageOptionsDto } from './dto/book-page-options.dto';
+import { ScrapingService } from 'src/scraping/scraping.service';
 
 @Injectable()
 export class BooksService {
@@ -24,6 +25,7 @@ export class BooksService {
 		private readonly chapterRepository: Repository<Chapter>,
 		@InjectRepository(Tag)
 		private readonly tagRepository: Repository<Tag>,
+		private readonly scrapingService: ScrapingService,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
@@ -42,12 +44,12 @@ export class BooksService {
 		);
 	}
 
-	private createChaptersFromDto(
+	private async createChaptersFromDto(
 		chaptersDto: CreateChapterDto[],
 		book: Book,
-	): Chapter[] {
+	): Promise<Chapter[]> {
 		let count = 1;
-		return chaptersDto.map((chapterDto) =>
+		const chapters = chaptersDto.map((chapterDto) =>
 			this.chapterRepository.create({
 				title: chapterDto.title,
 				originalUrl: chapterDto.url,
@@ -55,6 +57,7 @@ export class BooksService {
 				book,
 			}),
 		);
+		return this.chapterRepository.save(chapters);
 	}
 
 	async createBook(dto: CreateBookDto) {
@@ -66,16 +69,33 @@ export class BooksService {
 			title: dto.title,
 			originalUrl: dto.originalUrl,
 			alternativeTitle: dto.alternativeTitle,
-			coverUrl: dto.coverUrl,
 			description: dto.description,
 			publication: dto.publication,
 			tags,
 		});
+		await this.bookRepository.save(book);
 
 		if (dto.chapters && dto.chapters.length > 0) {
-			book.chapters = this.createChaptersFromDto(dto.chapters, book);
+			book.chapters = await this.createChaptersFromDto(
+				dto.chapters,
+				book,
+			);
 		}
-
+		if (dto.cover) {
+			this.scrapingService
+				.scrapeSingleImage(dto.cover.urlOrigin, dto.cover.urlImg)
+				.then(async (cover) => {
+					book.cover = cover;
+					await this.bookRepository.save(book);
+					this.logger.log(`Capa salva para o livro: ${book.title}`);
+				})
+				.catch((err) => {
+					this.logger.warn(
+						`Falha ao baixar capa para o livro: ${book.title}`,
+						err,
+					);
+				});
+		}
 		const savedBook = await this.bookRepository.save(book);
 		this.eventEmitter.emit('book.created', savedBook);
 		return savedBook;
