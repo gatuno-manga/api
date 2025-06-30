@@ -8,6 +8,7 @@ import { ScrapingModule } from './scraping/scraping.module';
 import { BooksModule } from './books/books.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { FilesModule } from './files/files.module';
 
 @Module({
 	imports: [
@@ -19,6 +20,7 @@ import { join } from 'path';
 		ServeStaticModule.forRoot({
 			rootPath: join(__dirname, '..', 'data'),
 		}),
+		FilesModule,
 	],
 	controllers: [AppController],
 	providers: [AppService],

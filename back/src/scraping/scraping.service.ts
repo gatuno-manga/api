@@ -6,17 +6,19 @@ import {
 	WebDriver,
 	By,
 } from 'selenium-webdriver';
-import * as fs from 'fs/promises';
-import { v4 as uuidv4 } from 'uuid';
 import * as path from 'path';
 import { AppConfigService } from 'src/app-config/app-config.service';
+import { FilesService } from 'src/files/files.service';
 
 @Injectable()
 export class ScrapingService {
 	private readonly logger = new Logger(ScrapingService.name);
 	private downloadDir = path.resolve('/usr/src/app/data');
 
-	constructor(private readonly appConfigService: AppConfigService) {}
+	constructor(
+		private readonly appConfigService: AppConfigService,
+		private readonly filesService: FilesService,
+	) {}
 
 	async createInstance() {
 		const chromeCapabilities = Capabilities.chrome();
@@ -168,11 +170,10 @@ export class ScrapingService {
 
 					const extension =
 						path.extname(new URL(imageUrl).pathname) || '.jpg';
-					const fileName = `${uuidv4()}${extension}`;
-					const filePath = path.join(this.downloadDir, fileName);
-					await fs.writeFile(filePath, base64Data, 'base64');
-					this.logger.log(`Imagem salva em: ${filePath}`);
-					return this.getPublicPath(fileName);
+					return this.filesService.saveBase64File(
+						base64Data,
+						extension,
+					);
 				}),
 			);
 
@@ -200,11 +201,7 @@ export class ScrapingService {
 
 			const extension =
 				path.extname(new URL(imageUrl).pathname) || '.jpg';
-			const fileName = `${uuidv4()}${extension}`;
-			const filePath = path.join(this.downloadDir, fileName);
-			await fs.writeFile(filePath, base64Data, 'base64');
-			this.logger.log(`Imagem salva em: ${filePath}`);
-			return this.getPublicPath(fileName);
+			return this.filesService.saveBase64File(base64Data, extension);
 		} catch (error) {
 			this.logger.error(
 				'Ocorreu um erro durante o processo de scraping.',
