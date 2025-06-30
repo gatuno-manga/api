@@ -136,9 +136,48 @@ export class BooksService {
 	}
 
 	async getChapter(idBook: string, idChapter: string) {
-		return this.chapterRepository.findOne({
+		const chapter = await this.chapterRepository.findOne({
 			where: { id: idChapter, book: { id: idBook } },
-			relations: ['pages'],
+			relations: ['pages', 'book'],
 		});
+
+		if (!chapter) {
+			this.logger.warn(
+				`Chapter with id ${idChapter} not found in book ${idBook}`,
+			);
+			throw new NotFoundException(
+				`Chapter with id ${idChapter} not found in book ${idBook}`,
+			);
+		}
+
+		const previousChapter = await this.chapterRepository.findOne({
+			where: {
+				book: { id: idBook },
+				index: chapter.index - 1,
+			},
+			select: ['id'],
+		});
+
+		const nextChapter = await this.chapterRepository.findOne({
+			where: {
+				book: { id: idBook },
+				index: chapter.index + 1,
+			},
+			select: ['id'],
+		});
+
+		const totalChapters = await this.chapterRepository.count({
+			where: { book: { id: idBook } },
+		});
+		const { book, ...chapterWithoutBook } = chapter;
+
+		return {
+			...chapterWithoutBook,
+			previous: previousChapter?.id,
+			next: nextChapter?.id,
+			bookId: book.id,
+			bookTitle: book.title,
+			totalChapters,
+		};
 	}
 }
