@@ -12,6 +12,8 @@ import {
 import { Chapter } from './chapter.entity';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { Tag } from './tags.entity';
+import { BookType } from '../enum/book-type.enum';
+import { SensitiveContent } from '../enum/sensitive-content.enum';
 
 @Entity('books')
 export class Book {
@@ -31,6 +33,19 @@ export class Book {
 		nullable: true,
 	})
 	alternativeTitle: string[];
+
+	@Column({
+		type: 'enum',
+		enum: BookType,
+		default: BookType.BOOK,
+	})
+	type: BookType;
+
+	@Column({
+		type: 'json',
+		nullable: true,
+	})
+	sensitiveContent: SensitiveContent[];
 
 	@Column({
 		type: 'json',

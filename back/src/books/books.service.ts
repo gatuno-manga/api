@@ -71,6 +71,8 @@ export class BooksService {
 			alternativeTitle: dto.alternativeTitle,
 			description: dto.description,
 			publication: dto.publication,
+			type: dto.type,
+			sensitiveContent: dto.sensitiveContent,
 			tags,
 		});
 		await this.bookRepository.save(book);
@@ -102,11 +104,45 @@ export class BooksService {
 	}
 
 	async getAllBooks(options: BookPageOptionsDto): Promise<PageDto<any>> {
-		const [books, total] = await this.bookRepository.findAndCount({
-			relations: ['chapters'],
-			skip: (options.page - 1) * options.limit,
-			take: options.limit,
-		});
+		const queryBuilder = this.bookRepository.createQueryBuilder('book')
+			.loadRelationCountAndMap('book.chapterCount', 'book.chapters')
+			.skip((options.page - 1) * options.limit)
+			.take(options.limit);
+
+		let sensitiveContents: string[] = [];
+		if (options.sensitiveContent) {
+			if (Array.isArray(options.sensitiveContent)) {
+				sensitiveContents = options.sensitiveContent;
+			} else {
+				sensitiveContents = [options.sensitiveContent];
+			}
+		}
+
+		if (sensitiveContents.length) {
+			const conditions = sensitiveContents.map(
+				(_: any, i: number) => `JSON_CONTAINS(book.sensitiveContent, :sc${i})`
+			);
+			conditions.forEach((_, i) => {
+				queryBuilder.setParameter(`sc${i}`, JSON.stringify([sensitiveContents[i]]));
+			});
+			queryBuilder.andWhere(`((${conditions.join(' OR ')}) OR book.sensitiveContent IS NULL OR JSON_LENGTH(book.sensitiveContent) = 0)`);
+		}
+
+		let types: string[] = [];
+		if (options.type) {
+			if (Array.isArray(options.type)) {
+				types = options.type;
+			} else {
+				types = [options.type];
+			}
+		}
+
+		if (types.length) {
+			queryBuilder.andWhere('book.type IN (:...types)', { types });
+		}
+
+		const [books, total] = await queryBuilder.getManyAndCount();
+
 		const data = books.map((book) => {
 			const { chapters, ...rest } = book;
 			return {
