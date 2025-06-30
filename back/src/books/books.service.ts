@@ -125,7 +125,7 @@ export class BooksService {
 	async getOne(id: string): Promise<Book> {
 		const book = await this.bookRepository.findOne({
 			where: { id },
-			relations: ['chapters'],
+			relations: ['chapters', 'tags'],
 			order: { chapters: { index: 'ASC' } },
 		});
 		if (!book) {
