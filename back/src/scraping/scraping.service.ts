@@ -106,25 +106,35 @@ export class ScrapingService {
 
 	private async waitForAllImagesLoaded(
 		driver: WebDriver,
-		timeout = 20000,
+		selector = 'img',
+		timeout = 60000,
 	): Promise<void> {
 		const pollInterval = 500;
 		const maxTries = Math.ceil(timeout / pollInterval);
 		let tries = 0;
 
 		while (tries < maxTries) {
-			const allLoaded = await driver.executeScript<boolean>(`
-				return Array.from(document.images).every(img => img.complete && img.naturalWidth > 0);
-			`);
+			const allLoaded = await driver.executeScript<boolean>(
+				`
+				const selector = arguments[0];
+				return Array.from(document.querySelectorAll(selector)).every(img => {
+					// Considera carregada se terminou (com sucesso ou erro)
+					return img.complete;
+				});
+				`,
+				selector,
+			);
 			if (allLoaded) return;
 			await driver.sleep(pollInterval);
 			tries++;
 		}
-		throw new Error('Timeout esperando todas as imagens carregarem');
+		throw new Error('Timeout esperando todas as imagens carregarem (inclusive as que falharam)');
 	}
 
-	private async getImageUrls(driver: WebDriver): Promise<string[]> {
-		const imageElements = await driver.findElements(By.css('img'));
+	private async getImageUrls(driver: WebDriver, selector = 'img',): Promise<string[]> {
+		const imageElements = await driver.findElements(
+			By.css(selector),
+		);
 		return (
 			await Promise.all(
 				imageElements.map((img) => img.getAttribute('src')),
@@ -136,12 +146,21 @@ export class ScrapingService {
 		);
 	}
 
-	private getPublicPath(fileName: string): string {
-		return `http://localhost:3000/data/${fileName}`;
+	async failedImageUrls(driver: WebDriver, selector = 'img',): Promise<string[]> {
+		return await driver.executeScript<string[]>(
+			`
+			const selector = arguments[0];
+			return Array.from(document.querySelectorAll(selector))
+				.filter(img => img.complete && img.naturalWidth === 0)
+				.map(img => img.src);
+			`,
+			selector,
+		);
 	}
 
 	async scrapePages(url: string): Promise<string[]> {
 		const driver = await this.createInstance();
+		const selector = 'img';
 		try {
 			await driver.get(url);
 			await driver.wait(
@@ -152,29 +171,37 @@ export class ScrapingService {
 				'window.scrollTo(0, document.body.scrollHeight);',
 			);
 			await driver.sleep(500);
-			await this.waitForAllImagesLoaded(driver);
+			await this.waitForAllImagesLoaded(driver, selector);
 
-			const imageUrls = await this.getImageUrls(driver);
+			const failedUrls = await this.failedImageUrls(driver, selector);
+			const imageUrls = await this.getImageUrls(driver, selector);
 
 			this.logger.log(
 				`Encontradas ${imageUrls.length} URLs de imagem válidas. Iniciando downloads.`,
 			);
 
 			const successfulPaths = await Promise.all(
-				imageUrls.map(async (imageUrl) => {
-					const base64Data = await this.fetchImageAsBase64(
-						driver,
-						imageUrl,
-					);
-					if (!base64Data) return null;
+				imageUrls
+					.map(async (imageUrl) => {
+						if (failedUrls.includes(imageUrl)) {
+							this.logger.warn(
+								`Imagem falhou ao carregar: ${imageUrl}`,
+							);
+							return "null";
+						}
+						const base64Data = await this.fetchImageAsBase64(
+							driver,
+							imageUrl,
+						);
+						if (!base64Data) return "null";
 
-					const extension =
-						path.extname(new URL(imageUrl).pathname) || '.jpg';
-					return this.filesService.saveBase64File(
-						base64Data,
-						extension,
-					);
-				}),
+						const extension =
+							path.extname(new URL(imageUrl).pathname) || '.jpg';
+						return this.filesService.saveBase64File(
+							base64Data,
+							extension,
+						);
+					}),
 			);
 
 			return successfulPaths.filter(Boolean) as string[];
