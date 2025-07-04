@@ -174,6 +174,26 @@ export class BooksService {
 			where: { id },
 			relations: ['chapters', 'tags'],
 			order: { chapters: { index: 'ASC' } },
+			select: {
+				id: true,
+				title: true,
+				alternativeTitle: true,
+				originalUrl: true,
+				description: true,
+				publication: true,
+				type: true,
+				sensitiveContent: true,
+				cover: true,
+				tags: {
+					name: true,
+				},
+				chapters: {
+					id: true,
+					title: true,
+					scrapingStatus: true,
+					index: true,
+				}
+			},
 		});
 		if (!book) {
 			this.logger.warn(`Book with id ${id} not found`);
