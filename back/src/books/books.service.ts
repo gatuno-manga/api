@@ -108,7 +108,8 @@ export class BooksService {
 	}
 
 	async getAllBooks(options: BookPageOptionsDto): Promise<PageDto<any>> {
-		const queryBuilder = this.bookRepository.createQueryBuilder('book')
+		const queryBuilder = this.bookRepository
+			.createQueryBuilder('book')
 			.loadRelationCountAndMap('book.chapterCount', 'book.chapters')
 			.skip((options.page - 1) * options.limit)
 			.take(options.limit);
@@ -124,12 +125,18 @@ export class BooksService {
 
 		if (sensitiveContents.length) {
 			const conditions = sensitiveContents.map(
-				(_: any, i: number) => `JSON_CONTAINS(book.sensitiveContent, :sc${i})`
+				(_: any, i: number) =>
+					`JSON_CONTAINS(book.sensitiveContent, :sc${i})`,
 			);
 			conditions.forEach((_, i) => {
-				queryBuilder.setParameter(`sc${i}`, JSON.stringify([sensitiveContents[i]]));
+				queryBuilder.setParameter(
+					`sc${i}`,
+					JSON.stringify([sensitiveContents[i]]),
+				);
 			});
-			queryBuilder.andWhere(`((${conditions.join(' OR ')}) OR book.sensitiveContent IS NULL OR JSON_LENGTH(book.sensitiveContent) = 0)`);
+			queryBuilder.andWhere(
+				`((${conditions.join(' OR ')}) OR book.sensitiveContent IS NULL OR JSON_LENGTH(book.sensitiveContent) = 0)`,
+			);
 		}
 
 		let types: string[] = [];
