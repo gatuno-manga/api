@@ -12,6 +12,10 @@ import { MetadataPageDto } from 'src/pages/metadata-page.dto';
 import { PageDto } from 'src/pages/page.dto';
 import { BookPageOptionsDto } from './dto/book-page-options.dto';
 import { ScrapingService } from 'src/scraping/scraping.service';
+import { UpdateBookDto } from './dto/update-book.dto';
+import { ScrapingStatus } from './enum/scrapingStatus.enum';
+import { UpdateChapterDto } from './dto/update-chapter.dto';
+import { OrderChaptersDto } from './dto/order-chapters.dto';
 
 @Injectable()
 export class BooksService {
@@ -215,5 +219,156 @@ export class BooksService {
 			bookTitle: book.title,
 			totalChapters,
 		};
+	}
+
+	async updateBook(id: string, dto: UpdateBookDto) {
+		const book = await this.bookRepository.findOne({
+			where: { id },
+			relations: ['tags'],
+		});
+		if (!book) {
+			this.logger.warn(`Book with id ${id} not found`);
+			throw new NotFoundException(`Book with id ${id} not found`);
+		}
+
+		this.bookRepository.merge(book, {
+			title: dto.title,
+			alternativeTitle: dto.alternativeTitle,
+			originalUrl: dto.originalUrl,
+			description: dto.description,
+			publication: dto.publication,
+			type: dto.type,
+			sensitiveContent: dto.sensitiveContent,
+		});
+
+		if (dto.tags && dto.tags.length > 0) {
+			book.tags = await this.findOrCreateTags(dto.tags);
+		}
+
+		if (dto.cover) {
+			this.scrapingService
+				.scrapeSingleImage(dto.cover.urlOrigin, dto.cover.urlImg)
+				.then(async (cover) => {
+					book.cover = cover;
+					await this.bookRepository.save(book);
+					this.logger.log(
+						`Capa atualizada para o livro: ${book.title}`,
+					);
+				})
+				.catch((err) => {
+					this.logger.warn(
+						`Falha ao baixar capa para o livro: ${book.title}`,
+						err,
+					);
+				});
+		}
+
+		return this.bookRepository.save(book);
+	}
+
+	async updateChapter(
+		idBook: string,
+		dto: UpdateChapterDto[],
+	) {
+		const book = await this.bookRepository.findOne({
+			where: { id: idBook },
+			relations: ['chapters'],
+		});
+		if (!book) {
+			this.logger.warn(`Book with id ${idBook} not found`);
+			throw new NotFoundException(`Book with id ${idBook} not found`);
+		}
+		const existingChapters = book.chapters.reduce(
+			(acc, chapter) => ({ ...acc, [chapter.index]: chapter }),
+			{},
+		);
+
+		const updatedChapters: Chapter[] = [];
+		for (const chapterDto of dto) {
+			let chapter = existingChapters[chapterDto.index];
+			if (!chapter) {
+				if (!chapterDto.url) {
+					this.logger.warn(
+						`Missing data for chapter with index ${chapterDto.index} in book ${idBook}`,
+					);
+					throw new NotFoundException(
+						`Missing data for chapter with index ${chapterDto.index} in book ${idBook}`,
+					);
+				}
+				chapter = this.chapterRepository.create({
+					title: chapterDto.title,
+					index: chapterDto.index,
+					originalUrl: chapterDto.url,
+					book: book,
+				});
+			} else {
+				let scrapingStatus = chapter.scrapingStatus;
+				if (chapterDto.url) {
+					scrapingStatus = ScrapingStatus.PROCESS;
+				}
+				this.chapterRepository.merge(chapter, {
+					title: chapterDto.title,
+					index: chapterDto.index,
+					originalUrl: chapterDto.url,
+					scrapingStatus: scrapingStatus,
+				});
+			}
+			updatedChapters.push(chapter);
+		}
+		book.chapters = [
+			...updatedChapters,
+			...book.chapters.filter(
+				(chapter) => !updatedChapters.some((c) => c.index === chapter.index),
+			),
+		];
+		const savedBook = await this.bookRepository.save(book);
+		this.eventEmitter.emit('chapters.updated', savedBook);
+		return savedBook.chapters
+	}
+
+	async orderChapters(
+		idBook: string,
+		chapters: OrderChaptersDto[]
+	) {
+		const book = await this.bookRepository.findOne({
+			where: { id: idBook },
+			relations: ['chapters'],
+		});
+
+		if (!book) {
+			this.logger.warn(`Book with id ${idBook} not found`);
+			throw new NotFoundException(`Book with id ${idBook} not found`);
+		}
+
+		if (chapters.length !== book.chapters.length) {
+			this.logger.warn(
+				`Number of chapters to order does not match the number of chapters in the book ${idBook}`,
+			);
+			throw new NotFoundException(
+				`Number of chapters to order does not match the number of chapters in the book ${idBook}`,
+			);
+		}
+
+		const chapterMap = new Map<string, Chapter>();
+		book.chapters.forEach((chapter) => {
+			chapterMap.set(chapter.id, chapter);
+		});
+
+		const orderedChapters: Chapter[] = chapters.map((chapterDto) => {
+			const chapter = chapterMap.get(chapterDto.id);
+			if (!chapter) {
+				this.logger.warn(
+					`Chapter with id ${chapterDto.id} not found in book ${idBook}`,
+				);
+				throw new NotFoundException(
+					`Chapter with id ${chapterDto.id} not found in book ${idBook}`,
+				);
+			}
+			chapter.index = chapterDto.index;
+			return chapter;
+		});
+		orderedChapters.sort((a, b) => a.index - b.index);
+		book.chapters = orderedChapters;
+		return await this.bookRepository.save(book);
 	}
 }

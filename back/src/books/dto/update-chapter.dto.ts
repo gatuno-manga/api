@@ -6,16 +6,16 @@ import {
 	IsUrl,
 } from 'class-validator';
 
-export class CreateChapterDto {
+export class UpdateChapterDto {
 	@IsString()
 	@IsOptional()
 	title?: string;
 
 	@IsUrl()
-	url: string;
+	@IsOptional()
+	url?: string;
 
 	@IsNumber()
 	@IsPositive()
-	@IsOptional()
-	index?: number;
+	index: number;
 }

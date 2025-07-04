@@ -5,20 +5,20 @@ import { Type } from 'class-transformer';
 import { IsOptional } from 'class-validator';
 
 export class BookPageOptionsDto extends PageOptionsDto {
-    @IsOptional()
-    @Type(() => String)
-    type?: BookType[] = [
-        BookType.OTHER,
-        BookType.MANGA,
-        BookType.MANHWA,
-        BookType.MANHUA,
-        BookType.BOOK,
-    ];
+	@IsOptional()
+	@Type(() => String)
+	type?: BookType[] = [
+		BookType.OTHER,
+		BookType.MANGA,
+		BookType.MANHWA,
+		BookType.MANHUA,
+		BookType.BOOK,
+	];
 
-    @IsOptional()
-    @Type(() => String)
-    sensitiveContent?: SensitiveContent[] = [
-        SensitiveContent.GORE,
-        SensitiveContent.SUGGESTIVE,
-    ];
+	@IsOptional()
+	@Type(() => String)
+	sensitiveContent?: SensitiveContent[] = [
+		SensitiveContent.GORE,
+		SensitiveContent.SUGGESTIVE,
+	];
 }

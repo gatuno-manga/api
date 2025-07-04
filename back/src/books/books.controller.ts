@@ -1,7 +1,18 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	Get,
+	Param,
+	Patch,
+	Post,
+	Query,
+} from '@nestjs/common';
 import { BooksService } from './books.service';
 import { CreateBookDto } from './dto/create-book.dto';
 import { BookPageOptionsDto } from './dto/book-page-options.dto';
+import { UpdateChapterDto } from './dto/update-chapter.dto';
+import { UpdateBookDto } from './dto/update-book.dto';
+import { OrderChaptersDto } from './dto/order-chapters.dto';
 
 @Controller('books')
 export class BooksController {
@@ -26,4 +37,26 @@ export class BooksController {
 	) {
 		return this.booksService.getChapter(idBook, idChapter);
 	}
+
+	@Patch(':idBook')
+	updateBook(@Param('idBook') id: string, @Body() dto: UpdateBookDto) {
+		return this.booksService.updateBook(id, dto);
+	}
+
+	@Patch(':idBook/chapters')
+	updateChapter(
+		@Param('idBook') idBook: string,
+		@Body() dto: UpdateChapterDto[],
+	) {
+		return this.booksService.updateChapter(idBook, dto);
+	}
+
+	@Patch(':idBook/chapters/order')
+	orderChapters(
+		@Param('idBook') idBook: string,
+		@Body() dto: OrderChaptersDto[],
+	) {
+		return this.booksService.orderChapters(idBook, dto);
+	}
+
 }

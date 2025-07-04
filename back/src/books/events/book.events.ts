@@ -22,6 +22,7 @@ export class BookEvents {
 	) {}
 
 	@OnEvent('book.created')
+	@OnEvent('chapters.updated')
 	async handleProcessChapters(book: Book) {
 		this.logger.log(`Iniciando o scraping para o livro: ${book.title}`);
 		this.logger.log(`Total de capítulos: ${book.chapters.length}`);
