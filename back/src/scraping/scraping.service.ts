@@ -9,6 +9,7 @@ import {
 import * as path from 'path';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { FilesService } from 'src/files/files.service';
+import { WebsiteService } from './website.service';
 
 @Injectable()
 export class ScrapingService {
@@ -18,6 +19,7 @@ export class ScrapingService {
 	constructor(
 		private readonly appConfigService: AppConfigService,
 		private readonly filesService: FilesService,
+		private readonly webSiteService: WebsiteService,
 	) {}
 
 	async createInstance() {
@@ -128,13 +130,16 @@ export class ScrapingService {
 			await driver.sleep(pollInterval);
 			tries++;
 		}
-		throw new Error('Timeout esperando todas as imagens carregarem (inclusive as que falharam)');
+		throw new Error(
+			'Timeout esperando todas as imagens carregarem (inclusive as que falharam)',
+		);
 	}
 
-	private async getImageUrls(driver: WebDriver, selector = 'img',): Promise<string[]> {
-		const imageElements = await driver.findElements(
-			By.css(selector),
-		);
+	private async getImageUrls(
+		driver: WebDriver,
+		selector = 'img',
+	): Promise<string[]> {
+		const imageElements = await driver.findElements(By.css(selector));
 		return (
 			await Promise.all(
 				imageElements.map((img) => img.getAttribute('src')),
@@ -142,11 +147,16 @@ export class ScrapingService {
 		).filter(
 			(src) =>
 				src &&
-				(src.startsWith('http://') || src.startsWith('https://')),
+				(src.startsWith('http://') ||
+					src.startsWith('https://') ||
+					src.startsWith('blob:')),
 		);
 	}
 
-	async failedImageUrls(driver: WebDriver, selector = 'img',): Promise<string[]> {
+	async failedImageUrls(
+		driver: WebDriver,
+		selector = 'img',
+	): Promise<string[]> {
 		return await driver.executeScript<string[]>(
 			`
 			const selector = arguments[0];
@@ -160,17 +170,29 @@ export class ScrapingService {
 
 	async scrapePages(url: string): Promise<string[]> {
 		const driver = await this.createInstance();
-		const selector = 'img';
+		let selector = 'img';
+		let preScript = ``;
+		let ignoreFiles: string[] = [];
+		const domain = new URL(url).hostname;
+		const website = await this.webSiteService.getByUrl(domain);
+		if (website) {
+			selector = website.selector || selector;
+			preScript = website.preScript || preScript;
+			ignoreFiles = website.ignoreFiles || [];
+		}
 		try {
 			await driver.get(url);
 			await driver.wait(
 				() => driver.getTitle().then((title) => title.length > 0),
 				10000,
 			);
+			await driver.executeScript(preScript);
+			await driver.sleep(1500);
 			await driver.executeScript(
 				'window.scrollTo(0, document.body.scrollHeight);',
 			);
 			await driver.sleep(500);
+			this.logger.debug('seletor', selector);
 			await this.waitForAllImagesLoaded(driver, selector);
 
 			const failedUrls = await this.failedImageUrls(driver, selector);
@@ -181,27 +203,32 @@ export class ScrapingService {
 			);
 
 			const successfulPaths = await Promise.all(
-				imageUrls
-					.map(async (imageUrl) => {
-						if (failedUrls.includes(imageUrl)) {
-							this.logger.warn(
-								`Imagem falhou ao carregar: ${imageUrl}`,
-							);
-							return "null";
-						}
-						const base64Data = await this.fetchImageAsBase64(
-							driver,
-							imageUrl,
+				imageUrls.map(async (imageUrl) => {
+					if (failedUrls.includes(imageUrl)) {
+						this.logger.warn(
+							`Imagem falhou ao carregar: ${imageUrl}`,
 						);
-						if (!base64Data) return "null";
+						return 'null';
+					}
+					if (ignoreFiles && ignoreFiles.includes(imageUrl)) {
+						this.logger.warn(
+							`Imagem ignorada por configuração: ${imageUrl}`,
+						);
+						return null;
+					}
+					const base64Data = await this.fetchImageAsBase64(
+						driver,
+						imageUrl,
+					);
+					if (!base64Data) return 'null';
 
-						const extension =
-							path.extname(new URL(imageUrl).pathname) || '.jpg';
-						return this.filesService.saveBase64File(
-							base64Data,
-							extension,
-						);
-					}),
+					const extension =
+						path.extname(new URL(imageUrl).pathname) || '.jpg';
+					return this.filesService.saveBase64File(
+						base64Data,
+						extension,
+					);
+				}),
 			);
 
 			return successfulPaths.filter(Boolean) as string[];
