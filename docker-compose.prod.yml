@@ -1,0 +1,134 @@
+services:
+  api:
+    image: gatuno-api
+    container_name: gatuno-api
+    restart: unless-stopped
+    build:
+      context: ./back
+      dockerfile: Dockerfile.dev
+    ports:
+      - "${API_PORT}:3000"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - SELENIUM_URL=http://selenium-hub:4444/wd/hub
+      - DB_PORT=3306
+      - DB_TYPE=mysql
+      - DB_HOST=database
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - DB_NAME=${DB_NAME}
+    volumes:
+      - ./back/src:/usr/src/app/src
+      - ./back/.env:/usr/src/app/.env
+      - api-data:/usr/src/app/data
+    depends_on:
+      - database
+      - selenium-hub
+    networks:
+      - traefik_traefik-proxy-net
+      - gatuno-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`${API_HOST}`)"
+      - "traefik.docker.network=traefik_traefik-proxy-net"
+      - "traefik.http.services.api.loadbalancer.server.port=3000"
+
+  database:
+    image: mysql:8.0
+    container_name: gatuno-database
+    ports:
+      - "${DB_EXTERNAL_PORT}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASS}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASS}
+    volumes:
+      - database-data:/var/lib/mysql
+    command: >
+      --default-authentication-plugin=mysql_native_password
+    restart: unless-stopped
+    networks:
+      - gatuno-net
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: gatuno-phpmyadmin
+    ports:
+      - "${PHPMYADMIN_PORT}:80"
+    environment:
+      PMA_HOST: database
+      PMA_USER: ${DB_USER}
+      PMA_PASSWORD: ${DB_PASS}
+    depends_on:
+      - database
+    networks:
+      - gatuno-net
+
+  selenium-hub:
+    image: selenium/hub:latest
+    ports:
+      - "${SELENIUM_HUB_PORT_1}:4442"
+      - "${SELENIUM_HUB_PORT_2}:4443"
+      - "${SELENIUM_HUB_PORT_3}:4444"
+    environment:
+      - SE_ROUTER_PASSWORD=admin
+    networks:
+    - gatuno-net
+
+  node-docker:
+    image: selenium/node-docker:latest
+    shm_size: 5g
+    depends_on:
+      - selenium-hub
+    environment:
+      - SE_EVENT_BUS_HOST=selenium-hub
+      - SE_EVENT_BUS_PUBLISH_PORT=4442
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+      - SE_NODE_MAX_SESSIONS=4
+    volumes:
+      - ./config.toml:/opt/bin/config.toml
+      - /var/run/docker.sock:/var/run/docker.sock
+      - selenium-data:/opt/selenium/assets
+    networks:
+      - gatuno-net
+
+  app:
+    image: gatuno-app
+    container_name: gatuno-app
+    build:
+      context: ./front
+      dockerfile: Dockerfile.dev
+    ports:
+      - "${APP_PORT}:4200"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+    volumes:
+      - ./front/src:/usr/src/app/src
+      - ./front/public:/usr/src/app/public
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - traefik_traefik-proxy-net
+      - gatuno-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.app.rule=Host(`${APP_HOST}`)"
+      - "traefik.http.services.app.loadbalancer.server.port=4200"
+      - "traefik.docker.network=traefik_traefik-proxy-net"
+
+volumes:
+  database-data:
+    driver: local
+  selenium-data:
+    driver: local
+  api-data:
+    driver: local
+
+networks:
+  traefik_traefik-proxy-net:
+    external: true
+  gatuno-net:
+    driver: bridge
+
