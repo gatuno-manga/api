@@ -190,7 +190,7 @@ export class BooksService {
 			rest.cover = this.urlImage(book.cover);
 			return {
 				...rest,
-				chapterCount: chapters ? chapters.length : 0,
+				// chapterCount: chapters[chapters.length - 1]?.index || 0,
 			};
 		});
 		const metadata = new MetadataPageDto();
@@ -261,25 +261,28 @@ export class BooksService {
 			);
 		}
 
-		const previousChapter = await this.chapterRepository.findOne({
-			where: {
-				book: { id: idBook },
-				index: chapter.index - 1,
-			},
-			select: ['id'],
-		});
+		const previousChapter = await this.chapterRepository
+			.createQueryBuilder('chapter')
+			.where('chapter.bookId = :bookId', { bookId: idBook })
+			.andWhere('chapter.index < :currentIndex', { currentIndex: chapter.index })
+			.orderBy('chapter.index', 'DESC')
+			.select(['chapter.id'])
+			.getOne();
 
-		const nextChapter = await this.chapterRepository.findOne({
-			where: {
-				book: { id: idBook },
-				index: chapter.index + 1,
-			},
-			select: ['id'],
-		});
+		const nextChapter = await this.chapterRepository
+			.createQueryBuilder('chapter')
+			.where('chapter.bookId = :bookId', { bookId: idBook })
+			.andWhere('chapter.index > :currentIndex', { currentIndex: chapter.index })
+			.orderBy('chapter.index', 'ASC')
+			.select(['chapter.id'])
+			.getOne();
 
-		const totalChapters = await this.chapterRepository.count({
-			where: { book: { id: idBook } },
-		});
+		const maxIndexChapter = await this.chapterRepository
+			.createQueryBuilder('chapter')
+			.where('chapter.bookId = :bookId', { bookId: idBook })
+			.select('MAX(chapter.index)', 'max')
+			.getRawOne();
+		const totalChapters = maxIndexChapter?.max ? Number(maxIndexChapter.max) : 0;
 		const { book, ...chapterWithoutBook } = chapter;
 
 		if (chapterWithoutBook.pages) {
