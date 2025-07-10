@@ -14,6 +14,7 @@ import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { Tag } from './tags.entity';
 import { BookType } from '../enum/book-type.enum';
 import { SensitiveContent } from '../enum/sensitive-content.enum';
+import { Author } from './author.entity';
 
 @Entity('books')
 export class Book {
@@ -84,6 +85,12 @@ export class Book {
 	@ManyToMany(() => Tag)
 	@JoinTable()
 	tags: Relation<Tag[]>;
+
+	@ManyToMany(() => Author, (author) => author.books, {
+		cascade: true,
+	})
+	@JoinTable()
+	authors: Relation<Author[]>
 
 	@CreateDateColumn()
 	createdAt: Date;

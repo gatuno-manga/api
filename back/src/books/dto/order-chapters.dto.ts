@@ -1,10 +1,10 @@
-import { IsNumber, IsPositive, IsString } from "class-validator";
+import { IsNumber, IsPositive, IsString } from 'class-validator';
 
 export class OrderChaptersDto {
-    @IsString()
-    id: string;
+	@IsString()
+	id: string;
 
-    @IsNumber()
-    @IsPositive()
-    index: number;
+	@IsNumber()
+	@IsPositive()
+	index: number;
 }

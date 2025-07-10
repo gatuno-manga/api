@@ -16,6 +16,8 @@ import { UpdateBookDto } from './dto/update-book.dto';
 import { ScrapingStatus } from './enum/scrapingStatus.enum';
 import { UpdateChapterDto } from './dto/update-chapter.dto';
 import { OrderChaptersDto } from './dto/order-chapters.dto';
+import { CreateAuthorDto } from './dto/create-author.dto';
+import { Author } from './entitys/author.entity';
 
 @Injectable()
 export class BooksService {
@@ -29,6 +31,8 @@ export class BooksService {
 		private readonly chapterRepository: Repository<Chapter>,
 		@InjectRepository(Tag)
 		private readonly tagRepository: Repository<Tag>,
+		@InjectRepository(Author)
+		private readonly authorRepository: Repository<Author>,
 		private readonly scrapingService: ScrapingService,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
@@ -44,6 +48,26 @@ export class BooksService {
 					await this.tagRepository.save(tag);
 				}
 				return tag;
+			}),
+		);
+	}
+
+	private async findOrCreateAuthors(
+		authorsDto: CreateAuthorDto[],
+	): Promise<Author[]> {
+		return Promise.all(
+			authorsDto.map(async (authorDto) => {
+				let author = await this.authorRepository.findOne({
+					where: { name: authorDto.name },
+				});
+				if (!author) {
+					author = this.authorRepository.create({
+						name: authorDto.name,
+						biography: authorDto.biography,
+					});
+					await this.authorRepository.save(author);
+				}
+				return author;
 			}),
 		);
 	}
@@ -69,6 +93,9 @@ export class BooksService {
 			dto.tags && dto.tags.length > 0
 				? await this.findOrCreateTags(dto.tags)
 				: [];
+		const authors = dto.authors && dto.authors.length > 0
+			? await this.findOrCreateAuthors(dto.authors)
+			: [];
 		const book = this.bookRepository.create({
 			title: dto.title,
 			originalUrl: dto.originalUrl,
@@ -78,6 +105,7 @@ export class BooksService {
 			type: dto.type,
 			sensitiveContent: dto.sensitiveContent,
 			tags,
+			authors,
 		});
 		await this.bookRepository.save(book);
 
@@ -87,6 +115,7 @@ export class BooksService {
 				book,
 			);
 		}
+
 		if (dto.cover) {
 			this.scrapingService
 				.scrapeSingleImage(dto.cover.urlOrigin, dto.cover.urlImg)
@@ -172,7 +201,7 @@ export class BooksService {
 	async getOne(id: string): Promise<Book> {
 		const book = await this.bookRepository.findOne({
 			where: { id },
-			relations: ['chapters', 'tags'],
+			relations: ['chapters', 'tags', 'authors'],
 			order: { chapters: { index: 'ASC' } },
 			select: {
 				id: true,
@@ -192,7 +221,11 @@ export class BooksService {
 					title: true,
 					scrapingStatus: true,
 					index: true,
-				}
+				},
+				authors: {
+					id: true,
+					name: true,
+				},
 			},
 		});
 		if (!book) {
@@ -272,6 +305,10 @@ export class BooksService {
 			book.tags = await this.findOrCreateTags(dto.tags);
 		}
 
+		if (dto.authors && dto.authors.length > 0) {
+			book.authors = await this.findOrCreateAuthors(dto.authors);
+		}
+
 		if (dto.cover) {
 			this.scrapingService
 				.scrapeSingleImage(dto.cover.urlOrigin, dto.cover.urlImg)
@@ -293,10 +330,7 @@ export class BooksService {
 		return this.bookRepository.save(book);
 	}
 
-	async updateChapter(
-		idBook: string,
-		dto: UpdateChapterDto[],
-	) {
+	async updateChapter(idBook: string, dto: UpdateChapterDto[]) {
 		const book = await this.bookRepository.findOne({
 			where: { id: idBook },
 			relations: ['chapters'],
@@ -345,18 +379,16 @@ export class BooksService {
 		book.chapters = [
 			...updatedChapters,
 			...book.chapters.filter(
-				(chapter) => !updatedChapters.some((c) => c.index === chapter.index),
+				(chapter) =>
+					!updatedChapters.some((c) => c.index === chapter.index),
 			),
 		];
 		const savedBook = await this.bookRepository.save(book);
 		this.eventEmitter.emit('chapters.updated', savedBook);
-		return savedBook.chapters
+		return savedBook.chapters;
 	}
 
-	async orderChapters(
-		idBook: string,
-		chapters: OrderChaptersDto[]
-	) {
+	async orderChapters(idBook: string, chapters: OrderChaptersDto[]) {
 		const book = await this.bookRepository.findOne({
 			where: { id: idBook },
 			relations: ['chapters'],
@@ -376,12 +408,22 @@ export class BooksService {
 			);
 		}
 
+		let tempIndex = -100_000;
+		for (const chapter of book.chapters) {
+			chapter.index = tempIndex++;
+		}
+		await this.chapterRepository.save(book.chapters);
+
+		this.logger.log(
+			`Reordered chapters for book ${idBook} to temporary indices`,
+		);
+
 		const chapterMap = new Map<string, Chapter>();
 		book.chapters.forEach((chapter) => {
 			chapterMap.set(chapter.id, chapter);
 		});
 
-		const orderedChapters: Chapter[] = chapters.map((chapterDto) => {
+		for (const chapterDto of chapters) {
 			const chapter = chapterMap.get(chapterDto.id);
 			if (!chapter) {
 				this.logger.warn(
@@ -392,9 +434,11 @@ export class BooksService {
 				);
 			}
 			chapter.index = chapterDto.index;
-			return chapter;
-		});
-		orderedChapters.sort((a, b) => a.index - b.index);
+		}
+
+		const orderedChapters = await this.chapterRepository.save(
+			Array.from(chapterMap.values()),
+		);
 		book.chapters = orderedChapters;
 		return await this.bookRepository.save(book);
 	}

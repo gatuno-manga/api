@@ -1,5 +1,6 @@
 import {
 	IsNumber,
+	IsObject,
 	IsOptional,
 	IsPositive,
 	IsString,
@@ -10,6 +11,7 @@ import { Type } from 'class-transformer';
 import { CoverBookDto } from './cover-book.dto';
 import { BookType } from '../enum/book-type.enum';
 import { SensitiveContent } from '../enum/sensitive-content.enum';
+import { CreateAuthorDto } from './create-author.dto';
 
 export class CreateBookDto {
 	@IsString()
@@ -48,6 +50,11 @@ export class CreateBookDto {
 	@IsOptional()
 	@IsString({ each: true })
 	tags?: string[] = [];
+
+	@IsOptional()
+	@ValidateNested({ each: true })
+	@Type(() => CreateAuthorDto)
+	authors?: CreateAuthorDto[] = [];
 
 	@IsOptional()
 	@ValidateNested({ each: true })

@@ -8,11 +8,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Chapter } from './entitys/chapter.entity';
 import { BookEvents } from './events/book.events';
 import { Tag } from './entitys/tags.entity';
+import { Author } from './entitys/author.entity';
 
 @Module({
 	imports: [
 		ScrapingModule,
-		TypeOrmModule.forFeature([Book, Page, Chapter, Tag]),
+		TypeOrmModule.forFeature([Book, Page, Chapter, Tag, Author]),
 	],
 	controllers: [BooksController],
 	providers: [BooksService, BookEvents],

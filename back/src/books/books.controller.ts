@@ -58,5 +58,4 @@ export class BooksController {
 	) {
 		return this.booksService.orderChapters(idBook, dto);
 	}
-
 }
