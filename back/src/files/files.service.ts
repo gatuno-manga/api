@@ -21,7 +21,7 @@ export class FilesService {
 	];
 
 	private getPublicPath(fileName: string): string {
-		return `http://localhost:3000/data/${fileName}`;
+		return `/data/${fileName}`;
 	}
 
 	async compressImage(

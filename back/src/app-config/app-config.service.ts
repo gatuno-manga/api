@@ -20,6 +20,14 @@ export class AppConfigService {
 		);
 	}
 
+	get apiUrl(): string {
+		return this.config.get<string>('API_URL') || 'http://localhost:3000';
+	}
+
+	get appUrl(): string {
+		return this.config.get<string>('APP_URL') || 'http://localhost:4200';
+	}
+
 	get database() {
 		return {
 			type: this.config.get<string>('DB_TYPE'),

@@ -18,6 +18,7 @@ import { UpdateChapterDto } from './dto/update-chapter.dto';
 import { OrderChaptersDto } from './dto/order-chapters.dto';
 import { CreateAuthorDto } from './dto/create-author.dto';
 import { Author } from './entitys/author.entity';
+import { AppConfigService } from 'src/app-config/app-config.service';
 
 @Injectable()
 export class BooksService {
@@ -35,6 +36,7 @@ export class BooksService {
 		private readonly authorRepository: Repository<Author>,
 		private readonly scrapingService: ScrapingService,
 		private readonly eventEmitter: EventEmitter2,
+		private readonly appConfig: AppConfigService,
 	) {}
 
 	private async findOrCreateTags(tagNames: string[]): Promise<Tag[]> {
@@ -185,6 +187,7 @@ export class BooksService {
 
 		const data = books.map((book) => {
 			const { chapters, ...rest } = book;
+			rest.cover = this.urlImage(book.cover);
 			return {
 				...rest,
 				chapterCount: chapters ? chapters.length : 0,
@@ -196,6 +199,11 @@ export class BooksService {
 		metadata.lastPage = Math.ceil(total / options.limit);
 
 		return new PageDto(data, metadata);
+	}
+
+	private urlImage(url: string): string {
+		const appUrl = this.appConfig.apiUrl;
+		return `${appUrl}${url}`;
 	}
 
 	async getOne(id: string): Promise<Book> {
@@ -231,6 +239,9 @@ export class BooksService {
 		if (!book) {
 			this.logger.warn(`Book with id ${id} not found`);
 			throw new NotFoundException(`Book with id ${id} not found`);
+		}
+		if (book.cover) {
+			book.cover = this.urlImage(book.cover);
 		}
 		return book;
 	}
@@ -270,6 +281,12 @@ export class BooksService {
 			where: { book: { id: idBook } },
 		});
 		const { book, ...chapterWithoutBook } = chapter;
+
+		if (chapterWithoutBook.pages) {
+			for (const page of chapterWithoutBook.pages) {
+				page.path = this.urlImage(page.path);
+			}
+		}
 
 		return {
 			...chapterWithoutBook,

@@ -17,4 +17,6 @@ export const validationSchema = Joi.object({
 	DB_PORT: Joi.number().min(0).max(65535).required(),
 	DB_USER: Joi.string().required(),
 	DB_PASS: Joi.string().required(),
+	API_URL: Joi.string().uri().required(),
+	APP_URL: Joi.string().uri().required(),
 });

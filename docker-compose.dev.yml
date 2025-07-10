@@ -10,6 +10,8 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV}
       - SELENIUM_URL=http://selenium-hub:4444/wd/hub
+      - API_URL=http://localhost:${API_PORT}
+      - APP_URL=http://localhost:${APP_PORT}
       - DB_PORT=3306
       - DB_TYPE=mysql
       - DB_HOST=database
