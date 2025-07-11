@@ -32,7 +32,7 @@ export class FilesService {
 		const pipeline = sharpInstance.webp({
 			lossless: false,
 		});
-		return pipeline.toBuffer();
+		return await pipeline.toBuffer();
 	}
 
 	async saveBase64File(
@@ -41,8 +41,13 @@ export class FilesService {
 	): Promise<string> {
 		let fileBuffer: Buffer;
 		if (this.imageExtensions.includes(extension.toLowerCase())) {
-			fileBuffer = await this.compressImage(base64Data, extension);
-			extension = '.webp';
+			try {
+				fileBuffer = await this.compressImage(base64Data, extension);
+				extension = '.webp';
+			} catch (error) {
+				this.logger.error('Erro ao comprimir imagem, salvando original:', error);
+				fileBuffer = Buffer.from(base64Data, 'base64');
+			}
 		} else {
 			fileBuffer = Buffer.from(base64Data, 'base64');
 		}
@@ -50,7 +55,6 @@ export class FilesService {
 		const filePath = path.join(this.downloadDir, fileName);
 		await fs.writeFile(filePath, fileBuffer);
 
-		this.logger.log(`Arquivo salva em: ${filePath}`);
 		return this.getPublicPath(fileName);
 	}
 }
