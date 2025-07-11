@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationShutdown } from '@nestjs/common';
 import {
 	Builder,
 	Browser,
@@ -12,9 +12,10 @@ import { FilesService } from 'src/files/files.service';
 import { WebsiteService } from './website.service';
 
 @Injectable()
-export class ScrapingService {
+export class ScrapingService implements OnApplicationShutdown {
 	private readonly logger = new Logger(ScrapingService.name);
 	private downloadDir = path.resolve('/usr/src/app/data');
+	private drivers: WebDriver[] = [];
 
 	constructor(
 		private readonly appConfigService: AppConfigService,
@@ -52,18 +53,26 @@ export class ScrapingService {
 			],
 		});
 
-		return await new Builder()
+		const driver = await new Builder()
 			.usingServer(this.appConfigService.seleniumUrl)
 			.forBrowser(Browser.CHROME)
 			.withCapabilities(chromeCapabilities)
 			.build();
+		this.drivers.push(driver);
+		return driver;
+	}
+
+	private async removeDriver(driver: WebDriver) {
+		const idx = this.drivers.indexOf(driver);
+		if (idx > -1)
+			this.drivers.splice(idx, 1);
+		await driver.quit()
 	}
 
 	private async fetchImageAsBase64(
 		driver: WebDriver,
 		imageUrl: string,
 	): Promise<string | null> {
-		this.logger.log(`Baixando ${imageUrl} como Base64 via navegador...`);
 		try {
 			const base64String = await driver.executeAsyncScript(
 				`
@@ -192,7 +201,6 @@ export class ScrapingService {
 				'window.scrollTo(0, document.body.scrollHeight);',
 			);
 			await driver.sleep(500);
-			this.logger.debug('seletor', selector);
 			await this.waitForAllImagesLoaded(driver, selector);
 
 			const failedUrls = await this.failedImageUrls(driver, selector);
@@ -239,7 +247,7 @@ export class ScrapingService {
 			);
 			throw error;
 		} finally {
-			await driver.quit();
+			await this.removeDriver(driver);
 		}
 	}
 
@@ -263,7 +271,13 @@ export class ScrapingService {
 			);
 			throw error;
 		} finally {
-			await driver.quit();
+			await this.removeDriver(driver);
 		}
+	}
+
+	async onApplicationShutdown(signal: string) {
+		this.drivers.forEach((driver) => {
+			this.removeDriver(driver);
+		});
 	}
 }
