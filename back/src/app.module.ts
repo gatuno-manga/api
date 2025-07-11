@@ -1,8 +1,8 @@
-import { Module } from '@nestjs/common';
+import { Module, OnApplicationBootstrap } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
-import { EventEmitterModule } from '@nestjs/event-emitter';
+import { EventEmitter2, EventEmitterModule, EventEmitterReadinessWatcher } from '@nestjs/event-emitter';
 import { AppConfigModule } from './app-config/app-config.module';
 import { ScrapingModule } from './scraping/scraping.module';
 import { BooksModule } from './books/books.module';
@@ -25,4 +25,14 @@ import { FilesModule } from './files/files.module';
 	controllers: [AppController],
 	providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements OnApplicationBootstrap {
+	constructor(
+		private readonly eventEmitterReadinessWatcher: EventEmitterReadinessWatcher,
+		private eventEmitter: EventEmitter2,
+	) {}
+
+	async onApplicationBootstrap() {
+		await this.eventEmitterReadinessWatcher.waitUntilReady();
+		this.eventEmitter.emit('app.ready');
+	}
+}
