@@ -8,8 +8,11 @@ import { Logger } from '@nestjs/common';
 import { ScrapingService } from 'src/scraping/scraping.service';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 
-export class BookEvents {
-	private logger = new Logger(BookEvents.name);
+export class BookScrapingEvents {
+	private logger = new Logger(BookScrapingEvents.name);
+	private hostnameCount: Map<string, number> = new Map();
+	private concurrency = 4;
+
 	constructor(
 		@InjectRepository(Book)
 		private readonly bookRepository: Repository<Book>,
@@ -25,22 +28,29 @@ export class BookEvents {
 	@OnEvent('chapters.updated')
 	async handleProcessChapters(book: Book) {
 		this.logger.log(`Iniciando o scraping para o livro: ${book.title}`);
-		this.logger.log(`Total de capítulos: ${book.chapters.length}`);
-		const chapters = [
-			...book.chapters.filter(
-				(chapter) => chapter.scrapingStatus === ScrapingStatus.PROCESS,
-			),
-		];
-		this.logger.log(
-			`Total de capítulos a serem processados: ${chapters.length}`,
-		);
-		const concurrency = 4;
-		while (chapters.length > 0) {
-			const batch = chapters.splice(0, concurrency);
-			await Promise.all(
-				batch.map((chapter) => this.processChapter(chapter)),
-			);
-		}
+		const chapters = book.chapters
+			.filter((chapter) => chapter.scrapingStatus === ScrapingStatus.PROCESS)
+			.sort((a, b) => a.index - b.index);
+
+		this.logger.log(`Total de capítulos a serem processados: ${chapters.length}`);
+
+		const processWithLimit = async (chapter: Chapter) => {
+			const hostname = new URL(chapter.originalUrl).hostname;
+			while ((this.hostnameCount.get(hostname) || 0) >= this.concurrency) {
+				await new Promise((resolve) => setTimeout(resolve, 500));
+			}
+			this.hostnameCount.set(hostname, (this.hostnameCount.get(hostname) || 0) + 1);
+			try {
+				await this.processChapter(chapter);
+			} catch (err) {
+				this.logger.error(`Erro ao processar capítulo ${chapter.index}:`, err);
+			} finally {
+				this.hostnameCount.set(hostname, this.hostnameCount.get(hostname)! - 1);
+			}
+		};
+
+		await Promise.all(chapters.map((chapter) => processWithLimit(chapter)));
+
 		book.scrapingStatus = ScrapingStatus.READY;
 		await this.bookRepository.save(book);
 		this.logger.log(`Scraping concluído para o livro: ${book.title}`);
@@ -48,6 +58,11 @@ export class BookEvents {
 	}
 
 	private async processChapter(chapter: Chapter) {
+		await this.pageRepository.delete({ chapter: { id: chapter.id } });
+		chapter.pages = [];
+		await this.chapterRepository.merge(chapter);
+		this.logger.log(`Iniciando o scraping para o capítulo: ${chapter.index}`);
+
 		const pages = await this.scrapingService.scrapePages(
 			chapter.originalUrl,
 		);
