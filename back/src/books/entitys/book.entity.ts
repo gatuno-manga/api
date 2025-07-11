@@ -43,8 +43,9 @@ export class Book {
 	type: BookType;
 
 	@Column({
-		type: 'json',
-		nullable: true,
+		type: 'set',
+		enum: SensitiveContent,
+		default: SensitiveContent.SAFE,
 	})
 	sensitiveContent: SensitiveContent[];
 

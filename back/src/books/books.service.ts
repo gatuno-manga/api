@@ -19,6 +19,7 @@ import { OrderChaptersDto } from './dto/order-chapters.dto';
 import { CreateAuthorDto } from './dto/create-author.dto';
 import { Author } from './entitys/author.entity';
 import { AppConfigService } from 'src/app-config/app-config.service';
+import { SensitiveContent } from './enum/sensitive-content.enum';
 
 @Injectable()
 export class BooksService {
@@ -163,28 +164,27 @@ export class BooksService {
 			}
 		}
 
-		if (sensitiveContents.length) {
-			queryBuilder.andWhere(new Brackets(qb => {
-				const exactMatchConditions = sensitiveContents.map(
-					(_, i) => `JSON_CONTAINS(book.sensitiveContent, :sc${i})`
-				).join(' AND ');
+		if (sensitiveContents.length === 0) {
+			sensitiveContents = [SensitiveContent.SAFE];
+		}
 
-				qb.where(`(${exactMatchConditions} AND JSON_LENGTH(book.sensitiveContent) = :arrayLength)`);
+		const allSensitiveContents = Object.values(SensitiveContent);
+		const notSelectContents = allSensitiveContents.filter(content =>
+			!sensitiveContents.includes(content as SensitiveContent)
+		);
+		this.logger.debug(notSelectContents);
 
-				qb.orWhere('book.sensitiveContent IS NULL');
-				qb.orWhere('JSON_LENGTH(book.sensitiveContent) = 0');
-			}));
+		if (notSelectContents.length > 0) {
+			const conditions = notSelectContents.map((content, index) =>
+				`FIND_IN_SET(:ns${index}, book.sensitiveContent) = 0`
+			).join(' AND ');
 
-			sensitiveContents.forEach((content, i) => {
-				queryBuilder.setParameter(`sc${i}`, JSON.stringify([content]));
-			});
+			const parameters = notSelectContents.reduce((params, content, index) => {
+				params[`ns${index}`] = content;
+				return params;
+			}, {});
 
-			queryBuilder.setParameter('arrayLength', sensitiveContents.length);
-		} else {
-			queryBuilder.andWhere(new Brackets(qb => {
-				qb.where('book.sensitiveContent IS NULL');
-				qb.orWhere('JSON_LENGTH(book.sensitiveContent) = 0');
-			}));
+			queryBuilder.andWhere(`(${conditions})`, parameters);
 		}
 
 		let types: string[] = [];

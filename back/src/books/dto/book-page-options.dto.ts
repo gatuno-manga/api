@@ -17,5 +17,7 @@ export class BookPageOptionsDto extends PageOptionsDto {
 
 	@IsOptional()
 	@Type(() => String)
-	sensitiveContent?: SensitiveContent[] = [];
+	sensitiveContent?: SensitiveContent[] = [
+		SensitiveContent.SAFE,
+	];
 }
