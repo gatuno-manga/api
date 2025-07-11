@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Book } from './entitys/book.entity';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import { Page } from './entitys/page.entity';
 import { CreateBookDto } from './dto/create-book.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -164,19 +164,27 @@ export class BooksService {
 		}
 
 		if (sensitiveContents.length) {
-			const conditions = sensitiveContents.map(
-				(_: any, i: number) =>
-					`JSON_CONTAINS(book.sensitiveContent, :sc${i})`,
-			);
-			conditions.forEach((_, i) => {
-				queryBuilder.setParameter(
-					`sc${i}`,
-					JSON.stringify([sensitiveContents[i]]),
-				);
+			queryBuilder.andWhere(new Brackets(qb => {
+				const exactMatchConditions = sensitiveContents.map(
+					(_, i) => `JSON_CONTAINS(book.sensitiveContent, :sc${i})`
+				).join(' AND ');
+
+				qb.where(`(${exactMatchConditions} AND JSON_LENGTH(book.sensitiveContent) = :arrayLength)`);
+
+				qb.orWhere('book.sensitiveContent IS NULL');
+				qb.orWhere('JSON_LENGTH(book.sensitiveContent) = 0');
+			}));
+
+			sensitiveContents.forEach((content, i) => {
+				queryBuilder.setParameter(`sc${i}`, JSON.stringify([content]));
 			});
-			queryBuilder.andWhere(
-				`((${conditions.join(' OR ')}) OR book.sensitiveContent IS NULL OR JSON_LENGTH(book.sensitiveContent) = 0)`,
-			);
+
+			queryBuilder.setParameter('arrayLength', sensitiveContents.length);
+		} else {
+			queryBuilder.andWhere(new Brackets(qb => {
+				qb.where('book.sensitiveContent IS NULL');
+				qb.orWhere('JSON_LENGTH(book.sensitiveContent) = 0');
+			}));
 		}
 
 		let types: string[] = [];
