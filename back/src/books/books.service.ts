@@ -371,10 +371,30 @@ export class BooksService {
 		const book = await this.bookRepository.findOne({
 			where: { id: idBook },
 			relations: ['chapters'],
+			select: {
+				id: true,
+				chapters: {
+					id: true,
+					title: true,
+					index: true,
+					originalUrl: true,
+					scrapingStatus: true,
+					book: false,
+				},
+			},
 		});
 		if (!book) {
 			this.logger.warn(`Book with id ${idBook} not found`);
 			throw new NotFoundException(`Book with id ${idBook} not found`);
+		}
+
+		const indices = dto.map(c => c.index);
+		const duplicates = indices.filter((item, idx) => indices.indexOf(item) !== idx);
+		const uniqueDuplicates = [...new Set(duplicates)];
+		if (uniqueDuplicates.length > 0) {
+			throw new BadRequestException(
+				`Há capítulos com índices duplicados: ${uniqueDuplicates.join(', ')}`
+			);
 		}
 		const existingChapters = book.chapters.reduce(
 			(acc, chapter) => ({ ...acc, [chapter.index]: chapter }),
@@ -383,7 +403,8 @@ export class BooksService {
 
 		const updatedChapters: Chapter[] = [];
 		for (const chapterDto of dto) {
-			let chapter = existingChapters[chapterDto.index];
+			const index = parseFloat(chapterDto.index.toString()).toFixed(1);
+			let chapter = existingChapters[index];
 			if (!chapter) {
 				if (!chapterDto.url) {
 					this.logger.warn(
