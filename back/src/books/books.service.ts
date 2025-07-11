@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Book } from './entitys/book.entity';
 import { Repository } from 'typeorm';
@@ -74,68 +74,77 @@ export class BooksService {
 		);
 	}
 
-	private async createChaptersFromDto(
+	private async createChaptersFromDtoTransactional(
 		chaptersDto: CreateChapterDto[],
 		book: Book,
+		manager: Repository<Chapter>
 	): Promise<Chapter[]> {
+		const indices = chaptersDto.map(c => c.index);
+		const uniqueIndices = new Set(indices);
+		if (indices.length !== uniqueIndices.size && !indices.some(index => index === undefined || index === null)) {
+			throw new BadRequestException('There are chapters with duplicate indices!');
+		}
+		const allHaveIndex = chaptersDto.every((chapterDto) => chapterDto.index !== undefined && chapterDto.index !== null);
 		let count = 1;
 		const chapters = chaptersDto.map((chapterDto) =>
-			this.chapterRepository.create({
+			manager.create({
 				title: chapterDto.title,
 				originalUrl: chapterDto.url,
-				index: count++,
+				index: allHaveIndex ? chapterDto.index : count++,
 				book,
 			}),
 		);
-		return this.chapterRepository.save(chapters);
+		return manager.save(chapters);
 	}
 
 	async createBook(dto: CreateBookDto) {
-		const tags =
-			dto.tags && dto.tags.length > 0
-				? await this.findOrCreateTags(dto.tags)
+		return await this.bookRepository.manager.transaction(async (manager) => {
+			const tags =
+				dto.tags && dto.tags.length > 0
+					? await this.findOrCreateTags(dto.tags)
+					: [];
+			const authors = dto.authors && dto.authors.length > 0
+				? await this.findOrCreateAuthors(dto.authors)
 				: [];
-		const authors = dto.authors && dto.authors.length > 0
-			? await this.findOrCreateAuthors(dto.authors)
-			: [];
-		const book = this.bookRepository.create({
-			title: dto.title,
-			originalUrl: dto.originalUrl,
-			alternativeTitle: dto.alternativeTitle,
-			description: dto.description,
-			publication: dto.publication,
-			type: dto.type,
-			sensitiveContent: dto.sensitiveContent,
-			tags,
-			authors,
+			const book = manager.create(Book, {
+				title: dto.title,
+				originalUrl: dto.originalUrl,
+				alternativeTitle: dto.alternativeTitle,
+				description: dto.description,
+				publication: dto.publication,
+				type: dto.type,
+				sensitiveContent: dto.sensitiveContent,
+				tags,
+				authors,
+			});
+			await manager.save(book);
+
+			if (dto.chapters && dto.chapters.length > 0) {
+				const chapterRepo = manager.getRepository(Chapter);
+				const chapters = await this.createChaptersFromDtoTransactional(dto.chapters, book, chapterRepo);
+				book.chapters = chapters;
+			}
+
+			if (dto.cover) {
+				this.scrapingService
+					.scrapeSingleImage(dto.cover.urlOrigin, dto.cover.urlImg)
+					.then(async (cover) => {
+						book.cover = cover;
+						await this.bookRepository.save(book);
+						this.logger.log(`Capa salva para o livro: ${book.title}`);
+					})
+					.catch((err) => {
+						this.logger.warn(
+							`Falha ao baixar capa para o livro: ${book.title}`,
+							err,
+						);
+					});
+			}
+
+			const savedBook = await manager.save(book);
+			this.eventEmitter.emit('book.created', savedBook);
+			return savedBook;
 		});
-		await this.bookRepository.save(book);
-
-		if (dto.chapters && dto.chapters.length > 0) {
-			book.chapters = await this.createChaptersFromDto(
-				dto.chapters,
-				book,
-			);
-		}
-
-		if (dto.cover) {
-			this.scrapingService
-				.scrapeSingleImage(dto.cover.urlOrigin, dto.cover.urlImg)
-				.then(async (cover) => {
-					book.cover = cover;
-					await this.bookRepository.save(book);
-					this.logger.log(`Capa salva para o livro: ${book.title}`);
-				})
-				.catch((err) => {
-					this.logger.warn(
-						`Falha ao baixar capa para o livro: ${book.title}`,
-						err,
-					);
-				});
-		}
-		const savedBook = await this.bookRepository.save(book);
-		this.eventEmitter.emit('book.created', savedBook);
-		return savedBook;
 	}
 
 	async getAllBooks(options: BookPageOptionsDto): Promise<PageDto<any>> {
