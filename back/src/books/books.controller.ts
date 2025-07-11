@@ -38,6 +38,14 @@ export class BooksController {
 		return this.booksService.getChapter(idBook, idChapter);
 	}
 
+	@Patch(':idBook/chapters/:idChapter/reset')
+	resetChapter(
+		@Param('idBook') idBook: string,
+		@Param('idChapter') idChapter: string,
+	) {
+		return this.booksService.resetChapter(idBook, idChapter);
+	}
+
 	@Patch(':idBook')
 	updateBook(@Param('idBook') id: string, @Body() dto: UpdateBookDto) {
 		return this.booksService.updateBook(id, dto);

@@ -462,4 +462,23 @@ export class BooksService {
 		book.chapters = orderedChapters;
 		return await this.bookRepository.save(book);
 	}
+
+	async resetChapter(idBook: string, idChapter: string) {
+		const chapter = await this.chapterRepository.findOne({
+			where: { id: idChapter, book: { id: idBook } },
+		});
+		if (!chapter) {
+			throw new NotFoundException(
+				`Chapter with id ${idChapter} not found in book ${idBook}`,
+			);
+		}
+		chapter.scrapingStatus = ScrapingStatus.PROCESS;
+		await this.chapterRepository.save(chapter);
+		const book = await this.bookRepository.findOne({
+			where: { id: idBook },
+			relations: ['chapters'],
+		});
+		this.eventEmitter.emit('chapters.updated', book);
+		return;
+	}
 }
