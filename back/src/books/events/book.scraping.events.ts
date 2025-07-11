@@ -59,8 +59,12 @@ export class BookScrapingEvents {
 
 	private async processChapter(chapter: Chapter) {
 		await this.pageRepository.delete({ chapter: { id: chapter.id } });
-		chapter.pages = [];
-		await this.chapterRepository.merge(chapter);
+		this.chapterRepository.save(
+			this.chapterRepository.merge(chapter, {
+				scrapingStatus: ScrapingStatus.PROCESS,
+			})
+		);
+		await this.chapterRepository.save(chapter);
 		this.logger.log(`Iniciando o scraping para o capítulo: ${chapter.index}`);
 
 		const pages = await this.scrapingService.scrapePages(
