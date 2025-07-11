@@ -519,4 +519,32 @@ export class BooksService {
 		this.eventEmitter.emit('chapters.updated', book);
 		return;
 	}
+
+	async fixBook(idBook: string) {
+		const book = await this.bookRepository.findOne({
+			where: { id: idBook },
+			relations: ['chapters', 'chapters.pages'],
+		});
+		if (!book) {
+			this.logger.warn(`Book with id ${idBook} not found`);
+			throw new NotFoundException(`Book with id ${idBook} not found`);
+		}
+		const processChapter: Chapter[] = []
+		for (const chapter of book.chapters) {
+			if (
+				chapter.scrapingStatus === ScrapingStatus.ERROR ||
+				chapter.pages.length <= 5
+			) {
+				chapter.scrapingStatus = ScrapingStatus.PROCESS;
+				processChapter.push(chapter);
+			}
+		}
+		await this.bookRepository.save(
+			this.bookRepository.merge(book, {
+				chapters: processChapter,
+			})
+		);
+		this.eventEmitter.emit('chapters.updated', book);
+		return book;
+	}
 }

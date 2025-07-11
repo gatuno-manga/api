@@ -30,6 +30,13 @@ export class BooksController {
 		return this.booksService.getOne(id);
 	}
 
+	@Patch(':idBook/fix')
+	fixBook(
+		@Param('idBook') idBook: string,
+	) {
+		return this.booksService.fixBook(idBook);
+	}
+
 	@Get(':idBook/chapters/:idChapter')
 	getChapter(
 		@Param('idBook') idBook: string,
