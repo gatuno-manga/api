@@ -28,6 +28,30 @@ export class AppConfigService {
 		return this.config.get<string>('APP_URL') || 'http://localhost:4200';
 	}
 
+	get JwtAccessSecret(): string {
+		return this.config.get<string>('JWT_ACCESS_SECRET') || 'default_secret';
+	}
+
+	get jwtAccessExpiration(): string {
+		return this.config.get<string>('JWT_ACCESS_EXPIRATION') || '15m';
+	}
+
+	get JwtRefreshSecret(): string {
+		return this.config.get<string>('JWT_REFRESH_SECRET') || 'default_refresh_secret';
+	}
+
+	get JwtRefreshExpiration(): string {
+		return this.config.get<string>('JWT_REFRESH_EXPIRATION') || '60m';
+	}
+
+	get SaltLength(): number {
+		return this.config.get<number>('SALT_LENGTH') || 16;
+	}
+
+	get PasswordKeyLength(): number {
+		return this.config.get<number>('PASSWORD_KEY_LENGTH') || 64;
+	}
+
 	get database() {
 		return {
 			type: this.config.get<string>('DB_TYPE'),
