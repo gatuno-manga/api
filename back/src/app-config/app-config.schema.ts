@@ -25,4 +25,7 @@ export const validationSchema = Joi.object({
 	JWT_REFRESH_EXPIRATION: Joi.string().default('60m'),
 	SALT_LENGTH: Joi.number().min(1).default(16),
 	PASSWORD_KEY_LENGTH: Joi.number().min(1).default(64),
+	REDIS_HOST: Joi.string().required(),
+	REDIS_PORT: Joi.number().min(0).max(65535).default(6379),
+	REDIS_PASSWORD: Joi.string().optional().allow(''),
 });

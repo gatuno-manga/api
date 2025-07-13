@@ -9,11 +9,11 @@ const scrypt = promisify(_scrypt);
 export class PasswordEncryption {
 	constructor(private readonly config: AppConfigService) {}
 	async encrypt(password: string): Promise<string> {
-		const salt = randomBytes(this.config.SaltLength).toString('hex');
+		const salt = randomBytes(this.config.saltLength).toString('hex');
 		const hash = (await scrypt(
 			password,
 			salt,
-			this.config.PasswordKeyLength,
+			this.config.passwordKeyLength,
 		)) as Buffer;
 		return `${hash.toString('hex')}.${salt}`;
 	}
@@ -25,7 +25,7 @@ export class PasswordEncryption {
 		const hashBuffer = (await scrypt(
 			suppliedPassword,
 			salt,
-			this.config.PasswordKeyLength,
+			this.config.passwordKeyLength,
 		)) as Buffer;
 		return hashBuffer.toString('hex') === hash;
 	}

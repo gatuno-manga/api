@@ -28,7 +28,7 @@ export class AppConfigService {
 		return this.config.get<string>('APP_URL') || 'http://localhost:4200';
 	}
 
-	get JwtAccessSecret(): string {
+	get jwtAccessSecret(): string {
 		return this.config.get<string>('JWT_ACCESS_SECRET') || 'default_secret';
 	}
 
@@ -36,19 +36,19 @@ export class AppConfigService {
 		return this.config.get<string>('JWT_ACCESS_EXPIRATION') || '15m';
 	}
 
-	get JwtRefreshSecret(): string {
+	get jwtRefreshSecret(): string {
 		return this.config.get<string>('JWT_REFRESH_SECRET') || 'default_refresh_secret';
 	}
 
-	get JwtRefreshExpiration(): string {
+	get jwtRefreshExpiration(): string {
 		return this.config.get<string>('JWT_REFRESH_EXPIRATION') || '60m';
 	}
 
-	get SaltLength(): number {
+	get saltLength(): number {
 		return this.config.get<number>('SALT_LENGTH') || 16;
 	}
 
-	get PasswordKeyLength(): number {
+	get passwordKeyLength(): number {
 		return this.config.get<number>('PASSWORD_KEY_LENGTH') || 64;
 	}
 
@@ -60,6 +60,14 @@ export class AppConfigService {
 			port: this.config.get<number>('DB_PORT'),
 			username: this.config.get<string>('DB_USER'),
 			password: this.config.get<string>('DB_PASS'),
+		};
+	}
+
+	get redis() {
+		return {
+			host: this.config.get<string>('REDIS_HOST'),
+			port: this.config.get<number>('REDIS_PORT') || 6379,
+			password: this.config.get<string>('REDIS_PASSWORD') || '',
 		};
 	}
 }
