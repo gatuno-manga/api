@@ -263,60 +263,6 @@ export class BooksService {
 		return book;
 	}
 
-	async getChapter(idBook: string, idChapter: string) {
-		const chapter = await this.chapterRepository.findOne({
-			where: { id: idChapter, book: { id: idBook } },
-			relations: ['pages', 'book'],
-		});
-
-		if (!chapter) {
-			this.logger.warn(
-				`Chapter with id ${idChapter} not found in book ${idBook}`,
-			);
-			throw new NotFoundException(
-				`Chapter with id ${idChapter} not found in book ${idBook}`,
-			);
-		}
-
-		const previousChapter = await this.chapterRepository
-			.createQueryBuilder('chapter')
-			.where('chapter.bookId = :bookId', { bookId: idBook })
-			.andWhere('chapter.index < :currentIndex', { currentIndex: chapter.index })
-			.orderBy('chapter.index', 'DESC')
-			.select(['chapter.id'])
-			.getOne();
-
-		const nextChapter = await this.chapterRepository
-			.createQueryBuilder('chapter')
-			.where('chapter.bookId = :bookId', { bookId: idBook })
-			.andWhere('chapter.index > :currentIndex', { currentIndex: chapter.index })
-			.orderBy('chapter.index', 'ASC')
-			.select(['chapter.id'])
-			.getOne();
-
-		const maxIndexChapter = await this.chapterRepository
-			.createQueryBuilder('chapter')
-			.where('chapter.bookId = :bookId', { bookId: idBook })
-			.select('MAX(chapter.index)', 'max')
-			.getRawOne();
-		const totalChapters = maxIndexChapter?.max ? Number(maxIndexChapter.max) : 0;
-		const { book, ...chapterWithoutBook } = chapter;
-
-		if (chapterWithoutBook.pages) {
-			for (const page of chapterWithoutBook.pages) {
-				page.path = this.urlImage(page.path);
-			}
-		}
-
-		return {
-			...chapterWithoutBook,
-			previous: previousChapter?.id,
-			next: nextChapter?.id,
-			bookId: book.id,
-			bookTitle: book.title,
-			totalChapters,
-		};
-	}
 
 	async updateBook(id: string, dto: UpdateBookDto) {
 		const book = await this.bookRepository.findOne({
@@ -499,25 +445,6 @@ export class BooksService {
 		);
 		book.chapters = orderedChapters;
 		return await this.bookRepository.save(book);
-	}
-
-	async resetChapter(idBook: string, idChapter: string) {
-		const chapter = await this.chapterRepository.findOne({
-			where: { id: idChapter, book: { id: idBook } },
-		});
-		if (!chapter) {
-			throw new NotFoundException(
-				`Chapter with id ${idChapter} not found in book ${idBook}`,
-			);
-		}
-		chapter.scrapingStatus = ScrapingStatus.PROCESS;
-		await this.chapterRepository.save(chapter);
-		const book = await this.bookRepository.findOne({
-			where: { id: idBook },
-			relations: ['chapters'],
-		});
-		this.eventEmitter.emit('chapters.updated', book);
-		return;
 	}
 
 	async fixBook(idBook: string) {

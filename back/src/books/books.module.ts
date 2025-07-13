@@ -11,14 +11,24 @@ import { Tag } from './entitys/tags.entity';
 import { Author } from './entitys/author.entity';
 import { AppConfigModule } from 'src/app-config/app-config.module';
 import { BookInitEvents } from './events/book.init.events';
+import { ChapterRead } from 'src/users/entitys/chapter-read.entity';
+import { ChapterController } from './chapter.controller';
+import { ChapterService } from './chapter.service';
 
 @Module({
 	imports: [
 		ScrapingModule,
 		AppConfigModule,
-		TypeOrmModule.forFeature([Book, Page, Chapter, Tag, Author]),
+		TypeOrmModule.forFeature([
+			Book,
+			Page,
+			Chapter,
+			Tag,
+			Author,
+			ChapterRead
+		]),
 	],
-	controllers: [BooksController],
-	providers: [BooksService, BookScrapingEvents, BookInitEvents],
+	controllers: [BooksController, ChapterController],
+	providers: [BooksService, BookScrapingEvents, BookInitEvents, ChapterService],
 })
 export class BooksModule {}

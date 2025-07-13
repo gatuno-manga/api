@@ -17,6 +17,7 @@ import { OrderChaptersDto } from './dto/order-chapters.dto';
 @Controller('books')
 export class BooksController {
 	constructor(private readonly booksService: BooksService) {}
+
 	@Get() getAllBooks(@Query() pageOptions: BookPageOptionsDto) {
 		return this.booksService.getAllBooks(pageOptions);
 	}
@@ -35,22 +36,6 @@ export class BooksController {
 		@Param('idBook') idBook: string,
 	) {
 		return this.booksService.fixBook(idBook);
-	}
-
-	@Get(':idBook/chapters/:idChapter')
-	getChapter(
-		@Param('idBook') idBook: string,
-		@Param('idChapter') idChapter: string,
-	) {
-		return this.booksService.getChapter(idBook, idChapter);
-	}
-
-	@Patch(':idBook/chapters/:idChapter/reset')
-	resetChapter(
-		@Param('idBook') idBook: string,
-		@Param('idChapter') idChapter: string,
-	) {
-		return this.booksService.resetChapter(idBook, idChapter);
 	}
 
 	@Patch(':idBook')
