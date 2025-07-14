@@ -15,6 +15,7 @@ import { DataEncryptionProvider } from 'src/encryption/data-encryption.provider'
 import { JwtRefreshStrategy } from './strategy/jwt-refresh.strategy';
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-store';
+import { CreateAdminEvent } from './events/create-admin.event';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { redisStore } from 'cache-manager-redis-store';
   ],
   controllers: [AuthController],
   providers: [
+    CreateAdminEvent,
     AuthService,
     PasswordEncryption,
     DataEncryptionProvider,

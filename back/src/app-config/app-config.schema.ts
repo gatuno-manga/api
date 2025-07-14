@@ -28,4 +28,6 @@ export const validationSchema = Joi.object({
 	REDIS_HOST: Joi.string().required(),
 	REDIS_PORT: Joi.number().min(0).max(65535).default(6379),
 	REDIS_PASSWORD: Joi.string().optional().allow(''),
+	USERADMIN_EMAIL: Joi.string().email().required(),
+	USERADMIN_PASSWORD: Joi.string().required(),
 });

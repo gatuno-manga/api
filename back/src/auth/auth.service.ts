@@ -9,7 +9,7 @@ import { Roles } from 'src/users/enum/roles.enum';
 import { Repository } from 'typeorm';
 import { Cache } from 'cache-manager';
 import { AppConfigService } from 'src/app-config/app-config.service';
-
+import { EventEmitter2 } from '@nestjs/event-emitter';
 @Injectable()
 export class AuthService {
     private readonly logger = new Logger(AuthService.name);
@@ -37,7 +37,7 @@ export class AuthService {
         await this.cacheManager.set(key, storedTokens, ttl);
     }
 
-    async signUp(email: string, password: string) {
+    async signUp(email: string, password: string, isAdmin = false) {
         const userExist = await this.userRepository.findOneBy({ email });
         if (userExist) {
             this.logger.error('User exists', userExist);
@@ -46,10 +46,10 @@ export class AuthService {
 
         const result = await this.passwordEncryption.encrypt(password);
         const user = await this.userRepository.save({
-            name: email.split('@')[0],
+            userName: email.split('@')[0],
             email,
             password: result,
-            roles: [Roles.USER],
+            roles: isAdmin ? [Roles.ADMIN] : [Roles.USER],
         })
         this.logger.log('User create', user);
         return user;

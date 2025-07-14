@@ -52,6 +52,13 @@ export class AppConfigService {
 		return this.config.get<number>('PASSWORD_KEY_LENGTH') || 64;
 	}
 
+	get adminInfo() {
+		return {
+			email: this.config.get<string>('USERADMIN_EMAIL') || '',
+			password: this.config.get<string>('USERADMIN_PASSWORD') || '',
+		}
+	}
+
 	get database() {
 		return {
 			type: this.config.get<string>('DB_TYPE'),
