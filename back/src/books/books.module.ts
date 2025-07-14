@@ -11,9 +11,10 @@ import { Tag } from './entitys/tags.entity';
 import { Author } from './entitys/author.entity';
 import { AppConfigModule } from 'src/app-config/app-config.module';
 import { BookInitEvents } from './events/book.init.events';
-import { ChapterRead } from 'src/users/entitys/chapter-read.entity';
+import { ChapterRead } from 'src/books/entitys/chapter-read.entity';
 import { ChapterController } from './chapter.controller';
 import { ChapterService } from './chapter.service';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
 	imports: [
@@ -27,6 +28,7 @@ import { ChapterService } from './chapter.service';
 			Author,
 			ChapterRead
 		]),
+		AuthModule,
 	],
 	controllers: [BooksController, ChapterController],
 	providers: [BooksService, BookScrapingEvents, BookInitEvents, ChapterService],

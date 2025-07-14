@@ -1,5 +1,8 @@
-import { Controller, Get, Param, Patch } from '@nestjs/common';
+import { Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
 import { ChapterService } from './chapter.service';
+import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
+import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
+import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
 
 @Controller('chapters')
 export class ChapterController {
@@ -8,8 +11,9 @@ export class ChapterController {
     @Get(':idChapter')
     getChapter(
         @Param('idChapter') idChapter: string,
+        @CurrentUser() user?: CurrentUserDto
     ) {
-        return this.chapterService.getChapter(idChapter);
+        return this.chapterService.getChapter(idChapter, user?.userId);
     }
 
     @Patch('/:idChapter/reset')
@@ -17,5 +21,14 @@ export class ChapterController {
         @Param('idChapter') idChapter: string,
     ) {
         return this.chapterService.resetChapter(idChapter);
+    }
+
+    @Get('/:idChapter/read/')
+    @UseGuards(JwtAuthGuard)
+    markChapterAsRead(
+        @Param('idChapter') idChapter: string,
+        @CurrentUser() user: CurrentUserDto
+    ) {
+        return this.chapterService.markChapterAsRead(idChapter, user.userId);
     }
 }

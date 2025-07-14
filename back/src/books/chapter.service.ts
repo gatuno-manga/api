@@ -4,6 +4,7 @@ import { Chapter } from './entitys/chapter.entity';
 import { Repository } from 'typeorm';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { ScrapingStatus } from './enum/scrapingStatus.enum';
+import { ChapterRead } from './entitys/chapter-read.entity';
 
 @Injectable()
 export class ChapterService {
@@ -11,6 +12,8 @@ export class ChapterService {
     constructor(
         @InjectRepository(Chapter)
         private readonly chapterRepository: Repository<Chapter>,
+        @InjectRepository(ChapterRead)
+        private readonly chapterReadRepository: Repository<ChapterRead>,
         private readonly appConfig: AppConfigService,
     ) {}
 
@@ -19,7 +22,7 @@ export class ChapterService {
         return `${appUrl}${url}`;
     }
 
-    async getChapter(idChapter: string) {
+    async getChapter(idChapter: string, userId?: string) {
         const chapter = await this.chapterRepository.findOne({
             where: { id: idChapter },
             relations: ['pages', 'book'],
@@ -58,6 +61,9 @@ export class ChapterService {
                 page.path = this.urlImage(page.path);
             }
         }
+        if (userId) {
+            this.markChapterAsRead(idChapter, userId).catch(err => this.logger.error(err));
+        }
         return {
             ...chapterWithoutBook,
             previous: previousChapter?.id,
@@ -80,5 +86,21 @@ export class ChapterService {
         chapter.scrapingStatus = ScrapingStatus.PROCESS;
         await this.chapterRepository.save(chapter);
         return { message: 'Chapter reset to PROCESS' };
+    }
+
+    async markChapterAsRead(chapterId: string, userId: string) {
+        const chapter = await this.chapterRepository.findOne({
+            where: { id: chapterId },
+        });
+        if (!chapter) {
+            throw new NotFoundException(`Chapter with id ${chapterId} not found`);
+        }
+        const chapterRead = this.chapterReadRepository.create({
+            chapter,
+            user: { id: userId },
+        });
+        await this.chapterReadRepository.save(chapterRead);
+        this.logger.log(`Chapter ${chapterId} marked as read by user ${userId}`);
+        return chapterRead;
     }
 }
