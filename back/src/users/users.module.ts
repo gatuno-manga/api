@@ -16,12 +16,5 @@ import { Book } from 'src/books/entitys/book.entity';
   ],
   controllers: [UsersController, coletionBookController],
   providers: [UsersService, ColetionBookService],
-import { ColectionBook } from './entitys/coletion-book.entity';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Book } from 'src/books/entitys/book.entity';
-
-@Module({
-  controllers: [UsersController],
-  providers: [UsersService],
 })
 export class UsersModule {}
