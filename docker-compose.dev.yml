@@ -18,15 +18,26 @@ services:
       - DB_USER=${DB_USER}
       - DB_PASS=${DB_PASS}
       - DB_NAME=${DB_NAME}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
     volumes:
       - ./back/src:/usr/src/app/src
       - ./back/.env:/usr/src/app/.env
       - api-data:/usr/src/app/data
     depends_on:
       - database
+      - redis
       - selenium-hub
     restart: unless-stopped
 
+  redis:
+    image: "redis:8.0-alpine"
+    container_name: gatuno-redis
+    restart: always
+    command: redis-server
+    volumes:
+      - redis_data:/data
   database:
     image: mysql:8.0
     container_name: gatuno-database
@@ -54,6 +65,15 @@ services:
       PMA_PASSWORD: ${DB_PASS}
     depends_on:
       - database
+  redis-commander:
+    image: ghcr.io/joeferner/redis-commander:latest
+    container_name: gatuno-redis-commander
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "${REDISCOMMANDER_PORT}:8081"
+    depends_on:
+      - redis
 
   selenium-hub:
     image: selenium/hub:latest
@@ -102,4 +122,6 @@ volumes:
   selenium-data:
     driver: local
   api-data:
+    driver: local
+  redis_data:
     driver: local

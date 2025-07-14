@@ -9,7 +9,6 @@ import { Roles } from 'src/users/enum/roles.enum';
 import { Repository } from 'typeorm';
 import { Cache } from 'cache-manager';
 import { AppConfigService } from 'src/app-config/app-config.service';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 @Injectable()
 export class AuthService {
     private readonly logger = new Logger(AuthService.name);

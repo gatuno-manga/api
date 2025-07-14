@@ -13,8 +13,6 @@ import { JwtAuthGuard } from './guard/jwt-auth.guard';
 import { PassportModule } from '@nestjs/passport';
 import { DataEncryptionProvider } from 'src/encryption/data-encryption.provider';
 import { JwtRefreshStrategy } from './strategy/jwt-refresh.strategy';
-import { CacheModule } from '@nestjs/cache-manager';
-import { redisStore } from 'cache-manager-redis-store';
 import { CreateAdminEvent } from './events/create-admin.event';
 
 @Module({
@@ -33,12 +31,6 @@ import { CreateAdminEvent } from './events/create-admin.event';
         },
       }),
     }),
-    CacheModule.register({
-      store: redisStore,
-      isGlobal: true,
-      host: 'localhost',
-      port: 6379,
-    })
   ],
   controllers: [AuthController],
   providers: [

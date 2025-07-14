@@ -5,7 +5,8 @@ import { config as primaryDatabaseConfig } from './primary-database.config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CacheModule } from '@nestjs/cache-manager';
 import { config as redisCacheConfig } from './redis-cache.config';
-
+import { CacheableMemory, Keyv } from 'cacheable';
+import { createKeyv } from '@keyv/redis';
 @Global()
 @Module({
 	imports: [
@@ -14,12 +15,23 @@ import { config as redisCacheConfig } from './redis-cache.config';
 			inject: [AppConfigService],
 			useFactory: primaryDatabaseConfig,
 		}),
-		// CacheModule.registerAsync({
-		// 	imports: [AppConfigModule],
-		// 	inject: [AppConfigService],
-		// 	useFactory: redisCacheConfig,
-		// 	isGlobal: true,
-		// }),
+		CacheModule.registerAsync({
+			isGlobal: true,
+			imports: [AppConfigModule],
+			inject: [AppConfigService],
+			useFactory:
+				async (configService: AppConfigService) => {
+					const redisUrl = `redis://${configService.redis.host}:${configService.redis.port}`;
+					return {
+						stores: [
+							new Keyv({
+								store: new CacheableMemory(),
+							}),
+							createKeyv(redisUrl),
+						],
+					};
+				},
+		}),
 	],
 })
 export class DatabaseModule {}
