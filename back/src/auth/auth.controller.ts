@@ -9,6 +9,7 @@ import { CurrentUser } from './decorator/current-user.decorator';
 
 @Controller('auth')
 export class AuthController {
+    private readonly logger = new Logger(AuthController.name);
     constructor(
         private readonly authService: AuthService,
     ) {}
@@ -39,5 +40,26 @@ export class AuthController {
     refreshTokens(@CurrentUser() user: CurrentUserDto, @Req() req) {
         const refreshToken = req.cookies?.refreshToken;
         return this.authService.refreshTokens(user.userId, refreshToken);
+    }
+
+    @Get('logout')
+    @UseGuards(RefreshTokenGuard)
+    @UseGuards(JwtAuthGuard)
+    async logout(
+        @CurrentUser() user: CurrentUserDto,
+        @Req() req,
+    ) {
+        this.logger.log(`User ${user.userId} is logging out`);
+        const refreshToken = req.cookies?.refreshToken;
+        await this.authService.logout(user.userId, refreshToken);
+        return { message: 'Logged out successfully' };
+    }
+
+    @Get('logout-all')
+    @UseGuards(JwtAuthGuard)
+    async logoutAll(
+        @CurrentUser() user: CurrentUserDto,
+    ) {
+        return await this.authService.logoutAll(user.userId);
     }
 }

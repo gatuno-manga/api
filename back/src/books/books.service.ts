@@ -173,7 +173,6 @@ export class BooksService {
 		const notSelectContents = allSensitiveContents.filter(content =>
 			!sensitiveContents.includes(content as SensitiveContent)
 		);
-		this.logger.debug(notSelectContents);
 
 		if (notSelectContents.length > 0) {
 			const conditions = notSelectContents.map((content, index) =>

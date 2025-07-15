@@ -107,13 +107,17 @@ export class AuthService {
     async logout(userId: string, refreshToken: string) {
         const key = this.getRedisKey(userId);
         const storedTokens: string[] = await this.cacheManager.get(key) || [];
-        const hashedToken = await this.DataEncryption.encrypt(refreshToken);
-
-        const index = storedTokens.indexOf(hashedToken);
+        let index = -1;
+        for (let i = 0; i < storedTokens.length; i++) {
+            if (await this.DataEncryption.compare(storedTokens[i], refreshToken)) {
+                index = i;
+                break;
+            }
+        }
         if (index === -1) {
+            this.logger.error('Token not found in cache', { userId, refreshToken });
             throw new UnauthorizedException('Invalid token');
         }
-
         storedTokens.splice(index, 1);
         if (storedTokens.length === 0) {
             await this.cacheManager.del(key);
