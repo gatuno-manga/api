@@ -57,6 +57,7 @@ export class AuthService {
     private async getTokens(user: User): Promise<{ accessToken: string; refreshToken: string }> {
         const payload = {
             sub: user.id,
+            iss: 'login',
             email: user.email,
             roles: user.roles
         }
