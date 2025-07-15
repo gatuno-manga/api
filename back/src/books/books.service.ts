@@ -20,6 +20,7 @@ import { CreateAuthorDto } from './dto/create-author.dto';
 import { Author } from './entitys/author.entity';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { SensitiveContent } from './enum/sensitive-content.enum';
+import { ChapterRead } from './entitys/chapter-read.entity';
 
 @Injectable()
 export class BooksService {
@@ -223,7 +224,7 @@ export class BooksService {
 		return `${appUrl}${url}`;
 	}
 
-	async getOne(id: string): Promise<Book> {
+	async getOne(id: string, userid?: string): Promise<Book> {
 		const book = await this.bookRepository.findOne({
 			where: { id },
 			relations: ['chapters', 'tags', 'authors'],
@@ -259,6 +260,21 @@ export class BooksService {
 		}
 		if (book.cover) {
 			book.cover = this.urlImage(book.cover);
+		}
+
+		if (userid && book.chapters?.length) {
+			const readChapters = await this.bookRepository.manager
+				.getRepository(ChapterRead)
+				.find({
+					where: { user: { id: userid } },
+					relations: ['chapter'],
+					select: ['chapter'],
+				});
+			const readChapterIds = new Set(readChapters.map((cr) => cr.chapter.id));
+			book.chapters = book.chapters.map((chapter: any) => ({
+				...chapter,
+				read: readChapterIds.has(chapter.id),
+			}));
 		}
 		return book;
 	}
