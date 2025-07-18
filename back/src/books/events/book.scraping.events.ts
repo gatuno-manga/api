@@ -27,11 +27,16 @@ export class BookScrapingEvents {
 	@OnEvent('book.created')
 	@OnEvent('chapters.updated')
 	async handleProcessChapters(book: Book) {
-		this.logger.log(`Iniciando o scraping para o livro: ${book.title}`);
 		const chapters = book.chapters
 			.filter((chapter) => chapter.scrapingStatus === ScrapingStatus.PROCESS)
 			.sort((a, b) => a.index - b.index);
 
+		if (chapters.length === 0) {
+			this.logger.warn(`Nenhum capítulo para processar no livro: ${book.title}`);
+			return;
+		}
+
+		this.logger.log(`Iniciando o scraping para o livro: ${book.title}`);
 		this.logger.log(`Total de capítulos a serem processados: ${chapters.length}`);
 
 		const processWithLimit = async (chapter: Chapter) => {

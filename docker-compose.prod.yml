@@ -34,6 +34,27 @@ services:
       - "traefik.http.routers.api.rule=Host(`${API_HOST}`)"
       - "traefik.docker.network=traefik_traefik-proxy-net"
       - "traefik.http.services.api.loadbalancer.server.port=3000"
+  redis:
+    image: "redis:8.0-alpine"
+    container_name: gatuno-redis
+    restart: always
+    command: redis-server
+    volumes:
+      - redis_data:/data
+    networks:
+      - gatuno-net
+
+  redis-commander:
+    image: ghcr.io/joeferner/redis-commander:latest
+    container_name: gatuno-redis-commander
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "${REDISCOMMANDER_PORT}:8081"
+    depends_on:
+      - redis
+    networks:
+      - gatuno-net
 
   database:
     image: mysql:8.0
