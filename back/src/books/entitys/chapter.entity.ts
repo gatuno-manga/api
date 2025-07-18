@@ -26,7 +26,7 @@ export class Chapter {
 	@Column()
 	originalUrl: string;
 
-	@Column({ type: 'decimal', precision: 12, scale: 1 })
+	@Column({ type: 'decimal', precision: 15, scale: 3 })
 	index: number;
 
 	@Column({
