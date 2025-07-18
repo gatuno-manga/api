@@ -21,6 +21,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - CHOKIDAR_USEPOLLING=true
     volumes:
       - ./back/src:/usr/src/app/src
       - ./back/.env:/usr/src/app/.env
@@ -109,6 +110,7 @@ services:
       - "${APP_PORT}:4200"
     environment:
       - NODE_ENV=${NODE_ENV}
+      - CHOKIDAR_USEPOLLING=true
     volumes:
       - ./front/src:/usr/src/app/src
       - ./front/public:/usr/src/app/public

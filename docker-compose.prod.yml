@@ -5,13 +5,13 @@ services:
     restart: unless-stopped
     build:
       context: ./back
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.prod
     ports:
       - "${API_PORT}:3000"
     environment:
       - NODE_ENV=${NODE_ENV}
       - SELENIUM_URL=http://selenium-hub:4444/wd/hub
-      - API_URL=${API_HOST}
+      - API_URL=http://${API_HOST}
       - APP_URL=${APP_HOST}
       - DB_PORT=3306
       - DB_TYPE=mysql
@@ -19,6 +19,9 @@ services:
       - DB_USER=${DB_USER}
       - DB_PASS=${DB_PASS}
       - DB_NAME=${DB_NAME}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
     volumes:
       - ./back/src:/usr/src/app/src
       - ./back/.env:/usr/src/app/.env
@@ -26,6 +29,7 @@ services:
     depends_on:
       - database
       - selenium-hub
+      - redis
     networks:
       - traefik_traefik-proxy-net
       - gatuno-net
@@ -121,14 +125,11 @@ services:
     container_name: gatuno-app
     build:
       context: ./front
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.prod
     ports:
-      - "${APP_PORT}:4200"
+      - "${APP_PORT}:4000"
     environment:
       - NODE_ENV=${NODE_ENV}
-    volumes:
-      - ./front/src:/usr/src/app/src
-      - ./front/public:/usr/src/app/public
     depends_on:
       - api
     restart: unless-stopped
@@ -138,7 +139,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.app.rule=Host(`${APP_HOST}`)"
-      - "traefik.http.services.app.loadbalancer.server.port=4200"
+      - "traefik.http.services.app.loadbalancer.server.port=4000"
       - "traefik.docker.network=traefik_traefik-proxy-net"
 
 volumes:
@@ -148,10 +149,11 @@ volumes:
     driver: local
   api-data:
     driver: local
+  redis_data:
+    driver: local
 
 networks:
   traefik_traefik-proxy-net:
     external: true
   gatuno-net:
     driver: bridge
-
