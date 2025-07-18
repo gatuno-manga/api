@@ -30,6 +30,25 @@ export class BooksController {
 		return this.booksService.createBook(dto);
 	}
 
+	@Get('tags')
+	getTags() {
+		return this.booksService.getTags();
+	}
+
+	@Get('sensitive-content')
+	getSensitiveContent() {
+		return this.booksService.getSensitiveContent();
+	}
+
+	@Patch('sensitive-content/:contentId/merge')
+	updateSensitiveContent(
+		@Param('contentId') contentId: string,
+		@Body() dto: string[],
+	) {
+		return this.booksService.mergeSensitiveContent(contentId, dto);
+	}
+
+
 	@Get(':idBook')
 	@UseGuards(OptionalAuthGuard)
 	getBook(

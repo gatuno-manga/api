@@ -1,12 +1,11 @@
 import { PageOptionsDto } from 'src/pages/page-options.dto';
 import { BookType } from '../enum/book-type.enum';
-import { SensitiveContent } from '../enum/sensitive-content.enum';
-import { Type } from 'class-transformer';
+import { ToArray } from 'src/pages/decorator/to-array.decorator';
 import { IsOptional } from 'class-validator';
 
 export class BookPageOptionsDto extends PageOptionsDto {
 	@IsOptional()
-	@Type(() => String)
+	@ToArray()
 	type?: BookType[] = [
 		BookType.OTHER,
 		BookType.MANGA,
@@ -16,8 +15,6 @@ export class BookPageOptionsDto extends PageOptionsDto {
 	];
 
 	@IsOptional()
-	@Type(() => String)
-	sensitiveContent?: SensitiveContent[] = [
-		SensitiveContent.SAFE,
-	];
+	@ToArray()
+	sensitiveContent?: string[] = [];
 }

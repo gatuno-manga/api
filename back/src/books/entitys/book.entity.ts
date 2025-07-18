@@ -13,8 +13,8 @@ import { Chapter } from './chapter.entity';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { Tag } from './tags.entity';
 import { BookType } from '../enum/book-type.enum';
-import { SensitiveContent } from '../enum/sensitive-content.enum';
 import { Author } from './author.entity';
+import { SensitiveContent } from './sensitive-content.entity';
 
 @Entity('books')
 export class Book {
@@ -42,11 +42,8 @@ export class Book {
 	})
 	type: BookType;
 
-	@Column({
-		type: 'set',
-		enum: SensitiveContent,
-		default: SensitiveContent.SAFE,
-	})
+	@ManyToMany(() => SensitiveContent)
+	@JoinTable()
 	sensitiveContent: SensitiveContent[];
 
 	@Column({
@@ -60,11 +57,6 @@ export class Book {
 		nullable: true,
 	})
 	description: string;
-
-	@Column({
-		nullable: true,
-	})
-	coverUrl: string;
 
 	@Column({
 		nullable: true,

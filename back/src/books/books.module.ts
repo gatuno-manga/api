@@ -15,6 +15,7 @@ import { ChapterRead } from 'src/books/entitys/chapter-read.entity';
 import { ChapterController } from './chapter.controller';
 import { ChapterService } from './chapter.service';
 import { AuthModule } from 'src/auth/auth.module';
+import { SensitiveContent } from './entitys/sensitive-content.entity';
 
 @Module({
 	imports: [
@@ -26,7 +27,8 @@ import { AuthModule } from 'src/auth/auth.module';
 			Chapter,
 			Tag,
 			Author,
-			ChapterRead
+			ChapterRead,
+			SensitiveContent
 		]),
 		AuthModule,
 	],

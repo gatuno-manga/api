@@ -10,7 +10,6 @@ import { CreateChapterDto } from './create-chapter.dto';
 import { Type } from 'class-transformer';
 import { CoverBookDto } from './cover-book.dto';
 import { BookType } from '../enum/book-type.enum';
-import { SensitiveContent } from '../enum/sensitive-content.enum';
 import { CreateAuthorDto } from './create-author.dto';
 
 export class CreateBookDto {
@@ -27,7 +26,7 @@ export class CreateBookDto {
 
 	@IsOptional()
 	@IsString({ each: true })
-	sensitiveContent?: SensitiveContent[] = [];
+	sensitiveContent?: string[] = [];
 
 	@IsOptional()
 	@IsString({ each: true })

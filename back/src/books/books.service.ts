@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Book } from './entitys/book.entity';
-import { Brackets, Repository } from 'typeorm';
+import { Brackets, Repository, In } from 'typeorm';
 import { Page } from './entitys/page.entity';
 import { CreateBookDto } from './dto/create-book.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -19,7 +19,7 @@ import { OrderChaptersDto } from './dto/order-chapters.dto';
 import { CreateAuthorDto } from './dto/create-author.dto';
 import { Author } from './entitys/author.entity';
 import { AppConfigService } from 'src/app-config/app-config.service';
-import { SensitiveContent } from './enum/sensitive-content.enum';
+import { SensitiveContent } from './entitys/sensitive-content.entity';
 import { ChapterRead } from './entitys/chapter-read.entity';
 
 @Injectable()
@@ -36,6 +36,8 @@ export class BooksService {
 		private readonly tagRepository: Repository<Tag>,
 		@InjectRepository(Author)
 		private readonly authorRepository: Repository<Author>,
+		@InjectRepository(SensitiveContent)
+		private readonly sensitiveContentRepository: Repository<SensitiveContent>,
 		private readonly scrapingService: ScrapingService,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly appConfig: AppConfigService,
@@ -82,9 +84,12 @@ export class BooksService {
 		manager: Repository<Chapter>
 	): Promise<Chapter[]> {
 		const indices = chaptersDto.map(c => c.index);
-		const uniqueIndices = new Set(indices);
-		if (indices.length !== uniqueIndices.size && !indices.some(index => index === undefined || index === null)) {
-			throw new BadRequestException('There are chapters with duplicate indices!');
+		const filteredIndices = indices.filter(index => index !== undefined && index !== null);
+		const uniqueFilteredIndices = new Set(filteredIndices);
+		const duplicates = filteredIndices.filter((item, idx) => filteredIndices.indexOf(item) !== idx);
+		const uniqueDuplicates = [...new Set(duplicates)];
+		if (filteredIndices.length !== uniqueFilteredIndices.size) {
+			throw new BadRequestException(`Há capítulos com índices duplicados: ${uniqueDuplicates.join(', ')}`);
 		}
 		const allHaveIndex = chaptersDto.every((chapterDto) => chapterDto.index !== undefined && chapterDto.index !== null);
 		let count = 1;
@@ -99,6 +104,23 @@ export class BooksService {
 		return manager.save(chapters);
 	}
 
+	async findOrCreateSensitiveContent(
+		sensitiveContentNames: string[],
+	): Promise<SensitiveContent[]> {
+		return Promise.all(
+			sensitiveContentNames.map(async (name) => {
+				let sensitiveContent = await this.sensitiveContentRepository.findOne({
+					where: { name },
+				});
+				if (!sensitiveContent) {
+					sensitiveContent = this.sensitiveContentRepository.create({ name });
+					await this.sensitiveContentRepository.save(sensitiveContent);
+				}
+				return sensitiveContent;
+			}),
+		);
+	}
+
 	async createBook(dto: CreateBookDto) {
 		return await this.bookRepository.manager.transaction(async (manager) => {
 			const tags =
@@ -108,6 +130,9 @@ export class BooksService {
 			const authors = dto.authors && dto.authors.length > 0
 				? await this.findOrCreateAuthors(dto.authors)
 				: [];
+			const sensitiveContent = dto.sensitiveContent && dto.sensitiveContent.length > 0
+				? await this.findOrCreateSensitiveContent(dto.sensitiveContent)
+				: [];
 			const book = manager.create(Book, {
 				title: dto.title,
 				originalUrl: dto.originalUrl,
@@ -115,9 +140,10 @@ export class BooksService {
 				description: dto.description,
 				publication: dto.publication,
 				type: dto.type,
-				sensitiveContent: dto.sensitiveContent,
+				sensitiveContent,
 				tags,
 				authors,
+				chapters: [],
 			});
 			await manager.save(book);
 
@@ -142,7 +168,6 @@ export class BooksService {
 						);
 					});
 			}
-
 			const savedBook = await manager.save(book);
 			this.eventEmitter.emit('book.created', savedBook);
 			return savedBook;
@@ -152,52 +177,22 @@ export class BooksService {
 	async getAllBooks(options: BookPageOptionsDto): Promise<PageDto<any>> {
 		const queryBuilder = this.bookRepository
 			.createQueryBuilder('book')
+			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
 			.loadRelationCountAndMap('book.chapterCount', 'book.chapters')
 			.skip((options.page - 1) * options.limit)
 			.take(options.limit);
 
-		let sensitiveContents: string[] = [];
-		if (options.sensitiveContent) {
-			if (Array.isArray(options.sensitiveContent)) {
-				sensitiveContents = options.sensitiveContent;
-			} else {
-				sensitiveContents = [options.sensitiveContent];
-			}
+
+		if (options.sensitiveContent && options.sensitiveContent.length > 0) {
+			queryBuilder.andWhere('sensitiveContent.name IN (:...sensitiveContents)', {
+				sensitiveContents: options.sensitiveContent,
+			});
+		} else {
+			queryBuilder.andWhere('sensitiveContent.name IS NULL');
 		}
 
-		if (sensitiveContents.length === 0) {
-			sensitiveContents = [SensitiveContent.SAFE];
-		}
-
-		const allSensitiveContents = Object.values(SensitiveContent);
-		const notSelectContents = allSensitiveContents.filter(content =>
-			!sensitiveContents.includes(content as SensitiveContent)
-		);
-
-		if (notSelectContents.length > 0) {
-			const conditions = notSelectContents.map((content, index) =>
-				`FIND_IN_SET(:ns${index}, book.sensitiveContent) = 0`
-			).join(' AND ');
-
-			const parameters = notSelectContents.reduce((params, content, index) => {
-				params[`ns${index}`] = content;
-				return params;
-			}, {});
-
-			queryBuilder.andWhere(`(${conditions})`, parameters);
-		}
-
-		let types: string[] = [];
-		if (options.type) {
-			if (Array.isArray(options.type)) {
-				types = options.type;
-			} else {
-				types = [options.type];
-			}
-		}
-
-		if (types.length) {
-			queryBuilder.andWhere('book.type IN (:...types)', { types });
+		if (options.type && options.type.length > 0) {
+			queryBuilder.andWhere('book.type IN (:...types)', { types: options.type });
 		}
 
 		const [books, total] = await queryBuilder.getManyAndCount();
@@ -226,7 +221,7 @@ export class BooksService {
 	async getOne(id: string, userid?: string): Promise<Book> {
 		const book = await this.bookRepository.findOne({
 			where: { id },
-			relations: ['chapters', 'tags', 'authors'],
+			relations: ['chapters', 'tags', 'authors', 'sensitiveContent'],
 			order: { chapters: { index: 'ASC' } },
 			select: {
 				id: true,
@@ -282,7 +277,7 @@ export class BooksService {
 	async updateBook(id: string, dto: UpdateBookDto) {
 		const book = await this.bookRepository.findOne({
 			where: { id },
-			relations: ['tags'],
+			relations: ['tags', 'sensitiveContent'],
 		});
 		if (!book) {
 			this.logger.warn(`Book with id ${id} not found`);
@@ -296,7 +291,6 @@ export class BooksService {
 			description: dto.description,
 			publication: dto.publication,
 			type: dto.type,
-			sensitiveContent: dto.sensitiveContent,
 		});
 
 		if (dto.tags && dto.tags.length > 0) {
@@ -305,6 +299,10 @@ export class BooksService {
 
 		if (dto.authors && dto.authors.length > 0) {
 			book.authors = await this.findOrCreateAuthors(dto.authors);
+		}
+
+		if (dto.sensitiveContent && dto.sensitiveContent.length > 0) {
+			book.sensitiveContent = await this.findOrCreateSensitiveContent(dto.sensitiveContent);
 		}
 
 		if (dto.cover) {
@@ -489,4 +487,54 @@ export class BooksService {
 		this.eventEmitter.emit('chapters.updated', book);
 		return book;
 	}
+
+	async getTags(): Promise<Tag[]> {
+		return this.tagRepository.find({
+			select: ['name'],
+			order: { name: 'ASC' },
+		});
+	}
+
+	async getSensitiveContent(): Promise<SensitiveContent[]> {
+		return this.sensitiveContentRepository.find({
+			select: ['id', 'name'],
+			order: { name: 'ASC' },
+		});
+	}
+
+	async mergeSensitiveContent(
+		id: string,
+		copy: string[]
+	) {
+		const sensitiveContent = await this.sensitiveContentRepository.findOne({
+			where: { id },
+		});
+		if (!sensitiveContent) {
+			this.logger.warn(`Sensitive content with id ${id} not found`);
+			throw new NotFoundException(`Sensitive content with id ${id} not found`);
+		}
+		const copyContents = await this.sensitiveContentRepository.find({
+			where: { id: In(copy) },
+		});
+		if (copyContents.length === 0) {
+			this.logger.warn(`No sensitive content found for names: ${copy.join(', ')}`);
+			throw new NotFoundException(`No sensitive content found for names: ${copy.join(', ')}`);
+		}
+		const books = await this.bookRepository
+			.createQueryBuilder('book')
+			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
+			.where('sensitiveContent.id IN (:...copyIds)', { copyIds: copy })
+			.getMany();
+
+		for (const book of books) {
+			book.sensitiveContent = book.sensitiveContent.filter(sc => !copy.includes(sc.id));
+			if (!book.sensitiveContent.some(sc => sc.id === id)) {
+				book.sensitiveContent.push(sensitiveContent);
+			}
+			await this.bookRepository.save(book);
+		}
+		await this.sensitiveContentRepository.remove(copyContents);
+		return sensitiveContent;
+	}
+
 }
