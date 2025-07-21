@@ -28,6 +28,9 @@ function configPipe(app: INestApplication) {
 }
 
 function configureCors(app: INestApplication) {
-	app.enableCors();
+	app.enableCors({
+		origin: [process.env.APP_URL],
+		credentials: true,
+	});
 }
 bootstrap();
