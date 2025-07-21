@@ -196,10 +196,26 @@ export class ScrapingService implements OnApplicationShutdown {
 				10000,
 			);
 			await driver.executeScript(preScript);
-			await driver.sleep(1500);
-			await driver.executeScript(
-				'window.scrollTo(0, document.body.scrollHeight);',
-			);
+			await driver.sleep(3000);
+			await driver.executeAsyncScript(`
+				const callback = arguments[arguments.length - 1];
+				const scrollStepPercent = 0.01; // 5%
+				const delay = 200;
+				let currentPosition = 0;
+				const scrollHeight = document.body.scrollHeight;
+				function scrollStep() {
+					const step = Math.max(1, Math.floor(scrollHeight * scrollStepPercent));
+					currentPosition += step;
+					window.scrollTo(0, currentPosition);
+					if (currentPosition < scrollHeight) {
+						setTimeout(scrollStep, delay);
+					} else {
+						window.scrollTo(0, document.body.scrollHeight);
+						setTimeout(callback, 1000);
+					}
+				}
+				scrollStep();
+			`);
 			await driver.sleep(500);
 			await this.waitForAllImagesLoaded(driver, selector);
 
