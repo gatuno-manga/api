@@ -401,7 +401,7 @@ export class BooksService {
 			),
 		];
 		const savedBook = await this.bookRepository.save(book);
-		this.eventEmitter.emit('chapters.updated', savedBook);
+		this.eventEmitter.emit('chapters.updated', savedBook.chapters);
 		return savedBook.chapters;
 	}
 
@@ -484,7 +484,7 @@ export class BooksService {
 				chapters: processChapter,
 			})
 		);
-		this.eventEmitter.emit('chapters.updated', book);
+		this.eventEmitter.emit('chapters.updated', book.chapters);
 		return book;
 	}
 

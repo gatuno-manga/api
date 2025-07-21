@@ -40,7 +40,7 @@ export class BookInitEvents {
         }
         this.logger.log(`Livros com capítulos em PROCESS: ${books.length}`);
         for (const book of books) {
-            this.eventEmitter.emit('chapters.updated', book);
+            this.eventEmitter.emit('chapters.updated', book.chapters);
         }
     }
 }

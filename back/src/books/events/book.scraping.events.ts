@@ -11,7 +11,7 @@ import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 export class BookScrapingEvents {
 	private logger = new Logger(BookScrapingEvents.name);
 	private hostnameCount: Map<string, number> = new Map();
-	private concurrency = 4;
+	private concurrency = 8;
 
 	constructor(
 		@InjectRepository(Book)
@@ -24,8 +24,8 @@ export class BookScrapingEvents {
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
+
 	@OnEvent('book.created')
-	@OnEvent('chapters.updated')
 	async handleProcessChapters(book: Book) {
 		const chapters = book.chapters
 			.filter((chapter) => chapter.scrapingStatus === ScrapingStatus.PROCESS)
@@ -35,31 +35,49 @@ export class BookScrapingEvents {
 			this.logger.warn(`Nenhum capítulo para processar no livro: ${book.title}`);
 			return;
 		}
-
 		this.logger.log(`Iniciando o scraping para o livro: ${book.title}`);
 		this.logger.log(`Total de capítulos a serem processados: ${chapters.length}`);
 
-		const processWithLimit = async (chapter: Chapter) => {
-			const hostname = new URL(chapter.originalUrl).hostname;
-			while ((this.hostnameCount.get(hostname) || 0) >= this.concurrency) {
-				await new Promise((resolve) => setTimeout(resolve, 500));
-			}
-			this.hostnameCount.set(hostname, (this.hostnameCount.get(hostname) || 0) + 1);
-			try {
-				await this.processChapter(chapter);
-			} catch (err) {
-				this.logger.error(`Erro ao processar capítulo ${chapter.index}:`, err);
-			} finally {
-				this.hostnameCount.set(hostname, this.hostnameCount.get(hostname)! - 1);
-			}
-		};
-
-		await Promise.all(chapters.map((chapter) => processWithLimit(chapter)));
+		await Promise.all(chapters.map((chapter) => this.processWithLimit(chapter)));
 
 		book.scrapingStatus = ScrapingStatus.READY;
 		await this.bookRepository.save(book);
 		this.logger.log(`Scraping concluído para o livro: ${book.title}`);
 		this.eventEmitter.emit('book.scraped', book);
+	}
+
+	@OnEvent('chapters.updated')
+	async processChaptersList(chapters: Chapter[] | Chapter) {
+		if (!Array.isArray(chapters)) chapters = [chapters];
+		const chaptersToProcess = chapters
+			.filter((chapter) => chapter.scrapingStatus === ScrapingStatus.PROCESS)
+			.sort((a, b) => a.index - b.index);
+
+		if (chaptersToProcess.length === 0) {
+			this.logger.warn(`Nenhum capítulo para processar na lista recebida.`);
+			return;
+		}
+
+		this.logger.log(`Iniciando o scraping para lista de capítulos.`);
+		this.logger.log(`Total de capítulos a serem processados: ${chaptersToProcess.length}`);
+
+		await Promise.all(chaptersToProcess.map((chapter) => this.processWithLimit(chapter)));
+		this.logger.log(`Scraping concluído para a lista de capítulos.`);
+	}
+
+	private async processWithLimit(chapter: Chapter) {
+		const hostname = new URL(chapter.originalUrl).hostname;
+		while ((this.hostnameCount.get(hostname) || 0) >= this.concurrency) {
+			await new Promise((resolve) => setTimeout(resolve, 500));
+		}
+		this.hostnameCount.set(hostname, (this.hostnameCount.get(hostname) || 0) + 1);
+		try {
+			await this.processChapter(chapter);
+		} catch (err) {
+			this.logger.error(`Erro ao processar capítulo ${chapter.index}:`, err);
+		} finally {
+			this.hostnameCount.set(hostname, this.hostnameCount.get(hostname)! - 1);
+		}
 	}
 
 	private async processChapter(chapter: Chapter) {

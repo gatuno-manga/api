@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Chapter } from './entitys/chapter.entity';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { ScrapingStatus } from './enum/scrapingStatus.enum';
 import { ChapterRead } from './entitys/chapter-read.entity';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class ChapterService {
@@ -15,6 +16,7 @@ export class ChapterService {
         @InjectRepository(ChapterRead)
         private readonly chapterReadRepository: Repository<ChapterRead>,
         private readonly appConfig: AppConfigService,
+        private readonly eventEmitter: EventEmitter2,
     ) {}
 
     private urlImage(url: string): string {
@@ -85,7 +87,8 @@ export class ChapterService {
         }
         chapter.scrapingStatus = ScrapingStatus.PROCESS;
         await this.chapterRepository.save(chapter);
-        return { message: 'Chapter reset to PROCESS' };
+        this.eventEmitter.emit('chapters.updated', chapter);
+        return chapter;
     }
 
     async markChapterAsRead(chapterId: string, userId: string) {
