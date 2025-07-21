@@ -9,6 +9,7 @@ async function bootstrap() {
 	const app = await NestFactory.create<NestExpressApplication>(AppModule);
 	configPipe(app);
 	configureCors(app);
+	app.enableShutdownHooks();
 	app.use(cookieParser());
 	app.setGlobalPrefix('api');
 	app.useStaticAssets(join(__dirname, '..', 'data'), {
