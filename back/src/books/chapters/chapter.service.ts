@@ -1,11 +1,11 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Chapter } from './entitys/chapter.entity';
 import { Repository, In } from 'typeorm';
 import { AppConfigService } from 'src/app-config/app-config.service';
-import { ScrapingStatus } from './enum/scrapingStatus.enum';
-import { ChapterRead } from './entitys/chapter-read.entity';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ChapterRead } from '../entitys/chapter-read.entity';
+import { Chapter } from '../entitys/chapter.entity';
+import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 
 @Injectable()
 export class ChapterService {
@@ -105,5 +105,30 @@ export class ChapterService {
         await this.chapterReadRepository.save(chapterRead);
         this.logger.log(`Chapter ${chapterId} marked as read by user ${userId}`);
         return chapterRead;
+    }
+
+    async listLessPages(pages: number) {
+        const chapters = await this.chapterRepository
+            .createQueryBuilder('chapter')
+            .leftJoinAndSelect('chapter.pages', 'page')
+            .loadRelationCountAndMap('chapter.pageCount', 'chapter.pages')
+            .getMany();
+
+        return chapters
+            .filter(chapter => (chapter as any).pageCount < pages)
+            .map(chapter => {
+                const { pages, ...rest } = chapter;
+                return { ...rest, pageCount: (chapter as any).pageCount };
+            });
+    }
+
+    async resetAllChapters(ids: string[]) {
+        const chapters = await this.chapterRepository.find({ where: { id: In(ids) } });
+        for (const chapter of chapters) {
+            chapter.scrapingStatus = ScrapingStatus.PROCESS;
+        }
+        await this.chapterRepository.save(chapters);
+        this.eventEmitter.emit('chapters.updated', chapters);
+        return chapters;
     }
 }

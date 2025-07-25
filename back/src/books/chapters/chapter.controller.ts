@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
 import { ChapterService } from './chapter.service';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
@@ -18,12 +18,20 @@ export class ChapterController {
         return this.chapterService.getChapter(idChapter, user?.userId);
     }
 
-    @Patch('/:idChapter/reset')
+    @Patch('/reset/:idChapter')
     resetChapter(
         @Param('idChapter') idChapter: string,
     ) {
         return this.chapterService.resetChapter(idChapter);
     }
+
+    @Patch('/reset')
+    resetAllChapters(
+        @Body() body: string[]
+    ) {
+        return this.chapterService.resetAllChapters(body);
+    }
+
 
     @Get('/:idChapter/read/')
     @UseGuards(JwtAuthGuard)
@@ -32,5 +40,13 @@ export class ChapterController {
         @CurrentUser() user: CurrentUserDto
     ) {
         return this.chapterService.markChapterAsRead(idChapter, user.userId);
+    }
+
+    @Get('less-pages/:pages')
+    @UseGuards(JwtAuthGuard)
+    getChaptersWithLessPages(
+        @Param('pages') pages: number,
+    ) {
+        return this.chapterService.listLessPages(pages);
     }
 }
