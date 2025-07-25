@@ -1,8 +1,10 @@
-import { Column, Entity, PrimaryColumn, Relation } from 'typeorm';
-
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 @Entity('tags')
 export class Tag {
-	@PrimaryColumn()
+	@PrimaryGeneratedColumn('uuid')
+	id: string;
+
+	@Column({ unique: true })
 	name: string;
 
 	@Column({
