@@ -2,8 +2,8 @@ import { Column, CreateDateColumn, Entity, ManyToMany, ManyToOne, PrimaryGenerat
 import { User } from "./user.entity";
 import { Book } from "src/books/entitys/book.entity";
 
-@Entity('coletion_book')
-export class ColectionBook {
+@Entity('collection_book')
+export class CollectionBook {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 

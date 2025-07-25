@@ -2,23 +2,23 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Book } from "src/books/entitys/book.entity";
 import { Repository } from "typeorm";
-import { ColectionBook } from "./entitys/coletion-book.entity";
-import { CreateColetionBookDto } from "./dto/create-coletion-book.dto";
 import { User } from "./entitys/user.entity";
-import { addBookColetionDto } from "./dto/add-book-coletion.dto";
+import { CollectionBook } from "./entitys/collection-book.entity";
+import { CreateCollectionBookDto } from "./dto/create-collection-book.dto";
+import { AddBookCollectionDto } from "./dto/add-book-collection.dto";
 
 @Injectable()
-export class ColetionBookService {
+export class CollectionBookService {
   constructor(
     @InjectRepository(Book)
     private readonly bookRepository: Repository<Book>,
-    @InjectRepository(ColectionBook)
-    private readonly coletionBookRepository: Repository<ColectionBook>,
+    @InjectRepository(CollectionBook)
+    private readonly collectionBookRepository: Repository<CollectionBook>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>
   ) {}
 
-  private async ValidateUser(userId: string): Promise<User> {
+  private async validateUser(userId: string): Promise<User> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
     });
@@ -29,34 +29,34 @@ export class ColetionBookService {
   }
 
   async getCollections(userId: string) {
-    this.ValidateUser(userId);
-    const collections = await this.coletionBookRepository.find({
+    await this.validateUser(userId);
+    const collections = await this.collectionBookRepository.find({
       where: { user: { id: userId } },
     });
     return collections;
   }
 
   async getNameCollectionBooks(userId: string) {
-    this.ValidateUser(userId);
-    const collections = await this.coletionBookRepository.find({
+    await this.validateUser(userId);
+    const collections = await this.collectionBookRepository.find({
       where: { user: { id: userId } },
       select: ['id', 'title'],
     });
     return collections;
   }
 
-  async createCollectionBook(dto: CreateColetionBookDto, userId: string) {
-    this.ValidateUser(userId);
-    const collection = this.coletionBookRepository.create({
+  async createCollectionBook(dto: CreateCollectionBookDto, userId: string) {
+    await this.validateUser(userId);
+    const collection = this.collectionBookRepository.create({
       ...dto,
       user: { id: userId },
     });
-    return this.coletionBookRepository.save(collection);
+    return this.collectionBookRepository.save(collection);
   }
 
-  async addBookToCollection(dto: addBookColetionDto, idCollection: string, userId: string) {
-    this.ValidateUser(userId);
-    const collection = await this.coletionBookRepository.findOne({
+  async addBookToCollection(dto: AddBookCollectionDto, idCollection: string, userId: string) {
+    await this.validateUser(userId);
+    const collection = await this.collectionBookRepository.findOne({
       where: { id: idCollection, user: { id: userId } },
       relations: ['books'],
     });
@@ -70,16 +70,16 @@ export class ColetionBookService {
       throw new BadRequestException("Some books not found");
     }
 
-    return this.coletionBookRepository.save(
-      this.coletionBookRepository.merge(collection, {
+    return this.collectionBookRepository.save(
+      this.collectionBookRepository.merge(collection, {
         books: [...collection.books, ...books],
       })
     );
   }
 
   async getCollectionBooks(userId: string, idCollection: string) {
-    this.ValidateUser(userId);
-    const collection = await this.coletionBookRepository.findOne({
+    await this.validateUser(userId);
+    const collection = await this.collectionBookRepository.findOne({
       where: { id: idCollection, user: { id: userId } },
       relations: ['books'],
     });
@@ -90,8 +90,8 @@ export class ColetionBookService {
   }
 
   async removeBookFromCollection(idCollection: string, idBook: string, userId: string) {
-    this.ValidateUser(userId);
-    const collection = await this.coletionBookRepository.findOne({
+    await this.validateUser(userId);
+    const collection = await this.collectionBookRepository.findOne({
       where: { id: idCollection, user: { id: userId } },
       relations: ['books'],
     });
@@ -103,17 +103,17 @@ export class ColetionBookService {
       throw new BadRequestException("Book not found in the collection");
     }
     collection.books.splice(bookIndex, 1);
-    return this.coletionBookRepository.save(collection);
+    return this.collectionBookRepository.save(collection);
   }
 
   async deleteCollection(idCollection: string, userId: string) {
-    this.ValidateUser(userId);
-    const collection = await this.coletionBookRepository.findOne({
+    await this.validateUser(userId);
+    const collection = await this.collectionBookRepository.findOne({
       where: { id: idCollection, user: { id: userId } },
     });
     if (!collection) {
       throw new BadRequestException("Collection not found or does not belong to the user");
     }
-    return this.coletionBookRepository.remove(collection);
+    return this.collectionBookRepository.remove(collection);
   }
 }

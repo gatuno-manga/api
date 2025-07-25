@@ -1,25 +1,25 @@
 import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
-import { ColetionBookService } from './coletion-book.service';
+import { CollectionBookService } from './coletion-book.service';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
 import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
-import { CreateColetionBookDto } from './dto/create-coletion-book.dto';
-import { addBookColetionDto } from './dto/add-book-coletion.dto';
+import { CreateCollectionBookDto } from './dto/create-collection-book.dto';
+import { AddBookCollectionDto } from './dto/add-book-collection.dto';
 
-@Controller('coletions')
+@Controller('collections')
 @UseGuards(JwtAuthGuard)
-export class coletionBookController {
-  constructor(private readonly ColetionBookService: ColetionBookService) {}
+export class CollectionBookController {
+  constructor(private readonly collectionBookService: CollectionBookService) {}
 
   @Get()
   async getCollectionBooks(@CurrentUser() user: CurrentUserDto) {
-    return this.ColetionBookService.getCollections(user.userId);
+    return this.collectionBookService.getCollections(user.userId);
   }
 
   @Get('names')
   async getNameCollectionBooks(@CurrentUser() user: CurrentUserDto) {
-    return this.ColetionBookService.getNameCollectionBooks(user.userId);
+    return this.collectionBookService.getNameCollectionBooks(user.userId);
   }
 
   @Get(':idCollection')
@@ -27,25 +27,25 @@ export class coletionBookController {
     @Param('idCollection') idCollection: string,
     @CurrentUser() user: CurrentUserDto
   ) {
-    return this.ColetionBookService.getCollectionBooks(user.userId, idCollection);
+    return this.collectionBookService.getCollectionBooks(user.userId, idCollection);
   }
 
 
   @Post()
   async createCollectionBook(
-    @Body() dto: CreateColetionBookDto,
+    @Body() dto: CreateCollectionBookDto,
     @CurrentUser() user: CurrentUserDto
   ) {
-    return this.ColetionBookService.createCollectionBook(dto, user.userId);
+    return this.collectionBookService.createCollectionBook(dto, user.userId);
   }
 
   @Post(':idCollection/books')
   async addBookToCollection(
-    @Body() dto: addBookColetionDto,
+    @Body() dto: AddBookCollectionDto,
     @Param('idCollection') idCollection: string,
     @CurrentUser() user: CurrentUserDto
   ) {
-    return this.ColetionBookService.addBookToCollection(dto, idCollection, user.userId);
+    return this.collectionBookService.addBookToCollection(dto, idCollection, user.userId);
   }
 
 
@@ -55,7 +55,7 @@ export class coletionBookController {
     @Param('idBook') idBook: string,
     @CurrentUser() user: CurrentUserDto
   ) {
-    return this.ColetionBookService.removeBookFromCollection(idCollection, idBook, user.userId);
+    return this.collectionBookService.removeBookFromCollection(idCollection, idBook, user.userId);
   }
 
   @Delete(':idCollection')
@@ -63,6 +63,6 @@ export class coletionBookController {
     @Param('idCollection') idCollection: string,
     @CurrentUser() user: CurrentUserDto
   ) {
-    return this.ColetionBookService.deleteCollection(idCollection, user.userId);
+    return this.collectionBookService.deleteCollection(idCollection, user.userId);
   }
 }
