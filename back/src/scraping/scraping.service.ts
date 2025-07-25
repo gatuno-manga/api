@@ -50,6 +50,7 @@ export class ScrapingService implements OnApplicationShutdown {
 				'--window-size=1920,1080',
 				'--disable-extensions',
 				'--disable-popup-blocking',
+				'--headless',
 			],
 		});
 
@@ -199,7 +200,7 @@ export class ScrapingService implements OnApplicationShutdown {
 			await driver.sleep(3000);
 			await driver.executeAsyncScript(`
 				const callback = arguments[arguments.length - 1];
-				const scrollStepPercent = 0.01; // 5%
+				const scrollStepPercent = 0.03; // 3%
 				const delay = 200;
 				let currentPosition = 0;
 				const scrollHeight = document.body.scrollHeight;

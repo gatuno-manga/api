@@ -21,7 +21,6 @@ import { OptionalAuthGuard } from 'src/auth/guard/optional-auth.guard';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 
 @Controller('books')
-@UseGuards(JwtAuthGuard)
 export class BooksController {
 	constructor(private readonly booksService: BooksService) {}
 
@@ -35,6 +34,7 @@ export class BooksController {
 	}
 
 	@Post()
+	@UseGuards(JwtAuthGuard)
 	createBook(@Body() dto: CreateBookDto) {
 		return this.booksService.createBook(dto);
 	}
@@ -49,6 +49,7 @@ export class BooksController {
 	}
 
 	@Patch(':idBook/fix')
+	@UseGuards(JwtAuthGuard)
 	fixBook(
 		@Param('idBook') idBook: string,
 	) {
@@ -56,11 +57,13 @@ export class BooksController {
 	}
 
 	@Patch(':idBook')
+	@UseGuards(JwtAuthGuard)
 	updateBook(@Param('idBook') id: string, @Body() dto: UpdateBookDto) {
 		return this.booksService.updateBook(id, dto);
 	}
 
 	@Patch(':idBook/chapters')
+	@UseGuards(JwtAuthGuard)
 	updateChapter(
 		@Param('idBook') idBook: string,
 		@Body() dto: UpdateChapterDto[],
@@ -69,6 +72,7 @@ export class BooksController {
 	}
 
 	@Patch(':idBook/chapters/order')
+	@UseGuards(JwtAuthGuard)
 	orderChapters(
 		@Param('idBook') idBook: string,
 		@Body() dto: OrderChaptersDto[],

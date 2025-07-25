@@ -3,5 +3,4 @@ export class PayloadAuthDto {
 	sub: string;
 	roles: string[];
 	maxWeightSensitiveContent: number;
-
 }

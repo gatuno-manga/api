@@ -9,7 +9,6 @@ import { AuthGuard } from '@nestjs/passport';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 
 @Controller('sensitive-content')
-@UseGuards(JwtAuthGuard)
 export class SensitiveContentController {
     constructor(private readonly sensitiveContentService: SensitiveContentService) {}
 
@@ -22,26 +21,31 @@ export class SensitiveContentController {
     }
 
     @Get(':id')
+    @UseGuards(JwtAuthGuard)
     getOne(@Param('id') id: string) {
         return this.sensitiveContentService.getOne(id);
     }
 
     @Post()
+    @UseGuards(JwtAuthGuard)
     create(@Body() dto: CreateSensitiveContentDto) {
         return this.sensitiveContentService.create(dto);
     }
 
     @Put(':id')
+    @UseGuards(JwtAuthGuard)
     update(@Param('id') id: string, @Body() dto: UpdateSensitiveContentDto) {
         return this.sensitiveContentService.update(id, dto);
     }
 
     @Delete(':id')
+    @UseGuards(JwtAuthGuard)
     remove(@Param('id') id: string) {
         return this.sensitiveContentService.remove(id);
     }
 
     @Patch(':contentId/merge')
+    @UseGuards(JwtAuthGuard)
     mergeSensitiveContent(
         @Param('contentId') contentId: string,
         @Body() dto: string[],

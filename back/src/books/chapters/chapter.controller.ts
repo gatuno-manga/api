@@ -19,6 +19,7 @@ export class ChapterController {
     }
 
     @Patch('/reset/:idChapter')
+    @UseGuards(JwtAuthGuard)
     resetChapter(
         @Param('idChapter') idChapter: string,
     ) {
@@ -26,6 +27,7 @@ export class ChapterController {
     }
 
     @Patch('/reset')
+    @UseGuards(JwtAuthGuard)
     resetAllChapters(
         @Body() body: string[]
     ) {

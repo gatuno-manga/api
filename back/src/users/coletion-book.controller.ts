@@ -30,7 +30,6 @@ export class CollectionBookController {
     return this.collectionBookService.getCollectionBooks(user.userId, idCollection);
   }
 
-
   @Post()
   async createCollectionBook(
     @Body() dto: CreateCollectionBookDto,
