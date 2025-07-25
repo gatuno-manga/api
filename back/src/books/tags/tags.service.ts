@@ -4,6 +4,7 @@ import { Tag } from '../entitys/tags.entity';
 import { Repository, In } from 'typeorm';
 import { Book } from '../entitys/book.entity';
 import { TagsOptions } from './dto/tags-options.dto';
+import { SensitiveContentService } from '../sensitive-content/sensitive-content.service';
 
 @Injectable()
 export class TagsService {
@@ -13,24 +14,16 @@ export class TagsService {
         private readonly tagRepository: Repository<Tag>,
         @InjectRepository(Book)
         private readonly bookRepository: Repository<Book>,
+        private readonly sensitiveContentService: SensitiveContentService,
     ) {}
 
-    async getAll(options: TagsOptions): Promise<Tag[]> {
+    async getAll(options: TagsOptions, maxWeightSensitiveContent: number = 0): Promise<Tag[]> {
         const queryBuilder = this.bookRepository
             .createQueryBuilder('book')
             .leftJoinAndSelect('book.tags', 'tag')
             .leftJoin('book.sensitiveContent', 'sensitiveContent');
 
-        if (options.sensitiveContent && options.sensitiveContent.length > 0) {
-            queryBuilder.andWhere('sensitiveContent.name IN (:...sensitiveContents)', {
-                sensitiveContents: options.sensitiveContent,
-            });
-        }
-
-        if ((options.sensitiveContent && options.sensitiveContent.length === 0) || options.sensitiveContent?.includes('safe')) {
-            queryBuilder.andWhere('sensitiveContent.name IS NULL');
-        }
-
+        await this.sensitiveContentService.filterBooksSensitiveContent(queryBuilder, options.sensitiveContent, maxWeightSensitiveContent);
         const books = await queryBuilder.getMany();
 
         const tagIds = Array.from(

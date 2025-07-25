@@ -14,13 +14,14 @@ import { PassportModule } from '@nestjs/passport';
 import { DataEncryptionProvider } from 'src/encryption/data-encryption.provider';
 import { JwtRefreshStrategy } from './strategy/jwt-refresh.strategy';
 import { CreateAdminEvent } from './events/create-admin.event';
+import { Role } from 'src/users/entitys/role.entity';
 
 @Module({
   imports: [
     EncryptionModule,
     AppConfigModule,
     PassportModule,
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, Role]),
     JwtModule.registerAsync({
       imports: [AppConfigModule],
       inject: [AppConfigService],

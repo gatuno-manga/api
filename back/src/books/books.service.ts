@@ -1,7 +1,7 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Book } from './entitys/book.entity';
-import { Brackets, Repository, In } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Page } from './entitys/page.entity';
 import { CreateBookDto } from './dto/create-book.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -21,6 +21,7 @@ import { Author } from './entitys/author.entity';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { SensitiveContent } from './entitys/sensitive-content.entity';
 import { ChapterRead } from './entitys/chapter-read.entity';
+import { SensitiveContentService } from './sensitive-content/sensitive-content.service';
 
 @Injectable()
 export class BooksService {
@@ -38,6 +39,7 @@ export class BooksService {
 		private readonly authorRepository: Repository<Author>,
 		@InjectRepository(SensitiveContent)
 		private readonly sensitiveContentRepository: Repository<SensitiveContent>,
+		private readonly sensitiveContentService: SensitiveContentService,
 		private readonly scrapingService: ScrapingService,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly appConfig: AppConfigService,
@@ -174,7 +176,7 @@ export class BooksService {
 		});
 	}
 
-	async getAllBooks(options: BookPageOptionsDto): Promise<PageDto<any>> {
+	async getAllBooks(options: BookPageOptionsDto, maxWeightSensitiveContent: number = 0): Promise<PageDto<any>> {
 		const queryBuilder = this.bookRepository
 			.createQueryBuilder('book')
 			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
@@ -183,14 +185,7 @@ export class BooksService {
 			.take(options.limit);
 
 
-		if (options.sensitiveContent && options.sensitiveContent.length > 0) {
-			queryBuilder.andWhere('sensitiveContent.name IN (:...sensitiveContents)', {
-				sensitiveContents: options.sensitiveContent,
-			});
-		} else {
-			queryBuilder.andWhere('sensitiveContent.name IS NULL');
-		}
-
+		await this.sensitiveContentService.filterBooksSensitiveContent(queryBuilder, options.sensitiveContent, maxWeightSensitiveContent);
 		if (options.type && options.type.length > 0) {
 			queryBuilder.andWhere('book.type IN (:...types)', { types: options.type });
 		}
@@ -218,7 +213,7 @@ export class BooksService {
 		return `${appUrl}${url}`;
 	}
 
-	async getOne(id: string, userid?: string): Promise<Book> {
+	async getOne(id: string, userid?: string, maxWeightSensitiveContent: number = 0): Promise<Book> {
 		const book = await this.bookRepository.findOne({
 			where: { id },
 			relations: ['chapters', 'tags', 'authors', 'sensitiveContent'],
@@ -234,6 +229,7 @@ export class BooksService {
 				sensitiveContent: true,
 				cover: true,
 				tags: {
+					id: true,
 					name: true,
 				},
 				chapters: {
@@ -252,6 +248,12 @@ export class BooksService {
 			this.logger.warn(`Book with id ${id} not found`);
 			throw new NotFoundException(`Book with id ${id} not found`);
 		}
+		const maxWeight = book.sensitiveContent.reduce((sum, sc) => sum + (sc.weight || 0), 0);
+		if (maxWeight > maxWeightSensitiveContent) {
+			this.logger.warn(`Book with id ${id} exceeds max weight`);
+			throw new ForbiddenException(`Book with id ${id} exceeds max weight`);
+		}
+
 		if (book.cover) {
 			book.cover = this.urlImage(book.cover);
 		}
@@ -487,54 +489,4 @@ export class BooksService {
 		this.eventEmitter.emit('chapters.updated', book.chapters);
 		return book;
 	}
-
-	async getTags(): Promise<Tag[]> {
-		return this.tagRepository.find({
-			select: ['name'],
-			order: { name: 'ASC' },
-		});
-	}
-
-	async getSensitiveContent(): Promise<SensitiveContent[]> {
-		return this.sensitiveContentRepository.find({
-			select: ['id', 'name'],
-			order: { name: 'ASC' },
-		});
-	}
-
-	async mergeSensitiveContent(
-		id: string,
-		copy: string[]
-	) {
-		const sensitiveContent = await this.sensitiveContentRepository.findOne({
-			where: { id },
-		});
-		if (!sensitiveContent) {
-			this.logger.warn(`Sensitive content with id ${id} not found`);
-			throw new NotFoundException(`Sensitive content with id ${id} not found`);
-		}
-		const copyContents = await this.sensitiveContentRepository.find({
-			where: { id: In(copy) },
-		});
-		if (copyContents.length === 0) {
-			this.logger.warn(`No sensitive content found for names: ${copy.join(', ')}`);
-			throw new NotFoundException(`No sensitive content found for names: ${copy.join(', ')}`);
-		}
-		const books = await this.bookRepository
-			.createQueryBuilder('book')
-			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
-			.where('sensitiveContent.id IN (:...copyIds)', { copyIds: copy })
-			.getMany();
-
-		for (const book of books) {
-			book.sensitiveContent = book.sensitiveContent.filter(sc => !copy.includes(sc.id));
-			if (!book.sensitiveContent.some(sc => sc.id === id)) {
-				book.sensitiveContent.push(sensitiveContent);
-			}
-			await this.bookRepository.save(book);
-		}
-		await this.sensitiveContentRepository.remove(copyContents);
-		return sensitiveContent;
-	}
-
 }

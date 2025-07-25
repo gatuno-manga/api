@@ -1,5 +1,5 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
-import { Roles } from "../enum/roles.enum";
+import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn, ManyToMany, JoinTable } from "typeorm";
+import { Role } from "./role.entity";
 
 @Entity('users')
 export class User {
@@ -20,12 +20,12 @@ export class User {
     })
     password: string;
 
-    @Column({
-        type: 'set',
-        enum: Roles,
-        default: Roles.USER,
-    })
-    roles: Roles[];
+    @Column({ default: 0 })
+    maxWeightSensitiveContent: number;
+
+    @ManyToMany(() => Role, { eager: true })
+    @JoinTable({ name: 'users_roles' })
+    roles: Role[];
 
     @CreateDateColumn()
     createdAt: Date;

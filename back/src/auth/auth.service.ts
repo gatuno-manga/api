@@ -9,12 +9,15 @@ import { Roles } from 'src/users/enum/roles.enum';
 import { Repository } from 'typeorm';
 import { Cache } from 'cache-manager';
 import { AppConfigService } from 'src/app-config/app-config.service';
+import { Role } from 'src/users/entitys/role.entity';
 @Injectable()
 export class AuthService {
     private readonly logger = new Logger(AuthService.name);
     constructor(
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
+        @InjectRepository(Role)
+        private readonly roleRepository: Repository<Role>,
         private readonly passwordEncryption: PasswordEncryption,
         private readonly DataEncryption: DataEncryptionProvider,
         private readonly jwtService: JwtService,
@@ -44,22 +47,31 @@ export class AuthService {
         }
 
         const result = await this.passwordEncryption.encrypt(password);
+        const roleName = isAdmin ? 'admin' : 'user';
+        const role = await this.roleRepository.findOne({ where: { name: roleName } });
+        if (!role) {
+            throw new BadRequestException(`${roleName.charAt(0).toUpperCase() + roleName.slice(1)} role not found`);
+        }
         const user = await this.userRepository.save({
             userName: email.split('@')[0],
             email,
             password: result,
-            roles: isAdmin ? [Roles.ADMIN] : [Roles.USER],
-        })
+            roles: [role],
+        });
         this.logger.log('User create', user);
         return user;
     }
 
     private async getTokens(user: User): Promise<{ accessToken: string; refreshToken: string }> {
+        const maxWeightSensitiveContent = Math.max(
+            ...user.roles.map(role => role.maxWeightSensitiveContent ?? 0)
+        );
         const payload = {
             sub: user.id,
             iss: 'login',
             email: user.email,
-            roles: user.roles
+            roles: user.roles.map(role => role.name),
+            maxWeightSensitiveContent: maxWeightSensitiveContent
         }
         const [accessToken, refreshToken] = await Promise.all([
             this.jwtService.signAsync(
@@ -87,6 +99,7 @@ export class AuthService {
     async signIn(email: string, password: string) {
         const user = await this.userRepository.findOne({
             where: { email },
+            relations: ['roles'],
             select: ['id', 'email', 'password', 'roles'],
         });
         if (!user) {

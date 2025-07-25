@@ -3,7 +3,7 @@ import { UpdateSensitiveContentDto } from './dto/update-sensitive-content.dto';
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { SensitiveContent } from '../entitys/sensitive-content.entity';
-import { Repository, In, MoreThanOrEqual, LessThanOrEqual } from 'typeorm';
+import { Repository, In, MoreThanOrEqual, LessThanOrEqual, SelectQueryBuilder } from 'typeorm';
 import { Book } from '../entitys/book.entity';
 
 @Injectable()
@@ -78,5 +78,47 @@ export class SensitiveContentService {
         }
         await this.sensitiveContentRepository.remove(copyContents);
         return sensitiveContent;
+    }
+
+    async filterBooksSensitiveContent(queryBuilder: SelectQueryBuilder<Book>, names?: string[], weight: number = 0): Promise<void> {
+        let filterSafe = false;
+        let maxWeight: number | undefined = undefined;
+        let sensitiveContentNames: string[] = [];
+        if (names) {
+            filterSafe = names.includes('safe');
+            sensitiveContentNames = names.filter(name => name !== 'safe');
+        }
+        if (sensitiveContentNames.length === 0) {
+            queryBuilder.andWhere('sensitiveContent.name IS NULL');
+        } else if (sensitiveContentNames.length > 0) {
+            const sensitiveContents = await this.sensitiveContentRepository.find({
+                where: [
+                    {
+                        name: In(sensitiveContentNames),
+                        weight: LessThanOrEqual(weight),
+                    },
+                ],
+            });
+            if (sensitiveContents.length > 0) {
+                maxWeight = Math.max(...sensitiveContents.map(sc => sc.weight));
+                if (filterSafe) {
+                    queryBuilder.andWhere(
+                        '(sensitiveContent.name IN (:...sensitiveContents) OR sensitiveContent.name IS NULL)',
+                        { sensitiveContents: sensitiveContentNames }
+                    );
+                } else {
+                    queryBuilder.andWhere(
+                        'sensitiveContent.name IN (:...sensitiveContents)',
+                        { sensitiveContents: sensitiveContentNames }
+                    );
+                }
+                queryBuilder.andWhere(
+                    '((SELECT MAX(sc.weight) FROM books_sensitive_content_sensitive_content ssc INNER JOIN sensitive_content sc ON sc.id = ssc.sensitiveContentId WHERE ssc.booksId = book.id) <= :maxWeight OR sensitiveContent.name IS NULL)',
+                    { maxWeight }
+                );
+            } else {
+                queryBuilder.andWhere('sensitiveContent.name IS NULL');
+            }
+        }
     }
 }

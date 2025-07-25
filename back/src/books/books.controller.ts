@@ -2,6 +2,7 @@ import {
 	Body,
 	Controller,
 	Get,
+	Logger,
 	Param,
 	Patch,
 	Post,
@@ -17,37 +18,26 @@ import { OrderChaptersDto } from './dto/order-chapters.dto';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
 import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
 import { OptionalAuthGuard } from 'src/auth/guard/optional-auth.guard';
+import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 
 @Controller('books')
+@UseGuards(JwtAuthGuard)
 export class BooksController {
 	constructor(private readonly booksService: BooksService) {}
 
-	@Get() getAllBooks(@Query() pageOptions: BookPageOptionsDto) {
-		return this.booksService.getAllBooks(pageOptions);
+	@Get()
+	@UseGuards(OptionalAuthGuard)
+	getAllBooks(
+		@Query() pageOptions: BookPageOptionsDto,
+		@CurrentUser() user?: CurrentUserDto
+	) {
+		return this.booksService.getAllBooks(pageOptions, user?.maxWeightSensitiveContent);
 	}
+
 	@Post()
 	createBook(@Body() dto: CreateBookDto) {
 		return this.booksService.createBook(dto);
 	}
-
-	@Get('tags')
-	getTags() {
-		return this.booksService.getTags();
-	}
-
-	@Get('sensitive-content')
-	getSensitiveContent() {
-		return this.booksService.getSensitiveContent();
-	}
-
-	@Patch('sensitive-content/:contentId/merge')
-	updateSensitiveContent(
-		@Param('contentId') contentId: string,
-		@Body() dto: string[],
-	) {
-		return this.booksService.mergeSensitiveContent(contentId, dto);
-	}
-
 
 	@Get(':idBook')
 	@UseGuards(OptionalAuthGuard)
@@ -55,7 +45,7 @@ export class BooksController {
 		@Param('idBook') id: string,
 		@CurrentUser() user?: CurrentUserDto
 	) {
-		return this.booksService.getOne(id, user?.userId);
+		return this.booksService.getOne(id, user?.userId, user?.maxWeightSensitiveContent);
 	}
 
 	@Patch(':idBook/fix')

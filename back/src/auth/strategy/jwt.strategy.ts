@@ -4,6 +4,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { PayloadAuthDto } from '../dto/payload-auth.dto';
 import { Injectable } from '@nestjs/common';
+import { CurrentUserDto } from '../dto/current-user.dto';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -18,7 +19,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 		});
 	}
 
-	async validate(payload: PayloadAuthDto) {
-		return { userId: payload.sub, username: payload.email };
+	async validate(payload: PayloadAuthDto): Promise<CurrentUserDto> {
+		return {
+			userId: payload.sub,
+			username: payload.email,
+			roles: payload.roles,
+			maxWeightSensitiveContent: payload.maxWeightSensitiveContent,
+		};
 	}
 }
