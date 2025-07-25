@@ -8,4 +8,11 @@ export class SensitiveContent {
 
     @Column({ unique: true })
     name: string;
+
+    @Column({
+        type: 'int',
+        default: 0,
+        unsigned: true,
+    })
+    weight: number;
 }
