@@ -50,7 +50,17 @@ export class ScrapingService implements OnApplicationShutdown {
 				'--window-size=1920,1080',
 				'--disable-extensions',
 				'--disable-popup-blocking',
-				'--headless',
+				'--disable-animations',
+				'--disable-transitions',
+				'--disable-notifications',
+				'--disable-background-timer-throttling',
+				'--disable-backgrounding-occluded-windows',
+				'--disable-renderer-backgrounding',
+				'--disable-ipc-flooding-protection',
+				'--disable-default-apps',
+				'--disable-translate',
+				'--disable-sync',
+				// '--headless',
 			],
 		});
 
@@ -204,6 +214,12 @@ export class ScrapingService implements OnApplicationShutdown {
 				const delay = 200;
 				let currentPosition = 0;
 				const scrollHeight = document.body.scrollHeight;
+
+				window.scrollTo(0, document.body.scrollHeight);
+				setTimeout(() => {
+					window.scrollTo(0, 0);
+				}, 2000);
+
 				function scrollStep() {
 					const step = Math.max(1, Math.floor(scrollHeight * scrollStepPercent));
 					currentPosition += step;

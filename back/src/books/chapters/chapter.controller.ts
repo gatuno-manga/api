@@ -18,7 +18,7 @@ export class ChapterController {
         return this.chapterService.getChapter(idChapter, user?.userId);
     }
 
-    @Patch('/reset/:idChapter')
+    @Patch(':idChapter/reset/')
     @UseGuards(JwtAuthGuard)
     resetChapter(
         @Param('idChapter') idChapter: string,

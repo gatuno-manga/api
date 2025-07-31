@@ -11,6 +11,7 @@ import { join } from 'path';
 import { FilesModule } from './files/files.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { BullModule } from '@nestjs/bullmq';
 
 @Module({
 	imports: [
@@ -21,6 +22,21 @@ import { AuthModule } from './auth/auth.module';
 		BooksModule,
 		ServeStaticModule.forRoot({
 			rootPath: join(__dirname, '..', 'data'),
+		}),
+		BullModule.forRoot({
+			defaultJobOptions: {
+				attempts: 3,
+				removeOnComplete: true,
+				removeOnFail: 10,
+				backoff: {
+					type: 'exponential',
+					delay: 5000,
+				}
+			},
+			connection: {
+				host: 'redis',
+				port: 6379,
+			},
 		}),
 		FilesModule,
 		UsersModule,

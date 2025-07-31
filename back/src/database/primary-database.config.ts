@@ -1,6 +1,7 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { DatabaseType } from './database-types';
+import e from 'express';
 
 export const config = (
 	configService: AppConfigService,
@@ -13,4 +14,10 @@ export const config = (
 	database: configService.database.name,
 	entities: [__dirname + '/../**/*.entity{.ts,.js}'],
 	synchronize: true,
+	extra: {
+		min: 10,
+		max: 50,
+		idleTimeoutMillis: 30000,
+		connectionTimeoutMillis: 2000,
+	}
 });

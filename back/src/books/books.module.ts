@@ -20,6 +20,10 @@ import { TagsController } from './tags/tags.controller';
 import { SensitiveContentController } from './sensitive-content/sensitive-content.controller';
 import { SensitiveContentService } from './sensitive-content/sensitive-content.service';
 import { TagsService } from './tags/tags.service';
+import { BullModule } from '@nestjs/bullmq';
+import { ChapterScrapingJob } from './jobs/chapter-scraping.job';
+import { ChapterScrapingService } from './jobs/chapter-scraping.service';
+import { join } from 'path';
 
 @Module({
 	imports: [
@@ -35,8 +39,18 @@ import { TagsService } from './tags/tags.service';
 			SensitiveContent
 		]),
 		AuthModule,
+		BullModule.registerQueue({
+			name: 'chapter-scraping',
+			defaultJobOptions: {
+				removeOnFail: 10,
+				backoff: {
+					type: 'exponential',
+					delay: 5000,
+				},
+			},
+		}),
 	],
 	controllers: [BooksController, ChapterController, SensitiveContentController, TagsController],
-	providers: [BooksService, BookScrapingEvents, BookInitEvents, ChapterService, SensitiveContentService, TagsService],
+	providers: [BooksService, BookScrapingEvents, BookInitEvents, ChapterService, SensitiveContentService, TagsService, ChapterScrapingJob, ChapterScrapingService],
 })
 export class BooksModule {}

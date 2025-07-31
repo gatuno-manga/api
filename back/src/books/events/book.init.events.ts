@@ -30,17 +30,16 @@ export class BookInitEvents {
             .where('book.id IN (:...bookIds)', { bookIds })
             .getMany();
     }
-
-    @OnEvent('app.ready')
-    async applicationInit() {
-        this.logger.log('BookInitEvents module initialized');
-        const books = await this.findBooksWithChaptersInProcess();
-        if (books.length === 0) {
-            return;
-        }
-        this.logger.log(`Livros com capítulos em PROCESS: ${books.length}`);
-        for (const book of books) {
-            this.eventEmitter.emit('chapters.updated', book.chapters);
-        }
-    }
+    // @OnEvent('app.ready')
+    // async applicationInit() {
+    //     this.logger.log('BookInitEvents module initialized');
+    //     const books = await this.findBooksWithChaptersInProcess();
+    //     if (books.length === 0) {
+    //         return;
+    //     }
+    //     this.logger.log(`Livros com capítulos em PROCESS: ${books.length}`);
+    //     for (const book of books) {
+    //         this.eventEmitter.emit('chapters.updated', book.chapters);
+    //     }
+    // }
 }

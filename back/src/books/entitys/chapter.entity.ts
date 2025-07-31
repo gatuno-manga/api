@@ -36,6 +36,11 @@ export class Chapter {
 	})
 	scrapingStatus: ScrapingStatus;
 
+	@Column({
+		default: 0,
+	})
+	retries: number;
+
 	@ManyToOne(() => Book, {
 		onDelete: 'CASCADE',
 	})
