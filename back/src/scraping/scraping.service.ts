@@ -126,14 +126,14 @@ export class ScrapingService implements OnApplicationShutdown {
 				() => driver.getTitle().then((title) => title.length > 0),
 				10000,
 			);
-			await driver.executeScript(preScript);
-			await driver.sleep(3000);
+			if (preScript) {
+				await driver.executeScript(preScript);
+				await driver.sleep(3000);
+			}
 
 			const scrollScript = fs.readFileSync(path.resolve(__dirname, 'scripts/scrollAndWait.js'), 'utf8');
-			await driver.executeAsyncScript(scrollScript);
+			await driver.executeAsyncScript(scrollScript, selector);
 
-			await driver.sleep(500);
-			await this.waitForAllImagesLoaded(driver, selector);
 
 			const failedUrls = await this.failedImageUrls(driver, selector);
 			const imageUrls = await this.getImageUrls(driver, selector);
