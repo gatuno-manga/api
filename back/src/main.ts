@@ -14,6 +14,12 @@ async function bootstrap() {
 	app.setGlobalPrefix('api');
 	app.useStaticAssets(join(__dirname, '..', 'data'), {
 		prefix: '/data/',
+		maxAge: '7d',
+		setHeaders: (res, path) => {
+			res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+			res.setHeader('X-Content-Type-Options', 'nosniff');
+		},
+		dotfiles: 'ignore',
 	});
 	await app.listen(process.env.PORT ?? 3000);
 }
@@ -30,7 +36,7 @@ function configPipe(app: INestApplication) {
 
 function configureCors(app: INestApplication) {
 	app.enableCors({
-		origin: [process.env.APP_URL],
+		origin: process.env.ALLOWED_URL?.split(',') || ['http://localhost:4200'],
 		credentials: true,
 	});
 }
