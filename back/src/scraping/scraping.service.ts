@@ -4,12 +4,13 @@ import {
 	Browser,
 	Capabilities,
 	WebDriver,
-	By,
 } from 'selenium-webdriver';
 import * as path from 'path';
+import * as fs from 'fs';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { FilesService } from 'src/files/files.service';
 import { WebsiteService } from './website.service';
+import chromeOptionsConfig from './config/chromeOptionsConfig';
 
 @Injectable()
 export class ScrapingService implements OnApplicationShutdown {
@@ -25,50 +26,24 @@ export class ScrapingService implements OnApplicationShutdown {
 
 	async createInstance() {
 		const chromeCapabilities = Capabilities.chrome();
-		chromeCapabilities.set('goog:chromeOptions', {
+		const chromeOptions = {
+			...chromeOptionsConfig,
 			prefs: {
+				...chromeOptionsConfig.prefs,
 				'download.default_directory': this.downloadDir,
-				'download.prompt_for_download': false,
-				directory_upgrade: true,
-				'profile.default_content_settings.popups': 0,
-				'profile.default_content_setting_values.notifications': 2,
-				'profile.default_content_setting_values.geolocation': 2,
-				'profile.default_content_setting_values.media_stream_camera': 2,
-				'profile.default_content_setting_values.media_stream_mic': 2,
-				// 'profile.default_content_setting_values.images': 2, // Block images
-				// 'profile.default_content_setting_values.javascript': 2, // Block JavaScript
-				'profile.default_content_setting_values.plugins': 2, // Block plugins
 			},
-			args: [
-				'--disable-web-security',
-				'--disable-site-isolation-trials',
-				'--disable-features=IsolateOrigins,site-per-process',
-				'--disable-blink-features=AutomationControlled',
-				'--disable-infobars',
-				'--disable-dev-shm-usage',
-				'--no-sandbox',
-				'--window-size=1920,1080',
-				'--disable-extensions',
-				'--disable-popup-blocking',
-				'--disable-animations',
-				'--disable-transitions',
-				'--disable-notifications',
-				'--disable-background-timer-throttling',
-				'--disable-backgrounding-occluded-windows',
-				'--disable-renderer-backgrounding',
-				'--disable-ipc-flooding-protection',
-				'--disable-default-apps',
-				'--disable-translate',
-				'--disable-sync',
-				// '--headless',
-			],
-		});
+		};
+		chromeCapabilities.set('goog:chromeOptions', chromeOptions);
 
 		const driver = await new Builder()
 			.usingServer(this.appConfigService.seleniumUrl)
 			.forBrowser(Browser.CHROME)
 			.withCapabilities(chromeCapabilities)
 			.build();
+		await driver.manage().setTimeouts({
+			script: 1_200_000,
+			pageLoad: 1_200_000
+		});
 		this.drivers.push(driver);
 		return driver;
 	}
@@ -85,37 +60,8 @@ export class ScrapingService implements OnApplicationShutdown {
 		imageUrl: string,
 	): Promise<string | null> {
 		try {
-			const base64String = await driver.executeAsyncScript(
-				`
-                const url = arguments[0];
-                const callback = arguments[1]; // Callback para retornar o resultado ao WebDriver
-
-                fetch(url)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Network response was not ok.');
-                        }
-                        return response.blob();
-                    })
-                    .then(blob => {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                            // Retorna apenas a parte de dados da string Base64
-                            callback(reader.result.split(',')[1]);
-                        };
-                        reader.onerror = () => {
-                            callback(null); // Sinaliza erro
-                        };
-                        reader.readAsDataURL(blob);
-                    })
-                    .catch(error => {
-                        console.error('Erro no script do navegador:', error);
-                        callback(null); // Sinaliza erro
-                    });
-            `,
-				imageUrl,
-			);
-
+			const script = fs.readFileSync(path.resolve(__dirname, 'scripts/fetchImageAsBase64.js'), 'utf8');
+			const base64String = await driver.executeAsyncScript(script, imageUrl);
 			return base64String as string | null;
 		} catch (error) {
 			this.logger.error(
@@ -134,18 +80,9 @@ export class ScrapingService implements OnApplicationShutdown {
 		const pollInterval = 500;
 		const maxTries = Math.ceil(timeout / pollInterval);
 		let tries = 0;
-
+		const script = fs.readFileSync(path.resolve(__dirname, 'scripts/waitForAllImagesLoaded.js'), 'utf8');
 		while (tries < maxTries) {
-			const allLoaded = await driver.executeScript<boolean>(
-				`
-				const selector = arguments[0];
-				return Array.from(document.querySelectorAll(selector)).every(img => {
-					// Considera carregada se terminou (com sucesso ou erro)
-					return img.complete;
-				});
-				`,
-				selector,
-			);
+			const allLoaded = await driver.executeScript<boolean>(script, selector);
 			if (allLoaded) return;
 			await driver.sleep(pollInterval);
 			tries++;
@@ -159,33 +96,16 @@ export class ScrapingService implements OnApplicationShutdown {
 		driver: WebDriver,
 		selector = 'img',
 	): Promise<string[]> {
-		const imageElements = await driver.findElements(By.css(selector));
-		return (
-			await Promise.all(
-				imageElements.map((img) => img.getAttribute('src')),
-			)
-		).filter(
-			(src) =>
-				src &&
-				(src.startsWith('http://') ||
-					src.startsWith('https://') ||
-					src.startsWith('blob:')),
-		);
+		const script = fs.readFileSync(path.resolve(__dirname, 'scripts/getImageUrls.js'), 'utf8');
+		return await driver.executeScript<string[]>(script, selector);
 	}
 
 	async failedImageUrls(
 		driver: WebDriver,
 		selector = 'img',
 	): Promise<string[]> {
-		return await driver.executeScript<string[]>(
-			`
-			const selector = arguments[0];
-			return Array.from(document.querySelectorAll(selector))
-				.filter(img => img.complete && img.naturalWidth === 0)
-				.map(img => img.src);
-			`,
-			selector,
-		);
+		const script = fs.readFileSync(path.resolve(__dirname, 'scripts/failedImageUrls.js'), 'utf8');
+		return await driver.executeScript<string[]>(script, selector);
 	}
 
 	async scrapePages(url: string): Promise<string[]> {
@@ -208,31 +128,10 @@ export class ScrapingService implements OnApplicationShutdown {
 			);
 			await driver.executeScript(preScript);
 			await driver.sleep(3000);
-			await driver.executeAsyncScript(`
-				const callback = arguments[arguments.length - 1];
-				const scrollStepPercent = 0.03; // 3%
-				const delay = 200;
-				let currentPosition = 0;
-				const scrollHeight = document.body.scrollHeight;
 
-				window.scrollTo(0, document.body.scrollHeight);
-				setTimeout(() => {
-					window.scrollTo(0, 0);
-				}, 2000);
+			const scrollScript = fs.readFileSync(path.resolve(__dirname, 'scripts/scrollAndWait.js'), 'utf8');
+			await driver.executeAsyncScript(scrollScript);
 
-				function scrollStep() {
-					const step = Math.max(1, Math.floor(scrollHeight * scrollStepPercent));
-					currentPosition += step;
-					window.scrollTo(0, currentPosition);
-					if (currentPosition < scrollHeight) {
-						setTimeout(scrollStep, delay);
-					} else {
-						window.scrollTo(0, document.body.scrollHeight);
-						setTimeout(callback, 1000);
-					}
-				}
-				scrollStep();
-			`);
 			await driver.sleep(500);
 			await this.waitForAllImagesLoaded(driver, selector);
 
