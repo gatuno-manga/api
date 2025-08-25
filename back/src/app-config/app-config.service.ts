@@ -63,10 +63,11 @@ export class AppConfigService {
 		return {
 			type: this.config.get<string>('DB_TYPE'),
 			name: this.config.get<string>('DB_NAME'),
-			host: this.config.get<string>('DB_HOST'),
+			host: this.config.get<string>('DB_MASTER_HOST'),
 			port: this.config.get<number>('DB_PORT'),
 			username: this.config.get<string>('DB_USER'),
 			password: this.config.get<string>('DB_PASS'),
+			slaveHosts: (this.config.get<string>('DB_SLAVE_HOSTS') || '').split(','),
 		};
 	}
 

@@ -4,7 +4,7 @@ import { Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Page } from "../entitys/page.entity";
 import { Chapter } from "../entitys/chapter.entity";
-import { Repository } from "typeorm";
+import { DataSource, Repository } from "typeorm";
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { ScrapingService } from 'src/scraping/scraping.service';
 
@@ -20,6 +20,7 @@ export class ChapterScrapingJob extends WorkerHost {
         private readonly pageRepository: Repository<Page>,
         @InjectRepository(Chapter)
         private readonly chapterRepository: Repository<Chapter>,
+        private readonly dataSource: DataSource,
         private readonly scrapingService: ScrapingService,
     ) {
         super();
@@ -31,13 +32,24 @@ export class ChapterScrapingJob extends WorkerHost {
         const startTime = Date.now();
 
         this.logger.debug(`Buscando capítulo com ID: ${chapterId}`);
-        const chapter = await this.chapterRepository
-            .createQueryBuilder('chapter')
-            // .setLock('pessimistic_write')
-            .leftJoinAndSelect('chapter.book', 'book')
-            .leftJoinAndSelect('chapter.pages', 'page')
-            .where('chapter.id = :id', { id: chapterId })
-            .getOne();
+        const queryRunner = this.dataSource.createQueryRunner('master');
+        let chapter: Chapter | undefined;
+        try {
+            chapter = await queryRunner.manager
+                .getRepository(Chapter)
+                .createQueryBuilder('chapter')
+                // .setLock('pessimistic_write')
+                .leftJoinAndSelect('chapter.book', 'book')
+                .leftJoinAndSelect('chapter.pages', 'page')
+                .where('chapter.id = :id', { id: chapterId })
+                .getOne() ?? undefined;
+        } catch (error) {
+            this.logger.error(`Erro ao buscar capítulo com ID ${chapterId}: ${error.message}`);
+            throw error;
+        }
+        finally {
+            await queryRunner.release();
+        }
 
         if (!chapter) {
             this.logger.error(`Capítulo com ID ${chapterId} não encontrado. Job ${job.id} falhará.`);
@@ -51,18 +63,22 @@ export class ChapterScrapingJob extends WorkerHost {
     }
 
 
+
     @OnWorkerEvent('active')
     onActive(job: Job<string>) {
         const chapterId = job.data;
-        this.chapterRepository.findOne({
-            where: { id: chapterId },
+        const queryRunner = this.dataSource.createQueryRunner('master');
+        queryRunner.connect().then(() => {
+            return queryRunner.manager.findOne(Chapter, { where: { id: chapterId } });
         }).then(chapter => {
             if (chapter) {
                 chapter.retries += 1;
-                this.chapterRepository.manager.save(chapter);
+                return queryRunner.manager.save(chapter);
             }
         }).catch(error => {
-            this.logger.error(`Erro ao incrementar retantatica para o capítulo ${chapterId}: ${error.message}`);
+            this.logger.error(`Erro ao incrementar retentativa para o capítulo ${chapterId}: ${error.message}`);
+        }).finally(() => {
+            queryRunner.release();
         });
     }
 
