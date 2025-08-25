@@ -23,7 +23,9 @@ import { TagsService } from './tags/tags.service';
 import { BullModule } from '@nestjs/bullmq';
 import { ChapterScrapingJob } from './jobs/chapter-scraping.job';
 import { ChapterScrapingService } from './jobs/chapter-scraping.service';
-import { join } from 'path';
+import { CoverImageService } from './jobs/cover-image.service';
+import { CoverImageProcessor } from './jobs/cover-image.processor';
+import { AdminBooksController } from './admin-books.controller';
 
 @Module({
 	imports: [
@@ -39,18 +41,43 @@ import { join } from 'path';
 			SensitiveContent
 		]),
 		AuthModule,
-		BullModule.registerQueue({
-			name: 'chapter-scraping',
-			defaultJobOptions: {
-				removeOnFail: 10,
-				backoff: {
-					type: 'exponential',
-					delay: 5000,
+		BullModule.registerQueue(
+			{
+				name: 'chapter-scraping',
+				defaultJobOptions: {
+					removeOnFail: 10,
+					delay: 10000,
+					backoff: {
+						type: 'exponential',
+						delay: 5000,
+					},
 				},
 			},
-		}),
+			{
+				name: 'cover-image-queue',
+				defaultJobOptions: {
+					removeOnFail: 10,
+					delay: 10000,
+					backoff: {
+						type: 'exponential',
+						delay: 5000,
+					},
+				},
+			}
+		),
 	],
-	controllers: [BooksController, ChapterController, SensitiveContentController, TagsController],
-	providers: [BooksService, BookScrapingEvents, BookInitEvents, ChapterService, SensitiveContentService, TagsService, ChapterScrapingJob, ChapterScrapingService],
+	controllers: [BooksController, ChapterController, SensitiveContentController, TagsController, AdminBooksController],
+	providers: [
+		BooksService,
+		BookScrapingEvents,
+		BookInitEvents,
+		ChapterService,
+		SensitiveContentService,
+		TagsService,
+		ChapterScrapingJob,
+		ChapterScrapingService,
+		CoverImageService,
+		CoverImageProcessor,
+	],
 })
 export class BooksModule {}

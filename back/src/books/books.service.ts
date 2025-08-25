@@ -12,6 +12,7 @@ import { MetadataPageDto } from 'src/pages/metadata-page.dto';
 import { PageDto } from 'src/pages/page.dto';
 import { BookPageOptionsDto } from './dto/book-page-options.dto';
 import { ScrapingService } from 'src/scraping/scraping.service';
+import { CoverImageService } from './jobs/cover-image.service';
 import { UpdateBookDto } from './dto/update-book.dto';
 import { ScrapingStatus } from './enum/scrapingStatus.enum';
 import { UpdateChapterDto } from './dto/update-chapter.dto';
@@ -40,7 +41,7 @@ export class BooksService {
 		@InjectRepository(SensitiveContent)
 		private readonly sensitiveContentRepository: Repository<SensitiveContent>,
 		private readonly sensitiveContentService: SensitiveContentService,
-		private readonly scrapingService: ScrapingService,
+		private readonly coverImageService: CoverImageService,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly appConfig: AppConfigService,
 	) {}
@@ -166,19 +167,7 @@ export class BooksService {
 			}
 
 			if (dto.cover) {
-				this.scrapingService
-					.scrapeSingleImage(dto.cover.urlOrigin, dto.cover.urlImg)
-					.then(async (cover) => {
-						book.cover = cover;
-						await this.bookRepository.save(book);
-						this.logger.log(`Capa salva para o livro: ${book.title}`);
-					})
-					.catch((err) => {
-						this.logger.warn(
-							`Falha ao baixar capa para o livro: ${book.title}`,
-							err,
-						);
-					});
+				await this.coverImageService.addCoverToQueue(book.id, dto.cover.urlOrigin, dto.cover.urlImg);
 			}
 			const savedBook = await manager.save(book);
 			this.eventEmitter.emit('book.created', savedBook);
@@ -318,21 +307,7 @@ export class BooksService {
 		}
 
 		if (dto.cover) {
-			this.scrapingService
-				.scrapeSingleImage(dto.cover.urlOrigin, dto.cover.urlImg)
-				.then(async (cover) => {
-					book.cover = cover;
-					await this.bookRepository.save(book);
-					this.logger.log(
-						`Capa atualizada para o livro: ${book.title}`,
-					);
-				})
-				.catch((err) => {
-					this.logger.warn(
-						`Falha ao baixar capa para o livro: ${book.title}`,
-						err,
-					);
-				});
+			await this.coverImageService.addCoverToQueue(book.id, dto.cover.urlOrigin, dto.cover.urlImg);
 		}
 
 		return this.bookRepository.save(book);
