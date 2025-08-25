@@ -76,6 +76,8 @@ export class SensitiveContentService {
             }
             await this.bookRepository.save(book);
         }
+        sensitiveContent.altNames = Array.from(new Set([...(sensitiveContent.altNames || []), ...copyContents.flatMap(sc => sc.altNames || []), ...copyContents.map(sc => sc.name)]));
+        await this.sensitiveContentRepository.save(sensitiveContent)
         await this.sensitiveContentRepository.remove(copyContents);
         return sensitiveContent;
     }

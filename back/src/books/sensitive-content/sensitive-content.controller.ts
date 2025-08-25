@@ -5,7 +5,6 @@ import { UpdateSensitiveContentDto } from './dto/update-sensitive-content.dto';
 import { OptionalAuthGuard } from 'src/auth/guard/optional-auth.guard';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
 import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
-import { AuthGuard } from '@nestjs/passport';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 
 @Controller('sensitive-content')

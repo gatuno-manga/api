@@ -17,7 +17,7 @@ export class TagsService {
         private readonly sensitiveContentService: SensitiveContentService,
     ) {}
 
-    async getAll(options: TagsOptions, maxWeightSensitiveContent: number = 0): Promise<Tag[]> {
+    async get(options: TagsOptions, maxWeightSensitiveContent: number = 99): Promise<Tag[]> {
         const queryBuilder = this.bookRepository
             .createQueryBuilder('book')
             .leftJoinAndSelect('book.tags', 'tag')
@@ -31,11 +31,16 @@ export class TagsService {
                 books.flatMap(book => book.tags.map(tag => tag.id))
             )
         );
-
         return this.tagRepository.find({
             where: { id: In(tagIds) },
             order: { name: 'ASC' },
         });
+    }
+
+    async getAll(options: TagsOptions, maxWeightSensitiveContent: number = 99): Promise<Tag[]> {
+        const allSensitiveContent = await this.sensitiveContentService.getAll(maxWeightSensitiveContent);
+        options.sensitiveContent = allSensitiveContent.map(sc => sc.name);
+        return this.get(options, maxWeightSensitiveContent);
     }
 
     async mergeTags(id: string, copy: string[]) {
@@ -66,6 +71,8 @@ export class TagsService {
             }
             await this.bookRepository.save(book);
         }
+        tag.altNames = Array.from(new Set([...(tag.altNames || []), ...copyTags.flatMap(t => t.altNames || []), ...copyTags.map(t => t.name)]));
+        await this.tagRepository.save(tag);
         await this.tagRepository.remove(copyTags);
         return tag;
     }

@@ -48,11 +48,16 @@ export class BooksService {
 	private async findOrCreateTags(tagNames: string[]): Promise<Tag[]> {
 		return Promise.all(
 			tagNames.map(async (tagName) => {
-				let tag = await this.tagRepository.findOne({
-					where: { name: tagName },
-				});
+				const lowerTagName = tagName.toLowerCase();
+				let tag = await this.tagRepository
+					.createQueryBuilder('tag')
+					.where('tag.name = :tagName', { tagName: lowerTagName })
+					.orWhere('JSON_CONTAINS(tag.altNames, :jsonTagName)', {
+						jsonTagName: `"${lowerTagName}"`,
+					})
+					.getOne()
 				if (!tag) {
-					tag = this.tagRepository.create({ name: tagName });
+					tag = this.tagRepository.create({ name: lowerTagName });
 					await this.tagRepository.save(tag);
 				}
 				return tag;
@@ -111,11 +116,16 @@ export class BooksService {
 	): Promise<SensitiveContent[]> {
 		return Promise.all(
 			sensitiveContentNames.map(async (name) => {
-				let sensitiveContent = await this.sensitiveContentRepository.findOne({
-					where: { name },
-				});
+				const lowerName = name.toLowerCase();
+				let sensitiveContent = await this.sensitiveContentRepository
+					.createQueryBuilder('sensitiveContent')
+					.where('sensitiveContent.name = :name', { name: lowerName })
+					.orWhere('JSON_CONTAINS(sensitiveContent.altNames, :jsonName)', {
+						jsonName: `"${lowerName}"`,
+					})
+					.getOne();
 				if (!sensitiveContent) {
-					sensitiveContent = this.sensitiveContentRepository.create({ name });
+					sensitiveContent = this.sensitiveContentRepository.create({ name: lowerName });
 					await this.sensitiveContentRepository.save(sensitiveContent);
 				}
 				return sensitiveContent;

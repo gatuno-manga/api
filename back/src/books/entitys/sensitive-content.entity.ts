@@ -10,6 +10,12 @@ export class SensitiveContent {
     name: string;
 
     @Column({
+        type: 'json',
+        nullable: true,
+    })
+    altNames: string[];
+
+    @Column({
         type: 'int',
         default: 0,
         unsigned: true,

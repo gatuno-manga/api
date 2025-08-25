@@ -8,6 +8,12 @@ export class Tag {
 	name: string;
 
 	@Column({
+		type: 'json',
+		nullable: true,
+	})
+	altNames: string[];
+
+	@Column({
 		nullable: true,
 	})
 	description: string;

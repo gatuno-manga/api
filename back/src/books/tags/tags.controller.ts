@@ -5,6 +5,8 @@ import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { OptionalAuthGuard } from 'src/auth/guard/optional-auth.guard';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
 import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
+import { Roles } from 'src/auth/decorator/roles.decorator';
+import { RolesEnum } from 'src/users/enum/roles.enum';
 
 @Controller('tags')
 @UseGuards(JwtAuthGuard)
@@ -16,7 +18,7 @@ export class TagsController {
     getAll(
         @Query() options: TagsOptions,
         @CurrentUser() user?: CurrentUserDto) {
-        return this.tagsService.getAll(options, user?.maxWeightSensitiveContent);
+        return this.tagsService.get(options, user?.maxWeightSensitiveContent);
     }
 
     @Patch(':tagId/merge')
