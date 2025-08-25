@@ -4,7 +4,7 @@ import { Role } from './entitys/role.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { Roles } from './enum/roles.enum';
+import { RolesEnum } from './enum/roles.enum';
 
 @Injectable()
 export class UsersService implements OnModuleInit {
@@ -19,11 +19,11 @@ export class UsersService implements OnModuleInit {
     async onModuleInit() {
         const roles = [
             {
-                name: Roles.ADMIN,
+                name: RolesEnum.ADMIN,
                 maxWeightSensitiveContent: 99
             },
             {
-                name: Roles.USER,
+                name: RolesEnum.USER,
                 maxWeightSensitiveContent: 4
             },
         ]

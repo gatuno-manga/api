@@ -5,7 +5,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataEncryptionProvider } from 'src/encryption/data-encryption.provider';
 import { PasswordEncryption } from 'src/encryption/password-encryption.provider';
 import { User } from 'src/users/entitys/user.entity';
-import { Roles } from 'src/users/enum/roles.enum';
 import { Repository } from 'typeorm';
 import { Cache } from 'cache-manager';
 import { AppConfigService } from 'src/app-config/app-config.service';
