@@ -33,12 +33,6 @@ export class BooksController {
 		return this.booksService.getAllBooks(pageOptions, user?.maxWeightSensitiveContent);
 	}
 
-	@Post()
-	@UseGuards(JwtAuthGuard)
-	createBook(@Body() dto: CreateBookDto) {
-		return this.booksService.createBook(dto);
-	}
-
 	@Get(':idBook')
 	@UseGuards(OptionalAuthGuard)
 	getBook(
@@ -46,37 +40,5 @@ export class BooksController {
 		@CurrentUser() user?: CurrentUserDto
 	) {
 		return this.booksService.getOne(id, user?.userId, user?.maxWeightSensitiveContent);
-	}
-
-	@Patch(':idBook/fix')
-	@UseGuards(JwtAuthGuard)
-	fixBook(
-		@Param('idBook') idBook: string,
-	) {
-		return this.booksService.fixBook(idBook);
-	}
-
-	@Patch(':idBook')
-	@UseGuards(JwtAuthGuard)
-	updateBook(@Param('idBook') id: string, @Body() dto: UpdateBookDto) {
-		return this.booksService.updateBook(id, dto);
-	}
-
-	@Patch(':idBook/chapters')
-	@UseGuards(JwtAuthGuard)
-	updateChapter(
-		@Param('idBook') idBook: string,
-		@Body() dto: UpdateChapterDto[],
-	) {
-		return this.booksService.updateChapter(idBook, dto);
-	}
-
-	@Patch(':idBook/chapters/order')
-	@UseGuards(JwtAuthGuard)
-	orderChapters(
-		@Param('idBook') idBook: string,
-		@Body() dto: OrderChaptersDto[],
-	) {
-		return this.booksService.orderChapters(idBook, dto);
 	}
 }
