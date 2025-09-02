@@ -20,6 +20,8 @@ export class ChapterService {
     ) {}
 
     private urlImage(url: string): string {
+        if (!url || url.startsWith('null') || url.startsWith('undefined'))
+            return '';
         const appUrl = this.appConfig.apiUrl;
         return `${appUrl}${url}`;
     }
