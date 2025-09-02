@@ -180,6 +180,7 @@ export class BooksService {
 			.createQueryBuilder('book')
 			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
 			.loadRelationCountAndMap('book.chapterCount', 'book.chapters')
+			.orderBy('book.createdAt', 'DESC')
 			.skip((options.page - 1) * options.limit)
 			.take(options.limit);
 
@@ -458,9 +459,11 @@ export class BooksService {
 		}
 		const processChapter: Chapter[] = []
 		for (const chapter of book.chapters) {
+			const hasNullPathPage = chapter.pages.some(page => page.path === null || page.path.startsWith('null') || page.path.startsWith('undefined'));
 			if (
 				chapter.scrapingStatus === ScrapingStatus.ERROR ||
-				chapter.pages.length <= 5
+				chapter.pages.length <= 5 ||
+				hasNullPathPage
 			) {
 				chapter.scrapingStatus = ScrapingStatus.PROCESS;
 				processChapter.push(chapter);
@@ -473,5 +476,111 @@ export class BooksService {
 		);
 		this.eventEmitter.emit('chapters.updated', book.chapters);
 		return book;
+	}
+
+	async resetBook(idBook: string) {
+		const book = await this.bookRepository.findOne({
+			where: { id: idBook },
+			relations: ['chapters'],
+		});
+		if (!book) {
+			this.logger.warn(`Book with id ${idBook} not found`);
+			throw new NotFoundException(`Book with id ${idBook} not found`);
+		}
+		for (const chapter of book.chapters) {
+			chapter.scrapingStatus = ScrapingStatus.PROCESS;
+		}
+		await this.bookRepository.save(book);
+		this.eventEmitter.emit('chapters.updated', book.chapters);
+		return book;
+	}
+
+	async verifyBook(idBook: string) {
+		const book = await this.bookRepository.findOne({
+			where: { id: idBook },
+			relations: ['chapters', 'chapters.pages'],
+		});
+		if (!book) {
+			this.logger.warn(`Book with id ${idBook} not found`);
+			throw new NotFoundException(`Book with id ${idBook} not found`);
+		}
+		const errorChapters: Chapter[] = [];
+		for (const chapter of book.chapters) {
+			const hasNullPathPage = chapter.pages.some(page => page.path === null || page.path.startsWith('null') || page.path.startsWith('undefined'));
+			// this.logger.log(`Verifying chapter ${chapter.id} with ${hasNullPathPage} pages`);
+			if (
+				chapter.scrapingStatus === ScrapingStatus.ERROR ||
+				chapter.pages.length <= 5 ||
+				hasNullPathPage
+			) {
+				chapter.scrapingStatus = ScrapingStatus.ERROR;
+				errorChapters.push(chapter);
+			}
+		}
+		return {
+			numberOfChapters: book.chapters.length,
+			numberOfPages: book.chapters.reduce((acc, chapter) => acc + chapter.pages.length, 0),
+			numberOfChaptersWithError: errorChapters.length,
+			pagesErrorCount: errorChapters.reduce((acc, chapter) => acc + chapter.pages.filter(page => page.path === null || page.path.startsWith('null') || page.path.startsWith('undefined')).length, 0),
+			errorChapters: errorChapters.map(chapter => ({
+				id: chapter.id,
+				title: chapter.title,
+				scrapingStatus: chapter.scrapingStatus,
+				erroPages: chapter.pages.filter(page => page.path === null || page.path.startsWith('null') || page.path.startsWith('undefined')).length,
+			})),
+		};
+	}
+
+	async getDashboardOverview() {
+		const [books, chapters, pages] = await Promise.all([
+			this.bookRepository.count(),
+			this.chapterRepository.count(),
+			this.pageRepository.count(),
+		]);
+		const sensitiveContentCount = await this.sensitiveContentRepository.count();
+		const tagsCount = await this.tagRepository.count();
+		const authorsCount = await this.authorRepository.count();
+
+		return {
+			books,
+			chapters,
+			pages,
+			sensitiveContent: sensitiveContentCount,
+			tags: tagsCount,
+			authors: authorsCount,
+		};
+	}
+
+	async getProcessBook() {
+		const books = await this.bookRepository
+			.createQueryBuilder('book')
+			.leftJoinAndSelect('book.chapters', 'chapter')
+			.select(['book.id', 'book.cover', 'book.title', 'chapter.id', 'chapter.title', 'chapter.scrapingStatus'])
+			.getMany();
+
+		let totalChapters = 0;
+		let processingChapters = 0;
+
+		const booksWithProcessing = books
+			.map(book => {
+				const chapters = (book.chapters || []).filter(ch => ch.scrapingStatus === ScrapingStatus.PROCESS);
+				if (chapters.length === 0) return null;
+				totalChapters += chapters.length;
+				processingChapters += chapters.length;
+				return {
+					id: book.id,
+					title: book.title,
+					cover: this.urlImage(book.cover),
+					processingChapters: chapters.length,
+					totalChapters: book.chapters.length,
+				};
+			})
+			.filter(Boolean);
+
+		return {
+			totalChapters,
+			processingChapters,
+			books: booksWithProcessing
+		};
 	}
 }
