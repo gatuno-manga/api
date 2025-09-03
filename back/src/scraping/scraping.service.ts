@@ -12,17 +12,154 @@ import { FilesService } from 'src/files/files.service';
 import { WebsiteService } from './website.service';
 import chromeOptionsConfig from './config/chromeOptionsConfig';
 
+class ScrapingUtils {
+	static readScript(scriptPath: string): string {
+		return fs.readFileSync(path.resolve(__dirname, scriptPath), 'utf8');
+	}
+}
 @Injectable()
 export class ScrapingService implements OnApplicationShutdown {
 	private readonly logger = new Logger(ScrapingService.name);
 	private downloadDir = path.resolve('/usr/src/app/data');
-	private drivers: WebDriver[] = [];
+	private drivers: Set<WebDriver> = new Set();
 
 	constructor(
 		private readonly appConfigService: AppConfigService,
 		private readonly filesService: FilesService,
 		private readonly webSiteService: WebsiteService,
 	) {}
+
+	// Funções utilitárias e de baixo nível primeiro
+	private async removeDriver(driver: WebDriver) {
+		if (this.drivers.has(driver)) {
+			this.drivers.delete(driver);
+		}
+		await driver.quit();
+	}
+
+	private async fetchImageAsBase64(
+		driver: WebDriver,
+		imageUrl: string,
+	): Promise<string | null> {
+		try {
+			const script = ScrapingUtils.readScript('scripts/fetchImageAsBase64.js');
+			const base64String = await driver.executeAsyncScript(script, imageUrl);
+			return base64String as string | null;
+		} catch (error) {
+			this.logger.error(
+				`Falha ao executar script de download para ${imageUrl}`,
+				error,
+			);
+			return null;
+		}
+	}
+
+	private async waitForAllImagesLoaded(
+		driver: WebDriver,
+		selector = 'img',
+		timeout = 60000,
+	): Promise<void> {
+		const pollInterval = 500;
+		const maxTries = Math.ceil(timeout / pollInterval);
+		let tries = 0;
+		const script = ScrapingUtils.readScript('scripts/waitForAllImagesLoaded.js');
+		while (tries < maxTries) {
+			const allLoaded = await driver.executeScript<boolean>(script, selector);
+			if (allLoaded) return;
+			await driver.sleep(pollInterval);
+			tries++;
+		}
+		throw new Error(
+			'Timeout esperando todas as imagens carregarem (inclusive as que falharam)',
+		);
+	}
+
+	private async getImageUrls(
+		driver: WebDriver,
+		selector = 'img',
+	): Promise<string[]> {
+		const script = ScrapingUtils.readScript('scripts/getImageUrls.js');
+		return await driver.executeScript<string[]>(script, selector);
+	}
+
+	async failedImageUrls(
+		driver: WebDriver,
+		selector = 'img',
+	): Promise<string[]> {
+		const script = ScrapingUtils.readScript('scripts/failedImageUrls.js');
+		return await driver.executeScript<string[]>(script, selector);
+	}
+
+	private async getWebsiteConfig(url: string): Promise<{ selector: string; preScript: string; ignoreFiles: string[] }> {
+		let selector = 'img';
+		let preScript = ``;
+		let ignoreFiles: string[] = [];
+		const domain = new URL(url).hostname;
+		const website = await this.webSiteService.getByUrl(domain);
+		if (website) {
+			selector = website.selector || selector;
+			preScript = website.preScript || preScript;
+			ignoreFiles = website.ignoreFiles || [];
+		}
+		return { selector, preScript, ignoreFiles };
+	}
+
+	private async waitForPageTitle(driver: WebDriver): Promise<void> {
+		await driver.wait(
+			() => driver.getTitle().then((title) => title.length > 0),
+			10000,
+		);
+	}
+
+	private async scrollAndWait(
+		driver: WebDriver,
+		selector: string
+	): Promise<{ processedImageCount: number; failedImageCount: number; failedImages: string[]; }> {
+		const scrollScript = ScrapingUtils.readScript('scripts/scrollAndWait.js');
+		const result = await driver.executeAsyncScript(scrollScript, selector);
+		const { processedImageCount, failedImageCount, failedImages } = result as {
+			processedImageCount: number;
+			failedImageCount: number;
+			failedImages: string[];
+		};
+		return { processedImageCount, failedImageCount, failedImages };
+	}
+
+	private async downloadImages(
+		driver: WebDriver,
+		imageUrls: string[],
+		failedUrls: string[],
+		ignoreFiles: string[],
+	): Promise<(string | null)[]> {
+		return Promise.all(
+			imageUrls.map(async (imageUrl) => {
+				if (failedUrls.includes(imageUrl)) {
+					this.logger.warn(
+						`Imagem falhou ao carregar: ${imageUrl}`,
+					);
+					return 'null';
+				}
+				if (ignoreFiles && ignoreFiles.includes(imageUrl)) {
+					this.logger.warn(
+						`Imagem ignorada por configuração: ${imageUrl}`,
+					);
+					return null;
+				}
+				const base64Data = await this.fetchImageAsBase64(
+					driver,
+					imageUrl,
+				);
+				if (!base64Data) return 'null';
+
+				const extension =
+					path.extname(new URL(imageUrl).pathname) || '.jpg';
+				return this.filesService.saveBase64File(
+					base64Data,
+					extension,
+				);
+			}),
+		);
+	}
 
 	async createInstance() {
 		const chromeCapabilities = Capabilities.chrome();
@@ -44,131 +181,40 @@ export class ScrapingService implements OnApplicationShutdown {
 			script: 1_200_000,
 			pageLoad: 1_200_000
 		});
-		this.drivers.push(driver);
+		this.drivers.add(driver);
 		return driver;
 	}
 
-	private async removeDriver(driver: WebDriver) {
-		const idx = this.drivers.indexOf(driver);
-		if (idx > -1)
-			this.drivers.splice(idx, 1);
-		await driver.quit()
-	}
-
-	private async fetchImageAsBase64(
-		driver: WebDriver,
-		imageUrl: string,
-	): Promise<string | null> {
-		try {
-			const script = fs.readFileSync(path.resolve(__dirname, 'scripts/fetchImageAsBase64.js'), 'utf8');
-			const base64String = await driver.executeAsyncScript(script, imageUrl);
-			return base64String as string | null;
-		} catch (error) {
-			this.logger.error(
-				`Falha ao executar script de download para ${imageUrl}`,
-				error,
-			);
-			return null;
-		}
-	}
-
-	private async waitForAllImagesLoaded(
-		driver: WebDriver,
-		selector = 'img',
-		timeout = 60000,
-	): Promise<void> {
-		const pollInterval = 500;
-		const maxTries = Math.ceil(timeout / pollInterval);
-		let tries = 0;
-		const script = fs.readFileSync(path.resolve(__dirname, 'scripts/waitForAllImagesLoaded.js'), 'utf8');
-		while (tries < maxTries) {
-			const allLoaded = await driver.executeScript<boolean>(script, selector);
-			if (allLoaded) return;
-			await driver.sleep(pollInterval);
-			tries++;
-		}
-		throw new Error(
-			'Timeout esperando todas as imagens carregarem (inclusive as que falharam)',
-		);
-	}
-
-	private async getImageUrls(
-		driver: WebDriver,
-		selector = 'img',
-	): Promise<string[]> {
-		const script = fs.readFileSync(path.resolve(__dirname, 'scripts/getImageUrls.js'), 'utf8');
-		return await driver.executeScript<string[]>(script, selector);
-	}
-
-	async failedImageUrls(
-		driver: WebDriver,
-		selector = 'img',
-	): Promise<string[]> {
-		const script = fs.readFileSync(path.resolve(__dirname, 'scripts/failedImageUrls.js'), 'utf8');
-		return await driver.executeScript<string[]>(script, selector);
-	}
-
-	async scrapePages(url: string): Promise<string[]> {
+	async scrapePages(url: string, pages = 0): Promise<string[] | void> {
 		const driver = await this.createInstance();
-		let selector = 'img';
-		let preScript = ``;
-		let ignoreFiles: string[] = [];
-		const domain = new URL(url).hostname;
-		const website = await this.webSiteService.getByUrl(domain);
-		if (website) {
-			selector = website.selector || selector;
-			preScript = website.preScript || preScript;
-			ignoreFiles = website.ignoreFiles || [];
-		}
 		try {
+			const { selector, preScript, ignoreFiles } = await this.getWebsiteConfig(url);
+
 			await driver.get(url);
-			await driver.wait(
-				() => driver.getTitle().then((title) => title.length > 0),
-				10000,
-			);
+			await this.waitForPageTitle(driver);
+
 			if (preScript) {
 				await driver.executeScript(preScript);
 				await driver.sleep(3000);
 			}
 
-			const scrollScript = fs.readFileSync(path.resolve(__dirname, 'scripts/scrollAndWait.js'), 'utf8');
-			await driver.executeAsyncScript(scrollScript, selector);
-
-
+			await this.scrollAndWait(driver, selector);
 			const failedUrls = await this.failedImageUrls(driver, selector);
 			const imageUrls = await this.getImageUrls(driver, selector);
+
+			if (imageUrls.length <= pages) {
+				return [];
+			}
 
 			this.logger.log(
 				`Encontradas ${imageUrls.length} URLs de imagem válidas. Iniciando downloads.`,
 			);
 
-			const successfulPaths = await Promise.all(
-				imageUrls.map(async (imageUrl) => {
-					if (failedUrls.includes(imageUrl)) {
-						this.logger.warn(
-							`Imagem falhou ao carregar: ${imageUrl}`,
-						);
-						return 'null';
-					}
-					if (ignoreFiles && ignoreFiles.includes(imageUrl)) {
-						this.logger.warn(
-							`Imagem ignorada por configuração: ${imageUrl}`,
-						);
-						return null;
-					}
-					const base64Data = await this.fetchImageAsBase64(
-						driver,
-						imageUrl,
-					);
-					if (!base64Data) return 'null';
-
-					const extension =
-						path.extname(new URL(imageUrl).pathname) || '.jpg';
-					return this.filesService.saveBase64File(
-						base64Data,
-						extension,
-					);
-				}),
+			const successfulPaths = await this.downloadImages(
+				driver,
+				imageUrls,
+				failedUrls,
+				ignoreFiles,
 			);
 
 			return successfulPaths.filter(Boolean) as string[];
@@ -208,8 +254,9 @@ export class ScrapingService implements OnApplicationShutdown {
 	}
 
 	async onApplicationShutdown(signal: string) {
-		this.drivers.forEach((driver) => {
-			this.removeDriver(driver);
-		});
+		// Garante que todos os drivers sejam fechados
+		for (const driver of this.drivers) {
+			await this.removeDriver(driver);
+		}
 	}
 }
