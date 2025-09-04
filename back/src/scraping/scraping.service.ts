@@ -203,7 +203,7 @@ export class ScrapingService implements OnApplicationShutdown {
 			const imageUrls = await this.getImageUrls(driver, selector);
 
 			if (imageUrls.length <= pages) {
-				return [];
+				return;
 			}
 
 			this.logger.log(
