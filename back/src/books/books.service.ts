@@ -457,24 +457,8 @@ export class BooksService {
 			this.logger.warn(`Book with id ${idBook} not found`);
 			throw new NotFoundException(`Book with id ${idBook} not found`);
 		}
-		const processChapter: Chapter[] = []
-		for (const chapter of book.chapters) {
-			const hasNullPathPage = chapter.pages.some(page => page.path === null || page.path.startsWith('null') || page.path.startsWith('undefined'));
-			if (
-				chapter.scrapingStatus === ScrapingStatus.ERROR ||
-				chapter.pages.length <= 5 ||
-				hasNullPathPage
-			) {
-				chapter.scrapingStatus = ScrapingStatus.PROCESS;
-				processChapter.push(chapter);
-			}
-		}
-		await this.bookRepository.save(
-			this.bookRepository.merge(book, {
-				chapters: processChapter,
-			})
-		);
-		this.eventEmitter.emit('chapters.updated', book.chapters);
+
+		this.eventEmitter.emit('chapters.fix', book.chapters);
 		return book;
 	}
 

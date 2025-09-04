@@ -25,6 +25,8 @@ import { ChapterScrapingJob } from './jobs/chapter-scraping.job';
 import { ChapterScrapingService } from './jobs/chapter-scraping.service';
 import { CoverImageService } from './jobs/cover-image.service';
 import { CoverImageProcessor } from './jobs/cover-image.processor';
+import { FixChapterService } from './jobs/fix-chapter.service';
+import { FixChapterProcessor } from './jobs/fix-chapter.processor';
 import { AdminBooksController } from './admin-books.controller';
 
 @Module({
@@ -63,7 +65,18 @@ import { AdminBooksController } from './admin-books.controller';
 						delay: 5000,
 					},
 				},
-			}
+			},
+			{
+				name: 'fix-chapter-queue',
+				defaultJobOptions: {
+					removeOnFail: 10,
+					delay: 10000,
+					backoff: {
+						type: 'exponential',
+						delay: 5000,
+					},
+				},
+			},
 		),
 	],
 	controllers: [BooksController, ChapterController, SensitiveContentController, TagsController, AdminBooksController],
@@ -78,6 +91,8 @@ import { AdminBooksController } from './admin-books.controller';
 		ChapterScrapingService,
 		CoverImageService,
 		CoverImageProcessor,
+		FixChapterService,
+		FixChapterProcessor,
 	],
 })
 export class BooksModule {}
