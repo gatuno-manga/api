@@ -25,7 +25,7 @@ export class FixChapterProcessor extends WorkerHost {
         super();
     }
 
-    async process(job: Job<any>): Promise<void> {
+    async process(job: Job<{ chapterId: string }>): Promise<void> {
         const { chapterId } = job.data;
         this.logger.debug(`Processando conserto para o capítulo: ${chapterId}`);
         const chapter = await this.chapterRepository.findOne({
