@@ -5,6 +5,10 @@ import {
 	IsPositive,
 	IsString,
 	ValidateNested,
+	IsEnum,
+	IsUrl,
+	Min,
+	Max,
 } from 'class-validator';
 import { CreateChapterDto } from './create-chapter.dto';
 import { Type } from 'class-transformer';
@@ -21,7 +25,7 @@ export class CreateBookDto {
 	alternativeTitle?: string[] = [];
 
 	@IsOptional()
-	@IsString()
+	@IsEnum(BookType)
 	type?: BookType = BookType.OTHER;
 
 	@IsOptional()
@@ -29,7 +33,7 @@ export class CreateBookDto {
 	sensitiveContent?: string[] = [];
 
 	@IsOptional()
-	@IsString({ each: true })
+	@IsUrl({}, { each: true })
 	originalUrl?: string[] = [];
 
 	@IsOptional()
@@ -44,6 +48,10 @@ export class CreateBookDto {
 	@IsOptional()
 	@IsNumber()
 	@IsPositive()
+	@Min(1980)
+	@Max(new Date().getFullYear() + 2)
+	@Min(1980)
+	@Max(new Date().getFullYear() + 2)
 	publication?: number;
 
 	@IsOptional()

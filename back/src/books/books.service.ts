@@ -166,8 +166,8 @@ export class BooksService {
 				book.chapters = chapters;
 			}
 
-			if (dto.cover) {
-				await this.coverImageService.addCoverToQueue(book.id, dto.cover.urlOrigin, dto.cover.urlImg);
+			if (dto.cover && dto.cover.urlImgs && dto.cover.urlImgs.length > 0) {
+				await this.coverImageService.addCoverToQueue(book.id, dto.cover.urlOrigin, dto.cover.urlImgs);
 			}
 			const savedBook = await manager.save(book);
 			this.eventEmitter.emit('book.created', savedBook);
