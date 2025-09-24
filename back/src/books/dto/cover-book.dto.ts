@@ -1,5 +1,5 @@
-import { IsString, IsArray, ValidateNested, IsUrl, ArrayMinSize } from 'class-validator';
-import { Type, Transform } from 'class-transformer';
+import { IsArray, ValidateNested, IsUrl, ArrayMinSize } from 'class-validator';
+import { Type } from 'class-transformer';
 import { UrlImageDto } from './url-image.dto';
 
 export class CoverBookDto {
@@ -11,4 +11,16 @@ export class CoverBookDto {
 
 	@IsUrl()
 	urlOrigin: string;
+
+	static fromLegacyFormat(data: { urlImg: string; urlOrigin: string }): CoverBookDto {
+		const cover = new CoverBookDto();
+		const urlImage = new UrlImageDto();
+		urlImage.url = data.urlImg;
+		urlImage.title = 'cover image';
+
+		cover.urlImgs = [urlImage];
+		cover.urlOrigin = data.urlOrigin;
+
+		return cover;
+	}
 }

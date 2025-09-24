@@ -11,7 +11,7 @@ import {
 	Max,
 } from 'class-validator';
 import { CreateChapterDto } from './create-chapter.dto';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { CoverBookDto } from './cover-book.dto';
 import { BookType } from '../enum/book-type.enum';
 import { CreateAuthorDto } from './create-author.dto';
@@ -40,6 +40,20 @@ export class CreateBookDto {
 	@IsString()
 	description?: string;
 
+	@Transform(({ value }) => {
+		if (value && value.urlImgs !== undefined) {
+			return value;
+		}
+
+		if (value && value.urlImg && typeof value.urlImg === 'string') {
+			return CoverBookDto.fromLegacyFormat({
+				urlImg: value.urlImg,
+				urlOrigin: value.urlOrigin
+			});
+		}
+
+		return value;
+	})
 	@IsOptional()
 	@ValidateNested()
 	@Type(() => CoverBookDto)
@@ -48,8 +62,6 @@ export class CreateBookDto {
 	@IsOptional()
 	@IsNumber()
 	@IsPositive()
-	@Min(1980)
-	@Max(new Date().getFullYear() + 2)
 	@Min(1980)
 	@Max(new Date().getFullYear() + 2)
 	publication?: number;
