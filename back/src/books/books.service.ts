@@ -332,6 +332,7 @@ export class BooksService {
 			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
 			.leftJoinAndSelect('book.covers', 'covers')
 			.where('book.id = :id', { id })
+			.orderBy('covers.title', 'ASC')
 			.select([
 				'book.id',
 				'sensitiveContent.weight',
@@ -355,6 +356,23 @@ export class BooksService {
 			...cover,
 			url: this.urlImage(cover.url)
 		}));
+	}
+
+	async selectCover(idBook: string, idCover: string) {
+		const book = await this.bookRepository.findOne({
+			where: { id: idBook },
+			relations: ['covers'],
+		})
+		if (!book) {
+			this.logger.warn(`Book with id ${idBook} not found`);
+			throw new NotFoundException(`Book with id ${idBook} not found`);
+		}
+		book.covers = book.covers.map(cover => ({
+			...cover,
+			selected: cover.id === idCover
+		}));
+		await this.bookRepository.save(book);
+		return;
 	}
 
 	async getInfos(id: string, maxWeightSensitiveContent: number = 0) {
