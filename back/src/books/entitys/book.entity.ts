@@ -4,10 +4,13 @@ import {
 	Entity,
 	JoinTable,
 	ManyToMany,
+	ManyToOne,
 	OneToMany,
 	PrimaryGeneratedColumn,
 	Relation,
 	UpdateDateColumn,
+	Index,
+	Check,
 } from 'typeorm';
 import { Chapter } from './chapter.entity';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
@@ -15,19 +18,23 @@ import { Tag } from './tags.entity';
 import { BookType } from '../enum/book-type.enum';
 import { Author } from './author.entity';
 import { SensitiveContent } from './sensitive-content.entity';
+import { Cover } from './cover.entity';
 
 @Entity('books')
+@Index(['title'])
+@Index(['type'])
+@Index(['scrapingStatus'])
+@Index(['createdAt'])
+@Check(`"publication" IS NULL OR ("publication" >= 1980 AND "publication" <= ${new Date().getFullYear() + 2})`)
 export class Book {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
-	@Column()
+	@Column({ length: 500 })
 	title: string;
 
-	@Column({
-		nullable: true,
-	})
-	cover: string;
+	@OneToMany(() => Cover, (cover) => cover.book, { cascade: true })
+	covers: Relation<Cover[]>;
 
 	@Column({
 		type: 'json',
@@ -83,7 +90,7 @@ export class Book {
 		cascade: true,
 	})
 	@JoinTable()
-	authors: Relation<Author[]>
+	authors: Relation<Author[]>;
 
 	@CreateDateColumn()
 	createdAt: Date;

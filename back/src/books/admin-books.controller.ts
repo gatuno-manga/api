@@ -82,4 +82,12 @@ export class AdminBooksController {
 	processBookDashboard() {
 		return this.booksService.getProcessBook();
 	}
+
+	@Patch(':idBook/covers/:idCover/selected')
+	selectCover(
+		@Param('idBook') idBook: string,
+		@Param('idCover') idCover: string,
+	) {
+		return this.booksService.selectCover(idBook, idCover);
+	}
 }

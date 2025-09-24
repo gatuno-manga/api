@@ -32,24 +32,7 @@ export class ChapterScrapingJob extends WorkerHost {
         const startTime = Date.now();
 
         this.logger.debug(`Buscando capítulo com ID: ${chapterId}`);
-        const queryRunner = this.dataSource.createQueryRunner('master');
-        let chapter: Chapter | undefined;
-        try {
-            chapter = await queryRunner.manager
-                .getRepository(Chapter)
-                .createQueryBuilder('chapter')
-                // .setLock('pessimistic_write')
-                .leftJoinAndSelect('chapter.book', 'book')
-                .leftJoinAndSelect('chapter.pages', 'page')
-                .where('chapter.id = :id', { id: chapterId })
-                .getOne() ?? undefined;
-        } catch (error) {
-            this.logger.error(`Erro ao buscar capítulo com ID ${chapterId}: ${error.message}`);
-            throw error;
-        }
-        finally {
-            await queryRunner.release();
-        }
+        const chapter = await this.getChapter(chapterId);
 
         if (!chapter) {
             this.logger.error(`Capítulo com ID ${chapterId} não encontrado. Job ${job.id} falhará.`);
@@ -62,7 +45,16 @@ export class ChapterScrapingJob extends WorkerHost {
         this.logger.debug(`Job ${job.id} finalizado. Tempo total: ${(endTime - startTime) / 1000}s`);
     }
 
-
+    private async getChapter(chapterId: string) {
+        const queryRunner = this.dataSource.createQueryRunner('master');
+        await queryRunner.connect();
+        const chapter = await queryRunner.manager.findOne(Chapter, {
+            where: { id: chapterId },
+            relations: ['book', 'pages']
+        });
+        await queryRunner.release();
+        return chapter;
+    }
 
     @OnWorkerEvent('active')
     onActive(job: Job<string>) {

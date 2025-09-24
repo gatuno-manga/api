@@ -28,6 +28,7 @@ import { CoverImageProcessor } from './jobs/cover-image.processor';
 import { FixChapterService } from './jobs/fix-chapter.service';
 import { FixChapterProcessor } from './jobs/fix-chapter.processor';
 import { AdminBooksController } from './admin-books.controller';
+import { Cover } from './entitys/cover.entity';
 
 @Module({
 	imports: [
@@ -40,7 +41,8 @@ import { AdminBooksController } from './admin-books.controller';
 			Tag,
 			Author,
 			ChapterRead,
-			SensitiveContent
+			SensitiveContent,
+			Cover
 		]),
 		AuthModule,
 		BullModule.registerQueue(
