@@ -11,7 +11,6 @@ import { CreateChapterDto } from './dto/create-chapter.dto';
 import { MetadataPageDto } from 'src/pages/metadata-page.dto';
 import { PageDto } from 'src/pages/page.dto';
 import { BookPageOptionsDto } from './dto/book-page-options.dto';
-import { ScrapingService } from 'src/scraping/scraping.service';
 import { CoverImageService } from './jobs/cover-image.service';
 import { UpdateBookDto } from './dto/update-book.dto';
 import { ScrapingStatus } from './enum/scrapingStatus.enum';
@@ -179,11 +178,25 @@ export class BooksService {
 		const queryBuilder = this.bookRepository
 			.createQueryBuilder('book')
 			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
-			.loadRelationCountAndMap('book.chapterCount', 'book.chapters')
+			.leftJoinAndSelect('book.tags', 'tags')
+			.leftJoinAndSelect('book.covers', 'covers', 'covers.selected = :selected', { selected: true })
+			.select([
+				'book.id',
+				'book.title',
+				'book.description',
+				'book.type',
+				'book.createdAt',
+				'sensitiveContent.name',
+				'sensitiveContent.weight',
+				'covers.id',
+				'covers.url',
+				'covers.selected',
+				'tags.id',
+				'tags.name',
+			])
 			.orderBy('book.createdAt', 'DESC')
 			.skip((options.page - 1) * options.limit)
 			.take(options.limit);
-
 
 		await this.sensitiveContentService.filterBooksSensitiveContent(queryBuilder, options.sensitiveContent, maxWeightSensitiveContent);
 		if (options.type && options.type.length > 0) {
@@ -191,13 +204,13 @@ export class BooksService {
 		}
 
 		const [books, total] = await queryBuilder.getManyAndCount();
-
 		const data = books.map((book) => {
-			const { chapters, ...rest } = book;
-			rest.cover = this.urlImage(book.cover);
+			const { covers, ...rest } = book;
+			const coverUrl = covers?.[0]?.url || null;
+
 			return {
 				...rest,
-				// chapterCount: chapters[chapters.length - 1]?.index || 0,
+				cover: coverUrl ? this.urlImage(coverUrl) : null,
 			};
 		});
 		const metadata = new MetadataPageDto();
@@ -213,37 +226,31 @@ export class BooksService {
 		return `${appUrl}${url}`;
 	}
 
-	async getOne(id: string, userid?: string, maxWeightSensitiveContent: number = 0): Promise<Book> {
-		const book = await this.bookRepository.findOne({
-			where: { id },
-			relations: ['chapters', 'tags', 'authors', 'sensitiveContent'],
-			order: { chapters: { index: 'ASC' } },
-			select: {
-				id: true,
-				title: true,
-				alternativeTitle: true,
-				originalUrl: true,
-				description: true,
-				publication: true,
-				type: true,
-				sensitiveContent: true,
-				cover: true,
-				tags: {
-					id: true,
-					name: true,
-				},
-				chapters: {
-					id: true,
-					title: true,
-					scrapingStatus: true,
-					index: true,
-				},
-				authors: {
-					id: true,
-					name: true,
-				},
-			},
-		});
+	async getOne(id: string, maxWeightSensitiveContent: number = 0) {
+		const book = await this.bookRepository
+			.createQueryBuilder('book')
+			.leftJoinAndSelect('book.tags', 'tags')
+			.leftJoinAndSelect('book.authors', 'authors')
+			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
+			.leftJoinAndSelect('book.covers', 'covers', 'covers.selected = :selected', { selected: true })
+			.loadRelationCountAndMap('book.totalChapters', 'book.chapters')
+			.where('book.id = :id', { id })
+			.select([
+				'book.id',
+				'book.title',
+				'book.description',
+				'book.publication',
+				'book.type',
+				'sensitiveContent.id',
+				'sensitiveContent.name',
+				'sensitiveContent.weight',
+				'covers.url',
+				'tags.id',
+				'tags.name',
+				'authors.id',
+				'authors.name',
+			])
+			.getOne();
 		if (!book) {
 			this.logger.warn(`Book with id ${id} not found`);
 			throw new NotFoundException(`Book with id ${id} not found`);
@@ -254,25 +261,129 @@ export class BooksService {
 			throw new ForbiddenException(`Book with id ${id} exceeds max weight`);
 		}
 
-		if (book.cover) {
-			book.cover = this.urlImage(book.cover);
+		const coverUrl = book.covers?.[0]?.url || "";
+		const { covers, ...rest } = book;
+		return {
+			...rest,
+			cover: this.urlImage(coverUrl)
+		};
+	}
+
+	async getChapters(id: string, userid?: string, maxWeightSensitiveContent: number = 0) {
+		const book = await this.bookRepository
+			.createQueryBuilder('book')
+			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
+			.where('book.id = :id', { id })
+			.select([
+				'book.id',
+				'sensitiveContent.weight',
+			])
+			.getOne();
+		if (!book) {
+			this.logger.warn(`Book with id ${id} not found`);
+			throw new NotFoundException(`Book with id ${id} not found`);
+		}
+		const maxWeight = book.sensitiveContent.reduce((sum, sc) => sum + (sc.weight || 0), 0);
+		if (maxWeight > maxWeightSensitiveContent) {
+			this.logger.warn(`Book with id ${id} exceeds max weight`);
+			throw new ForbiddenException(`Book with id ${id} exceeds max weight`);
 		}
 
-		if (userid && book.chapters?.length) {
+		const chaptersQuery = this.chapterRepository
+			.createQueryBuilder('chapter')
+			.where('chapter.bookId = :id', { id })
+			.select([
+				'chapter.id',
+				'chapter.title',
+				'chapter.index',
+				'chapter.scrapingStatus',
+			])
+			.orderBy('chapter.index', 'ASC')
+		const chapters = await chaptersQuery.getMany();
+		if (!userid)
+			return chapters
+
+		let readChapterIds = new Set<string>();
+		if (userid) {
 			const readChapters = await this.bookRepository.manager
 				.getRepository(ChapterRead)
-				.find({
-					where: { user: { id: userid } },
-					relations: ['chapter'],
-					select: ['chapter'],
-				});
-			const readChapterIds = new Set(readChapters.map((cr) => cr.chapter.id));
-			book.chapters = book.chapters.map((chapter: any) => ({
-				...chapter,
-				read: readChapterIds.has(chapter.id),
-			}));
+				.createQueryBuilder('cr')
+				.innerJoin('cr.chapter', 'chapter')
+				.innerJoin('chapter.book', 'book')
+				.where('cr.user.id = :userid', { userid })
+				.andWhere('book.id = :bookId', { bookId: id })
+				.select('chapter.id')
+				.getRawMany();
+
+			readChapterIds = new Set(readChapters.map(r => r.chapter_id));
 		}
-		return book;
+
+		const chaptersWithReadStatus = chapters.map(chapter => ({
+			...chapter,
+			read: readChapterIds.has(chapter.id)
+		}));
+
+		return chaptersWithReadStatus;
+	}
+
+	async getCovers(id: string, maxWeightSensitiveContent: number = 0) {
+		const book = await this.bookRepository
+			.createQueryBuilder('book')
+			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
+			.leftJoinAndSelect('book.covers', 'covers')
+			.where('book.id = :id', { id })
+			.select([
+				'book.id',
+				'sensitiveContent.weight',
+				'covers.id',
+				'covers.url',
+				'covers.selected',
+			])
+			.getOne()
+		if (!book) {
+			this.logger.warn(`Book with id ${id} not found`);
+			throw new NotFoundException(`Book with id ${id} not found`);
+		}
+		const maxWeight = book.sensitiveContent.reduce((sum, sc) => sum + (sc.weight || 0), 0);
+		if (maxWeight > maxWeightSensitiveContent) {
+			this.logger.warn(`Book with id ${id} exceeds max weight`);
+			throw new ForbiddenException(`Book with id ${id} exceeds max weight`);
+		}
+
+		return book.covers
+	}
+
+	async getInfos(id: string, maxWeightSensitiveContent: number = 0) {
+		const book = await this.bookRepository
+			.createQueryBuilder('book')
+			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
+			.leftJoinAndSelect('book.authors', 'authors')
+			.leftJoinAndSelect('book.covers', 'covers')
+			.where('book.id = :id', { id })
+			.select([
+				'book.id',
+				'book.alternativeTitle',
+				'book.originalUrl',
+				'book.scrapingStatus',
+				'book.createdAt',
+				'book.updatedAt',
+				'sensitiveContent.weight',
+				'authors.id',
+				'authors.name',
+			])
+			.getOne()
+		if (!book) {
+			this.logger.warn(`Book with id ${id} not found`);
+			throw new NotFoundException(`Book with id ${id} not found`);
+		}
+		const maxWeight = book.sensitiveContent.reduce((sum, sc) => sum + (sc.weight || 0), 0);
+		if (maxWeight > maxWeightSensitiveContent) {
+			this.logger.warn(`Book with id ${id} exceeds max weight`);
+			throw new ForbiddenException(`Book with id ${id} exceeds max weight`);
+		}
+
+		const { sensitiveContent, ...rest } = book;
+		return rest;
 	}
 
 
@@ -307,8 +418,8 @@ export class BooksService {
 			book.sensitiveContent = await this.findOrCreateSensitiveContent(dto.sensitiveContent);
 		}
 
-		if (dto.cover) {
-			await this.coverImageService.addCoverToQueue(book.id, dto.cover.urlOrigin, dto.cover.urlImg);
+		if (dto.cover && dto.cover.urlImgs && dto.cover.urlImgs.length > 0) {
+			await this.coverImageService.addCoverToQueue(book.id, dto.cover.urlOrigin, dto.cover.urlImgs);
 		}
 
 		return this.bookRepository.save(book);
@@ -539,7 +650,8 @@ export class BooksService {
 		const books = await this.bookRepository
 			.createQueryBuilder('book')
 			.leftJoinAndSelect('book.chapters', 'chapter')
-			.select(['book.id', 'book.cover', 'book.title', 'chapter.id', 'chapter.title', 'chapter.scrapingStatus'])
+			.leftJoinAndSelect('book.covers', 'covers')
+			.select(['book.id', 'book.title', 'chapter.id', 'chapter.title', 'chapter.scrapingStatus', 'covers.url', 'covers.selected'])
 			.getMany();
 
 		let totalChapters = 0;
@@ -551,10 +663,14 @@ export class BooksService {
 				if (chapters.length === 0) return null;
 				totalChapters += chapters.length;
 				processingChapters += chapters.length;
+
+				const selectedCover = book.covers?.find(c => c.selected);
+				const coverUrl = selectedCover?.url || book.covers?.[0]?.url || null;
+
 				return {
 					id: book.id,
 					title: book.title,
-					cover: this.urlImage(book.cover),
+					cover: coverUrl ? this.urlImage(coverUrl) : null,
 					processingChapters: chapters.length,
 					totalChapters: book.chapters.length,
 				};

@@ -39,6 +39,33 @@ export class BooksController {
 		@Param('idBook') id: string,
 		@CurrentUser() user?: CurrentUserDto
 	) {
-		return this.booksService.getOne(id, user?.userId, user?.maxWeightSensitiveContent);
+		return this.booksService.getOne(id, user?.maxWeightSensitiveContent);
+	}
+
+	@Get(':idBook/chapters')
+	@UseGuards(OptionalAuthGuard)
+	getBookChapters(
+		@Param('idBook') id: string,
+		@CurrentUser() user?: CurrentUserDto
+	) {
+		return this.booksService.getChapters(id, user?.userId, user?.maxWeightSensitiveContent);
+	}
+
+	@Get(':idBook/covers')
+	@UseGuards(OptionalAuthGuard)
+	getBookCovers(
+		@Param('idBook') id: string,
+		@CurrentUser() user?: CurrentUserDto
+	) {
+		return this.booksService.getCovers(id, user?.maxWeightSensitiveContent);
+	}
+
+	@Get(':idBook/infos')
+	@UseGuards(OptionalAuthGuard)
+	getBookInfos(
+		@Param('idBook') id: string,
+		@CurrentUser() user?: CurrentUserDto
+	) {
+		return this.booksService.getInfos(id, user?.maxWeightSensitiveContent);
 	}
 }
