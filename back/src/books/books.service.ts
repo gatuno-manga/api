@@ -337,6 +337,7 @@ export class BooksService {
 				'sensitiveContent.weight',
 				'covers.id',
 				'covers.url',
+				'covers.title',
 				'covers.selected',
 			])
 			.getOne()
@@ -350,7 +351,10 @@ export class BooksService {
 			throw new ForbiddenException(`Book with id ${id} exceeds max weight`);
 		}
 
-		return book.covers
+		return book.covers.map(cover => ({
+			...cover,
+			url: this.urlImage(cover.url)
+		}));
 	}
 
 	async getInfos(id: string, maxWeightSensitiveContent: number = 0) {
