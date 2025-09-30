@@ -9,6 +9,10 @@ export class RegisterWebSiteDto {
 	preScript?: string;
 
 	@IsString()
+	@IsOptional()
+	posScript?: string;
+
+	@IsString()
 	selector: string;
 
 	@IsOptional()

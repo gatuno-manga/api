@@ -22,6 +22,12 @@ export class Website {
 
 	@Column({
 		type: 'text',
+		nullable: true,
+	})
+	posScript: string;
+
+	@Column({
+		type: 'text',
 	})
 	selector: string;
 
