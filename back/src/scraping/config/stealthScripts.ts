@@ -1,12 +1,10 @@
 export const stealthScripts = {
   removeWebdriverProperty: `
     try {
-      // Primeiro, tenta deletar a propriedade se ela existir
       if ('webdriver' in navigator) {
         delete navigator.webdriver;
       }
 
-      // Depois tenta redefinir de forma segura
       if (!('webdriver' in navigator) || Object.getOwnPropertyDescriptor(navigator, 'webdriver')?.configurable !== false) {
         Object.defineProperty(navigator, 'webdriver', {
           get: () => undefined,
@@ -14,7 +12,6 @@ export const stealthScripts = {
         });
       }
     } catch (e) {
-      // Se não conseguir redefinir, pelo menos tenta mascarar
       console.debug('Could not redefine webdriver property');
     }
   `,
