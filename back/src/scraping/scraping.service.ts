@@ -11,6 +11,7 @@ import { AppConfigService } from 'src/app-config/app-config.service';
 import { FilesService } from 'src/files/files.service';
 import { WebsiteService } from './website.service';
 import chromeOptionsConfig from './config/chromeOptionsConfig';
+import { stealthScripts } from './config/stealthScripts';
 
 class ScrapingUtils {
 	static readScript(scriptPath: string): string {
@@ -177,6 +178,9 @@ export class ScrapingService implements OnApplicationShutdown {
 			.forBrowser(Browser.CHROME)
 			.withCapabilities(chromeCapabilities)
 			.build();
+
+		await driver.executeScript(stealthScripts.getAllScripts());
+
 		await driver.manage().setTimeouts({
 			script: 1_200_000,
 			pageLoad: 1_200_000
