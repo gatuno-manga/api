@@ -11,7 +11,7 @@ import { Cover } from '../entitys/cover.entity';
 const QUEUE_NAME = 'cover-image-queue';
 const JOB_NAME = 'process-cover';
 
-@Processor(QUEUE_NAME)
+@Processor(QUEUE_NAME, { concurrency: 3 })
 export class CoverImageProcessor extends WorkerHost {
     private readonly logger = new Logger(CoverImageProcessor.name);
 

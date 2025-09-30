@@ -11,6 +11,7 @@ import { AppConfigService } from 'src/app-config/app-config.service';
 import { FilesService } from 'src/files/files.service';
 import { WebsiteService } from './website.service';
 import chromeOptionsConfig from './config/chromeOptionsConfig';
+import { stealthScripts } from './config/stealthScripts';
 
 class ScrapingUtils {
 	static readScript(scriptPath: string): string {
@@ -90,18 +91,20 @@ export class ScrapingService implements OnApplicationShutdown {
 		return await driver.executeScript<string[]>(script, selector);
 	}
 
-	private async getWebsiteConfig(url: string): Promise<{ selector: string; preScript: string; ignoreFiles: string[] }> {
+	private async getWebsiteConfig(url: string): Promise<{ selector: string; preScript: string; posScript: string; ignoreFiles: string[] }> {
 		let selector = 'img';
 		let preScript = ``;
+		let posScript = ``;
 		let ignoreFiles: string[] = [];
 		const domain = new URL(url).hostname;
 		const website = await this.webSiteService.getByUrl(domain);
 		if (website) {
 			selector = website.selector || selector;
 			preScript = website.preScript || preScript;
+			posScript = website.posScript || posScript;
 			ignoreFiles = website.ignoreFiles || [];
 		}
-		return { selector, preScript, ignoreFiles };
+		return { selector, preScript, posScript, ignoreFiles };
 	}
 
 	private async waitForPageTitle(driver: WebDriver): Promise<void> {
@@ -177,6 +180,9 @@ export class ScrapingService implements OnApplicationShutdown {
 			.forBrowser(Browser.CHROME)
 			.withCapabilities(chromeCapabilities)
 			.build();
+
+		await driver.executeScript(stealthScripts.getAllScripts());
+
 		await driver.manage().setTimeouts({
 			script: 1_200_000,
 			pageLoad: 1_200_000
@@ -188,7 +194,7 @@ export class ScrapingService implements OnApplicationShutdown {
 	async scrapePages(url: string, pages = 0): Promise<string[] | null> {
 		const driver = await this.createInstance();
 		try {
-			const { selector, preScript, ignoreFiles } = await this.getWebsiteConfig(url);
+			const { selector, preScript, posScript, ignoreFiles } = await this.getWebsiteConfig(url);
 
 			await driver.get(url);
 			await this.waitForPageTitle(driver);
@@ -199,6 +205,12 @@ export class ScrapingService implements OnApplicationShutdown {
 			}
 
 			await this.scrollAndWait(driver, selector);
+
+			if (posScript) {
+				await driver.executeScript(posScript);
+				await driver.sleep(3000);
+			}
+
 			const failedUrls = await this.failedImageUrls(driver, selector);
 			const imageUrls = await this.getImageUrls(driver, selector);
 

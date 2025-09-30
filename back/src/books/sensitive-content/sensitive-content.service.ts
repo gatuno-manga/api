@@ -18,7 +18,7 @@ export class SensitiveContentService {
 
     async getAll(maxWeightSensitiveContent: number = 0): Promise<SensitiveContent[]> {
         return this.sensitiveContentRepository.find({
-            select: ['id', 'name'],
+            select: ['id', 'name', 'altNames'],
             order: { weight: 'ASC' },
             where: { weight: LessThanOrEqual(maxWeightSensitiveContent) },
         });
