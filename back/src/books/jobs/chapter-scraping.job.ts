@@ -1,6 +1,6 @@
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { Logger } from "@nestjs/common";
+import { Logger, OnModuleInit } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Page } from "../entitys/page.entity";
 import { Chapter } from "../entitys/chapter.entity";
@@ -12,8 +12,8 @@ import { AppConfigService } from 'src/app-config/app-config.service';
 const QUEUE_NAME = 'chapter-scraping';
 const JOB_NAME = 'process-chapter';
 
-@Processor(QUEUE_NAME, { concurrency: 6 })
-export class ChapterScrapingJob extends WorkerHost {
+@Processor(QUEUE_NAME)
+export class ChapterScrapingJob extends WorkerHost implements OnModuleInit {
     private readonly logger = new Logger(ChapterScrapingJob.name);
 
     constructor(
@@ -26,6 +26,9 @@ export class ChapterScrapingJob extends WorkerHost {
         private readonly configService: AppConfigService,
     ) {
         super();
+    }
+
+    onModuleInit() {
         this.worker.concurrency = this.configService.queueConcurrency.chapterScraping;
     }
 

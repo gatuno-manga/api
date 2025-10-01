@@ -1,6 +1,6 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { Logger } from '@nestjs/common';
+import { Logger, OnModuleInit } from '@nestjs/common';
 import { Page } from '../entitys/page.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -13,7 +13,7 @@ const QUEUE_NAME = 'fix-chapter-queue';
 const JOB_NAME = 'fix-chapter';
 
 @Processor(QUEUE_NAME)
-export class FixChapterProcessor extends WorkerHost {
+export class FixChapterProcessor extends WorkerHost implements OnModuleInit {
     private readonly logger = new Logger(FixChapterProcessor.name);
 
     constructor(
@@ -25,6 +25,9 @@ export class FixChapterProcessor extends WorkerHost {
         private readonly configService: AppConfigService,
     ) {
         super();
+    }
+
+    onModuleInit() {
         this.worker.concurrency = this.configService.queueConcurrency.fixChapter;
     }
 

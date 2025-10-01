@@ -37,12 +37,6 @@ export class TagsService {
         });
     }
 
-    async getAll(options: TagsOptions, maxWeightSensitiveContent: number = 99): Promise<Tag[]> {
-        const allSensitiveContent = await this.sensitiveContentService.getAll(maxWeightSensitiveContent);
-        options.sensitiveContent = allSensitiveContent.map(sc => sc.name);
-        return this.get(options, maxWeightSensitiveContent);
-    }
-
     async mergeTags(id: string, copy: string[]) {
         const tag = await this.tagRepository.findOne({
             where: { id },

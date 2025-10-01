@@ -1,6 +1,6 @@
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { Logger } from '@nestjs/common';
+import { Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Book } from '../entitys/book.entity';
 import { DataSource, Repository } from 'typeorm';
@@ -13,7 +13,7 @@ const QUEUE_NAME = 'cover-image-queue';
 const JOB_NAME = 'process-cover';
 
 @Processor(QUEUE_NAME)
-export class CoverImageProcessor extends WorkerHost {
+export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
     private readonly logger = new Logger(CoverImageProcessor.name);
 
     constructor(
@@ -26,6 +26,9 @@ export class CoverImageProcessor extends WorkerHost {
         private readonly configService: AppConfigService,
     ) {
         super();
+    }
+
+    onModuleInit() {
         this.worker.concurrency = this.configService.queueConcurrency.coverImage;
     }
 
