@@ -12,6 +12,7 @@ import { FilesService } from 'src/files/files.service';
 import { WebsiteService } from './website.service';
 import chromeOptionsConfig from './config/chromeOptionsConfig';
 import { stealthScripts } from './config/stealthScripts';
+import { WebsiteConfigDto } from './dto/website-config.dto';
 
 class ScrapingUtils {
 	static readScript(scriptPath: string): string {
@@ -91,7 +92,7 @@ export class ScrapingService implements OnApplicationShutdown {
 		return await driver.executeScript<string[]>(script, selector);
 	}
 
-	private async getWebsiteConfig(url: string): Promise<{ selector: string; preScript: string; posScript: string; ignoreFiles: string[] }> {
+	private async getWebsiteConfig(url: string): Promise<WebsiteConfigDto> {
 		let selector = 'img';
 		let preScript = ``;
 		let posScript = ``;
@@ -195,20 +196,21 @@ export class ScrapingService implements OnApplicationShutdown {
 		const driver = await this.createInstance();
 		try {
 			const { selector, preScript, posScript, ignoreFiles } = await this.getWebsiteConfig(url);
+			const timeSleep = 3000;
 
 			await driver.get(url);
 			await this.waitForPageTitle(driver);
 
 			if (preScript) {
 				await driver.executeScript(preScript);
-				await driver.sleep(3000);
+				await driver.sleep(timeSleep);
 			}
 
 			await this.scrollAndWait(driver, selector);
 
 			if (posScript) {
 				await driver.executeScript(posScript);
-				await driver.sleep(3000);
+				await driver.sleep(timeSleep);
 			}
 
 			const failedUrls = await this.failedImageUrls(driver, selector);
