@@ -86,4 +86,27 @@ export class AppConfigService {
 			fixChapter: this.config.get<number>('FIX_CHAPTER_CONCURRENCY') || 2,
 		};
 	}
+
+	private parseDurationToSeconds(duration: string): number {
+		const match = duration.match(/^(\d+)([smhd])$/);
+		if (!match) {
+			return 604800; // Default: 7 dias
+		}
+
+		const value = parseInt(match[1], 10);
+		const unit = match[2];
+
+		switch (unit) {
+			case 's': return value;
+			case 'm': return value * 60;
+			case 'h': return value * 60 * 60;
+			case 'd': return value * 24 * 60 * 60;
+			default: return 604800;
+		}
+	}
+
+	get refreshTokenTtl(): number {
+		const duration = this.jwtRefreshExpiration;
+		return this.parseDurationToSeconds(duration);
+	}
 }
