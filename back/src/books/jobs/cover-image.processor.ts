@@ -7,11 +7,12 @@ import { DataSource, Repository } from 'typeorm';
 import { ScrapingService } from 'src/scraping/scraping.service';
 import { QueueCoverProcessorDto } from '../dto/queue-cover-processor.dto';
 import { Cover } from '../entitys/cover.entity';
+import { AppConfigService } from 'src/app-config/app-config.service';
 
 const QUEUE_NAME = 'cover-image-queue';
 const JOB_NAME = 'process-cover';
 
-@Processor(QUEUE_NAME, { concurrency: 3 })
+@Processor(QUEUE_NAME)
 export class CoverImageProcessor extends WorkerHost {
     private readonly logger = new Logger(CoverImageProcessor.name);
 
@@ -22,8 +23,10 @@ export class CoverImageProcessor extends WorkerHost {
         private readonly coverRepository: Repository<Cover>,
         private readonly scrapingService: ScrapingService,
         private readonly dataSource: DataSource,
+        private readonly configService: AppConfigService,
     ) {
         super();
+        this.worker.concurrency = this.configService.queueConcurrency.coverImage;
     }
 
     async process(job: Job<QueueCoverProcessorDto>): Promise<void> {

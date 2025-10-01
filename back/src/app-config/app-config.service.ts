@@ -78,4 +78,12 @@ export class AppConfigService {
 			password: this.config.get<string>('REDIS_PASSWORD') || '',
 		};
 	}
+
+	get queueConcurrency() {
+		return {
+			chapterScraping: this.config.get<number>('CHAPTER_SCRAPING_CONCURRENCY') || 6,
+			coverImage: this.config.get<number>('COVER_IMAGE_CONCURRENCY') || 3,
+			fixChapter: this.config.get<number>('FIX_CHAPTER_CONCURRENCY') || 2,
+		};
+	}
 }

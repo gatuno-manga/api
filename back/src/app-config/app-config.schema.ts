@@ -32,4 +32,8 @@ export const validationSchema = Joi.object({
 	REDIS_PASSWORD: Joi.string().optional().allow(''),
 	USERADMIN_EMAIL: Joi.string().email().required(),
 	USERADMIN_PASSWORD: Joi.string().required(),
+	// Queue Concurrency Settings
+	CHAPTER_SCRAPING_CONCURRENCY: Joi.number().min(1).default(6),
+	COVER_IMAGE_CONCURRENCY: Joi.number().min(1).default(3),
+	FIX_CHAPTER_CONCURRENCY: Joi.number().min(1).default(2),
 });
