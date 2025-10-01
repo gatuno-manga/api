@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
+const SEVEN_DAYS_IN_SECONDS = 604800; // Default: 7 dias
 @Injectable()
 export class AppConfigService {
 	constructor(private readonly config: ConfigService) {}
@@ -90,7 +91,7 @@ export class AppConfigService {
 	private parseDurationToSeconds(duration: string): number {
 		const match = duration.match(/^(\d+)([smhd])$/);
 		if (!match) {
-			return 604800; // Default: 7 dias
+			return SEVEN_DAYS_IN_SECONDS;
 		}
 
 		const value = parseInt(match[1], 10);
@@ -101,7 +102,7 @@ export class AppConfigService {
 			case 'm': return value * 60;
 			case 'h': return value * 60 * 60;
 			case 'd': return value * 24 * 60 * 60;
-			default: return 604800;
+			default: return SEVEN_DAYS_IN_SECONDS;
 		}
 	}
 
