@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Book } from './entitys/book.entity';
-import { Repository } from 'typeorm';
+import { Repository, SelectQueryBuilder } from 'typeorm';
 import { Page } from './entitys/page.entity';
 import { CreateBookDto } from './dto/create-book.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -133,7 +133,7 @@ export class BooksService {
 		);
 	}
 
-	private async applyBookFilters(queryBuilder: any, options: BookPageOptionsDto, maxWeightSensitiveContent: number): Promise<void> {
+	private async applyBookFilters(queryBuilder: SelectQueryBuilder<Book>, options: BookPageOptionsDto, maxWeightSensitiveContent: number): Promise<void> {
 		await this.sensitiveContentService.filterBooksSensitiveContent(queryBuilder, options.sensitiveContent, maxWeightSensitiveContent);
 
 		if (options.type && options.type.length > 0) {
@@ -227,14 +227,14 @@ export class BooksService {
 			const authorCount = options.authors.length;
 
 			if (authorsLogic === 'or') {
-			queryBuilder.andWhere((qb) => {
-				const subQuery = qb.subQuery()
-					.select('ba.booksId')
-					.from('books_authors_authors', 'ba')
-					.where('ba.authorsId IN (:...authors)', { authors: options.authors })
-					.getQuery();
-				return `book.id IN ${subQuery}`;
-			});
+				queryBuilder.andWhere((qb) => {
+					const subQuery = qb.subQuery()
+						.select('ba.booksId')
+						.from('books_authors_authors', 'ba')
+						.where('ba.authorsId IN (:...authors)', { authors: options.authors })
+						.getQuery();
+					return `book.id IN ${subQuery}`;
+				});
 			} else if (authorsLogic === 'and') {
 				queryBuilder.andWhere((qb) => {
 					const subQuery = qb.subQuery()
