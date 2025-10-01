@@ -223,6 +223,10 @@ export class BooksService {
 		}
 
 		if (options.authors && options.authors.length > 0) {
+			const authorsLogic = options.authorsLogic;
+			const authorCount = options.authors.length;
+
+			if (authorsLogic === 'or') {
 			queryBuilder.andWhere((qb) => {
 				const subQuery = qb.subQuery()
 					.select('ba.booksId')
@@ -231,6 +235,18 @@ export class BooksService {
 					.getQuery();
 				return `book.id IN ${subQuery}`;
 			});
+			} else if (authorsLogic === 'and') {
+				queryBuilder.andWhere((qb) => {
+					const subQuery = qb.subQuery()
+						.select('ba.booksId')
+						.from('books_authors_authors', 'ba')
+						.where('ba.authorsId IN (:...authors)', { authors: options.authors })
+						.groupBy('ba.booksId')
+						.having('COUNT(DISTINCT ba.authorsId) = :authorCount', { authorCount })
+						.getQuery();
+					return `book.id IN ${subQuery}`;
+				});
+			}
 		}
 	}
 

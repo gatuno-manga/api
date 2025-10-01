@@ -61,6 +61,11 @@ export class BookPageOptionsDto extends PageOptionsDto {
 
 	@IsOptional()
 	@IsString()
+	@IsIn(['and', 'or'])
+	authorsLogic?: 'and' | 'or' = 'and';
+
+	@IsOptional()
+	@IsString()
 	orderBy?: 'title' | 'createdAt' | 'updatedAt' | 'publication' = 'createdAt';
 
 	@IsOptional()
