@@ -7,6 +7,7 @@ import { Chapter } from "../entitys/chapter.entity";
 import { DataSource, Repository } from "typeorm";
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { ScrapingService } from 'src/scraping/scraping.service';
+import { AppConfigService } from 'src/app-config/app-config.service';
 
 const QUEUE_NAME = 'chapter-scraping';
 const JOB_NAME = 'process-chapter';
@@ -22,8 +23,10 @@ export class ChapterScrapingJob extends WorkerHost {
         private readonly chapterRepository: Repository<Chapter>,
         private readonly dataSource: DataSource,
         private readonly scrapingService: ScrapingService,
+        private readonly configService: AppConfigService,
     ) {
         super();
+        this.worker.concurrency = this.configService.queueConcurrency.chapterScraping;
     }
 
     async process(job: Job<string>): Promise<void> {

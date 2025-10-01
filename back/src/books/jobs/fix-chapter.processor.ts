@@ -7,11 +7,12 @@ import { Repository } from 'typeorm';
 import { Chapter } from '../entitys/chapter.entity';
 import { ScrapingService } from 'src/scraping/scraping.service';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
+import { AppConfigService } from 'src/app-config/app-config.service';
 
 const QUEUE_NAME = 'fix-chapter-queue';
 const JOB_NAME = 'fix-chapter';
 
-@Processor(QUEUE_NAME, { concurrency: 2 })
+@Processor(QUEUE_NAME)
 export class FixChapterProcessor extends WorkerHost {
     private readonly logger = new Logger(FixChapterProcessor.name);
 
@@ -21,8 +22,10 @@ export class FixChapterProcessor extends WorkerHost {
         @InjectRepository(Chapter)
         private readonly chapterRepository: Repository<Chapter>,
         private readonly scrapingService: ScrapingService,
+        private readonly configService: AppConfigService,
     ) {
         super();
+        this.worker.concurrency = this.configService.queueConcurrency.fixChapter;
     }
 
     async process(job: Job<{ chapterId: string }>): Promise<void> {

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
+const SEVEN_DAYS_IN_SECONDS = 604800; // Default: 7 dias
 @Injectable()
 export class AppConfigService {
 	constructor(private readonly config: ConfigService) {}
@@ -77,5 +78,36 @@ export class AppConfigService {
 			port: this.config.get<number>('REDIS_PORT') || 6379,
 			password: this.config.get<string>('REDIS_PASSWORD') || '',
 		};
+	}
+
+	get queueConcurrency() {
+		return {
+			chapterScraping: this.config.get<number>('CHAPTER_SCRAPING_CONCURRENCY') || 6,
+			coverImage: this.config.get<number>('COVER_IMAGE_CONCURRENCY') || 3,
+			fixChapter: this.config.get<number>('FIX_CHAPTER_CONCURRENCY') || 2,
+		};
+	}
+
+	private parseDurationToSeconds(duration: string): number {
+		const match = duration.match(/^(\d+)([smhd])$/);
+		if (!match) {
+			return SEVEN_DAYS_IN_SECONDS;
+		}
+
+		const value = parseInt(match[1], 10);
+		const unit = match[2];
+
+		switch (unit) {
+			case 's': return value;
+			case 'm': return value * 60;
+			case 'h': return value * 60 * 60;
+			case 'd': return value * 24 * 60 * 60;
+			default: return SEVEN_DAYS_IN_SECONDS;
+		}
+	}
+
+	get refreshTokenTtl(): number {
+		const duration = this.jwtRefreshExpiration;
+		return this.parseDurationToSeconds(duration);
 	}
 }

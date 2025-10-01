@@ -31,7 +31,7 @@ export class AuthService {
     private async storeRefreshToken(userId: string, token: string) {
         const key = this.getRedisKey(userId);
         const hashedToken = await this.DataEncryption.encrypt(token);
-        const ttl = 7 * 24 * 60 * 60; // 7 dias em segundos
+        const ttl = this.configService.refreshTokenTtl;
 
         const storedTokens: string[] = await this.cacheManager.get(key) || [];
         storedTokens.push(hashedToken);
@@ -134,7 +134,7 @@ export class AuthService {
         if (storedTokens.length === 0) {
             await this.cacheManager.del(key);
         } else {
-            await this.cacheManager.set(key, storedTokens, 7 * 24 * 60 * 60 * 1000); // Reset TTL
+            await this.cacheManager.set(key, storedTokens, this.configService.refreshTokenTtl);
         }
         return { message: 'Logged out successfully' };
     }
@@ -186,7 +186,7 @@ export class AuthService {
         await this.storeRefreshToken(user.id, tokens.refreshToken);
         const newHashedToken = await this.DataEncryption.encrypt(tokens.refreshToken);
         storedHashes.push(newHashedToken);
-        await this.cacheManager.set(key, storedHashes, 7 * 24 * 60 * 60);
+        await this.cacheManager.set(key, storedHashes, this.configService.refreshTokenTtl);
         return tokens;
     }
 }
