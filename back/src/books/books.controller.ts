@@ -10,15 +10,10 @@ import {
 	UseGuards,
 } from '@nestjs/common';
 import { BooksService } from './books.service';
-import { CreateBookDto } from './dto/create-book.dto';
 import { BookPageOptionsDto } from './dto/book-page-options.dto';
-import { UpdateChapterDto } from './dto/update-chapter.dto';
-import { UpdateBookDto } from './dto/update-book.dto';
-import { OrderChaptersDto } from './dto/order-chapters.dto';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
 import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
 import { OptionalAuthGuard } from 'src/auth/guard/optional-auth.guard';
-import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 
 @Controller('books')
 export class BooksController {
@@ -31,6 +26,15 @@ export class BooksController {
 		@CurrentUser() user?: CurrentUserDto
 	) {
 		return this.booksService.getAllBooks(pageOptions, user?.maxWeightSensitiveContent);
+	}
+
+	@Get('random')
+	@UseGuards(OptionalAuthGuard)
+	getRandomBook(
+		@Query() options: BookPageOptionsDto,
+		@CurrentUser() user?: CurrentUserDto
+	) {
+		return this.booksService.getRandomBook(options, user?.maxWeightSensitiveContent);
 	}
 
 	@Get(':idBook')

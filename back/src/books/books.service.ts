@@ -287,7 +287,6 @@ export class BooksService {
 				'book.title',
 				'book.description',
 				'book.type',
-				'book.publication',
 				'book.createdAt',
 				'sensitiveContent.name',
 				'sensitiveContent.weight',
@@ -339,6 +338,28 @@ export class BooksService {
 		metadata.lastPage = Math.ceil(total / options.limit);
 
 		return new PageDto(data, metadata);
+	}
+
+	async getRandomBook(options: BookPageOptionsDto, maxWeightSensitiveContent: number = 0): Promise<{ id: string }> {
+		const queryBuilder = this.bookRepository
+			.createQueryBuilder('book')
+			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
+			.leftJoinAndSelect('book.tags', 'tags')
+			.leftJoinAndSelect('book.authors', 'authors')
+			.select(['book.id']);
+
+		await this.applyBookFilters(queryBuilder, options, maxWeightSensitiveContent)
+
+		queryBuilder.orderBy('RAND()').limit(1);
+
+		const book = await queryBuilder.getOne();
+
+		if (!book) {
+			this.logger.warn('No books found matching the filters');
+			throw new NotFoundException('No books found matching the filters');
+		}
+
+		return { id: book.id };
 	}
 
 	private urlImage(url: string): string {
