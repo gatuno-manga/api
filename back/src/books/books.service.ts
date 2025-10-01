@@ -133,6 +133,107 @@ export class BooksService {
 		);
 	}
 
+	private async applyBookFilters(queryBuilder: any, options: BookPageOptionsDto, maxWeightSensitiveContent: number): Promise<void> {
+		await this.sensitiveContentService.filterBooksSensitiveContent(queryBuilder, options.sensitiveContent, maxWeightSensitiveContent);
+
+		if (options.type && options.type.length > 0) {
+			queryBuilder.andWhere('book.type IN (:...types)', { types: options.type });
+		}
+
+		if (options.search) {
+			queryBuilder.andWhere(
+				'(book.title LIKE :search OR book.description LIKE :search OR book.alternativeTitle LIKE :search)',
+				{ search: `%${options.search}%` }
+			);
+		}
+
+		if (options.tags && options.tags.length > 0) {
+			const tagsLogic = options.tagsLogic;
+			const tagCount = options.tags.length;
+
+			if (tagsLogic === 'or') {
+				queryBuilder.andWhere((qb) => {
+					const subQuery = qb.subQuery()
+						.select('bt.booksId')
+						.from('books_tags_tags', 'bt')
+						.where('bt.tagsId IN (:...tags)', { tags: options.tags })
+						.getQuery();
+					return `book.id IN ${subQuery}`;
+				});
+			} else if (tagsLogic === 'and') {
+				queryBuilder.andWhere((qb) => {
+					const subQuery = qb.subQuery()
+						.select('bt.booksId')
+						.from('books_tags_tags', 'bt')
+						.where('bt.tagsId IN (:...tags)', { tags: options.tags })
+						.groupBy('bt.booksId')
+						.having('COUNT(DISTINCT bt.tagsId) = :tagCount', { tagCount })
+						.getQuery();
+					return `book.id IN ${subQuery}`;
+				});
+			}
+		}
+
+		if (options.excludeTags && options.excludeTags.length > 0) {
+			const excludeTagsLogic = options.excludeTagsLogic;
+			const excludeTagCount = options.excludeTags.length;
+
+			if (excludeTagsLogic === 'or') {
+				queryBuilder.andWhere((qb) => {
+					const subQuery = qb.subQuery()
+						.select('bt.booksId')
+						.from('books_tags_tags', 'bt')
+						.where('bt.tagsId IN (:...excludeTags)', { excludeTags: options.excludeTags })
+						.getQuery();
+					return `book.id NOT IN ${subQuery}`;
+				});
+			} else if (excludeTagsLogic === 'and') {
+				queryBuilder.andWhere((qb) => {
+					const subQuery = qb.subQuery()
+						.select('bt.booksId')
+						.from('books_tags_tags', 'bt')
+						.where('bt.tagsId IN (:...excludeTags)', { excludeTags: options.excludeTags })
+						.groupBy('bt.booksId')
+						.having('COUNT(DISTINCT bt.tagsId) = :excludeTagCount', { excludeTagCount })
+						.getQuery();
+					return `book.id NOT IN ${subQuery}`;
+				});
+			}
+		}
+
+		if (options.publication) {
+			const operator = options.publicationOperator || 'eq';
+			switch (operator) {
+				case 'eq':
+					queryBuilder.andWhere('book.publication = :publication', { publication: options.publication });
+					break;
+				case 'gt':
+					queryBuilder.andWhere('book.publication > :publication', { publication: options.publication });
+					break;
+				case 'lt':
+					queryBuilder.andWhere('book.publication < :publication', { publication: options.publication });
+					break;
+				case 'gte':
+					queryBuilder.andWhere('book.publication >= :publication', { publication: options.publication });
+					break;
+				case 'lte':
+					queryBuilder.andWhere('book.publication <= :publication', { publication: options.publication });
+					break;
+			}
+		}
+
+		if (options.authors && options.authors.length > 0) {
+			queryBuilder.andWhere((qb) => {
+				const subQuery = qb.subQuery()
+					.select('ba.booksId')
+					.from('books_authors_authors', 'ba')
+					.where('ba.authorsId IN (:...authors)', { authors: options.authors })
+					.getQuery();
+				return `book.id IN ${subQuery}`;
+			});
+		}
+	}
+
 	async createBook(dto: CreateBookDto) {
 		return await this.bookRepository.manager.transaction(async (manager) => {
 			const tags =
@@ -179,12 +280,14 @@ export class BooksService {
 			.createQueryBuilder('book')
 			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
 			.leftJoinAndSelect('book.tags', 'tags')
+			.leftJoinAndSelect('book.authors', 'authors')
 			.leftJoinAndSelect('book.covers', 'covers', 'covers.selected = :selected', { selected: true })
 			.select([
 				'book.id',
 				'book.title',
 				'book.description',
 				'book.type',
+				'book.publication',
 				'book.createdAt',
 				'sensitiveContent.name',
 				'sensitiveContent.weight',
@@ -193,15 +296,32 @@ export class BooksService {
 				'covers.selected',
 				'tags.id',
 				'tags.name',
-			])
-			.orderBy('book.createdAt', 'DESC')
+			]);
+
+		await this.applyBookFilters(queryBuilder, options, maxWeightSensitiveContent)
+
+		const orderByField = options.orderBy || 'createdAt';
+		const orderDirection = options.order || 'DESC';
+
+		switch (orderByField) {
+			case 'title':
+				queryBuilder.orderBy('book.title', orderDirection);
+				break;
+			case 'publication':
+				queryBuilder.orderBy('book.publication', orderDirection);
+				break;
+			case 'updatedAt':
+				queryBuilder.orderBy('book.updatedAt', orderDirection);
+				break;
+			case 'createdAt':
+			default:
+				queryBuilder.orderBy('book.createdAt', orderDirection);
+				break;
+		}
+
+		queryBuilder
 			.skip((options.page - 1) * options.limit)
 			.take(options.limit);
-
-		await this.sensitiveContentService.filterBooksSensitiveContent(queryBuilder, options.sensitiveContent, maxWeightSensitiveContent);
-		if (options.type && options.type.length > 0) {
-			queryBuilder.andWhere('book.type IN (:...types)', { types: options.type });
-		}
 
 		const [books, total] = await queryBuilder.getManyAndCount();
 		const data = books.map((book) => {
