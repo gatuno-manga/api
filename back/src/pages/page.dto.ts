@@ -1,10 +1,19 @@
 import { IsArray } from 'class-validator';
 import { MetadataPageDto } from './metadata-page.dto';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class PageDto<T> {
+	@ApiProperty({
+		description: 'Array of items for the current page',
+		isArray: true,
+	})
 	@IsArray()
 	readonly data: T[];
 
+	@ApiProperty({
+		description: 'Pagination metadata',
+		type: MetadataPageDto,
+	})
 	metadata: MetadataPageDto;
 
 	constructor(data: T[], meta: MetadataPageDto) {
