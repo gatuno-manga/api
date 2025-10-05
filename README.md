@@ -254,3 +254,4 @@ O projeto utiliza os seguintes serviços:
 [Selenium.io]: https://img.shields.io/badge/Selenium-43B02A?style=for-the-badge&logo=selenium&logoColor=white
 [BullMQ.io]: https://img.shields.io/badge/BullMQ-339933?style=for-the-badge&logo=node.js&logoColor=white
 [TypeORM.io]: https://img.shields.io/badge/TypeORM-FE0803?logo=typeorm&logoColor=fff&style=for-the-badge
+
