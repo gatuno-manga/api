@@ -1,7 +1,7 @@
 set -e
 if [ -f .env ]; then
   export $(grep -v '^#' .env | xargs)
-fiw
+fi
 echo "Aguardando o mestre (gatuno-database) iniciar completamente..."
 
 until docker exec gatuno-database mysql -u root -p"${DB_PASS}" -e "SELECT 1"; do
