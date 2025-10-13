@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Inject, Logger, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Logger, Post, Req, Res, UseGuards, UnauthorizedException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { SignUpAuthDto } from './dto/signup-auth.dto';
@@ -25,6 +25,10 @@ export class AuthController {
         const { email, password } = body;
         const user = await this.authService.signUp(email, password);
 
+        if (!user) {
+            throw new UnauthorizedException('Failed to create user');
+        }
+
         const result = {
             id: user.id,
             email: user.email,
@@ -50,8 +54,11 @@ export class AuthController {
     @ApiResponse({ status: 401, description: 'Invalid or expired refresh token' })
     @ApiBearerAuth('JWT-auth')
     @UseGuards(RefreshTokenGuard)
-    refreshTokens(@CurrentUser() user: CurrentUserDto, @Req() req) {
+    async refreshTokens(@CurrentUser() user: CurrentUserDto, @Req() req) {
         const refreshToken = req.cookies?.refreshToken;
+        if (!refreshToken) {
+            throw new UnauthorizedException('Refresh token not found in cookies');
+        }
         return this.authService.refreshTokens(user.userId, refreshToken);
     }
 
