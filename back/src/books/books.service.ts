@@ -315,17 +315,14 @@ export class BooksService {
 
 		for (let i = 0; i < allTitles.length; i++) {
 			const titleToCheck = allTitles[i];
-			if (i === 0) {
-				queryBuilder.where('book.title = :title0', { [`title${i}`]: titleToCheck });
-				queryBuilder.orWhere('JSON_CONTAINS(book.alternativeTitle, :jsonTitle0)', {
-					[`jsonTitle${i}`]: JSON.stringify(titleToCheck),
-				});
-			} else {
+			if (i === 0)
+				queryBuilder.where(`book.title = :title${i}`, { [`title${i}`]: titleToCheck });
+			else
 				queryBuilder.orWhere(`book.title = :title${i}`, { [`title${i}`]: titleToCheck });
-				queryBuilder.orWhere(`JSON_CONTAINS(book.alternativeTitle, :jsonTitle${i})`, {
-					[`jsonTitle${i}`]: JSON.stringify(titleToCheck),
-				});
-			}
+
+			queryBuilder.orWhere(`JSON_CONTAINS(book.alternativeTitle, :jsonTitle${i})`, {
+				[`jsonTitle${i}`]: JSON.stringify(titleToCheck),
+			});
 		}
 
 		queryBuilder.select(['book.id', 'book.title', 'book.alternativeTitle']);
