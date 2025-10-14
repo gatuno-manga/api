@@ -2,14 +2,6 @@ import { Controller, Get, Logger } from '@nestjs/common';
 import { PasswordMigrationService } from 'src/encryption/password-migration.service';
 import { PasswordEncryption } from 'src/encryption/password-encryption.provider';
 
-/**
- * Controller administrativo para monitoramento de migração de senhas.
- *
- * Fornece endpoints para verificar o status da migração de algoritmos
- * de hashing de senhas (Scrypt → Argon2).
- *
- * ⚠️ TODO: Adicionar guards de autenticação e autorização (apenas admin)
- */
 @Controller('auth/password-migration')
 export class PasswordMigrationController {
     private readonly logger = new Logger(PasswordMigrationController.name);
@@ -19,14 +11,6 @@ export class PasswordMigrationController {
         private readonly passwordEncryption: PasswordEncryption,
     ) {}
 
-    /**
-     * GET /auth/password-migration/status
-     *
-     * Retorna estatísticas sobre os algoritmos de hashing em uso.
-     * Útil para monitorar o progresso da migração.
-     *
-     * @returns Estatísticas detalhadas sobre algoritmos de hashing
-     */
     @Get('status')
     async getMigrationStatus() {
         const stats = await this.passwordMigration.getHashingStatistics();
@@ -87,13 +71,6 @@ export class PasswordMigrationController {
         };
     }
 
-    /**
-     * GET /auth/password-migration/current-algorithm
-     *
-     * Retorna o algoritmo de hashing atualmente configurado.
-     *
-     * @returns Algoritmo atual e suas características
-     */
     @Get('current-algorithm')
     async getCurrentAlgorithm() {
         const algorithm = this.passwordEncryption.getAlgorithm();

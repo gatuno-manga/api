@@ -85,14 +85,6 @@ export class AuthService {
         return userWithRoles;
     }
 
-    /**
-     * Gera tokens de acesso e refresh para um usuário.
-     * Utiliza o padrão Builder para construir o payload JWT de forma fluente e legível.
-     *
-     * @param user - Usuário para o qual os tokens serão gerados (deve conter roles)
-     * @returns Objeto com accessToken e refreshToken
-     * @throws BadRequestException se o usuário não tiver roles atribuídos
-     */
     private async getTokens(user: User): Promise<{ accessToken: string; refreshToken: string }> {
         if (!user.roles || user.roles.length === 0) {
             throw new BadRequestException('User has no roles assigned');
@@ -142,8 +134,6 @@ export class AuthService {
             throw new UnauthorizedException('Invalid password');
         }
 
-        // ✨ Migração automática de senha (Strategy Pattern em ação!)
-        // Se a senha ainda usa algoritmo antigo (scrypt/bcrypt), migra automaticamente para Argon2
         const wasMigrated = await this.passwordMigration.migratePasswordOnLogin(user, password);
         if (wasMigrated) {
             this.logger.log(`🔄 Senha do usuário ${user.email} migrada com sucesso para ${this.passwordEncryption.getAlgorithm()}`);

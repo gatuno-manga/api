@@ -1,18 +1,16 @@
 import { Injectable, Logger, OnApplicationShutdown } from '@nestjs/common';
-import {
-	Builder,
-	Browser,
-	Capabilities,
-	WebDriver,
-} from 'selenium-webdriver';
+import { WebDriver } from 'selenium-webdriver';
 import * as path from 'path';
 import * as fs from 'fs';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { FilesService } from 'src/files/files.service';
 import { WebsiteService } from './website.service';
-import chromeOptionsConfig from './config/chromeOptionsConfig';
-import { stealthScripts } from './config/stealthScripts';
 import { WebsiteConfigDto } from './dto/website-config.dto';
+import {
+	IWebDriverFactory,
+	ChromeDriverFactory,
+	WebDriverConfig,
+} from './factories';
 
 class ScrapingUtils {
 	static readScript(scriptPath: string): string {
@@ -24,14 +22,34 @@ export class ScrapingService implements OnApplicationShutdown {
 	private readonly logger = new Logger(ScrapingService.name);
 	private downloadDir = path.resolve('/usr/src/app/data');
 	private drivers: Set<WebDriver> = new Set();
+	private driverFactory: IWebDriverFactory;
 
 	constructor(
 		private readonly appConfigService: AppConfigService,
 		private readonly filesService: FilesService,
 		private readonly webSiteService: WebsiteService,
-	) {}
+	) {
+		this.initializeDriverFactory();
+	}
 
-	// Funções utilitárias e de baixo nível primeiro
+	private initializeDriverFactory(): void {
+		const config: WebDriverConfig = {
+			seleniumUrl: this.appConfigService.seleniumUrl,
+			downloadDir: this.downloadDir,
+			headless: false,
+			scriptTimeout: 1_200_000,
+			pageLoadTimeout: 1_200_000,
+		};
+
+		this.driverFactory = new ChromeDriverFactory(config);
+		this.logger.debug('Driver factory inicializado com sucesso');
+	}
+
+	setDriverFactory(factory: IWebDriverFactory): void {
+		this.driverFactory = factory;
+		this.logger.debug('Driver factory alterado');
+	}
+
 	private async removeDriver(driver: WebDriver) {
 		if (this.drivers.has(driver)) {
 			this.drivers.delete(driver);
@@ -166,28 +184,7 @@ export class ScrapingService implements OnApplicationShutdown {
 	}
 
 	async createInstance() {
-		const chromeCapabilities = Capabilities.chrome();
-		const chromeOptions = {
-			...chromeOptionsConfig,
-			prefs: {
-				...chromeOptionsConfig.prefs,
-				'download.default_directory': this.downloadDir,
-			},
-		};
-		chromeCapabilities.set('goog:chromeOptions', chromeOptions);
-
-		const driver = await new Builder()
-			.usingServer(this.appConfigService.seleniumUrl)
-			.forBrowser(Browser.CHROME)
-			.withCapabilities(chromeCapabilities)
-			.build();
-
-		await driver.executeScript(stealthScripts.getAllScripts());
-
-		await driver.manage().setTimeouts({
-			script: 1_200_000,
-			pageLoad: 1_200_000
-		});
+		const driver = await this.driverFactory.createDriver();
 		this.drivers.add(driver);
 		return driver;
 	}
@@ -268,7 +265,6 @@ export class ScrapingService implements OnApplicationShutdown {
 	}
 
 	async onApplicationShutdown(signal: string) {
-		// Garante que todos os drivers sejam fechados
 		for (const driver of this.drivers) {
 			await this.removeDriver(driver);
 		}
