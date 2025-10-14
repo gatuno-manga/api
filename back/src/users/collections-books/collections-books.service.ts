@@ -2,13 +2,13 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Book } from "src/books/entitys/book.entity";
 import { Repository } from "typeorm";
-import { User } from "./entitys/user.entity";
-import { CollectionBook } from "./entitys/collection-book.entity";
+import { User } from "../entitys/user.entity";
+import { CollectionBook } from "./entities/collection-book.entity";
 import { CreateCollectionBookDto } from "./dto/create-collection-book.dto";
 import { AddBookCollectionDto } from "./dto/add-book-collection.dto";
 
 @Injectable()
-export class CollectionBookService {
+export class CollectionsBooksService {
   constructor(
     @InjectRepository(Book)
     private readonly bookRepository: Repository<Book>,
