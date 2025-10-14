@@ -9,6 +9,8 @@ import { Repository } from 'typeorm';
 import { Cache } from 'cache-manager';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { Role } from 'src/users/entitys/role.entity';
+import { StoredTokenDto } from './dto/stored-token.dto';
+
 @Injectable()
 export class AuthService {
     private readonly logger = new Logger(AuthService.name);
@@ -28,14 +30,25 @@ export class AuthService {
         return `user-tokens:${userId}`;
     }
 
-    private async storeRefreshToken(userId: string, token: string) {
+    private async storeRefreshToken(userId: string, token: string): Promise<void> {
         const key = this.getRedisKey(userId);
         const hashedToken = await this.DataEncryption.encrypt(token);
         const ttl = this.configService.refreshTokenTtl;
+        const expiresAt = Date.now() + ttl;
 
-        const storedTokens: string[] = await this.cacheManager.get(key) || [];
-        storedTokens.push(hashedToken);
-        await this.cacheManager.set(key, storedTokens, ttl);
+        const storedTokens: StoredTokenDto[] = (await this.cacheManager.get(key)) || [];
+
+        const validTokens = storedTokens.filter(t => t.expiresAt > Date.now());
+
+        validTokens.push({ hash: hashedToken, expiresAt });
+
+        const nextExpiration = validTokens.length > 0
+            ? Math.min(...validTokens.map(t => t.expiresAt))
+            : expiresAt;
+        const cacheTtl = Math.max(nextExpiration - Date.now(), 0);
+
+        await this.cacheManager.set(key, validTokens, cacheTtl);
+        this.logger.log(`Stored refresh token for user ${userId}. Total tokens: ${validTokens.length}`);
     }
 
     async signUp(email: string, password: string, isAdmin = false) {
@@ -57,11 +70,21 @@ export class AuthService {
             password: result,
             roles: [role],
         });
-        this.logger.log('User create', user);
-        return user;
+
+        const userWithRoles = await this.userRepository.findOne({
+            where: { id: user.id },
+            relations: ['roles'],
+        });
+
+        this.logger.log('User created', userWithRoles);
+        return userWithRoles;
     }
 
     private async getTokens(user: User): Promise<{ accessToken: string; refreshToken: string }> {
+        if (!user.roles || user.roles.length === 0) {
+            throw new BadRequestException('User has no roles assigned');
+        }
+
         const maxWeightSensitiveContent = Math.max(
             ...user.roles.map(role => role.maxWeightSensitiveContent ?? 0)
         );
@@ -117,36 +140,63 @@ export class AuthService {
     }
 
     async logout(userId: string, refreshToken: string) {
+        if (!refreshToken) {
+            throw new UnauthorizedException('Refresh token is required');
+        }
+
         const key = this.getRedisKey(userId);
-        const storedTokens: string[] = await this.cacheManager.get(key) || [];
+        const storedTokens: StoredTokenDto[] = (await this.cacheManager.get(key)) || [];
+
+        const validTokens = storedTokens.filter(t => t.expiresAt > Date.now());
+
+        if (validTokens.length === 0) {
+            this.logger.warn('No tokens found in cache for user', { userId });
+            throw new UnauthorizedException('No active sessions found');
+        }
+
         let index = -1;
-        for (let i = 0; i < storedTokens.length; i++) {
-            if (await this.DataEncryption.compare(storedTokens[i], refreshToken)) {
+        for (let i = 0; i < validTokens.length; i++) {
+            if (await this.DataEncryption.compare(validTokens[i].hash, refreshToken)) {
                 index = i;
                 break;
             }
         }
+
         if (index === -1) {
-            this.logger.error('Token not found in cache', { userId, refreshToken });
+            this.logger.error('Token not found in cache', { userId });
             throw new UnauthorizedException('Invalid token');
         }
-        storedTokens.splice(index, 1);
-        if (storedTokens.length === 0) {
+
+        validTokens.splice(index, 1);
+
+        if (validTokens.length === 0) {
             await this.cacheManager.del(key);
+            this.logger.log(`All tokens removed for user ${userId}`);
         } else {
-            await this.cacheManager.set(key, storedTokens, this.configService.refreshTokenTtl);
+            const nextExpiration = validTokens.length > 0
+                ? Math.min(...validTokens.map(t => t.expiresAt))
+                : Date.now();
+            const cacheTtl = Math.max(nextExpiration - Date.now(), 0);
+            await this.cacheManager.set(key, validTokens, cacheTtl);
+            this.logger.log(`Token removed for user ${userId}. Remaining tokens: ${validTokens.length}`);
         }
+
         return { message: 'Logged out successfully' };
     }
 
     async logoutAll(userId: string) {
         const key = this.getRedisKey(userId);
-        const storedTokens: string[] = await this.cacheManager.get(key) || [];
-        if (storedTokens.length === 0) {
+        const storedTokens: StoredTokenDto[] = (await this.cacheManager.get(key)) || [];
+
+        const validTokens = storedTokens.filter(t => t.expiresAt > Date.now());
+
+        if (validTokens.length === 0) {
+            this.logger.warn('No active sessions found for user', { userId });
             throw new UnauthorizedException('No active sessions found');
         }
 
         await this.cacheManager.del(key);
+        this.logger.log(`All sessions (${validTokens.length}) logged out for user ${userId}`);
         return { message: 'All sessions logged out successfully' };
     }
 
@@ -154,39 +204,64 @@ export class AuthService {
         userId: string,
         oldRefreshToken: string,
     ) {
-        const key = this.getRedisKey(userId);
-        const storedHashes: string[] = await this.cacheManager.get(key) || [];
+        if (!oldRefreshToken) {
+            throw new UnauthorizedException('Refresh token is required');
+        }
 
-        if (storedHashes.length === 0) {
+        const key = this.getRedisKey(userId);
+        const storedTokens: StoredTokenDto[] = (await this.cacheManager.get(key)) || [];
+
+        const validTokens = storedTokens.filter(t => t.expiresAt > Date.now());
+
+        if (validTokens.length === 0) {
+            this.logger.warn('No valid session found for user', { userId });
             throw new UnauthorizedException('No valid session found');
         }
+
         let match = false;
         let indexToRemove = -1;
-        for (let i = 0; i < storedHashes.length; i++) {
-            if (await this.DataEncryption.compare(storedHashes[i], oldRefreshToken)) {
+        for (let i = 0; i < validTokens.length; i++) {
+            if (await this.DataEncryption.compare(validTokens[i].hash, oldRefreshToken)) {
                 match = true;
                 indexToRemove = i;
                 break;
             }
         }
+
         if (!match) {
+            this.logger.error('Invalid refresh token for user', { userId });
             throw new UnauthorizedException('Invalid refresh token');
         }
 
         if (indexToRemove > -1) {
-            storedHashes.splice(indexToRemove, 1);
+            validTokens.splice(indexToRemove, 1);
         }
 
-        const user = await this.userRepository.findOneBy({ id: userId });
+        const user = await this.userRepository.findOne({
+            where: { id: userId },
+            relations: ['roles'],
+        });
+
         if (!user) {
+            this.logger.error('User not found during token refresh', { userId });
             throw new UnauthorizedException('User not found');
         }
 
         const tokens = await this.getTokens(user);
-        await this.storeRefreshToken(user.id, tokens.refreshToken);
-        const newHashedToken = await this.DataEncryption.encrypt(tokens.refreshToken);
-        storedHashes.push(newHashedToken);
-        await this.cacheManager.set(key, storedHashes, this.configService.refreshTokenTtl);
+
+        const hashedToken = await this.DataEncryption.encrypt(tokens.refreshToken);
+        const ttl = this.configService.refreshTokenTtl;
+        const expiresAt = Date.now() + ttl;
+
+        validTokens.push({ hash: hashedToken, expiresAt });
+
+        const nextExpiration = validTokens.length > 0
+            ? Math.min(...validTokens.map(t => t.expiresAt))
+            : expiresAt;
+        const cacheTtl = Math.max(nextExpiration - Date.now(), 0);
+        await this.cacheManager.set(key, validTokens, cacheTtl);
+
+        this.logger.log(`Tokens refreshed for user ${userId}. Total tokens: ${validTokens.length}`);
         return tokens;
     }
 }

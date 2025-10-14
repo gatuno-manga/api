@@ -251,6 +251,19 @@ export class BooksService {
 	}
 
 	async createBook(dto: CreateBookDto) {
+		const conflictCheck = await this.checkBookTitleConflict(
+			dto.title,
+			dto.alternativeTitle || []
+		);
+
+		if (conflictCheck.conflict && !dto.validator) {
+			throw new BadRequestException({
+				message: `Já existe um livro com o título "${dto.title}" ou com um dos títulos alternativos. ` +
+					`Se deseja cadastrar mesmo assim, defina o campo 'validator' como true.`,
+				conflictingBook: conflictCheck.existingBook,
+			});
+		}
+
 		return await this.bookRepository.manager.transaction(async (manager) => {
 			const tags =
 				dto.tags && dto.tags.length > 0
@@ -289,6 +302,48 @@ export class BooksService {
 			this.eventEmitter.emit('book.created', savedBook);
 			return savedBook;
 		});
+	}
+
+	async checkBookTitleConflict(title: string, alternativeTitles: string[] = []): Promise<{
+		conflict: boolean;
+		existingBook?: { id: string; title: string; alternativeTitle?: string[] };
+		conflictingBooks?: Array<{ id: string; title: string; alternativeTitle?: string[] }>;
+	}> {
+		const queryBuilder = this.bookRepository.createQueryBuilder('book');
+
+		const allTitles = [title, ...alternativeTitles];
+
+		for (let i = 0; i < allTitles.length; i++) {
+			const titleToCheck = allTitles[i];
+			if (i === 0)
+				queryBuilder.where(`book.title = :title${i}`, { [`title${i}`]: titleToCheck });
+			else
+				queryBuilder.orWhere(`book.title = :title${i}`, { [`title${i}`]: titleToCheck });
+
+			queryBuilder.orWhere(`JSON_CONTAINS(book.alternativeTitle, :jsonTitle${i})`, {
+				[`jsonTitle${i}`]: JSON.stringify(titleToCheck),
+			});
+		}
+
+		queryBuilder.select(['book.id', 'book.title', 'book.alternativeTitle']);
+
+		const conflictingBooks = await queryBuilder.getMany();
+
+		if (conflictingBooks.length > 0) {
+			const formattedBooks = conflictingBooks.map(book => ({
+				id: book.id,
+				title: book.title,
+				alternativeTitle: book.alternativeTitle,
+			}));
+
+			return {
+				conflict: true,
+				existingBook: formattedBooks[0], // Para compatibilidade com código existente
+				conflictingBooks: formattedBooks,
+			};
+		}
+
+		return { conflict: false };
 	}
 
 	async getAllBooks(options: BookPageOptionsDto, maxWeightSensitiveContent: number = 0): Promise<PageDto<any>> {

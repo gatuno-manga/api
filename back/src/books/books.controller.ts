@@ -43,6 +43,71 @@ export class BooksController {
 		return this.booksService.getRandomBook(options, user?.maxWeightSensitiveContent);
 	}
 
+	@Get('check-title/:title')
+	@ApiOperation({
+		summary: 'Check if book title already exists',
+		description: 'Check if there is already a book with the given title or alternative titles before creating a new one. Returns all conflicting books.'
+	})
+	@ApiParam({
+		name: 'title',
+		description: 'Book title to check',
+		example: 'One Piece'
+	})
+	@ApiQuery({
+		name: 'alternativeTitles',
+		description: 'Alternative titles to check (comma separated)',
+		required: false,
+		example: 'ワンピース,Wan Pīsu'
+	})
+	@ApiResponse({
+		status: 200,
+		description: 'Title check completed. Returns all books that conflict with the provided titles.',
+		schema: {
+			type: 'object',
+			properties: {
+				conflict: { type: 'boolean', example: true },
+				existingBook: {
+					type: 'object',
+					description: 'First conflicting book (for backwards compatibility)',
+					properties: {
+						id: { type: 'string', example: '550e8400-e29b-41d4-a716-446655440000' },
+						title: { type: 'string', example: 'One Piece' },
+						alternativeTitle: {
+							type: 'array',
+							items: { type: 'string' },
+							example: ['ワンピース', 'Wan Pīsu']
+						}
+					}
+				},
+				conflictingBooks: {
+					type: 'array',
+					description: 'All books that have conflicting titles',
+					items: {
+						type: 'object',
+						properties: {
+							id: { type: 'string', example: '550e8400-e29b-41d4-a716-446655440000' },
+							title: { type: 'string', example: 'One Piece' },
+							alternativeTitle: {
+								type: 'array',
+								items: { type: 'string' },
+								example: ['ワンピース', 'Wan Pīsu']
+							}
+						}
+					}
+				}
+			}
+		}
+	})
+	checkBookTitle(
+		@Param('title') title: string,
+		@Query('alternativeTitles') alternativeTitles?: string
+	) {
+		const altTitlesArray = alternativeTitles
+			? alternativeTitles.split(',').map(t => t.trim()).filter(t => t.length > 0)
+			: undefined;
+		return this.booksService.checkBookTitleConflict(title, altTitlesArray);
+	}
+
 	@Get(':idBook')
 	@ApiOperation({ summary: 'Get book by ID', description: 'Retrieve detailed information about a specific book' })
 	@ApiParam({ name: 'idBook', description: 'Book unique identifier', example: '550e8400-e29b-41d4-a716-446655440000' })
