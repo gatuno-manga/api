@@ -151,4 +151,14 @@ export class CreateBookDto {
 	@ValidateNested({ each: true })
 	@Type(() => CreateChapterDto)
 	chapters?: CreateChapterDto[] = [];
+
+	@ApiPropertyOptional({
+		description: 'Validates if the book can be created even if there is a title conflict. ' +
+			'If false (default), the book will not be created if another book with the same title or alternative title exists. ' +
+			'If true, allows creating the book even with a title conflict.',
+		example: false,
+		default: false,
+	})
+	@IsOptional()
+	validator: boolean = false;
 }
