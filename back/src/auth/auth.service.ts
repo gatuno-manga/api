@@ -10,6 +10,7 @@ import { Cache } from 'cache-manager';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { Role } from 'src/users/entitys/role.entity';
 import { StoredTokenDto } from './dto/stored-token.dto';
+import { JwtPayloadBuilder } from './builders/jwt-payload.builder';
 
 @Injectable()
 export class AuthService {
@@ -80,21 +81,24 @@ export class AuthService {
         return userWithRoles;
     }
 
+    /**
+     * Gera tokens de acesso e refresh para um usuário.
+     * Utiliza o padrão Builder para construir o payload JWT de forma fluente e legível.
+     *
+     * @param user - Usuário para o qual os tokens serão gerados (deve conter roles)
+     * @returns Objeto com accessToken e refreshToken
+     * @throws BadRequestException se o usuário não tiver roles atribuídos
+     */
     private async getTokens(user: User): Promise<{ accessToken: string; refreshToken: string }> {
         if (!user.roles || user.roles.length === 0) {
             throw new BadRequestException('User has no roles assigned');
         }
 
-        const maxWeightSensitiveContent = Math.max(
-            ...user.roles.map(role => role.maxWeightSensitiveContent ?? 0)
-        );
-        const payload = {
-            sub: user.id,
-            iss: 'login',
-            email: user.email,
-            roles: user.roles.map(role => role.name),
-            maxWeightSensitiveContent: maxWeightSensitiveContent
-        }
+        const payload = new JwtPayloadBuilder()
+            .fromUser(user)
+            .setIssuer('login')
+            .build();
+
         const [accessToken, refreshToken] = await Promise.all([
             this.jwtService.signAsync(
                 payload,
