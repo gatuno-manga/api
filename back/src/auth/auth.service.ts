@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataEncryptionProvider } from 'src/encryption/data-encryption.provider';
 import { PasswordEncryption } from 'src/encryption/password-encryption.provider';
+import { PasswordMigrationService } from 'src/encryption/password-migration.service';
 import { User } from 'src/users/entitys/user.entity';
 import { Repository } from 'typeorm';
 import { Cache } from 'cache-manager';
@@ -21,11 +22,14 @@ export class AuthService {
         @InjectRepository(Role)
         private readonly roleRepository: Repository<Role>,
         private readonly passwordEncryption: PasswordEncryption,
+        private readonly passwordMigration: PasswordMigrationService,
         private readonly DataEncryption: DataEncryptionProvider,
         private readonly jwtService: JwtService,
         private readonly configService: AppConfigService,
         @Inject(CACHE_MANAGER) private cacheManager: Cache,
-    ) {}
+    ) {
+        this.logger.log(`🔐 Algoritmo de hashing ativo: ${this.passwordEncryption.getAlgorithm()}`);
+    }
 
     private getRedisKey(userId: string): string {
         return `user-tokens:${userId}`;
@@ -136,6 +140,13 @@ export class AuthService {
         if (!(await this.passwordEncryption.compare(user.password, password))) {
             this.logger.error('Invalid password', email);
             throw new UnauthorizedException('Invalid password');
+        }
+
+        // ✨ Migração automática de senha (Strategy Pattern em ação!)
+        // Se a senha ainda usa algoritmo antigo (scrypt/bcrypt), migra automaticamente para Argon2
+        const wasMigrated = await this.passwordMigration.migratePasswordOnLogin(user, password);
+        if (wasMigrated) {
+            this.logger.log(`🔄 Senha do usuário ${user.email} migrada com sucesso para ${this.passwordEncryption.getAlgorithm()}`);
         }
 
         const tokens = await this.getTokens(user);
