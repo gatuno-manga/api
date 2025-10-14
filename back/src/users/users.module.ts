@@ -6,10 +6,10 @@ import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { User } from './entitys/user.entity';
 import { Role } from './entitys/role.entity';
-import { 
-  CollectionsBooksController, 
-  CollectionsBooksService, 
-  CollectionBook 
+import {
+  CollectionsBooksController,
+  CollectionsBooksService,
+  CollectionBook
 } from './collections-books';
 
 @Module({
