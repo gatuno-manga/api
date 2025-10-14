@@ -29,6 +29,14 @@ import { FixChapterService } from './jobs/fix-chapter.service';
 import { FixChapterProcessor } from './jobs/fix-chapter.processor';
 import { AdminBooksController } from './admin-books.controller';
 import { Cover } from './entitys/cover.entity';
+// Novos serviços especializados
+import { BookCreationService } from './services/book-creation.service';
+import { BookUpdateService } from './services/book-update.service';
+import { BookQueryService } from './services/book-query.service';
+import { ChapterManagementService } from './services/chapter-management.service';
+import { BookRelationshipService } from './services/book-relationship.service';
+// WebSocket Gateway
+import { BooksGateway } from './gateway/books.gateway';
 
 @Module({
 	imports: [
@@ -95,6 +103,14 @@ import { Cover } from './entitys/cover.entity';
 		CoverImageProcessor,
 		FixChapterService,
 		FixChapterProcessor,
+		// Novos serviços especializados
+		BookCreationService,
+		BookUpdateService,
+		BookQueryService,
+		ChapterManagementService,
+		BookRelationshipService,
+		// WebSocket Gateway
+		BooksGateway,
 	],
 })
 export class BooksModule {}

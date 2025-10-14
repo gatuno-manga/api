@@ -4,12 +4,14 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataEncryptionProvider } from 'src/encryption/data-encryption.provider';
 import { PasswordEncryption } from 'src/encryption/password-encryption.provider';
+import { PasswordMigrationService } from 'src/encryption/password-migration.service';
 import { User } from 'src/users/entitys/user.entity';
 import { Repository } from 'typeorm';
 import { Cache } from 'cache-manager';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { Role } from 'src/users/entitys/role.entity';
 import { StoredTokenDto } from './dto/stored-token.dto';
+import { JwtPayloadBuilder } from './builders/jwt-payload.builder';
 
 @Injectable()
 export class AuthService {
@@ -20,11 +22,14 @@ export class AuthService {
         @InjectRepository(Role)
         private readonly roleRepository: Repository<Role>,
         private readonly passwordEncryption: PasswordEncryption,
+        private readonly passwordMigration: PasswordMigrationService,
         private readonly DataEncryption: DataEncryptionProvider,
         private readonly jwtService: JwtService,
         private readonly configService: AppConfigService,
         @Inject(CACHE_MANAGER) private cacheManager: Cache,
-    ) {}
+    ) {
+        this.logger.log(`🔐 Algoritmo de hashing ativo: ${this.passwordEncryption.getAlgorithm()}`);
+    }
 
     private getRedisKey(userId: string): string {
         return `user-tokens:${userId}`;
@@ -85,16 +90,11 @@ export class AuthService {
             throw new BadRequestException('User has no roles assigned');
         }
 
-        const maxWeightSensitiveContent = Math.max(
-            ...user.roles.map(role => role.maxWeightSensitiveContent ?? 0)
-        );
-        const payload = {
-            sub: user.id,
-            iss: 'login',
-            email: user.email,
-            roles: user.roles.map(role => role.name),
-            maxWeightSensitiveContent: maxWeightSensitiveContent
-        }
+        const payload = new JwtPayloadBuilder()
+            .fromUser(user)
+            .setIssuer('login')
+            .build();
+
         const [accessToken, refreshToken] = await Promise.all([
             this.jwtService.signAsync(
                 payload,
@@ -132,6 +132,11 @@ export class AuthService {
         if (!(await this.passwordEncryption.compare(user.password, password))) {
             this.logger.error('Invalid password', email);
             throw new UnauthorizedException('Invalid password');
+        }
+
+        const wasMigrated = await this.passwordMigration.migratePasswordOnLogin(user, password);
+        if (wasMigrated) {
+            this.logger.log(`🔄 Senha do usuário ${user.email} migrada com sucesso para ${this.passwordEncryption.getAlgorithm()}`);
         }
 
         const tokens = await this.getTokens(user);

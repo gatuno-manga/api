@@ -1,5 +1,3 @@
-// chromeOptionsConfig.ts
-// Configurações de chromeOptions para uso no ScrapingService (TypeScript)
 
 export default {
     prefs: {

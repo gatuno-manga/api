@@ -11,24 +11,18 @@ export class BookPageOptionsDto extends PageOptionsDto {
 		example: [BookType.MANGA, BookType.MANHWA],
 		enum: BookType,
 		isArray: true,
-		default: [BookType.OTHER, BookType.MANGA, BookType.MANHWA, BookType.MANHUA, BookType.BOOK],
+		default: Object.values(BookType),
 	})
 	@ApiPropertyOptional({
 		description: 'Filter by book types',
 		example: [BookType.MANGA, BookType.MANHWA],
 		enum: BookType,
 		isArray: true,
-		default: [BookType.OTHER, BookType.MANGA, BookType.MANHWA, BookType.MANHUA, BookType.BOOK],
+		default: Object.values(BookType),
 	})
 	@IsOptional()
 	@ToArray()
-	type?: BookType[] = [
-		BookType.OTHER,
-		BookType.MANGA,
-		BookType.MANHWA,
-		BookType.MANHUA,
-		BookType.BOOK,
-	];
+	type?: BookType[] = Object.values(BookType);
 
 	@ApiPropertyOptional({
 		description: 'Filter by sensitive content tags',

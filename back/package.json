@@ -31,9 +31,12 @@
     "@nestjs/mapped-types": "*",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/platform-socket.io": "^11.1.6",
     "@nestjs/serve-static": "^5.0.3",
     "@nestjs/swagger": "^11.2.0",
     "@nestjs/typeorm": "^11.0.0",
+    "@nestjs/websockets": "^11.1.6",
+    "argon2": "^0.44.0",
     "axios": "^1.10.0",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.56.7",
@@ -52,6 +55,7 @@
     "rxjs": "^7.8.1",
     "selenium-webdriver": "^4.33.0",
     "sharp": "^0.34.2",
+    "socket.io": "^4.8.1",
     "typeorm": "^0.3.24",
     "uuid": "^11.1.0"
   },
@@ -103,6 +107,9 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^src/(.*)$": "<rootDir>/$1"
+    }
   }
 }

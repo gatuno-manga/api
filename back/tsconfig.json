@@ -10,6 +10,47 @@
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
+    "paths": {
+      "@/*": [
+        "src/*"
+      ],
+      "@src/*": [
+        "src/*"
+      ],
+      "@back/*": [
+        "src/*"
+      ],
+      "@app-config/*": [
+        "src/app-config/*"
+      ],
+      "@auth/*": [
+        "src/auth/*"
+      ],
+      "@books/*": [
+        "src/books/*"
+      ],
+      "@database/*": [
+        "src/database/*"
+      ],
+      "@encryption/*": [
+        "src/encryption/*"
+      ],
+      "@files/*": [
+        "src/files/*"
+      ],
+      "@health/*": [
+        "src/health/*"
+      ],
+      "@pages/*": [
+        "src/pages/*"
+      ],
+      "@scraping/*": [
+        "src/scraping/*"
+      ],
+      "@users/*": [
+        "src/users/*"
+      ]
+    },
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": true,

@@ -8,6 +8,7 @@ import { Chapter } from '../entitys/chapter.entity';
 import { ScrapingService } from 'src/scraping/scraping.service';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { AppConfigService } from 'src/app-config/app-config.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 const QUEUE_NAME = 'fix-chapter-queue';
 const JOB_NAME = 'fix-chapter';
@@ -23,6 +24,7 @@ export class FixChapterProcessor extends WorkerHost implements OnModuleInit {
         private readonly chapterRepository: Repository<Chapter>,
         private readonly scrapingService: ScrapingService,
         private readonly configService: AppConfigService,
+        private readonly eventEmitter: EventEmitter2,
     ) {
         super();
     }
@@ -48,6 +50,13 @@ export class FixChapterProcessor extends WorkerHost implements OnModuleInit {
 
     private async fixChapter(chapter: Chapter): Promise<void> {
         this.logger.debug(`Iniciando conserto para o capítulo: ${chapter.id}`);
+
+        // Emite evento de scraping iniciado
+        this.eventEmitter.emit('chapter.scraping.started', {
+            chapterId: chapter.id,
+            bookId: chapter.book?.id,
+        });
+
         try {
             const pages = await this.scrapingService.scrapePages(chapter.originalUrl, chapter.pages.length);
             if (!pages) return;
@@ -59,11 +68,33 @@ export class FixChapterProcessor extends WorkerHost implements OnModuleInit {
             chapter.pages = newPages;
             chapter.scrapingStatus = ScrapingStatus.READY;
             await this.chapterRepository.save(chapter);
+
+            // Emite evento de scraping completado
+            this.eventEmitter.emit('chapter.scraping.completed', {
+                chapterId: chapter.id,
+                bookId: chapter.book?.id,
+                pagesCount: pages.length,
+            });
+
+            // Emite evento de atualização de capítulo
+            this.eventEmitter.emit('chapters.updated', chapter);
+
             this.logger.log(`Páginas salvas para o capítulo: ${chapter.book.title} (${chapter.index})`);
         } catch (error) {
             this.logger.error(`Falha no scraping do capítulo ${chapter.id}: ${error.message}`, error.stack);
             chapter.scrapingStatus = ScrapingStatus.ERROR;
             await this.chapterRepository.save(chapter);
+
+            // Emite evento de falha no scraping
+            this.eventEmitter.emit('chapter.scraping.failed', {
+                chapterId: chapter.id,
+                bookId: chapter.book?.id,
+                error: error.message,
+            });
+
+            // Emite evento de atualização de capítulo (status ERROR)
+            this.eventEmitter.emit('chapters.updated', chapter);
+
             throw error;
         }
     }

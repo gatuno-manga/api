@@ -8,6 +8,7 @@ import { DataSource, Repository } from "typeorm";
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { ScrapingService } from 'src/scraping/scraping.service';
 import { AppConfigService } from 'src/app-config/app-config.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 const QUEUE_NAME = 'chapter-scraping';
 const JOB_NAME = 'process-chapter';
@@ -24,6 +25,7 @@ export class ChapterScrapingJob extends WorkerHost implements OnModuleInit {
         private readonly dataSource: DataSource,
         private readonly scrapingService: ScrapingService,
         private readonly configService: AppConfigService,
+        private readonly eventEmitter: EventEmitter2,
     ) {
         super();
     }
@@ -67,9 +69,14 @@ export class ChapterScrapingJob extends WorkerHost implements OnModuleInit {
         const chapterId = job.data;
         const queryRunner = this.dataSource.createQueryRunner('master');
         queryRunner.connect().then(() => {
-            return queryRunner.manager.findOne(Chapter, { where: { id: chapterId } });
+            return queryRunner.manager.findOne(Chapter, { where: { id: chapterId }, relations: ['book'] });
         }).then(chapter => {
             if (chapter) {
+                // Emite evento de scraping iniciado
+                this.eventEmitter.emit('chapter.scraping.started', {
+                    chapterId: chapter.id,
+                    bookId: chapter.book?.id,
+                });
                 chapter.retries += 1;
                 return queryRunner.manager.save(chapter);
             }
@@ -84,6 +91,26 @@ export class ChapterScrapingJob extends WorkerHost implements OnModuleInit {
     onFailed(job: Job<string>) {
         const chapterId = job.data;
         this.logger.error(`Job with id ${job.id} FAILED! Attempt Number ${job.attemptsMade} for chapter ID: ${chapterId}`);
+
+        const queryRunner = this.dataSource.createQueryRunner('master');
+        queryRunner.connect().then(() => {
+            return queryRunner.manager.findOne(Chapter, {
+                where: { id: chapterId },
+                relations: ['book']
+            });
+        }).then(chapter => {
+            if (chapter) {
+                this.eventEmitter.emit('chapter.scraping.failed', {
+                    chapterId: chapter.id,
+                    bookId: chapter.book?.id,
+                    error: job.failedReason || 'Unknown error',
+                });
+            }
+        }).catch(error => {
+            this.logger.error(`Erro ao emitir evento de falha para o capítulo ${chapterId}: ${error.message}`);
+        }).finally(() => {
+            queryRunner.release();
+        });
     }
 
     private async processSingleChapter(chapter: Chapter): Promise<void> {
@@ -110,11 +137,25 @@ export class ChapterScrapingJob extends WorkerHost implements OnModuleInit {
             chapter.scrapingStatus = ScrapingStatus.READY;
             await this.chapterRepository.save(chapter);
 
+            // Emite evento de scraping completado
+            this.eventEmitter.emit('chapter.scraping.completed', {
+                chapterId: chapter.id,
+                bookId: chapter.book?.id,
+                pagesCount: pages.length,
+            });
+
+            // Emite evento de atualização de capítulo
+            this.eventEmitter.emit('chapters.updated', chapter);
+
             const endTime = Date.now();
             this.logger.log(` Páginas salvas para o capítulo: ${chapter.book.title} (${chapter.index}) em ${(endTime - startTime) / 1000}s`);
         } catch (error) {
             this.logger.error(` Falha no scraping do capítulo ${chapter.id}: ${error.message}`, error.stack);
             chapter.scrapingStatus = ScrapingStatus.ERROR;
+            await this.chapterRepository.save(chapter);
+
+            // Emite evento de atualização de capítulo (status ERROR)
+            this.eventEmitter.emit('chapters.updated', chapter);
 
             throw error;
         }
