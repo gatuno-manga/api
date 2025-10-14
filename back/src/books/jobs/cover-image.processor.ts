@@ -8,6 +8,7 @@ import { ScrapingService } from 'src/scraping/scraping.service';
 import { QueueCoverProcessorDto } from '../dto/queue-cover-processor.dto';
 import { Cover } from '../entitys/cover.entity';
 import { AppConfigService } from 'src/app-config/app-config.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 const QUEUE_NAME = 'cover-image-queue';
 const JOB_NAME = 'process-cover';
@@ -24,6 +25,7 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
         private readonly scrapingService: ScrapingService,
         private readonly dataSource: DataSource,
         private readonly configService: AppConfigService,
+        private readonly eventEmitter: EventEmitter2,
     ) {
         super();
     }
@@ -51,8 +53,15 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
                     selected: book.covers.length === 0 ? true : false,
                 }
             )
-            await this.coverRepository.save(coverBook);
+            const savedCover = await this.coverRepository.save(coverBook);
             this.logger.log(`Capa salva para o livro: ${book.title}`);
+
+            // Emite evento de capa processada
+            this.eventEmitter.emit('cover.processed', {
+                bookId: book.id,
+                coverId: savedCover.id,
+                url: ImageCover,
+            });
         } catch (err) {
             this.logger.warn(`Falha ao baixar capa para o livro: ${book.title}`, err);
         }
