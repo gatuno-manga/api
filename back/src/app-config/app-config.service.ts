@@ -88,10 +88,10 @@ export class AppConfigService {
 		};
 	}
 
-	private parseDurationToSeconds(duration: string): number {
+	private parseDurationToMilliseconds(duration: string): number {
 		const match = duration.match(/^(\d+)([smhd])$/);
 		if (!match) {
-			return SEVEN_DAYS_IN_SECONDS;
+			return SEVEN_DAYS_IN_SECONDS * 1000;
 		}
 
 		const value = parseInt(match[1], 10);
@@ -99,15 +99,15 @@ export class AppConfigService {
 
 		switch (unit) {
 			case 's': return value;
-			case 'm': return value * 60;
-			case 'h': return value * 60 * 60;
-			case 'd': return value * 24 * 60 * 60;
-			default: return SEVEN_DAYS_IN_SECONDS;
+			case 'm': return value * 60 * 1000;
+			case 'h': return value * 60 * 60 * 1000;
+			case 'd': return value * 24 * 60 * 60 * 1000;
+			default: return SEVEN_DAYS_IN_SECONDS * 1000;
 		}
 	}
 
 	get refreshTokenTtl(): number {
 		const duration = this.jwtRefreshExpiration;
-		return this.parseDurationToSeconds(duration);
+		return this.parseDurationToMilliseconds(duration);
 	}
 }

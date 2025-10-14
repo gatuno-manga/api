@@ -82,12 +82,50 @@ export const stealthScripts = {
     }
   `,
 
+  addFakeBrowsingHistory: `
+    try {
+      const fakeUrls = [
+        'https://www.google.com',
+        'https://www.youtube.com',
+        'https://www.facebook.com',
+        'https://www.amazon.com',
+        'https://www.reddit.com',
+        'https://www.twitter.com',
+        'https://www.wikipedia.org',
+        'https://www.instagram.com',
+        'https://www.linkedin.com',
+        'https://www.netflix.com'
+      ];
+
+      fakeUrls.forEach(url => {
+        try {
+          history.pushState({}, '', url);
+          history.back();
+        } catch (e) {
+          console.debug('Could not add history entry for:', url);
+        }
+      });
+
+      history.forward();
+
+      const originalLength = history.length;
+      Object.defineProperty(history, 'length', {
+        get: () => Math.max(originalLength + fakeUrls.length, 15),
+        configurable: true
+      });
+
+    } catch (e) {
+      console.debug('Could not add fake browsing history');
+    }
+  `,
+
   getAllScripts: function () {
     return [
       this.removeWebdriverProperty,
       this.addFakePlugins,
       this.addMouseMovement,
-      this.addRealBrowserProperties
+      this.addRealBrowserProperties,
+      this.addFakeBrowsingHistory,
     ].join('\n');
   }
 };

@@ -28,6 +28,6 @@ export class CreateAdminEvent {
             return;
         }
         const newUser = await this.authService.signUp(userEmail, userPassword, true);
-        this.logger.log(`Admin user created: ${newUser.email}`);
+        this.logger.log(`Admin user created: ${newUser?.email}`);
     }
 }

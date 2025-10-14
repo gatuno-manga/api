@@ -8,6 +8,7 @@ import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import { Request } from 'express';
 import { DataEncryptionProvider } from "src/encryption/data-encryption.provider";
 import { Cache } from 'cache-manager';
+import { StoredTokenDto } from "../dto/stored-token.dto";
 
 
 @Injectable()
@@ -39,17 +40,20 @@ export class JwtRefreshStrategy extends PassportStrategy(
         }
         const userId = payload.sub;
         const key = `user-tokens:${userId}`;
-        const storedHashes: string[] = await this.cacheManager.get(key) || [];
-        if (storedHashes.length === 0) {
+        const storedTokens: StoredTokenDto[] = await this.cacheManager.get(key) || [];
+
+        const validTokens = storedTokens.filter(t => t.expiresAt > Date.now()); if (validTokens.length === 0) {
             throw new UnauthorizedException('Access Denied. No valid session found.');
         }
+
         let match = false;
-        for (const storedHash of storedHashes) {
-            if (await this.DataEncryption.compare(storedHash, refreshToken)) {
+        for (const storedToken of validTokens) {
+            if (await this.DataEncryption.compare(storedToken.hash, refreshToken)) {
                 match = true;
                 break;
             }
         }
+
         if (!match) {
             throw new UnauthorizedException('Access Denied. Invalid token.');
         }
