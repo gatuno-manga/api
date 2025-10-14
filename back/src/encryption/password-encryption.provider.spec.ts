@@ -124,7 +124,10 @@ describe('PasswordHasher - Testes de Diferentes Estratégias', () => {
         let strategy: BcryptStrategy;
 
         beforeEach(() => {
-            strategy = new BcryptStrategy();
+            const mockAppConfig = {
+                saltLength: 10,
+            };
+            strategy = new BcryptStrategy(mockAppConfig as any);
         });
 
         it('deve ter o nome correto do algoritmo', () => {
@@ -204,7 +207,10 @@ describe('PasswordEncryption - Troca de Estratégia', () => {
         expect(service1.getAlgorithm()).toBe('scrypt');
 
         // Cria novo serviço com BcryptStrategy
-        const bcryptStrategy = new BcryptStrategy();
+        const mockAppConfig = {
+            saltLength: 10,
+        };
+        const bcryptStrategy = new BcryptStrategy(mockAppConfig as any);
 
         const module2 = await Test.createTestingModule({
             providers: [

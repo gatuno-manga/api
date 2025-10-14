@@ -15,8 +15,22 @@ describe('AppController', () => {
 	});
 
 	describe('root', () => {
-		it('should return "Hello World!"', () => {
-			expect(appController.getHello()).toBe('Hello World!');
+		it('should return welcome message with API info', () => {
+			const result = appController.getHello();
+			expect(result).toEqual({
+				message: 'Welcome to Gatuno API',
+				documentation: '/docs',
+			});
+		});
+
+		it('should have message property', () => {
+			const result = appController.getHello();
+			expect(result).toHaveProperty('message');
+		});
+
+		it('should have documentation property', () => {
+			const result = appController.getHello();
+			expect(result).toHaveProperty('documentation');
 		});
 	});
 });

@@ -1,6 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { FilesService } from './files.service';
 import { FileCompressorFactory } from './factories/file-compressor.factory';
+import * as fs from 'fs/promises';
+
+// Mock do fs
+jest.mock('fs/promises');
 
 describe('FilesService', () => {
 	let service: FilesService;
@@ -27,6 +31,13 @@ describe('FilesService', () => {
 		}).compile();
 
 		service = module.get<FilesService>(FilesService);
+
+		// Mock do fs.writeFile para não escrever arquivos realmente
+		(fs.writeFile as jest.Mock).mockResolvedValue(undefined);
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
 	});
 
 	it('should be defined', () => {
@@ -68,6 +79,7 @@ describe('FilesService', () => {
 
 			expect(mockCompressorFactory.hasCompressor).toHaveBeenCalledWith(extension);
 			expect(mockCompressorFactory.compress).toHaveBeenCalled();
+			expect(fs.writeFile).toHaveBeenCalled();
 			expect(result).toMatch(/^\/data\/.+\.webp$/);
 		});
 
@@ -80,6 +92,7 @@ describe('FilesService', () => {
 
 			expect(mockCompressorFactory.hasCompressor).toHaveBeenCalledWith(extension);
 			expect(mockCompressorFactory.compress).not.toHaveBeenCalled();
+			expect(fs.writeFile).toHaveBeenCalled();
 			expect(result).toMatch(/^\/data\/.+\.txt$/);
 		});
 	});
