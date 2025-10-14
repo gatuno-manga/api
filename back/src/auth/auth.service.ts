@@ -42,7 +42,9 @@ export class AuthService {
 
         validTokens.push({ hash: hashedToken, expiresAt });
 
-        const nextExpiration = Math.min(...validTokens.map(t => t.expiresAt));
+        const nextExpiration = validTokens.length > 0
+            ? Math.min(...validTokens.map(t => t.expiresAt))
+            : expiresAt;
         const cacheTtl = Math.max(nextExpiration - Date.now(), 0);
 
         await this.cacheManager.set(key, validTokens, cacheTtl);
@@ -171,7 +173,9 @@ export class AuthService {
             await this.cacheManager.del(key);
             this.logger.log(`All tokens removed for user ${userId}`);
         } else {
-            const nextExpiration = Math.min(...validTokens.map(t => t.expiresAt));
+            const nextExpiration = validTokens.length > 0
+                ? Math.min(...validTokens.map(t => t.expiresAt))
+                : Date.now();
             const cacheTtl = Math.max(nextExpiration - Date.now(), 0);
             await this.cacheManager.set(key, validTokens, cacheTtl);
             this.logger.log(`Token removed for user ${userId}. Remaining tokens: ${validTokens.length}`);
@@ -251,7 +255,9 @@ export class AuthService {
 
         validTokens.push({ hash: hashedToken, expiresAt });
 
-        const nextExpiration = Math.min(...validTokens.map(t => t.expiresAt));
+        const nextExpiration = validTokens.length > 0
+            ? Math.min(...validTokens.map(t => t.expiresAt))
+            : expiresAt;
         const cacheTtl = Math.max(nextExpiration - Date.now(), 0);
         await this.cacheManager.set(key, validTokens, cacheTtl);
 
