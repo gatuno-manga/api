@@ -16,6 +16,7 @@ import { CoverBookDto } from './cover-book.dto';
 import { BookType } from '../enum/book-type.enum';
 import { CreateAuthorDto } from './create-author.dto';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { transformCoverBookLegacyFormat } from './transformers/cover-book.transformer';
 
 export class CreateBookDto {
 	@ApiProperty({
@@ -90,20 +91,7 @@ export class CreateBookDto {
 		description: 'Book cover information',
 		type: CoverBookDto,
 	})
-	@Transform(({ value }) => {
-		if (value && value.urlImgs !== undefined) {
-			return value;
-		}
-
-		if (value && value.urlImg && typeof value.urlImg === 'string') {
-			return CoverBookDto.fromLegacyFormat({
-				urlImg: value.urlImg,
-				urlOrigin: value.urlOrigin
-			});
-		}
-
-		return value;
-	})
+	@Transform(transformCoverBookLegacyFormat)
 	@IsOptional()
 	@ValidateNested()
 	@Type(() => CoverBookDto)
