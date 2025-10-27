@@ -97,7 +97,6 @@ export class JwtPayloadBuilder {
     }
 
     build(): JwtPayloadDto {
-        // Validação de campos obrigatórios
         if (!this.payload.sub) {
             throw new Error('Subject (sub) is required');
         }

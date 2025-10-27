@@ -14,8 +14,8 @@ export class BookScrapingEvents {
 	private logger = new Logger(BookScrapingEvents.name);
 
 	constructor(
-		@InjectRepository(Book)
-		private readonly bookRepository: Repository<Book>,
+		@InjectRepository(Chapter)
+		private readonly chapterRepository: Repository<Chapter>,
 		private readonly chapterScrapingService: ChapterScrapingService,
 		private readonly fixChapterService: FixChapterService,
 	) {}
@@ -58,8 +58,19 @@ export class BookScrapingEvents {
 			this.logger.warn(`Nenhum capítulo para consertar na lista recebida.`);
 			return;
 		}
+
 		await Promise.all(
-			chapters.map((chapter) => this.fixChapterService.addChapterToFixQueue(chapter.id))
+
+			[
+				this.chapterRepository.save(
+					chapters.map((chapter) => {
+						chapter.scrapingStatus = ScrapingStatus.PROCESS;
+						return chapter;
+					}),
+				),
+				...chapters.map((chapter) =>
+					this.fixChapterService.addChapterToFixQueue(chapter.id))
+			]
 		);
 		this.logger.log(`Total de capítulos a serem consertados: ${chapters.length}`);
 	}
