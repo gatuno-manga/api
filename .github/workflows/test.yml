@@ -1,0 +1,63 @@
+name: Run Tests
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+        branches:
+            - main
+
+jobs:
+    test-backend:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Set up Backend
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '22'
+                  cache: 'npm'
+                  cache-dependency-path: ./back/package-lock.json
+
+            - name: Install Backend Dependencies
+              run: npm ci
+              working-directory: ./back
+
+            - name: Run Backend Tests
+              run: npm run test
+              working-directory: ./back
+
+    test-frontend:
+        runs-on: ubuntu-latest
+        env:
+            CHROME_BIN: /usr/bin/google-chrome-stable
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Set up Frontend
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '22'
+                  cache: 'npm'
+                  cache-dependency-path: ./front/package-lock.json
+
+            - name: Install Google Chrome for Headless Tests
+              run: |
+                  sudo apt-get update
+                  # Add Google Chrome repo and install stable
+                  wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+                  echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+                  sudo apt-get update
+                  sudo apt-get install -y google-chrome-stable
+              env:
+                  DEBIAN_FRONTEND: noninteractive
+
+            - name: Install Frontend Dependencies
+              run: npm ci
+              working-directory: ./front
+
+            - name: Run Frontend Tests
+              run: npm run test:headless
+              working-directory: ./front
