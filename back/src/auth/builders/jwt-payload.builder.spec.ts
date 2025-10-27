@@ -237,7 +237,6 @@ describe('JwtPayloadBuilder', () => {
 
     describe('reset method', () => {
         it('should reset builder to build a new payload', () => {
-            // First build
             builder
                 .setSubject('user-123')
                 .setIssuer('login')
@@ -246,7 +245,6 @@ describe('JwtPayloadBuilder', () => {
                 .setMaxWeightSensitiveContent(3)
                 .build();
 
-            // Reset and build again
             const payload = builder
                 .reset()
                 .setSubject('user-456')

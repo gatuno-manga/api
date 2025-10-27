@@ -96,9 +96,33 @@ export class ChapterManagementService {
             {},
         );
 
+        const determineDecimalPlaces = (): number => {
+            for (const c of dto) {
+                if (c.index !== undefined && c.index !== null) {
+                    const s = c.index.toString();
+                    if (s.includes('.')) {
+                        return s.split('.')[1].length;
+                    }
+                }
+            }
+
+            let maxPlaces = 0;
+            for (const ch of Object.keys(existingChapters)) {
+                if (ch && ch.toString().includes('.')) {
+                    const places = ch.toString().split('.')[1].length;
+                    if (places > maxPlaces) maxPlaces = places;
+                }
+            }
+            if (maxPlaces > 0) return maxPlaces;
+
+            return 3;
+        };
+
+        const decimalPlaces = determineDecimalPlaces();
+
         const updatedChapters: Chapter[] = [];
         for (const chapterDto of dto) {
-            const index = parseFloat(chapterDto.index.toString()).toFixed(1);
+            const index = parseFloat(chapterDto.index.toString()).toFixed(decimalPlaces);
             let chapter = existingChapters[index];
 
             if (!chapter) {

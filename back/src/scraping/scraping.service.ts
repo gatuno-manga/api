@@ -199,14 +199,14 @@ export class ScrapingService implements OnApplicationShutdown {
 			await this.waitForPageTitle(driver);
 
 			if (preScript) {
-				await driver.executeScript(preScript);
+				await driver.executeAsyncScript(preScript);
 				await driver.sleep(timeSleep);
 			}
 
 			await this.scrollAndWait(driver, selector);
 
 			if (posScript) {
-				await driver.executeScript(posScript);
+				await driver.executeAsyncScript(posScript);
 				await driver.sleep(timeSleep);
 			}
 
@@ -234,6 +234,7 @@ export class ScrapingService implements OnApplicationShutdown {
 				'Ocorreu um erro durante o processo de scraping.',
 				error,
 			);
+			await this.removeDriver(driver);
 			throw error;
 		} finally {
 			await this.removeDriver(driver);
