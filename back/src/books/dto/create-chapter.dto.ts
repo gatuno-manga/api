@@ -17,13 +17,14 @@ export class CreateChapterDto {
 	@IsOptional()
 	title?: string;
 
-	@ApiProperty({
-		description: 'URL of the chapter source',
+	@ApiPropertyOptional({
+		description: 'URL of the chapter source (optional for manual upload)',
 		example: 'https://example.com/book/chapter-1',
 		format: 'url',
 	})
 	@IsUrl()
-	url: string;
+	@IsOptional()
+	url?: string;
 
 	@ApiPropertyOptional({
 		description: 'Chapter order index',

@@ -5,26 +5,39 @@ import {
 	Param,
 	Patch,
 	Post,
+	UploadedFile,
+	UploadedFiles,
 	UseGuards,
 	UseInterceptors,
+	BadRequestException,
+	ParseArrayPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { BooksService } from './books.service';
 import { CreateBookDto } from './dto/create-book.dto';
 import { UpdateChapterDto } from './dto/update-chapter.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
 import { OrderChaptersDto } from './dto/order-chapters.dto';
+import { CreateChapterManualDto } from './dto/create-chapter-manual.dto';
+import { UploadCoverDto } from './dto/upload-cover.dto';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { Roles } from 'src/auth/decorator/roles.decorator';
 import { RolesEnum } from 'src/users/enum/roles.enum';
 import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
+import { BookUploadService } from './services/book-upload.service';
+import { ChapterManagementService } from './services/chapter-management.service';
 
 @ApiTags('Books Admin')
 @Controller('books')
 @UseGuards(JwtAuthGuard)
 @Roles(RolesEnum.ADMIN)
 export class AdminBooksController {
-	constructor(private readonly booksService: BooksService) {}
+	constructor(
+		private readonly booksService: BooksService,
+		private readonly bookUploadService: BookUploadService,
+		private readonly chapterManagementService: ChapterManagementService,
+	) {}
 
 	@Post()
 	@ApiOperation({ summary: 'Create a new book', description: 'Create a new book with all its information (Admin only)' })
@@ -142,5 +155,196 @@ export class AdminBooksController {
 		@Param('idCover') idCover: string,
 	) {
 		return this.booksService.selectCover(idBook, idCover);
+	}
+
+	// ==================== UPLOAD ENDPOINTS ====================
+
+	@Post(':idBook/covers/upload')
+	@ApiOperation({
+		summary: 'Upload book cover',
+		description: 'Upload a single cover image for a book (Admin only)'
+	})
+	@ApiConsumes('multipart/form-data')
+	@ApiParam({ name: 'idBook', description: 'Book unique identifier', example: '550e8400-e29b-41d4-a716-446655440000' })
+	@ApiBody({
+		schema: {
+			type: 'object',
+			properties: {
+				file: {
+					type: 'string',
+					format: 'binary',
+					description: 'Cover image file (JPG, PNG, WEBP)',
+				},
+				title: {
+					type: 'string',
+					description: 'Optional cover title',
+					maxLength: 200,
+				}
+			},
+			required: ['file'],
+		},
+	})
+	@ApiResponse({ status: 201, description: 'Cover uploaded successfully' })
+	@ApiResponse({ status: 400, description: 'Invalid file or data' })
+	@ApiResponse({ status: 404, description: 'Book not found' })
+	@ApiBearerAuth('JWT-auth')
+	@UseInterceptors(FileInterceptor('file', {
+		limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+		fileFilter: (req, file, callback) => {
+			if (!file.mimetype.match(/^image\//)) {
+				return callback(
+					new BadRequestException('Only image files are allowed'),
+					false
+				);
+			}
+			callback(null, true);
+		},
+	}))
+	uploadCover(
+		@Param('idBook') idBook: string,
+		@UploadedFile() file: Express.Multer.File,
+		@Body() dto: UploadCoverDto,
+	) {
+		if (!file) {
+			throw new BadRequestException('No file provided');
+		}
+		return this.bookUploadService.uploadCover(idBook, file, dto.title);
+	}
+
+	@Post(':idBook/covers/upload-multiple')
+	@ApiOperation({
+		summary: 'Upload multiple book covers',
+		description: 'Upload multiple cover images for a book at once (Admin only)'
+	})
+	@ApiConsumes('multipart/form-data')
+	@ApiParam({ name: 'idBook', description: 'Book unique identifier', example: '550e8400-e29b-41d4-a716-446655440000' })
+	@ApiBody({
+		schema: {
+			type: 'object',
+			properties: {
+				files: {
+					type: 'array',
+					items: {
+						type: 'string',
+						format: 'binary',
+					},
+					description: 'Multiple cover image files (max 10)',
+				}
+			},
+			required: ['files'],
+		},
+	})
+	@ApiResponse({ status: 201, description: 'Covers uploaded successfully' })
+	@ApiResponse({ status: 400, description: 'Invalid files or data' })
+	@ApiResponse({ status: 404, description: 'Book not found' })
+	@ApiBearerAuth('JWT-auth')
+	@UseInterceptors(FilesInterceptor('files', 10, {
+		limits: { fileSize: 10 * 1024 * 1024 },
+		fileFilter: (req, file, callback) => {
+			if (!file.mimetype.match(/^image\//)) {
+				return callback(
+					new BadRequestException('Only image files are allowed'),
+					false
+				);
+			}
+			callback(null, true);
+		},
+	}))
+	uploadMultipleCovers(
+		@Param('idBook') idBook: string,
+		@UploadedFiles() files: Express.Multer.File[],
+	) {
+		if (!files || files.length === 0) {
+			throw new BadRequestException('No files provided');
+		}
+		return this.bookUploadService.uploadMultipleCovers(idBook, files);
+	}
+
+	@Post(':idBook/chapters/manual')
+	@ApiOperation({
+		summary: 'Create manual chapter',
+		description: 'Create a chapter without URL for manual page upload (Admin only)'
+	})
+	@ApiParam({ name: 'idBook', description: 'Book unique identifier', example: '550e8400-e29b-41d4-a716-446655440000' })
+	@ApiResponse({ status: 201, description: 'Chapter created successfully' })
+	@ApiResponse({ status: 400, description: 'Invalid input data' })
+	@ApiResponse({ status: 404, description: 'Book not found' })
+	@ApiBearerAuth('JWT-auth')
+	createManualChapter(
+		@Param('idBook') idBook: string,
+		@Body() dto: CreateChapterManualDto,
+	) {
+		return this.chapterManagementService.createManualChapter(idBook, dto);
+	}
+
+	@Post('chapters/:idChapter/pages/upload')
+	@ApiOperation({
+		summary: 'Upload chapter pages',
+		description: 'Upload multiple page images for a chapter (Admin only)'
+	})
+	@ApiConsumes('multipart/form-data')
+	@ApiParam({ name: 'idChapter', description: 'Chapter unique identifier', example: '550e8400-e29b-41d4-a716-446655440000' })
+	@ApiBody({
+		schema: {
+			type: 'object',
+			properties: {
+				pages: {
+					type: 'array',
+					items: {
+						type: 'string',
+						format: 'binary',
+					},
+					description: 'Page image files (max 100)',
+				},
+				indices: {
+					type: 'string',
+					description: 'JSON array of page indices (e.g., "[1,2,3,4,5]")',
+					example: '[1,2,3,4,5]',
+				}
+			},
+			required: ['pages', 'indices'],
+		},
+	})
+	@ApiResponse({ status: 201, description: 'Pages uploaded successfully' })
+	@ApiResponse({ status: 400, description: 'Invalid files or data' })
+	@ApiResponse({ status: 404, description: 'Chapter not found' })
+	@ApiBearerAuth('JWT-auth')
+	@UseInterceptors(FilesInterceptor('pages', 100, {
+		limits: { fileSize: 10 * 1024 * 1024 },
+		fileFilter: (req, file, callback) => {
+			if (!file.mimetype.match(/^image\//)) {
+				return callback(
+					new BadRequestException('Only image files are allowed'),
+					false
+				);
+			}
+			callback(null, true);
+		},
+	}))
+	uploadChapterPages(
+		@Param('idChapter') idChapter: string,
+		@UploadedFiles() files: Express.Multer.File[],
+		@Body('indices') indicesStr: string,
+	) {
+		if (!files || files.length === 0) {
+			throw new BadRequestException('No files provided');
+		}
+
+		if (!indicesStr) {
+			throw new BadRequestException('Indices are required');
+		}
+
+		let indices: number[];
+		try {
+			indices = JSON.parse(indicesStr);
+		} catch (error) {
+			throw new BadRequestException('Invalid indices format. Must be a JSON array of numbers');
+		}
+
+		if (!Array.isArray(indices)) {
+			throw new BadRequestException('Indices must be an array');
+		}
+
+		return this.bookUploadService.uploadChapterPages(idChapter, files, indices);
 	}
 }

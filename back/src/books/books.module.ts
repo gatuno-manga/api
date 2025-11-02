@@ -36,11 +36,13 @@ import { ChapterManagementService } from './services/chapter-management.service'
 import { BookRelationshipService } from './services/book-relationship.service';
 import { BooksGateway } from './gateway/books.gateway';
 import { BookUploadService } from './services/book-upload.service';
+import { FilesModule } from 'src/files/files.module';
 
 @Module({
 	imports: [
 		ScrapingModule,
 		AppConfigModule,
+		FilesModule,
 		TypeOrmModule.forFeature([
 			Book,
 			Page,
@@ -108,6 +110,7 @@ import { BookUploadService } from './services/book-upload.service';
 		BookQueryService,
 		ChapterManagementService,
 		BookRelationshipService,
+		BookUploadService,
 		// WebSocket Gateway
 		BooksGateway,
 	],

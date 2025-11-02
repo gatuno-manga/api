@@ -72,6 +72,7 @@
     "@types/cookie-parser": "^1.4.9",
     "@types/express": "^5.0.0",
     "@types/jest": "^29.5.14",
+    "@types/multer": "^2.0.0",
     "@types/node": "^22.16.5",
     "@types/passport-jwt": "^4.0.1",
     "@types/selenium-webdriver": "^4.1.28",
