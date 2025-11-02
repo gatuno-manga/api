@@ -35,6 +35,7 @@ import { BookQueryService } from './services/book-query.service';
 import { ChapterManagementService } from './services/chapter-management.service';
 import { BookRelationshipService } from './services/book-relationship.service';
 import { BooksGateway } from './gateway/books.gateway';
+import { BookUploadService } from './services/book-upload.service';
 
 @Module({
 	imports: [
@@ -101,7 +102,7 @@ import { BooksGateway } from './gateway/books.gateway';
 		CoverImageProcessor,
 		FixChapterService,
 		FixChapterProcessor,
-		// Novos serviços especializados
+		// serviços especializados
 		BookCreationService,
 		BookUpdateService,
 		BookQueryService,
