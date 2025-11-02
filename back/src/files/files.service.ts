@@ -25,8 +25,14 @@ export class FilesService {
 		return await this.compressorFactory.compress(buffer, extension);
 	}
 
-	async saveBase64File(
-		base64Data: string,
+	/**
+	 * Salva um arquivo a partir de um Buffer (mais performático)
+	 * @param buffer Buffer contendo os dados do arquivo
+	 * @param extension Extensão do arquivo (ex: '.jpg', '.png')
+	 * @returns Caminho público do arquivo salvo
+	 */
+	async saveBufferFile(
+		buffer: Buffer,
 		extension: string,
 	): Promise<string> {
 		let fileBuffer: Buffer;
@@ -34,7 +40,7 @@ export class FilesService {
 
 		if (this.compressorFactory.hasCompressor(extension)) {
 			try {
-				const result = await this.compressFile(base64Data, extension);
+				const result = await this.compressorFactory.compress(buffer, extension);
 				fileBuffer = result.buffer;
 				finalExtension = result.extension;
 				this.logger.log(
@@ -45,13 +51,13 @@ export class FilesService {
 					'Erro ao comprimir arquivo, salvando original:',
 					error,
 				);
-				fileBuffer = Buffer.from(base64Data, 'base64');
+				fileBuffer = buffer;
 			}
 		} else {
 			this.logger.debug(
 				`Nenhum compressor disponível para ${extension}, salvando original`,
 			);
-			fileBuffer = Buffer.from(base64Data, 'base64');
+			fileBuffer = buffer;
 		}
 
 		const fileName = `${uuidv4()}${finalExtension}`;
@@ -59,5 +65,20 @@ export class FilesService {
 		await fs.writeFile(filePath, fileBuffer);
 
 		return this.getPublicPath(fileName);
+	}
+
+	/**
+	 * Salva um arquivo a partir de uma string base64
+	 * @deprecated Use saveBufferFile para melhor performance quando possível
+	 * @param base64Data String base64 contendo os dados do arquivo
+	 * @param extension Extensão do arquivo (ex: '.jpg', '.png')
+	 * @returns Caminho público do arquivo salvo
+	 */
+	async saveBase64File(
+		base64Data: string,
+		extension: string,
+	): Promise<string> {
+		const buffer = Buffer.from(base64Data, 'base64');
+		return this.saveBufferFile(buffer, extension);
 	}
 }
