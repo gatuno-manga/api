@@ -11,7 +11,6 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { Book } from '../entitys/book.entity';
 import { Chapter } from '../entitys/chapter.entity';
 import { WsJwtGuard } from '../../auth/guard/ws-jwt.guard';
-import { Roles } from '../../auth/decorator/roles.decorator';
 import { RolesEnum } from '../../users/enum/roles.enum';
 
 /**
