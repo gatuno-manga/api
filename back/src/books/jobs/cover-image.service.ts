@@ -20,10 +20,9 @@ export class CoverImageService {
         const existingJobs = await this.coverImageQueue.getJobs(['waiting', 'delayed', 'active']);
         const isAlreadyQueued = existingJobs.some(job => job && job.data.bookId === bookId);
         if (!isAlreadyQueued) {
-            this.logger.debug(`Adicionando job de capa para o livro: ${bookId}`);
-            for (const cover of covers) {
-                await this.coverImageQueue.add(JOB_NAME, { bookId, urlOrigin, cover });
-            }
+            this.logger.debug(`Adicionando job de capa (batch) para o livro: ${bookId}`);
+            // add a single job containing all covers. Processor will group by domain and download per-domain in one driver
+            await this.coverImageQueue.add(JOB_NAME, { bookId, urlOrigin, covers });
         } else {
             this.logger.debug(`Job de capa para o livro ${bookId} já está na fila.`);
         }

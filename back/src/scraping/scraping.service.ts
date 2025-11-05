@@ -1,7 +1,6 @@
 import { Injectable, Logger, OnApplicationShutdown } from '@nestjs/common';
 import { WebDriver } from 'selenium-webdriver';
 import * as path from 'path';
-import * as fs from 'fs';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { FilesService } from 'src/files/files.service';
 import { WebsiteService } from './website.service';
@@ -11,18 +10,19 @@ import {
 	ChromeDriverFactory,
 	WebDriverConfig,
 } from './factories';
+import {
+	IConcurrencyManager,
+	InMemoryConcurrencyManager,
+} from './concurrency';
+import { ScrapingUtils } from './utils';
 
-class ScrapingUtils {
-	static readScript(scriptPath: string): string {
-		return fs.readFileSync(path.resolve(__dirname, scriptPath), 'utf8');
-	}
-}
 @Injectable()
 export class ScrapingService implements OnApplicationShutdown {
 	private readonly logger = new Logger(ScrapingService.name);
 	private downloadDir = path.resolve('/usr/src/app/data');
 	private drivers: Set<WebDriver> = new Set();
 	private driverFactory: IWebDriverFactory;
+	private concurrencyManager: IConcurrencyManager = new InMemoryConcurrencyManager();
 
 	constructor(
 		private readonly appConfigService: AppConfigService,
@@ -30,6 +30,11 @@ export class ScrapingService implements OnApplicationShutdown {
 		private readonly webSiteService: WebsiteService,
 	) {
 		this.initializeDriverFactory();
+	}
+
+	setConcurrencyManager(manager: IConcurrencyManager): void {
+		this.concurrencyManager = manager;
+		this.logger.debug('Concurrency manager substituído');
 	}
 
 	private initializeDriverFactory(): void {
@@ -115,6 +120,7 @@ export class ScrapingService implements OnApplicationShutdown {
 		let preScript = ``;
 		let posScript = ``;
 		let ignoreFiles: string[] = [];
+		let concurrencyLimit: number | null = null;
 		const domain = new URL(url).hostname;
 		const website = await this.webSiteService.getByUrl(domain);
 		if (website) {
@@ -122,8 +128,9 @@ export class ScrapingService implements OnApplicationShutdown {
 			preScript = website.preScript || preScript;
 			posScript = website.posScript || posScript;
 			ignoreFiles = website.ignoreFiles || [];
+			concurrencyLimit = website.concurrencyLimit ?? null;
 		}
-		return { selector, preScript, posScript, ignoreFiles };
+		return { selector, preScript, posScript, ignoreFiles, concurrencyLimit };
 	}
 
 	private async waitForPageTitle(driver: WebDriver): Promise<void> {
@@ -190,9 +197,11 @@ export class ScrapingService implements OnApplicationShutdown {
 	}
 
 	async scrapePages(url: string, pages = 0): Promise<string[] | null> {
+		const { selector, preScript, posScript, ignoreFiles, concurrencyLimit } = await this.getWebsiteConfig(url);
+		const domain = new URL(url).hostname;
+		await this.concurrencyManager.acquire(domain, concurrencyLimit);
 		const driver = await this.createInstance();
 		try {
-			const { selector, preScript, posScript, ignoreFiles } = await this.getWebsiteConfig(url);
 			const timeSleep = 3000;
 
 			await driver.get(url);
@@ -238,10 +247,14 @@ export class ScrapingService implements OnApplicationShutdown {
 			throw error;
 		} finally {
 			await this.removeDriver(driver);
+			this.concurrencyManager.release(domain);
 		}
 	}
 
 	async scrapeSingleImage(url: string, imageUrl: string): Promise<string> {
+		const { concurrencyLimit } = await this.getWebsiteConfig(url);
+		const domain = new URL(url).hostname;
+		await this.concurrencyManager.acquire(domain, concurrencyLimit);
 		const driver = await this.createInstance();
 		try {
 			await driver.get(url);
@@ -262,6 +275,40 @@ export class ScrapingService implements OnApplicationShutdown {
 			throw error;
 		} finally {
 			await this.removeDriver(driver);
+			this.concurrencyManager.release(domain);
+		}
+	}
+
+	async scrapeMultipleImages(url: string, imageUrls: string[]): Promise<(string | null)[]> {
+		const { concurrencyLimit } = await this.getWebsiteConfig(url);
+		const domain = new URL(url).hostname;
+		await this.concurrencyManager.acquire(domain, concurrencyLimit);
+		const driver = await this.createInstance();
+		try {
+			await driver.get(url);
+			await this.waitForPageTitle(driver);
+
+			const results: (string | null)[] = [];
+			for (const imageUrl of imageUrls) {
+				try {
+					const base64Data = await this.fetchImageAsBase64(driver, imageUrl);
+					if (!base64Data) {
+						this.logger.warn(`Falha ao baixar a imagem: ${imageUrl}`);
+						results.push('null');
+						continue;
+					}
+					const extension = path.extname(new URL(imageUrl).pathname) || '.jpg';
+					const saved = await this.filesService.saveBase64File(base64Data, extension);
+					results.push(saved);
+				} catch (err) {
+					this.logger.warn(`Erro ao processar imagem ${imageUrl}`, err);
+					results.push('null');
+				}
+			}
+			return results;
+		} finally {
+			await this.removeDriver(driver);
+			this.concurrencyManager.release(domain);
 		}
 	}
 

@@ -6,6 +6,7 @@ import { Website } from './entitys/website.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { WebsiteService } from './website.service';
 import { WebsiteController } from './website.controller';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
 	controllers: [WebsiteController],
@@ -14,6 +15,7 @@ import { WebsiteController } from './website.controller';
 	imports: [
 		AppConfigModule,
 		FilesModule,
+		AuthModule,
 		TypeOrmModule.forFeature([Website]),
 	],
 })
