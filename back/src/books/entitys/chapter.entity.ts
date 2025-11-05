@@ -7,6 +7,7 @@ import {
 	PrimaryGeneratedColumn,
 	Relation,
 	Unique,
+	DeleteDateColumn,
 } from 'typeorm';
 import { Book } from './book.entity';
 import { Page } from './page.entity';
@@ -49,4 +50,7 @@ export class Chapter {
 
 	@OneToMany(() => Page, (page) => page.chapter, { cascade: true })
 	pages: Relation<Page[]>;
+
+	@DeleteDateColumn()
+	deletedAt: Date;
 }

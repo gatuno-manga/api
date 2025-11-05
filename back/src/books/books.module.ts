@@ -36,6 +36,8 @@ import { ChapterManagementService } from './services/chapter-management.service'
 import { BookRelationshipService } from './services/book-relationship.service';
 import { BooksGateway } from './gateway/books.gateway';
 import { BookUploadService } from './services/book-upload.service';
+import { BookDeletionService } from './services/book-deletion.service';
+import { FileDeletionEvents } from './events/file-deletion.events';
 import { FilesModule } from 'src/files/files.module';
 import { LoggingModule } from 'src/logging/logging.module';
 import { MetricsModule } from 'src/metrics/metrics.module';
@@ -115,6 +117,9 @@ import { MetricsModule } from 'src/metrics/metrics.module';
 		ChapterManagementService,
 		BookRelationshipService,
 		BookUploadService,
+		BookDeletionService,
+		// Listeners
+		FileDeletionEvents,
 		// WebSocket Gateway
 		BooksGateway,
 	],

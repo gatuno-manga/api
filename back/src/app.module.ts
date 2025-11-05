@@ -19,6 +19,7 @@ import { HealthModule } from './health/health.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { CommonModule } from './common/common.module';
 
 @Module({
@@ -30,21 +31,22 @@ import { CommonModule } from './common/common.module';
 		DatabaseModule,
 		AppConfigModule,
 		EventEmitterModule.forRoot(),
+		ScheduleModule.forRoot(),
 		ThrottlerModule.forRoot([
 			{
 				name: 'short',
 				ttl: 1000,     // 1 segundo
-				limit: 3,      // 3 requisições
+				limit: 3,
 			},
 			{
 				name: 'medium',
 				ttl: 10000,    // 10 segundos
-				limit: 20,     // 20 requisições
+				limit: 20,
 			},
 			{
 				name: 'long',
 				ttl: 60000,    // 1 minuto
-				limit: 100,    // 100 requisições
+				limit: 100,
 			},
 		]),
 		ScrapingModule,

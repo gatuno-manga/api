@@ -6,6 +6,7 @@ import {
 	PrimaryGeneratedColumn,
 	Relation,
 	Unique,
+	DeleteDateColumn,
 } from 'typeorm';
 import { Chapter } from './chapter.entity';
 
@@ -26,4 +27,7 @@ export class Page {
 
 	@Column()
 	path: string;
+
+	@DeleteDateColumn()
+	deletedAt: Date;
 }
