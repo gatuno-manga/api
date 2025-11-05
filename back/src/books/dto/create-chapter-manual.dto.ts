@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsNumber, IsOptional, IsPositive, IsString, MaxLength } from 'class-validator';
 
 export class CreateChapterManualDto {
