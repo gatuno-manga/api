@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Inject, Logger, Post, Req, Res, UseGuards, UnauthorizedException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { SignUpAuthDto } from './dto/signup-auth.dto';
 import { SignInAuthDto } from './dto/signin-auth.dto';
@@ -17,10 +18,12 @@ export class AuthController {
     ) {}
 
     @Post('signup')
+    @Throttle({ short: { limit: 3, ttl: 60000 } })
     @ApiOperation({ summary: 'Create a new user account', description: 'Register a new user with email and password' })
     @ApiResponse({ status: 201, description: 'User successfully created' })
     @ApiResponse({ status: 400, description: 'Invalid input data' })
     @ApiResponse({ status: 409, description: 'Email already exists' })
+    @ApiResponse({ status: 429, description: 'Too many requests' })
     async signUp(@Body() body: SignUpAuthDto) {
         const { email, password } = body;
         const user = await this.authService.signUp(email, password);
@@ -39,9 +42,11 @@ export class AuthController {
     }
 
     @Post('signin')
+    @Throttle({ short: { limit: 5, ttl: 60000 } })
     @ApiOperation({ summary: 'Sign in to user account', description: 'Authenticate user and receive access tokens' })
     @ApiResponse({ status: 200, description: 'Successfully authenticated' })
     @ApiResponse({ status: 401, description: 'Invalid credentials' })
+    @ApiResponse({ status: 429, description: 'Too many requests' })
     async signIn(@Body() body: SignInAuthDto) {
         const { email, password } = body;
         const tokens = await this.authService.signIn(email, password)
@@ -49,9 +54,11 @@ export class AuthController {
     }
 
     @Get('refresh')
+    @Throttle({ medium: { limit: 20, ttl: 60000 } })
     @ApiOperation({ summary: 'Refresh access token', description: 'Get a new access token using refresh token' })
     @ApiResponse({ status: 200, description: 'Token refreshed successfully' })
     @ApiResponse({ status: 401, description: 'Invalid or expired refresh token' })
+    @ApiResponse({ status: 429, description: 'Too many requests' })
     @ApiBearerAuth('JWT-auth')
     @UseGuards(RefreshTokenGuard)
     async refreshTokens(@CurrentUser() user: CurrentUserDto, @Req() req) {
@@ -63,9 +70,11 @@ export class AuthController {
     }
 
     @Get('logout')
+    @Throttle({ medium: { limit: 10, ttl: 60000 } })
     @ApiOperation({ summary: 'Logout from current session', description: 'Invalidate the current refresh token' })
     @ApiResponse({ status: 200, description: 'Successfully logged out' })
     @ApiResponse({ status: 401, description: 'Unauthorized' })
+    @ApiResponse({ status: 429, description: 'Too many requests' })
     @ApiBearerAuth('JWT-auth')
     @UseGuards(RefreshTokenGuard)
     @UseGuards(JwtAuthGuard)
@@ -80,9 +89,11 @@ export class AuthController {
     }
 
     @Get('logout-all')
+    @Throttle({ medium: { limit: 5, ttl: 60000 } })
     @ApiOperation({ summary: 'Logout from all sessions', description: 'Invalidate all refresh tokens for the user' })
     @ApiResponse({ status: 200, description: 'Successfully logged out from all sessions' })
     @ApiResponse({ status: 401, description: 'Unauthorized' })
+    @ApiResponse({ status: 429, description: 'Too many requests' })
     @ApiBearerAuth('JWT-auth')
     @UseGuards(JwtAuthGuard)
     async logoutAll(

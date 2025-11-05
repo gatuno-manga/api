@@ -8,8 +8,11 @@ import {
 	Post,
 	Query,
 	UseGuards,
+	UseInterceptors,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
+import { Throttle } from '@nestjs/throttler';
 import { BooksService } from './books.service';
 import { BookPageOptionsDto } from './dto/book-page-options.dto';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
@@ -22,8 +25,12 @@ export class BooksController {
 	constructor(private readonly booksService: BooksService) {}
 
 	@Get()
+	@Throttle({ long: { limit: 100, ttl: 60000 } })
+	@UseInterceptors(CacheInterceptor)
+	@CacheTTL(180)
 	@ApiOperation({ summary: 'Get all books', description: 'Retrieve a paginated list of books with filters' })
 	@ApiResponse({ status: 200, description: 'Books retrieved successfully' })
+	@ApiResponse({ status: 429, description: 'Too many requests' })
 	@UseGuards(OptionalAuthGuard)
 	getAllBooks(
 		@Query() pageOptions: BookPageOptionsDto,
@@ -33,8 +40,12 @@ export class BooksController {
 	}
 
 	@Get('random')
+	@Throttle({ long: { limit: 100, ttl: 60000 } })
+	@UseInterceptors(CacheInterceptor)
+	@CacheTTL(60)
 	@ApiOperation({ summary: 'Get random book', description: 'Retrieve a random book based on filters' })
 	@ApiResponse({ status: 200, description: 'Random book retrieved successfully' })
+	@ApiResponse({ status: 429, description: 'Too many requests' })
 	@UseGuards(OptionalAuthGuard)
 	getRandomBook(
 		@Query() options: BookPageOptionsDto,
@@ -44,6 +55,7 @@ export class BooksController {
 	}
 
 	@Get('check-title/:title')
+	@Throttle({ medium: { limit: 50, ttl: 60000 } })
 	@ApiOperation({
 		summary: 'Check if book title already exists',
 		description: 'Check if there is already a book with the given title or alternative titles before creating a new one. Returns all conflicting books.'
@@ -109,10 +121,14 @@ export class BooksController {
 	}
 
 	@Get(':idBook')
+	@Throttle({ long: { limit: 200, ttl: 60000 } })
+	@UseInterceptors(CacheInterceptor)
+	@CacheTTL(1800)
 	@ApiOperation({ summary: 'Get book by ID', description: 'Retrieve detailed information about a specific book' })
 	@ApiParam({ name: 'idBook', description: 'Book unique identifier', example: '550e8400-e29b-41d4-a716-446655440000' })
 	@ApiResponse({ status: 200, description: 'Book found' })
 	@ApiResponse({ status: 404, description: 'Book not found' })
+	@ApiResponse({ status: 429, description: 'Too many requests' })
 	@UseGuards(OptionalAuthGuard)
 	getBook(
 		@Param('idBook') id: string,
@@ -122,10 +138,14 @@ export class BooksController {
 	}
 
 	@Get(':idBook/chapters')
+	@Throttle({ long: { limit: 200, ttl: 60000 } })
+	@UseInterceptors(CacheInterceptor)
+	@CacheTTL(600)
 	@ApiOperation({ summary: 'Get book chapters', description: 'Retrieve all chapters for a specific book' })
 	@ApiParam({ name: 'idBook', description: 'Book unique identifier', example: '550e8400-e29b-41d4-a716-446655440000' })
 	@ApiResponse({ status: 200, description: 'Chapters retrieved successfully' })
 	@ApiResponse({ status: 404, description: 'Book not found' })
+	@ApiResponse({ status: 429, description: 'Too many requests' })
 	@UseGuards(OptionalAuthGuard)
 	getBookChapters(
 		@Param('idBook') id: string,
@@ -135,10 +155,14 @@ export class BooksController {
 	}
 
 	@Get(':idBook/covers')
+	@Throttle({ long: { limit: 200, ttl: 60000 } })
+	@UseInterceptors(CacheInterceptor)
+	@CacheTTL(3600)
 	@ApiOperation({ summary: 'Get book covers', description: 'Retrieve all available covers for a book' })
 	@ApiParam({ name: 'idBook', description: 'Book unique identifier', example: '550e8400-e29b-41d4-a716-446655440000' })
 	@ApiResponse({ status: 200, description: 'Covers retrieved successfully' })
 	@ApiResponse({ status: 404, description: 'Book not found' })
+	@ApiResponse({ status: 429, description: 'Too many requests' })
 	@UseGuards(OptionalAuthGuard)
 	getBookCovers(
 		@Param('idBook') id: string,
@@ -148,10 +172,14 @@ export class BooksController {
 	}
 
 	@Get(':idBook/infos')
+	@Throttle({ long: { limit: 200, ttl: 60000 } })
+	@UseInterceptors(CacheInterceptor)
+	@CacheTTL(1800)
 	@ApiOperation({ summary: 'Get book information', description: 'Retrieve additional information and metadata about a book' })
 	@ApiParam({ name: 'idBook', description: 'Book unique identifier', example: '550e8400-e29b-41d4-a716-446655440000' })
 	@ApiResponse({ status: 200, description: 'Book information retrieved successfully' })
 	@ApiResponse({ status: 404, description: 'Book not found' })
+	@ApiResponse({ status: 429, description: 'Too many requests' })
 	@UseGuards(OptionalAuthGuard)
 	getBookInfos(
 		@Param('idBook') id: string,

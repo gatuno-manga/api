@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { BooksService } from './books.service';
 import { CreateBookDto } from './dto/create-book.dto';
 import { UpdateChapterDto } from './dto/update-chapter.dto';
@@ -40,11 +41,13 @@ export class AdminBooksController {
 	) {}
 
 	@Post()
+	@Throttle({ medium: { limit: 30, ttl: 60000 } }) // 30 req/min
 	@ApiOperation({ summary: 'Create a new book', description: 'Create a new book with all its information (Admin only)' })
 	@ApiResponse({ status: 201, description: 'Book created successfully' })
 	@ApiResponse({ status: 400, description: 'Invalid input data' })
 	@ApiResponse({ status: 401, description: 'Unauthorized' })
 	@ApiResponse({ status: 403, description: 'Forbidden - Admin role required' })
+	@ApiResponse({ status: 429, description: 'Too many requests' })
 	@ApiBearerAuth('JWT-auth')
 	createBook(@Body() dto: CreateBookDto) {
 		return this.booksService.createBook(dto);
@@ -160,6 +163,7 @@ export class AdminBooksController {
 	// ==================== UPLOAD ENDPOINTS ====================
 
 	@Post(':idBook/covers/upload')
+	@Throttle({ short: { limit: 10, ttl: 60000 } }) // 10 req/min
 	@ApiOperation({
 		summary: 'Upload book cover',
 		description: 'Upload a single cover image for a book (Admin only)'
@@ -212,6 +216,7 @@ export class AdminBooksController {
 	}
 
 	@Post(':idBook/covers/upload-multiple')
+	@Throttle({ short: { limit: 3, ttl: 60000 } }) // 3 req/min
 	@ApiOperation({
 		summary: 'Upload multiple book covers',
 		description: 'Upload multiple cover images for a book at once (Admin only)'
@@ -278,6 +283,7 @@ export class AdminBooksController {
 	}
 
 	@Post('chapters/:idChapter/pages/upload')
+	@Throttle({ short: { limit: 2, ttl: 60000 } }) // 2 req/min - até 100 arquivos por vez
 	@ApiOperation({
 		summary: 'Upload chapter pages',
 		description: 'Upload multiple page images for a chapter (Admin only)'
