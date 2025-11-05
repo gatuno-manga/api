@@ -1,0 +1,94 @@
+route:
+    # Receptor padrão
+    receiver: 'default'
+    # Tempo de espera antes de enviar um alerta
+    group_wait: 10s
+    # Tempo entre envios de alertas do mesmo grupo
+    group_interval: 5m
+    # Tempo antes de reenviar o mesmo alerta
+    repeat_interval: 4h
+    # Agrupar alertas por estas labels
+    group_by: ['alertname', 'severity', 'component']
+
+    # Rotas específicas
+    routes:
+        # Alertas críticos - notificação imediata
+        - match:
+              severity: critical
+          receiver: 'critical-alerts'
+          group_wait: 0s
+          repeat_interval: 1h
+
+        # Alertas de warning - notificação agrupada
+        - match:
+              severity: warning
+          receiver: 'warning-alerts'
+          group_wait: 30s
+          repeat_interval: 2h
+
+        # Alertas informativos - notificação diária
+        - match:
+              severity: info
+          receiver: 'info-alerts'
+          group_wait: 5m
+          repeat_interval: 24h
+
+# Receptores de alerta
+receivers:
+    # Receptor padrão (log apenas)
+    - name: 'default'
+      # Adicione integrações aqui (Slack, email, etc.)
+
+    # Alertas críticos
+    - name: 'critical-alerts'
+      # Exemplo: Slack
+      # slack_configs:
+      #   - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+      #     channel: '#alerts-critical'
+      #     title: '🔴 ALERTA CRÍTICO: {{ .GroupLabels.alertname }}'
+      #     text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+
+      # Exemplo: Email
+      # email_configs:
+      #   - to: 'team@example.com'
+      #     from: 'alertmanager@example.com'
+      #     smarthost: 'smtp.example.com:587'
+      #     auth_username: 'alertmanager@example.com'
+      #     auth_password: 'password'
+      #     headers:
+      #       Subject: '🔴 Alerta Crítico: {{ .GroupLabels.alertname }}'
+
+    # Alertas de warning
+    - name: 'warning-alerts'
+      # slack_configs:
+      #   - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+      #     channel: '#alerts-warning'
+      #     title: '⚠️ ALERTA: {{ .GroupLabels.alertname }}'
+      #     text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+
+    # Alertas informativos
+    - name: 'info-alerts'
+      # slack_configs:
+      #   - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+      #     channel: '#alerts-info'
+      #     title: 'ℹ️ INFO: {{ .GroupLabels.alertname }}'
+      #     text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+
+# Inibição de alertas
+inhibit_rules:
+    # Se a aplicação está down, não enviar outros alertas
+    - source_match:
+          severity: 'critical'
+          alertname: 'ApplicationDown'
+      target_match_re:
+          severity: 'warning|info'
+      equal: ['job']
+
+    # Se há erro de banco, não alertar sobre performance
+    - source_match:
+          severity: 'critical'
+          component: 'database'
+      target_match:
+          severity: 'warning'
+          component: 'performance'
+      equal: ['job']

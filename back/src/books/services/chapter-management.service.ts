@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Chapter } from '../entitys/chapter.entity';
 import { Book } from '../entitys/book.entity';
 import { CreateChapterDto } from '../dto/create-chapter.dto';
+import { CreateChapterManualDto } from '../dto/create-chapter-manual.dto';
 import { UpdateChapterDto } from '../dto/update-chapter.dto';
 import { OrderChaptersDto } from '../dto/order-chapters.dto';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
@@ -23,6 +24,61 @@ export class ChapterManagementService {
         private readonly bookRepository: Repository<Book>,
         private readonly eventEmitter: EventEmitter2,
     ) {}
+
+    /**
+     * Cria um capítulo manual (sem URL para scraping)
+     */
+    async createManualChapter(
+        bookId: string,
+        dto: CreateChapterManualDto,
+    ): Promise<Chapter> {
+        this.logger.log(`Creating manual chapter for book: ${bookId}`);
+
+        const book = await this.bookRepository.findOne({
+            where: { id: bookId },
+            relations: ['chapters'],
+        });
+
+        if (!book) {
+            this.logger.warn(`Book with id ${bookId} not found`);
+            throw new NotFoundException(`Book with id ${bookId} not found`);
+        }
+
+        // Determinar índice automaticamente se não fornecido
+        let index = dto.index;
+        if (index === undefined || index === null) {
+            const maxIndex = book.chapters.length > 0
+                ? Math.max(...book.chapters.map(c => Number(c.index)))
+                : 0;
+            index = maxIndex + 1;
+        }
+
+        // Verificar se o índice já existe
+        const existingChapter = book.chapters.find(c => Number(c.index) === index);
+        if (existingChapter) {
+            throw new BadRequestException(
+                `Chapter with index ${index} already exists`,
+            );
+        }
+
+        const chapter = this.chapterRepository.create({
+            title: dto.title || `Chapter ${index}`,
+            originalUrl: '', // Capítulo manual não tem URL
+            index,
+            book,
+            scrapingStatus: ScrapingStatus.READY, // Pronto para receber páginas
+        });
+
+        const savedChapter = await this.chapterRepository.save(chapter);
+
+        this.logger.log(
+            `Manual chapter created: ${savedChapter.title} (${savedChapter.id})`,
+        );
+
+        this.eventEmitter.emit('chapter.created', savedChapter);
+
+        return savedChapter;
+    }
 
     /**
      * Cria capítulos a partir de DTOs em uma transação
@@ -47,7 +103,7 @@ export class ChapterManagementService {
         const chapters = chaptersDto.map((chapterDto) =>
             manager.create({
                 title: chapterDto.title,
-                originalUrl: chapterDto.url,
+                originalUrl: chapterDto.url || '', // URL opcional agora
                 index: allHaveIndex ? chapterDto.index : count++,
                 book,
             }),

@@ -10,6 +10,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { JwtStrategy } from './strategy/jwt.strategy';
 import { JwtAuthGuard } from './guard/jwt-auth.guard';
+import { WsJwtGuard } from './guard/ws-jwt.guard';
 import { PassportModule } from '@nestjs/passport';
 import { DataEncryptionProvider } from 'src/encryption/data-encryption.provider';
 import { JwtRefreshStrategy } from './strategy/jwt-refresh.strategy';
@@ -40,8 +41,9 @@ import { Role } from 'src/users/entitys/role.entity';
     DataEncryptionProvider,
     JwtStrategy,
     JwtAuthGuard,
+    WsJwtGuard,
     JwtRefreshStrategy
   ],
-  exports: [JwtModule, JwtStrategy, JwtAuthGuard],
+  exports: [JwtModule, JwtStrategy, JwtAuthGuard, WsJwtGuard],
 })
 export class AuthModule {}

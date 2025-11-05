@@ -35,11 +35,18 @@ import { BookQueryService } from './services/book-query.service';
 import { ChapterManagementService } from './services/chapter-management.service';
 import { BookRelationshipService } from './services/book-relationship.service';
 import { BooksGateway } from './gateway/books.gateway';
+import { BookUploadService } from './services/book-upload.service';
+import { FilesModule } from 'src/files/files.module';
+import { LoggingModule } from 'src/logging/logging.module';
+import { MetricsModule } from 'src/metrics/metrics.module';
 
 @Module({
 	imports: [
 		ScrapingModule,
 		AppConfigModule,
+		FilesModule,
+		LoggingModule,
+		MetricsModule,
 		TypeOrmModule.forFeature([
 			Book,
 			Page,
@@ -101,12 +108,13 @@ import { BooksGateway } from './gateway/books.gateway';
 		CoverImageProcessor,
 		FixChapterService,
 		FixChapterProcessor,
-		// Novos serviços especializados
+		// serviços especializados
 		BookCreationService,
 		BookUpdateService,
 		BookQueryService,
 		ChapterManagementService,
 		BookRelationshipService,
+		BookUploadService,
 		// WebSocket Gateway
 		BooksGateway,
 	],

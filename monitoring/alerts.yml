@@ -1,0 +1,192 @@
+groups:
+    - name: gatuno_api_alerts
+      rules:
+          # ========== Alertas Críticos ==========
+
+          # Aplicação não está respondendo
+          - alert: ApplicationDown
+            expr: up{job="gatuno-api"} == 0
+            for: 1m
+            labels:
+                severity: critical
+                component: application
+            annotations:
+                summary: 'Aplicação Gatuno API está down'
+                description: 'A aplicação não está respondendo há mais de 1 minuto'
+
+          # Alta taxa de erros HTTP (>5%)
+          - alert: HighHTTPErrorRate
+            expr: |
+                (
+                  sum(rate(gatuno_http_requests_total{status=~"5.."}[5m])) /
+                  sum(rate(gatuno_http_requests_total[5m]))
+                ) > 0.05
+            for: 5m
+            labels:
+                severity: critical
+                component: http
+            annotations:
+                summary: 'Taxa de erro HTTP alta (> 5%)'
+                description: 'A taxa de erros HTTP 5xx está acima de 5% nos últimos 5 minutos'
+
+          # Banco de dados não está acessível
+          - alert: DatabaseUnhealthy
+            expr: |
+                sum(up{job="gatuno-api"}) > 0 and
+                sum(gatuno_database_errors_total) > 10
+            for: 2m
+            labels:
+                severity: critical
+                component: database
+            annotations:
+                summary: 'Problemas de conexão com o banco de dados'
+                description: 'Múltiplos erros de banco de dados detectados'
+
+          # ========== Alertas de Performance ==========
+
+          # Requisições muito lentas (P95 > 5s)
+          - alert: SlowRequests
+            expr: |
+                histogram_quantile(0.95,
+                  sum(rate(gatuno_http_request_duration_seconds_bucket[5m])) by (le)
+                ) > 5
+            for: 10m
+            labels:
+                severity: warning
+                component: performance
+            annotations:
+                summary: 'Requisições lentas detectadas'
+                description: 'O P95 de duração das requisições está acima de 5 segundos'
+
+          # Duração de scraping muito alta
+          - alert: SlowBookScraping
+            expr: |
+                histogram_quantile(0.95,
+                  sum(rate(gatuno_books_scraping_duration_seconds_bucket[10m])) by (le)
+                ) > 300
+            for: 15m
+            labels:
+                severity: warning
+                component: scraping
+            annotations:
+                summary: 'Scraping de livros está lento'
+                description: 'O P95 de duração do scraping está acima de 5 minutos'
+
+          # ========== Alertas de Recursos ==========
+
+          # Uso alto de memória (> 80%)
+          - alert: HighMemoryUsage
+            expr: |
+                (
+                  process_resident_memory_bytes{job="gatuno-api"} /
+                  (400 * 1024 * 1024)
+                ) > 0.8
+            for: 5m
+            labels:
+                severity: warning
+                component: resources
+            annotations:
+                summary: 'Uso alto de memória'
+                description: 'O uso de memória está acima de 80% do limite (400MB)'
+
+          # Muitos jobs ativos na fila
+          - alert: HighQueueBacklog
+            expr: gatuno_queue_jobs_active > 100
+            for: 10m
+            labels:
+                severity: warning
+                component: queue
+            annotations:
+                summary: 'Acúmulo de jobs na fila'
+                description: 'Há mais de 100 jobs ativos na fila'
+
+          # ========== Alertas de Qualidade ==========
+
+          # Alta taxa de falha em uploads
+          - alert: HighUploadFailureRate
+            expr: |
+                (
+                  sum(rate(gatuno_file_uploads_total{status="error"}[10m])) /
+                  sum(rate(gatuno_file_uploads_total[10m]))
+                ) > 0.1
+            for: 10m
+            labels:
+                severity: warning
+                component: upload
+            annotations:
+                summary: 'Alta taxa de falha em uploads'
+                description: 'Mais de 10% dos uploads estão falhando'
+
+          # Alta taxa de falha em autenticação
+          - alert: HighAuthFailureRate
+            expr: |
+                (
+                  sum(rate(gatuno_auth_attempts_total{status="failed"}[5m])) /
+                  sum(rate(gatuno_auth_attempts_total[5m]))
+                ) > 0.3
+            for: 10m
+            labels:
+                severity: warning
+                component: authentication
+            annotations:
+                summary: 'Alta taxa de falha em autenticação'
+                description: 'Mais de 30% das tentativas de autenticação estão falhando'
+
+          # ========== Alertas de Taxa ==========
+
+          # Alto throughput de requisições
+          - alert: HighRequestRate
+            expr: |
+                sum(rate(gatuno_http_requests_total[5m])) > 1000
+            for: 5m
+            labels:
+                severity: info
+                component: traffic
+            annotations:
+                summary: 'Alto volume de requisições'
+                description: 'Mais de 1000 requisições por segundo'
+
+          # Baixo cache hit rate (< 50%)
+          - alert: LowCacheHitRate
+            expr: |
+                (
+                  sum(rate(gatuno_cache_hits_total[10m])) /
+                  (sum(rate(gatuno_cache_hits_total[10m])) + sum(rate(gatuno_cache_misses_total[10m])))
+                ) < 0.5
+            for: 15m
+            labels:
+                severity: info
+                component: cache
+            annotations:
+                summary: 'Taxa de cache hit baixa'
+                description: 'Menos de 50% das requisições ao cache estão tendo hit'
+
+          # ========== Alertas de Jobs ==========
+
+          # Alta taxa de falha em jobs
+          - alert: HighJobFailureRate
+            expr: |
+                (
+                  sum(rate(gatuno_queue_jobs_completed_total{status="failed"}[10m])) /
+                  sum(rate(gatuno_queue_jobs_completed_total[10m]))
+                ) > 0.1
+            for: 10m
+            labels:
+                severity: warning
+                component: queue
+            annotations:
+                summary: 'Alta taxa de falha em jobs'
+                description: 'Mais de 10% dos jobs estão falhando'
+
+          # Jobs de scraping pararam
+          - alert: ScrapingJobsStalled
+            expr: |
+                rate(gatuno_chapters_processed_total[5m]) == 0 and
+                gatuno_queue_jobs_active{queue="chapter-scraping"} > 0
+            for: 10m
+            labels:
+                severity: warning
+                component: scraping
+            annotations:
+                summary: 'Jobs de scraping travados'
+                description: 'Há jobs na fila mas nenhum capítulo está sendo processado'

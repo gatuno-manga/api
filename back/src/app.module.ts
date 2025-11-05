@@ -1,4 +1,5 @@
 import { Module, OnApplicationBootstrap } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
@@ -12,9 +13,17 @@ import { FilesModule } from './files/files.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { BullModule } from '@nestjs/bullmq';
+import { LoggingModule } from './logging/logging.module';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { HealthModule } from './health/health.module';
+import { MetricsModule } from './metrics/metrics.module';
+import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
 
 @Module({
 	imports: [
+		LoggingModule,
+		HealthModule,
+		MetricsModule,
 		DatabaseModule,
 		AppConfigModule,
 		EventEmitterModule.forRoot(),
@@ -43,7 +52,17 @@ import { BullModule } from '@nestjs/bullmq';
 		AuthModule,
 	],
 	controllers: [AppController],
-	providers: [AppService],
+	providers: [
+		AppService,
+		{
+			provide: APP_INTERCEPTOR,
+			useClass: LoggingInterceptor,
+		},
+		{
+			provide: APP_INTERCEPTOR,
+			useClass: MetricsInterceptor,
+		},
+	],
 })
 export class AppModule implements OnApplicationBootstrap {
 	constructor(
