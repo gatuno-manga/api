@@ -2,7 +2,7 @@ const imageSelector = arguments[0] || 'img';
 const callback = arguments[arguments.length - 1];
 
 const config = {
-	SCROLL_PAUSE_MS: 500,
+	SCROLL_PAUSE_MS: 1500,
 	STABILITY_CHECKS: 3,
 	MAX_IMAGE_RETRIES: 3,
 	RETRY_DELAY_MS: 1000,

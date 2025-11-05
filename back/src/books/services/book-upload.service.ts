@@ -1,6 +1,5 @@
 import {
     Injectable,
-    Logger,
     NotFoundException,
     BadRequestException,
 } from '@nestjs/common';
@@ -13,14 +12,15 @@ import { Page } from '../entitys/page.entity';
 import { Chapter } from '../entitys/chapter.entity';
 import { FilesService } from 'src/files/files.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { CustomLogger } from 'src/custom.logger';
+import { InjectMetric } from '@willsoto/nestjs-prometheus';
+import { Counter, Histogram } from 'prom-client';
 
 /**
  * Service responsável por upload de capas e páginas de capítulos
  */
 @Injectable()
 export class BookUploadService {
-    private readonly logger = new Logger(BookUploadService.name);
-
     constructor(
         @InjectRepository(Book)
         private readonly bookRepository: Repository<Book>,
@@ -32,7 +32,16 @@ export class BookUploadService {
         private readonly chapterRepository: Repository<Chapter>,
         private readonly filesService: FilesService,
         private readonly eventEmitter: EventEmitter2,
-    ) {}
+        private readonly logger: CustomLogger,
+        @InjectMetric('file_uploads_total')
+        private readonly uploadCounter: Counter,
+        @InjectMetric('file_upload_size_bytes')
+        private readonly uploadSize: Histogram,
+        @InjectMetric('file_upload_duration_seconds')
+        private readonly uploadDuration: Histogram,
+    ) {
+        this.logger.setContext('BookUploadService');
+    }
 
     /**
      * Upload de uma única capa para um livro
@@ -42,7 +51,19 @@ export class BookUploadService {
         file: Express.Multer.File,
         title?: string,
     ): Promise<Cover> {
-        this.logger.log(`Uploading cover for book: ${bookId}`);
+        const startTime = Date.now();
+
+        this.logger.logFileUpload({
+            fileName: file.originalname,
+            message: 'Starting cover upload',
+            metadata: {
+                bookId,
+                fileSize: file.size,
+                mimeType: file.mimetype,
+            },
+        });
+
+        this.uploadSize.observe({ type: 'cover' }, file.size);
 
         const book = await this.bookRepository.findOne({
             where: { id: bookId },
@@ -50,46 +71,76 @@ export class BookUploadService {
         });
 
         if (!book) {
-            this.logger.warn(`Book with id ${bookId} not found`);
+            this.logger.warn(`Book with id ${bookId} not found`, 'BookUploadService');
+            this.uploadCounter.inc({ type: 'cover', status: 'error' });
             throw new NotFoundException(`Book with id ${bookId} not found`);
         }
 
-        // Validar tipo de arquivo
         if (!file.mimetype.match(/^image\//)) {
+            this.uploadCounter.inc({ type: 'cover', status: 'error' });
             throw new BadRequestException('Only image files are allowed');
         }
 
-        // Extrair extensão
-        const extension = path.extname(file.originalname) || '.jpg';
+        try {
+            const extension = path.extname(file.originalname) || '.jpg';
 
-        // Salvar usando o método otimizado (Buffer direto)
-        const savedPath = await this.filesService.saveBufferFile(
-            file.buffer,
-            extension,
-        );
+            const savedPath = await this.filesService.saveBufferFile(
+                file.buffer,
+                extension,
+            );
 
-        // Criar cover
-        const cover = this.coverRepository.create({
-            title: title || file.originalname,
-            url: savedPath,
-            book: book,
-            selected: book.covers.length === 0, // Primeira capa é selecionada por padrão
-        });
+            const cover = this.coverRepository.create({
+                title: title || file.originalname,
+                url: savedPath,
+                book: book,
+                selected: book.covers.length === 0,
+            });
 
-        const savedCover = await this.coverRepository.save(cover);
+            const savedCover = await this.coverRepository.save(cover);
 
-        this.logger.log(
-            `Cover uploaded successfully for book: ${book.title}`,
-        );
+            const duration = Date.now() - startTime;
 
-        // Emitir evento
-        this.eventEmitter.emit('cover.uploaded', {
-            bookId: book.id,
-            coverId: savedCover.id,
-            url: savedPath,
-        });
+            this.uploadCounter.inc({ type: 'cover', status: 'success' });
+            this.uploadDuration.observe({ type: 'cover' }, duration / 1000);
 
-        return savedCover;
+            this.logger.logFileUpload({
+                fileName: file.originalname,
+                message: 'Cover uploaded successfully',
+                metadata: {
+                    bookId: book.id,
+                    bookTitle: book.title,
+                    coverId: savedCover.id,
+                    duration,
+                },
+            });
+
+            this.logger.logPerformance({
+                operation: 'cover_upload',
+                duration,
+                metadata: {
+                    bookId,
+                    fileSize: file.size,
+                },
+            });
+
+            this.eventEmitter.emit('cover.uploaded', {
+                bookId: book.id,
+                coverId: savedCover.id,
+                url: savedPath,
+            });
+
+            return savedCover;
+        } catch (error) {
+            const duration = Date.now() - startTime;
+            this.uploadCounter.inc({ type: 'cover', status: 'error' });
+            this.uploadDuration.observe({ type: 'cover' }, duration / 1000);
+
+            this.logger.error(error, 'BookUploadService', {
+                bookId,
+                fileName: file.originalname,
+            });
+            throw error;
+        }
     }
 
     /**
@@ -99,8 +150,11 @@ export class BookUploadService {
         bookId: string,
         files: Express.Multer.File[],
     ): Promise<Cover[]> {
+        const startTime = Date.now();
+
         this.logger.log(
             `Uploading ${files.length} covers for book: ${bookId}`,
+            'BookUploadService',
         );
 
         if (files.length === 0) {
@@ -117,49 +171,71 @@ export class BookUploadService {
         });
 
         if (!book) {
-            this.logger.warn(`Book with id ${bookId} not found`);
+            this.logger.warn(`Book with id ${bookId} not found`, 'BookUploadService');
             throw new NotFoundException(`Book with id ${bookId} not found`);
         }
 
-        // Processar todos os arquivos em paralelo
-        const covers = await Promise.all(
-            files.map(async (file, index) => {
-                // Validar tipo de arquivo
-                if (!file.mimetype.match(/^image\//)) {
-                    throw new BadRequestException(
-                        `File ${file.originalname} is not an image`,
+        try {
+            const covers = await Promise.all(
+                files.map(async (file, index) => {
+                    if (!file.mimetype.match(/^image\//)) {
+                        throw new BadRequestException(
+                            `File ${file.originalname} is not an image`,
+                        );
+                    }
+
+                    const extension = path.extname(file.originalname) || '.jpg';
+                    const savedPath = await this.filesService.saveBufferFile(
+                        file.buffer,
+                        extension,
                     );
-                }
 
-                const extension = path.extname(file.originalname) || '.jpg';
-                const savedPath = await this.filesService.saveBufferFile(
-                    file.buffer,
-                    extension,
-                );
+                    return this.coverRepository.create({
+                        title: file.originalname,
+                        url: savedPath,
+                        book: book,
+                        selected: book.covers.length === 0 && index === 0,
+                    });
+                }),
+            );
 
-                return this.coverRepository.create({
-                    title: file.originalname,
-                    url: savedPath,
-                    book: book,
-                    selected: book.covers.length === 0 && index === 0,
-                });
-            }),
-        );
+            const savedCovers = await this.coverRepository.save(covers);
 
-        const savedCovers = await this.coverRepository.save(covers);
+            const duration = Date.now() - startTime;
 
-        this.logger.log(
-            `${savedCovers.length} covers uploaded successfully for book: ${book.title}`,
-        );
+            this.logger.logPerformance({
+                operation: 'multiple_covers_upload',
+                duration,
+                metadata: {
+                    bookId,
+                    coversCount: savedCovers.length,
+                    totalSize: files.reduce((sum, f) => sum + f.size, 0),
+                },
+            });
 
-        // Emitir evento
-        this.eventEmitter.emit('covers.uploaded', {
-            bookId: book.id,
-            count: savedCovers.length,
-            coverIds: savedCovers.map((c) => c.id),
-        });
+            this.logger.log(
+                `${savedCovers.length} covers uploaded successfully for book: ${book.title}`,
+                'BookUploadService',
+            );
 
-        return savedCovers;
+            this.eventEmitter.emit('covers.uploaded', {
+                bookId: book.id,
+                count: savedCovers.length,
+                coverIds: savedCovers.map((c) => c.id),
+            });
+
+            return savedCovers;
+        } catch (error) {
+            this.logger.error(
+                error,
+                'BookUploadService',
+                {
+                    bookId,
+                    filesCount: files.length,
+                },
+            );
+            throw error;
+        }
     }
 
     /**
@@ -170,11 +246,17 @@ export class BookUploadService {
         files: Express.Multer.File[],
         indices: number[],
     ): Promise<Page[]> {
-        this.logger.log(
-            `Uploading ${files.length} pages for chapter: ${chapterId}`,
-        );
+        const startTime = Date.now();
 
-        // Validações
+        this.logger.logChapterProcessing({
+            chapterId,
+            message: `Starting upload of ${files.length} pages`,
+            metadata: {
+                filesCount: files.length,
+                indicesCount: indices.length,
+            },
+        });
+
         if (files.length === 0) {
             throw new BadRequestException('No files provided');
         }
@@ -189,7 +271,6 @@ export class BookUploadService {
             throw new BadRequestException('Maximum 100 pages per upload');
         }
 
-        // Verificar duplicação de índices
         const uniqueIndices = new Set(indices);
         if (uniqueIndices.size !== indices.length) {
             throw new BadRequestException('Duplicate indices found');
@@ -201,13 +282,12 @@ export class BookUploadService {
         });
 
         if (!chapter) {
-            this.logger.warn(`Chapter with id ${chapterId} not found`);
+            this.logger.warn(`Chapter with id ${chapterId} not found`, 'BookUploadService');
             throw new NotFoundException(
                 `Chapter with id ${chapterId} not found`,
             );
         }
 
-        // Verificar se algum índice já existe
         const existingIndices = chapter.pages.map((p) => p.index);
         const conflictingIndices = indices.filter((i) =>
             existingIndices.includes(i),
@@ -219,43 +299,70 @@ export class BookUploadService {
             );
         }
 
-        // Processar todos os arquivos em paralelo
-        const pages = await Promise.all(
-            files.map(async (file, i) => {
-                // Validar tipo de arquivo
-                if (!file.mimetype.match(/^image\//)) {
-                    throw new BadRequestException(
-                        `File ${file.originalname} is not an image`,
+        try {
+            const pages = await Promise.all(
+                files.map(async (file, i) => {
+                    if (!file.mimetype.match(/^image\//)) {
+                        throw new BadRequestException(
+                            `File ${file.originalname} is not an image`,
+                        );
+                    }
+
+                    const extension = path.extname(file.originalname) || '.jpg';
+                    const savedPath = await this.filesService.saveBufferFile(
+                        file.buffer,
+                        extension,
                     );
-                }
 
-                const extension = path.extname(file.originalname) || '.jpg';
-                const savedPath = await this.filesService.saveBufferFile(
-                    file.buffer,
-                    extension,
-                );
+                    return this.pageRepository.create({
+                        index: indices[i],
+                        path: savedPath,
+                        chapter: chapter,
+                    });
+                }),
+            );
 
-                return this.pageRepository.create({
-                    index: indices[i],
-                    path: savedPath,
-                    chapter: chapter,
-                });
-            }),
-        );
+            const savedPages = await this.pageRepository.save(pages);
 
-        const savedPages = await this.pageRepository.save(pages);
+            const duration = Date.now() - startTime;
 
-        this.logger.log(
-            `${savedPages.length} pages uploaded successfully for chapter: ${chapter.title || chapter.id}`,
-        );
+            this.logger.logChapterProcessing({
+                chapterId,
+                message: 'Pages uploaded successfully',
+                metadata: {
+                    pagesCount: savedPages.length,
+                    duration,
+                    bookId: chapter.book?.id,
+                    totalSize: files.reduce((sum, f) => sum + f.size, 0),
+                },
+            });
 
-        // Emitir evento
-        this.eventEmitter.emit('chapter.pages.uploaded', {
-            chapterId: chapter.id,
-            bookId: chapter.book?.id,
-            count: savedPages.length,
-        });
+            this.logger.logPerformance({
+                operation: 'chapter_pages_upload',
+                duration,
+                metadata: {
+                    chapterId,
+                    pagesCount: savedPages.length,
+                },
+            });
 
-        return savedPages;
+            this.eventEmitter.emit('chapter.pages.uploaded', {
+                chapterId: chapter.id,
+                bookId: chapter.book?.id,
+                count: savedPages.length,
+            });
+
+            return savedPages;
+        } catch (error) {
+            this.logger.error(
+                error,
+                'BookUploadService',
+                {
+                    chapterId,
+                    filesCount: files.length,
+                },
+            );
+            throw error;
+        }
     }
 }

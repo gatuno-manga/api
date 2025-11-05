@@ -36,4 +36,15 @@ export const validationSchema = Joi.object({
 	CHAPTER_SCRAPING_CONCURRENCY: Joi.number().min(1).default(6),
 	COVER_IMAGE_CONCURRENCY: Joi.number().min(1).default(3),
 	FIX_CHAPTER_CONCURRENCY: Joi.number().min(1).default(2),
+	// Monitoring / Metrics
+	METRICS_ENABLED: Joi.boolean().default(true)
+		.description('Enable Prometheus metrics endpoint'),
+	METRICS_PATH: Joi.string().default('/api/metrics').description('Path where metrics are exposed'),
+	METRICS_PREFIX: Joi.string().default('gatuno_').description('Prefix applied to metrics'),
+	GRAFANA_PORT: Joi.number().min(0).max(65535).default(3002).description('Local Grafana port used for developer convenience'),
+	PROMETHEUS_SCRAPE_INTERVAL: Joi.string().default('10s').description('Default scrape interval used by Prometheus rules/docs'),
+	HEALTH_HEAP_LIMIT_MB: Joi.number().min(1).default(300).description('Heap limit in MB for health check'),
+	HEALTH_RSS_LIMIT_MB: Joi.number().min(1).default(500).description('RSS limit in MB for health check'),
+	HEALTH_READINESS_HEAP_LIMIT_MB: Joi.number().min(1).default(400).description('Heap limit in MB for readiness check'),
+	HEALTH_DISK_THRESHOLD_PERCENT: Joi.number().min(0).max(1).default(0.7).description('Disk usage threshold (fraction) for storage health check'),
 });

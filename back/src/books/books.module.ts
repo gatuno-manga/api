@@ -37,12 +37,16 @@ import { BookRelationshipService } from './services/book-relationship.service';
 import { BooksGateway } from './gateway/books.gateway';
 import { BookUploadService } from './services/book-upload.service';
 import { FilesModule } from 'src/files/files.module';
+import { LoggingModule } from 'src/logging/logging.module';
+import { MetricsModule } from 'src/metrics/metrics.module';
 
 @Module({
 	imports: [
 		ScrapingModule,
 		AppConfigModule,
 		FilesModule,
+		LoggingModule,
+		MetricsModule,
 		TypeOrmModule.forFeature([
 			Book,
 			Page,

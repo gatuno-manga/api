@@ -68,7 +68,10 @@ export class AppConfigService {
 			port: this.config.get<number>('DB_PORT'),
 			username: this.config.get<string>('DB_USER'),
 			password: this.config.get<string>('DB_PASS'),
-			slaveHosts: (this.config.get<string>('DB_SLAVE_HOSTS') || '').split(','),
+			slaveHosts: (this.config.get<string>('DB_SLAVE_HOSTS') || '')
+				.split(',')
+				.map(h => h.trim())
+				.filter(Boolean),
 		};
 	}
 
@@ -88,6 +91,49 @@ export class AppConfigService {
 		};
 	}
 
+	get LogLevel(): string {
+		return this.config.get<string>('LOG_LEVEL') || 'context=*;level=info';
+	}
+
+	get metricsEnabled(): boolean {
+		return this.config.get<boolean>('METRICS_ENABLED') ?? true;
+	}
+
+	get metricsPath(): string {
+		return this.config.get<string>('METRICS_PATH') || '/api/metrics';
+	}
+
+	get metricsPrefix(): string {
+		return this.config.get<string>('METRICS_PREFIX') || 'gatuno_';
+	}
+
+	get grafanaPort(): number {
+		return this.config.get<number>('GRAFANA_PORT') || 3002;
+	}
+
+	get prometheusScrapeInterval(): string {
+		return this.config.get<string>('PROMETHEUS_SCRAPE_INTERVAL') || '10s';
+	}
+
+	get healthHeapLimitBytes(): number {
+		const mb = this.config.get<number>('HEALTH_HEAP_LIMIT_MB') || 300;
+		return mb * 1024 * 1024;
+	}
+
+	get healthRssLimitBytes(): number {
+		const mb = this.config.get<number>('HEALTH_RSS_LIMIT_MB') || 500;
+		return mb * 1024 * 1024;
+	}
+
+	get healthReadinessHeapLimitBytes(): number {
+		const mb = this.config.get<number>('HEALTH_READINESS_HEAP_LIMIT_MB') || 400;
+		return mb * 1024 * 1024;
+	}
+
+	get healthDiskThresholdPercent(): number {
+		return this.config.get<number>('HEALTH_DISK_THRESHOLD_PERCENT') ?? 0.7;
+	}
+
 	private parseDurationToMilliseconds(duration: string): number {
 		const match = duration.match(/^(\d+)([smhd])$/);
 		if (!match) {
@@ -98,7 +144,7 @@ export class AppConfigService {
 		const unit = match[2];
 
 		switch (unit) {
-			case 's': return value;
+			case 's': return value * 1000;
 			case 'm': return value * 60 * 1000;
 			case 'h': return value * 60 * 60 * 1000;
 			case 'd': return value * 24 * 60 * 60 * 1000;
