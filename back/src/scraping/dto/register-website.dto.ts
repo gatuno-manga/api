@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUrl } from 'class-validator';
+import { IsOptional, IsString, IsUrl, IsInt } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class RegisterWebSiteDto {
@@ -42,4 +42,12 @@ export class RegisterWebSiteDto {
 	@IsOptional()
 	@IsString({ each: true })
 	ignoreFiles?: string[];
+
+	@ApiPropertyOptional({
+		description: 'Optional concurrency limit for simultaneous scrapes of this site. Null or omitted = unlimited',
+		example: 3,
+	})
+	@IsOptional()
+	@IsInt()
+	concurrencyLimit?: number;
 }

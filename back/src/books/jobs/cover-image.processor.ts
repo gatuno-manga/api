@@ -35,35 +35,65 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
     }
 
     async process(job: Job<QueueCoverProcessorDto>): Promise<void> {
-        const { bookId, urlOrigin, cover } = job.data;
-        this.logger.debug(`Processando capa para o livro: ${bookId}`);
+        const { bookId, urlOrigin } = job.data;
+        // support both legacy single-cover jobs and new batch jobs
+        const covers: { url: string; title?: string }[] = (job.data as any).covers ? (job.data as any).covers : [(job.data as any).cover];
+        this.logger.debug(`Processando ${covers.length} capa(s) para o livro: ${bookId}`);
 
         const book = await this.getBook(bookId);
         if (!book) {
             this.logger.warn(`Livro com id ${bookId} não encontrado para processar capa.`);
             return;
         }
-        try {
-            const ImageCover = await this.scrapingService.scrapeSingleImage(urlOrigin, cover.url);
-            const coverBook = this.coverRepository.create(
-                {
-                    title: cover.title || 'Cover Image',
-                    url: ImageCover,
-                    book: book,
-                    selected: book.covers.length === 0 ? true : false,
-                }
-            )
-            const savedCover = await this.coverRepository.save(coverBook);
-            this.logger.log(`Capa salva para o livro: ${book.title}`);
 
-            // Emite evento de capa processada
-            this.eventEmitter.emit('cover.processed', {
-                bookId: book.id,
-                coverId: savedCover.id,
-                url: ImageCover,
-            });
+        try {
+            // group covers by hostname so we can scrape multiple images from the same site in one driver
+            const groups = new Map<string, { covers: typeof covers }>();
+            for (const c of covers) {
+                try {
+                    const host = new URL(c.url).hostname;
+                    const g = groups.get(host) ?? { covers: [] };
+                    g.covers.push(c);
+                    groups.set(host, g);
+                } catch (e) {
+                    this.logger.warn(`URL inválida para capa: ${c.url}`, e);
+                }
+            }
+
+            for (const [host, group] of groups) {
+                const imageUrls = group.covers.map((c) => c.url);
+                try {
+                    const savedPaths = await this.scrapingService.scrapeMultipleImages(urlOrigin, imageUrls);
+                    // savedPaths are in same order as imageUrls
+                    for (let i = 0; i < savedPaths.length; i++) {
+                        const saved = savedPaths[i];
+                        const original = group.covers[i];
+                        if (!saved || saved === 'null') {
+                            this.logger.warn(`Falha ao salvar capa ${original.url} para livro ${book.title}`);
+                            continue;
+                        }
+                        const coverBook = this.coverRepository.create({
+                            title: original.title || 'Cover Image',
+                            url: saved,
+                            book: book,
+                            selected: book.covers.length === 0 ? true : false,
+                        });
+                        const savedCover = await this.coverRepository.save(coverBook);
+                        this.logger.log(`Capa salva para o livro: ${book.title}`);
+
+                        // Emite evento de capa processada
+                        this.eventEmitter.emit('cover.processed', {
+                            bookId: book.id,
+                            coverId: savedCover.id,
+                            url: saved,
+                        });
+                    }
+                } catch (err) {
+                    this.logger.warn(`Falha ao baixar capas do host ${host} para o livro: ${book.title}`, err);
+                }
+            }
         } catch (err) {
-            this.logger.warn(`Falha ao baixar capa para o livro: ${book.title}`, err);
+            this.logger.warn(`Erro ao processar capas para o livro: ${book.title}`, err);
         }
     }
 

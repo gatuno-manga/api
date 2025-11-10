@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { BooksController } from './books.controller';
 import { BooksService } from './books.service';
 
@@ -22,6 +23,13 @@ describe('BooksController', () => {
 		search: jest.fn(),
 	};
 
+	const mockCacheManager = {
+		get: jest.fn(),
+		set: jest.fn(),
+		del: jest.fn(),
+		reset: jest.fn(),
+	};
+
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			controllers: [BooksController],
@@ -29,6 +37,10 @@ describe('BooksController', () => {
 				{
 					provide: BooksService,
 					useValue: mockBooksService,
+				},
+				{
+					provide: CACHE_MANAGER,
+					useValue: mockCacheManager,
 				},
 			],
 		}).compile();

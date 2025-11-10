@@ -3,4 +3,5 @@ export class WebsiteConfigDto {
     preScript: string;
     posScript: string;
     ignoreFiles: string[];
+    concurrencyLimit?: number | null;
 }

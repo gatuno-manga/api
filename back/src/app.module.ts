@@ -1,5 +1,5 @@
 import { Module, OnApplicationBootstrap } from '@nestjs/common';
-import { APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
@@ -18,15 +18,37 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { HealthModule } from './health/health.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
+import { CommonModule } from './common/common.module';
 
 @Module({
 	imports: [
+		CommonModule,
 		LoggingModule,
 		HealthModule,
 		MetricsModule,
 		DatabaseModule,
 		AppConfigModule,
 		EventEmitterModule.forRoot(),
+		ScheduleModule.forRoot(),
+		ThrottlerModule.forRoot([
+			{
+				name: 'short',
+				ttl: 1000,     // 1 segundo
+				limit: 3,
+			},
+			{
+				name: 'medium',
+				ttl: 10000,    // 10 segundos
+				limit: 20,
+			},
+			{
+				name: 'long',
+				ttl: 60000,    // 1 minuto
+				limit: 100,
+			},
+		]),
 		ScrapingModule,
 		BooksModule,
 		ServeStaticModule.forRoot({
@@ -61,6 +83,10 @@ import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
 		{
 			provide: APP_INTERCEPTOR,
 			useClass: MetricsInterceptor,
+		},
+		{
+			provide: APP_GUARD,
+			useClass: ThrottlerGuard,
 		},
 	],
 })

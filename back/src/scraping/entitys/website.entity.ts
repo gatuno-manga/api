@@ -37,6 +37,12 @@ export class Website {
 	})
 	ignoreFiles: string[];
 
+	@Column({
+		type: 'int',
+		nullable: true,
+	})
+	concurrencyLimit: number | null;
+
 	@CreateDateColumn()
 	createdAt: Date;
 

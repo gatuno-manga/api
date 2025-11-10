@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, Relation } from "typeorm";
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, Relation, DeleteDateColumn } from "typeorm";
 import { Book } from "./book.entity";
 
 @Entity('covers')
@@ -17,4 +17,7 @@ export class Cover {
 
     @ManyToOne(() => Book, (book) => book.covers, { onDelete: 'CASCADE' })
     book: Relation<Book>;
+
+    @DeleteDateColumn()
+    deletedAt: Date;
 }

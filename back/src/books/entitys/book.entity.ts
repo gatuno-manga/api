@@ -9,6 +9,7 @@ import {
 	PrimaryGeneratedColumn,
 	Relation,
 	UpdateDateColumn,
+	DeleteDateColumn,
 	Index,
 	Check,
 } from 'typeorm';
@@ -25,6 +26,7 @@ import { Cover } from './cover.entity';
 @Index(['type'])
 @Index(['scrapingStatus'])
 @Index(['createdAt'])
+@Index(['deletedAt'])
 @Check(`"publication" IS NULL OR ("publication" >= 1980 AND "publication" <= ${new Date().getFullYear() + 2})`)
 export class Book {
 	@PrimaryGeneratedColumn('uuid')
@@ -97,4 +99,7 @@ export class Book {
 
 	@UpdateDateColumn()
 	updatedAt: Date;
+
+	@DeleteDateColumn()
+	deletedAt: Date;
 }
