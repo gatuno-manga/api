@@ -290,7 +290,6 @@ export class FileCleanupService {
                 report.filesDeleted++;
                 report.spaceRecovered += stats.size;
 
-
                 await this.coverRepository.remove(cover);
 
                 this.logger.log(`Deleted old cover file: ${filename}`);
