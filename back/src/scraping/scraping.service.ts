@@ -34,7 +34,7 @@ export class ScrapingService implements OnApplicationShutdown {
 
 	setConcurrencyManager(manager: IConcurrencyManager): void {
 		this.concurrencyManager = manager;
-		this.logger.debug('Concurrency manager substituído');
+		this.logger.debug('Concurrency manager replaced');
 	}
 
 	private initializeDriverFactory(): void {
