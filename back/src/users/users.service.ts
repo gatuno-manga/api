@@ -27,10 +27,23 @@ export class UsersService implements OnModuleInit {
                 maxWeightSensitiveContent: 4
             },
         ]
+
         for (const role of roles) {
-            const exists = await this.roleRepository.findOne({ where: { name: role.name } });
-            if (!exists) {
-                await this.roleRepository.save(this.roleRepository.create(role));
+            try {
+                const exists = await this.roleRepository.findOne({ where: { name: role.name } });
+                if (!exists) {
+                    await this.roleRepository.save(this.roleRepository.create(role));
+                    this.logger.log(`Role '${role.name}' created successfully`);
+                } else {
+                    this.logger.debug(`Role '${role.name}' already exists, skipping`);
+                }
+            } catch (error) {
+                if (error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
+                    this.logger.warn(`Role '${role.name}' already exists (handled race condition)`);
+                } else {
+                    this.logger.error(`Error creating role '${role.name}': ${error.message}`, error.stack);
+                    throw error;
+                }
             }
         }
     }

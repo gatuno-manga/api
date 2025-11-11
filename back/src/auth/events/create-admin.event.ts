@@ -18,16 +18,22 @@ export class CreateAdminEvent {
 
     @OnEvent('app.ready')
     async handle() {
-        const userEmail = this.appConfigService.adminInfo.email;
-        const userPassword = this.appConfigService.adminInfo.password;
-        if (!userEmail || !userPassword) {
-            return;
+        try {
+            const userEmail = this.appConfigService.adminInfo.email;
+            const userPassword = this.appConfigService.adminInfo.password;
+            if (!userEmail || !userPassword) {
+                this.logger.debug('Admin credentials not configured, skipping admin creation');
+                return;
+            }
+            const user = await this.userRepository.findOneBy({ email: userEmail });
+            if (user) {
+                this.logger.debug(`Admin user already exists: ${userEmail}`);
+                return;
+            }
+            const newUser = await this.authService.signUp(userEmail, userPassword, true);
+            this.logger.log(`Admin user created: ${newUser?.email}`);
+        } catch (error) {
+            this.logger.error(`Error creating admin user: ${error.message}`, error.stack);
         }
-        const user = await this.userRepository.findOneBy({ email: userEmail });
-        if (user) {
-            return;
-        }
-        const newUser = await this.authService.signUp(userEmail, userPassword, true);
-        this.logger.log(`Admin user created: ${newUser?.email}`);
     }
 }
