@@ -1,4 +1,6 @@
 #!/bin/sh
+# Script de configuração de replicação MySQL Master-Slave
+# Compatível com Alpine Linux (ash/sh) e sistemas POSIX
 set -e
 
 # Carregar variáveis de ambiente do arquivo .env (compatível com Alpine/ash)
@@ -18,7 +20,12 @@ fi
 
 echo "Aguardando o mestre (gatuno-database) iniciar completamente..."
 
-until docker exec gatuno-database mysql -u root -p"${DB_PASS}" -e "SELECT 1"; do
+# Suprimir warnings "Using a password on the command line interface can be insecure"
+# usando MYSQL_PWD (variável de ambiente do MySQL para senhas)
+# Nota: MYSQL_PWD é considerado menos seguro que .my.cnf, mas adequado para scripts
+export MYSQL_PWD="${DB_PASS}"
+
+until docker exec -e MYSQL_PWD="${DB_PASS}" gatuno-database mysql -u root -e "SELECT 1" 2>/dev/null; do
     sleep 5
 done
 echo "Mestre está pronto."
@@ -26,7 +33,7 @@ echo "Mestre está pronto."
 echo "Configurando a replicação nos slaves..."
 
 echo "Obtendo status do mestre..."
-MASTER_STATUS=$(docker exec gatuno-database mysql -u root -p"${DB_PASS}" -e "SHOW MASTER STATUS\G")
+MASTER_STATUS=$(docker exec -e MYSQL_PWD="${DB_PASS}" gatuno-database mysql -u root -e "SHOW MASTER STATUS\G")
 LOG_FILE=$(echo "$MASTER_STATUS" | grep "File:" | awk '{print $2}')
 LOG_POS=$(echo "$MASTER_STATUS" | grep "Position:" | awk '{print $2}')
 
@@ -41,7 +48,7 @@ MASTER_HOST="database-master"
 
 echo "Criando usuário de replicação no mestre..."
 # Remover -it para compatibilidade com scripts não-interativos e Alpine
-docker exec gatuno-database mysql -u root -p"${DB_PASS}" -e "CREATE USER IF NOT EXISTS '${REPLICATION_USER}'@'%' IDENTIFIED BY '${REPLICATION_PASSWORD}'; GRANT REPLICATION SLAVE ON *.* TO '${REPLICATION_USER}'@'%'; FLUSH PRIVILEGES;"
+docker exec -e MYSQL_PWD="${DB_PASS}" gatuno-database mysql -u root -e "CREATE USER IF NOT EXISTS '${REPLICATION_USER}'@'%' IDENTIFIED BY '${REPLICATION_PASSWORD}'; GRANT REPLICATION SLAVE ON *.* TO '${REPLICATION_USER}'@'%'; FLUSH PRIVILEGES;"
 
 SQL_CONFIGURE_SLAVE="
 STOP REPLICA;
@@ -56,7 +63,8 @@ START REPLICA;"
 DUMP_PATH="/tmp/dump.sql"
 
 echo "Gerando dump do banco mestre (sem GTID)..."
-docker exec gatuno-database mysqldump -u root -p"${DB_PASS}" --all-databases --master-data --set-gtid-purged=OFF > dump.sql
+# Usar --source-data ao invés de --master-data (deprecated)
+docker exec -e MYSQL_PWD="${DB_PASS}" gatuno-database mysqldump -u root --all-databases --source-data --set-gtid-purged=OFF > dump.sql
 
 # Verificar se existem slaves em execução (compatível com Alpine)
 SLAVE_COUNT=$(docker ps --format '{{.Names}}' | grep "gatuno-database-slave-" | wc -l)
@@ -75,19 +83,19 @@ while docker ps --format '{{.Names}}' | grep -q "gatuno-database-slave-${i}"; do
     SLAVE_NAME="gatuno-database-slave-${i}"
 
     echo "Resetando GTID e dados em ${SLAVE_NAME}..."
-    docker exec "${SLAVE_NAME}" mysql -u root -p"${DB_PASS}" -e "STOP REPLICA; RESET SLAVE ALL; RESET MASTER;"
+    docker exec -e MYSQL_PWD="${DB_PASS}" "${SLAVE_NAME}" mysql -u root -e "STOP REPLICA; RESET SLAVE ALL; RESET MASTER;"
 
     echo "Copiando dump para ${SLAVE_NAME}..."
     docker cp dump.sql "${SLAVE_NAME}":/tmp/dump.sql
 
     echo "Importando dump em ${SLAVE_NAME}..."
-    docker exec "${SLAVE_NAME}" sh -c "mysql -u root -p\"${DB_PASS}\" < /tmp/dump.sql"
+    docker exec -e MYSQL_PWD="${DB_PASS}" "${SLAVE_NAME}" sh -c "mysql -u root < /tmp/dump.sql"
 
     echo "Configurando replicação no ${SLAVE_NAME}..."
-    docker exec "${SLAVE_NAME}" mysql -u root -p"${DB_PASS}" -e "${SQL_CONFIGURE_SLAVE}"
+    docker exec -e MYSQL_PWD="${DB_PASS}" "${SLAVE_NAME}" mysql -u root -e "${SQL_CONFIGURE_SLAVE}"
 
     echo "Verificando status do ${SLAVE_NAME}:"
-    docker exec "${SLAVE_NAME}" mysql -u root -p"${DB_PASS}" -e "SHOW SLAVE STATUS\G"
+    docker exec -e MYSQL_PWD="${DB_PASS}" "${SLAVE_NAME}" mysql -u root -e "SHOW SLAVE STATUS\G"
 
     i=$((i+1))
 done
