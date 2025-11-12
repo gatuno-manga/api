@@ -1,9 +1,10 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
-# Carregar variáveis de ambiente do arquivo .env
+# Carregar variáveis de ambiente do arquivo .env (compatível com Alpine/ash)
 if [ -f .env ]; then
-  export $(grep -v '^#' .env | xargs)
+  # shellcheck disable=SC2046
+  export $(grep -v '^#' .env | xargs -0)
 else
   echo "Erro: Arquivo .env não encontrado!"
   exit 1
@@ -39,7 +40,8 @@ REPLICATION_PASSWORD="${DB_PASS}"
 MASTER_HOST="database-master"
 
 echo "Criando usuário de replicação no mestre..."
-docker exec -it gatuno-database mysql -u root -p"${DB_PASS}" -e "CREATE USER IF NOT EXISTS '${REPLICATION_USER}'@'%' IDENTIFIED BY '${REPLICATION_PASSWORD}'; GRANT REPLICATION SLAVE ON *.* TO '${REPLICATION_USER}'@'%'; FLUSH PRIVILEGES;"
+# Remover -it para compatibilidade com scripts não-interativos e Alpine
+docker exec gatuno-database mysql -u root -p"${DB_PASS}" -e "CREATE USER IF NOT EXISTS '${REPLICATION_USER}'@'%' IDENTIFIED BY '${REPLICATION_PASSWORD}'; GRANT REPLICATION SLAVE ON *.* TO '${REPLICATION_USER}'@'%'; FLUSH PRIVILEGES;"
 
 SQL_CONFIGURE_SLAVE="
 STOP REPLICA;
@@ -56,9 +58,10 @@ DUMP_PATH="/tmp/dump.sql"
 echo "Gerando dump do banco mestre (sem GTID)..."
 docker exec gatuno-database mysqldump -u root -p"${DB_PASS}" --all-databases --master-data --set-gtid-purged=OFF > dump.sql
 
-# Verificar se existem slaves em execução
-SLAVE_COUNT=$(docker ps --format '{{.Names}}' | grep -c "gatuno-database-slave-" || echo "0")
-if [ "$SLAVE_COUNT" -eq 0 ]; then
+# Verificar se existem slaves em execução (compatível com Alpine)
+SLAVE_COUNT=$(docker ps --format '{{.Names}}' | grep "gatuno-database-slave-" | wc -l)
+SLAVE_COUNT=$(echo "$SLAVE_COUNT" | tr -d ' ')
+if [ "$SLAVE_COUNT" = "0" ] || [ -z "$SLAVE_COUNT" ]; then
   echo "Aviso: Nenhum slave encontrado em execução!"
   rm -f dump.sql
   exit 0
