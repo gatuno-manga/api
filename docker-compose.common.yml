@@ -22,6 +22,10 @@ services:
     depends_on:
       database-master:
         condition: service_healthy
+      database-slave-1:
+        condition: service_healthy
+      database-slave-2:
+        condition: service_healthy
       redis:
         condition: service_healthy
     networks:
@@ -74,6 +78,11 @@ services:
       depends_on:
         database-master:
           condition: service_healthy
+      healthcheck:
+        test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u${DB_USER}", "-p${DB_PASS}"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
       volumes:
         - ./database/slave/my.cnf:/etc/mysql/conf.d/my.cnf
         - ./database/slave/init.sh:/docker-entrypoint-initdb.d/init.sh
@@ -89,6 +98,11 @@ services:
   database-slave-2:
     <<: *mysql-slave-base
     container_name: gatuno-database-slave-2
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u${DB_USER}", "-p${DB_PASS}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes:
       - database-slave-2-data:/var/lib/mysql
       - ./database/slave/my.cnf:/etc/mysql/conf.d/my.cnf
