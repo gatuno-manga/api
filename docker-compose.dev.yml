@@ -7,11 +7,19 @@ services:
       - "${API_PORT}:3000"
     environment:
       - CHOKIDAR_USEPOLLING=true
+    develop:
+      watch:
+        - action: sync
+          path: ./back/src
+          target: /usr/src/app/src
+          ignore:
+            - node_modules/
+        - action: rebuild
+          path: ./back/package.json
+
     volumes:
-      - ./back/src:/usr/src/app/src
       - ./back/.env:/usr/src/app/.env
       - api-data:/usr/src/app/data
-    restart: unless-stopped
 
   app:
     build:
@@ -19,10 +27,17 @@ services:
       dockerfile: Dockerfile.dev
     ports:
       - "${APP_PORT}:4200"
+    develop:
+      watch:
+        - action: sync
+          path: ./front/src
+          target: /usr/src/app/src
+          ignore:
+            - node_modules/
+        - action: rebuild
+          path: ./front/package.json
     volumes:
-      - ./front/src:/usr/src/app/src
       - ./front/public:/usr/src/app/public
-    restart: unless-stopped
 
   phpmyadmin:
     image: phpmyadmin:5.2
