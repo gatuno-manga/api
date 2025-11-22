@@ -17,7 +17,7 @@ jobs:
             - name: Set up Backend
               uses: actions/setup-node@v4
               with:
-                  node-version: '22'
+                  node-version: '24.11.1'
                   cache: 'npm'
                   cache-dependency-path: ./back/package-lock.json
 
@@ -43,7 +43,7 @@ jobs:
             - name: Set up Frontend
               uses: actions/setup-node@v4
               with:
-                  node-version: '22'
+                  node-version: '24.11.1'
                   cache: 'npm'
                   cache-dependency-path: ./front/package-lock.json
 
