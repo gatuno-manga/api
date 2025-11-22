@@ -8,6 +8,9 @@ services:
       - SELENIUM_URL=http://selenium-hub:4444/wd/hub
       - API_URL=http://${API_HOST}
       - APP_URL=http://${APP_HOST}
+      - ALLOWED_URL=http://${APP_HOST}
+      - DB_TYPE=mysql
+      - DB_PORT=3306
       - DB_MASTER_HOST=database-master
       - DB_SLAVE_HOSTS=database-slave-1,database-slave-2
       - DB_USER=${DB_USER}
