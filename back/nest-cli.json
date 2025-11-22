@@ -4,8 +4,14 @@
   "sourceRoot": "src",
   "compilerOptions": {
     "assets": [
-      "scraping/scripts/*"
+      {
+        "include": "scraping/scripts/*.js",
+        "outDir": "dist",
+        "watchAssets": true
+      }
     ],
-    "deleteOutDir": true
+    "deleteOutDir": true,
+    "builder": "swc",
+    "typeCheck": true
   }
 }

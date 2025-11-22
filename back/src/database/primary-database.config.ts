@@ -24,10 +24,11 @@ export const config = (
 	},
 	entities: [__dirname + '/../**/*.entity{.ts,.js}'],
 	synchronize: true,
+	poolSize: 20,
 	extra: {
-		min: 1,
-		max: 20,
-		idleTimeoutMillis: 10000,
-		connectionTimeoutMillis: 2000,
+		connectionLimit: 20,
+		waitForConnections: true,
+		queueLimit: 0,
+		connectTimeout: 2000,
 	},
 });
