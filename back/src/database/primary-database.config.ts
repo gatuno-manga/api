@@ -29,6 +29,9 @@ export const config = (
 		connectionLimit: 20,
 		waitForConnections: true,
 		queueLimit: 0,
-		connectTimeout: 2000,
+		connectTimeout: 10000,
 	},
+	maxQueryExecutionTime: 5000,
+	retryAttempts: 10,
+	retryDelay: 3000,
 });
