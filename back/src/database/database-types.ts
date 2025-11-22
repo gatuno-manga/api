@@ -7,3 +7,11 @@ export type DatabaseType =
 	| 'oracle'
 	| 'mssql'
 	| 'cockroachdb';
+
+export type ReplicationDatabaseType =
+	| 'mysql'
+	| 'postgres'
+	| 'mariadb'
+	| 'mongodb'
+	| 'cockroachdb'
+	| 'oracle';

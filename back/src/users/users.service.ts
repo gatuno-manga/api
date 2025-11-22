@@ -30,7 +30,10 @@ export class UsersService implements OnModuleInit {
 
         for (const role of roles) {
             try {
-                const exists = await this.roleRepository.findOne({ where: { name: role.name } });
+                const exists = await this.roleRepository.findOne({
+                    where: { name: role.name },
+                    transaction: false
+                });
                 if (!exists) {
                     await this.roleRepository.save(this.roleRepository.create(role));
                     this.logger.log(`Role '${role.name}' created successfully`);

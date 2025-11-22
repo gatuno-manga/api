@@ -25,7 +25,10 @@ export class CreateAdminEvent {
                 this.logger.debug('Admin credentials not configured, skipping admin creation');
                 return;
             }
-            const user = await this.userRepository.findOneBy({ email: userEmail });
+            const user = await this.userRepository.findOne({
+                where: { email: userEmail },
+                transaction: false
+            });
             if (user) {
                 this.logger.debug(`Admin user already exists: ${userEmail}`);
                 return;

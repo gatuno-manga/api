@@ -1,11 +1,11 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { AppConfigService } from 'src/app-config/app-config.service';
-import { DatabaseType } from './database-types';
+import { ReplicationDatabaseType } from './database-types';
 
 export const config = (
 	configService: AppConfigService,
 ): TypeOrmModuleOptions => ({
-	type: configService.database.type as DatabaseType,
+	type: configService.database.type as ReplicationDatabaseType,
 	replication: {
 		master: {
 			host: configService.database.host,
