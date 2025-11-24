@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import * as sharp from 'sharp';
+import sharp from 'sharp';
 import { IImageCompressor } from '../interfaces/image-compressor.interface';
 import { IFileCompressor } from '../interfaces/file-compressor.interface';
 
