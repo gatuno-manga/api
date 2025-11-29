@@ -1,0 +1,76 @@
+{
+    "$schema": "https://json.schemastore.org/swcrc",
+    "jsc": {
+        "parser": {
+            "syntax": "typescript",
+            "decorators": true,
+            "dynamicImport": true
+        },
+        "transform": {
+            "legacyDecorator": true,
+            "decoratorMetadata": true
+        },
+        "target": "es2023",
+        "keepClassNames": true,
+        "baseUrl": "./",
+        "paths": {
+            "@/*": [
+                "src/*"
+            ],
+            "@src/*": [
+                "src/*"
+            ],
+            "@back/*": [
+                "src/*"
+            ],
+            "@app-config/*": [
+                "src/app-config/*"
+            ],
+            "@auth/*": [
+                "src/auth/*"
+            ],
+            "@books/*": [
+                "src/books/*"
+            ],
+            "@common/*": [
+                "src/common/*"
+            ],
+            "@database/*": [
+                "src/database/*"
+            ],
+            "@encryption/*": [
+                "src/encryption/*"
+            ],
+            "@files/*": [
+                "src/files/*"
+            ],
+            "@health/*": [
+                "src/health/*"
+            ],
+            "@logging/*": [
+                "src/logging/*"
+            ],
+            "@metrics/*": [
+                "src/metrics/*"
+            ],
+            "@pages/*": [
+                "src/pages/*"
+            ],
+            "@scraping/*": [
+                "src/scraping/*"
+            ],
+            "@users/*": [
+                "src/users/*"
+            ]
+        }
+    },
+    "module": {
+        "type": "commonjs"
+    },
+    "exclude": [
+        "node_modules",
+        "dist",
+        "\\.spec\\.ts$",
+        "src/scraping/scripts/.*\\.js$"
+    ]
+}

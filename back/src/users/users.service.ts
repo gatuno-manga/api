@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, OnModuleInit, Logger } from '@nestjs/common';
 import { User } from './entitys/user.entity';
 import { Role } from './entitys/role.entity';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { RolesEnum } from './enum/roles.enum';
@@ -14,6 +14,7 @@ export class UsersService implements OnModuleInit {
         private readonly userRepository: Repository<User>,
         @InjectRepository(Role)
         private readonly roleRepository: Repository<Role>,
+        private readonly dataSource: DataSource,
     ) {}
 
     async onModuleInit() {
@@ -28,10 +29,17 @@ export class UsersService implements OnModuleInit {
             },
         ]
 
+        const queryRunner = this.dataSource.createQueryRunner('master');
+
         for (const role of roles) {
             try {
-                const exists = await this.roleRepository.findOne({ where: { name: role.name } });
-                if (!exists) {
+                const exists = await queryRunner.connect().then(() => {
+                    return this.roleRepository.manager.find(Role, {
+                        where: { name: role.name }
+                    });
+                });
+
+                if (!exists || exists.length === 0) {
                     await this.roleRepository.save(this.roleRepository.create(role));
                     this.logger.log(`Role '${role.name}' created successfully`);
                 } else {

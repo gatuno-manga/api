@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
 import { EventEmitter2, EventEmitterModule, EventEmitterReadinessWatcher } from '@nestjs/event-emitter';
 import { AppConfigModule } from './app-config/app-config.module';
+import { AppConfigService } from './app-config/app-config.service';
 import { ScrapingModule } from './scraping/scraping.module';
 import { BooksModule } from './books/books.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
@@ -54,20 +55,25 @@ import { CommonModule } from './common/common.module';
 		ServeStaticModule.forRoot({
 			rootPath: join(__dirname, '..', 'data'),
 		}),
-		BullModule.forRoot({
-			defaultJobOptions: {
-				attempts: 3,
-				removeOnComplete: true,
-				removeOnFail: 10,
-				backoff: {
-					type: 'exponential',
-					delay: 5000,
-				}
-			},
-			connection: {
-				host: 'redis',
-				port: 6379,
-			},
+		BullModule.forRootAsync({
+			imports: [AppConfigModule],
+			inject: [AppConfigService],
+			useFactory: (configService: AppConfigService) => ({
+				defaultJobOptions: {
+					attempts: 3,
+					removeOnComplete: true,
+					removeOnFail: 10,
+					backoff: {
+						type: 'exponential',
+						delay: 5000,
+					}
+				},
+				connection: {
+					host: configService.redis.host,
+					port: configService.redis.port,
+					password: configService.redis.password,
+				},
+			}),
 		}),
 		FilesModule,
 		UsersModule,

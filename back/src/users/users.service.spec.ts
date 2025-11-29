@@ -3,6 +3,7 @@ import { UsersService } from './users.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { User } from './entitys/user.entity';
 import { Role } from './entitys/role.entity';
+import { DataSource } from 'typeorm';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -23,6 +24,20 @@ describe('UsersService', () => {
     find: jest.fn(),
     save: jest.fn(),
     create: jest.fn(),
+    manager: {
+      query: jest.fn(),
+    },
+  };
+
+  const mockDataSource = {
+    query: jest.fn(),
+    createQueryRunner: jest.fn(() => ({
+      connect: jest.fn(),
+      startTransaction: jest.fn(),
+      commitTransaction: jest.fn(),
+      rollbackTransaction: jest.fn(),
+      release: jest.fn(),
+    })),
   };
 
   beforeEach(async () => {
@@ -36,6 +51,10 @@ describe('UsersService', () => {
         {
           provide: getRepositoryToken(Role),
           useValue: mockRoleRepository,
+        },
+        {
+          provide: DataSource,
+          useValue: mockDataSource,
         },
       ],
     }).compile();

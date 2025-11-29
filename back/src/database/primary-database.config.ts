@@ -1,11 +1,11 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { AppConfigService } from 'src/app-config/app-config.service';
-import { DatabaseType } from './database-types';
+import { ReplicationDatabaseType } from './database-types';
 
 export const config = (
 	configService: AppConfigService,
 ): TypeOrmModuleOptions => ({
-	type: configService.database.type as DatabaseType,
+	type: configService.database.type as ReplicationDatabaseType,
 	replication: {
 		master: {
 			host: configService.database.host,
@@ -24,10 +24,14 @@ export const config = (
 	},
 	entities: [__dirname + '/../**/*.entity{.ts,.js}'],
 	synchronize: true,
+	poolSize: 20,
 	extra: {
-		min: 1,
-		max: 20,
-		idleTimeoutMillis: 10000,
-		connectionTimeoutMillis: 2000,
+		connectionLimit: 20,
+		waitForConnections: true,
+		queueLimit: 0,
+		connectTimeout: 10000,
 	},
+	maxQueryExecutionTime: 5000,
+	retryAttempts: 10,
+	retryDelay: 3000,
 });
