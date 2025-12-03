@@ -20,6 +20,7 @@ import { BooksService } from './books.service';
 import { CreateBookDto } from './dto/create-book.dto';
 import { UpdateChapterDto } from './dto/update-chapter.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
+import { UpdateCoverDto } from './dto/update-cover.dto';
 import { OrderChaptersDto } from './dto/order-chapters.dto';
 import { CreateChapterManualDto } from './dto/create-chapter-manual.dto';
 import { UploadCoverDto } from './dto/upload-cover.dto';
@@ -161,6 +162,21 @@ export class AdminBooksController {
 		@Param('idCover') idCover: string,
 	) {
 		return this.booksService.selectCover(idBook, idCover);
+	}
+
+	@Patch(':idBook/covers/:idCover')
+	@ApiOperation({ summary: 'Update book cover', description: 'Update cover data for a book (Admin only)' })
+	@ApiParam({ name: 'idBook', description: 'Book unique identifier', example: '550e8400-e29b-41d4-a716-446655440000' })
+	@ApiParam({ name: 'idCover', description: 'Cover unique identifier', example: '6ba7b810-9dad-11d1-80b4-00c04fd430c8' })
+	@ApiResponse({ status: 200, description: 'Cover updated successfully' })
+	@ApiResponse({ status: 404, description: 'Book or cover not found' })
+	@ApiBearerAuth('JWT-auth')
+	updateCover(
+		@Param('idBook') idBook: string,
+		@Param('idCover') idCover: string,
+		@Body() dto: UpdateCoverDto,
+	) {
+		return this.booksService.updateCover(idBook, idCover, dto);
 	}
 
 	// ==================== UPLOAD ENDPOINTS ====================
