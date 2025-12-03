@@ -64,7 +64,7 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
 
         // Pega a primeira URL original (página principal do livro)
         const bookUrl = book.originalUrl[0];
-        
+
         try {
             // Faz scraping da lista de capítulos
             const scrapedChapters = await this.scrapingService.scrapeChapterList(bookUrl);
@@ -86,7 +86,7 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
             this.logger.log(`Found ${newChapters.length} new chapters for book: ${book.title}`);
 
             // Calcula o próximo índice baseado nos capítulos existentes
-            const maxExistingIndex = book.chapters.length > 0 
+            const maxExistingIndex = book.chapters.length > 0
                 ? Math.max(...book.chapters.map(ch => ch.index))
                 : 0;
 

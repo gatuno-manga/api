@@ -594,10 +594,10 @@ export class BooksGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
      * Envia para room do livro e admins
      */
     @OnEvent('book.new-chapters')
-    handleBookNewChapters(data: { 
-        bookId: string; 
-        newChaptersCount: number; 
-        chapters: Array<{ id: string; title: string; index: number }> 
+    handleBookNewChapters(data: {
+        bookId: string;
+        newChaptersCount: number;
+        chapters: Array<{ id: string; title: string; index: number }>
     }) {
         try {
             this.logger.debug(`Broadcasting book.new-chapters for book ${data.bookId} with ${data.newChaptersCount} new chapters`);
