@@ -6,6 +6,10 @@ import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { User } from './entitys/user.entity';
 import { Role } from './entitys/role.entity';
+import { ReadingProgress } from './entitys/reading-progress.entity';
+import { ReadingProgressService } from './reading-progress.service';
+import { ReadingProgressController } from './reading-progress.controller';
+import { ReadingProgressGateway } from './gateway/reading-progress.gateway';
 import {
   CollectionsBooksController,
   CollectionsBooksService,
@@ -15,9 +19,9 @@ import {
 @Module({
   imports: [
     AuthModule,
-    TypeOrmModule.forFeature([User, Role, CollectionBook, Book])
+    TypeOrmModule.forFeature([User, Role, CollectionBook, Book, ReadingProgress])
   ],
-  controllers: [UsersController, CollectionsBooksController],
-  providers: [UsersService, CollectionsBooksService],
+  controllers: [UsersController, CollectionsBooksController, ReadingProgressController],
+  providers: [UsersService, CollectionsBooksService, ReadingProgressService, ReadingProgressGateway],
 })
 export class UsersModule {}
