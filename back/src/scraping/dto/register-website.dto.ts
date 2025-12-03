@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUrl, IsInt } from 'class-validator';
+import { IsOptional, IsString, IsUrl, IsInt, IsBoolean, IsArray } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class RegisterWebSiteDto {
@@ -50,4 +50,44 @@ export class RegisterWebSiteDto {
 	@IsOptional()
 	@IsInt()
 	concurrencyLimit?: number;
+
+	@ApiPropertyOptional({
+		description: 'Blacklist terms: URLs containing these terms will be ignored',
+		example: ['logo', 'icon', 'avatar', 'ads', 'banner', 'sprite', '.gif'],
+		type: [String],
+		isArray: true,
+	})
+	@IsOptional()
+	@IsArray()
+	@IsString({ each: true })
+	blacklistTerms?: string[];
+
+	@ApiPropertyOptional({
+		description: 'Whitelist terms: If filled, only URLs containing these terms will be accepted',
+		example: ['cdn.site.com', 'uploads/chapters'],
+		type: [String],
+		isArray: true,
+	})
+	@IsOptional()
+	@IsArray()
+	@IsString({ each: true })
+	whitelistTerms?: string[];
+
+	@ApiPropertyOptional({
+		description: 'Enable network traffic interception for image caching (more efficient)',
+		example: true,
+		default: true,
+	})
+	@IsOptional()
+	@IsBoolean()
+	useNetworkInterception?: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Use screenshot/print mode to capture images instead of downloading. Captures in PNG (lossless) for maximum quality. Useful for canvas-rendered images or sites with download protection.',
+		example: false,
+		default: false,
+	})
+	@IsOptional()
+	@IsBoolean()
+	useScreenshotMode?: boolean;
 }

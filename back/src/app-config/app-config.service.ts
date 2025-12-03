@@ -14,13 +14,6 @@ export class AppConfigService {
 		return this.config.get<number>('PORT') || 3000;
 	}
 
-	get seleniumUrl(): string {
-		return (
-			this.config.get<string>('SELENIUM_URL') ||
-			'http://localhost:4444/wd/hub'
-		);
-	}
-
 	get apiUrl(): string {
 		return this.config.get<string>('API_URL') || 'http://localhost:3000';
 	}
@@ -155,5 +148,13 @@ export class AppConfigService {
 	get refreshTokenTtl(): number {
 		const duration = this.jwtRefreshExpiration;
 		return this.parseDurationToMilliseconds(duration);
+	}
+
+	get playwright() {
+		return {
+			debugMode: this.config.get<boolean>('PLAYWRIGHT_DEBUG') ?? false,
+			slowMo: this.config.get<number>('PLAYWRIGHT_SLOW_MO') ?? 0,
+			wsEndpoint: this.config.get<string>('PLAYWRIGHT_WS_ENDPOINT') ?? '',
+		};
 	}
 }

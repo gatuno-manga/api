@@ -1,35 +1,45 @@
 import { Injectable, Logger, OnApplicationShutdown } from '@nestjs/common';
-import { WebDriver } from 'selenium-webdriver';
+import type { Browser, BrowserContext, Page } from 'playwright';
 import * as path from 'path';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { FilesService } from 'src/files/files.service';
 import { WebsiteService } from './website.service';
 import { WebsiteConfigDto } from './dto/website-config.dto';
-import {
-	IWebDriverFactory,
-	ChromeDriverFactory,
-	WebDriverConfig,
-} from './factories';
-import {
-	IConcurrencyManager,
-	InMemoryConcurrencyManager,
-} from './concurrency';
-import { ScrapingUtils } from './utils';
+import { PlaywrightBrowserFactory } from './browser';
+import { IConcurrencyManager, InMemoryConcurrencyManager } from './concurrency';
+import { ImageDownloader, PageScroller, NetworkInterceptor, ElementScreenshot } from './helpers';
 
 @Injectable()
 export class ScrapingService implements OnApplicationShutdown {
 	private readonly logger = new Logger(ScrapingService.name);
-	private downloadDir = path.resolve('/usr/src/app/data');
-	private drivers: Set<WebDriver> = new Set();
-	private driverFactory: IWebDriverFactory;
-	private concurrencyManager: IConcurrencyManager = new InMemoryConcurrencyManager();
+	private browser: Browser | null = null;
+	private browserFactory: PlaywrightBrowserFactory;
+	private concurrencyManager: IConcurrencyManager =
+		new InMemoryConcurrencyManager();
 
 	constructor(
 		private readonly appConfigService: AppConfigService,
 		private readonly filesService: FilesService,
 		private readonly webSiteService: WebsiteService,
 	) {
-		this.initializeDriverFactory();
+		this.initializeBrowserFactory();
+	}
+
+	private initializeBrowserFactory(): void {
+		const { debugMode, slowMo, wsEndpoint } = this.appConfigService.playwright;
+
+		this.browserFactory = new PlaywrightBrowserFactory({
+			headless: !debugMode,
+			debugMode,
+			slowMo,
+			wsEndpoint,
+			downloadDir: '/usr/src/app/data',
+		});
+
+		if (debugMode) {
+			this.logger.log('🔍 Playwright DEBUG mode enabled');
+		}
+		this.logger.debug('Browser factory initialized');
 	}
 
 	setConcurrencyManager(manager: IConcurrencyManager): void {
@@ -37,284 +47,415 @@ export class ScrapingService implements OnApplicationShutdown {
 		this.logger.debug('Concurrency manager replaced');
 	}
 
-	private initializeDriverFactory(): void {
-		const config: WebDriverConfig = {
-			seleniumUrl: this.appConfigService.seleniumUrl,
-			downloadDir: this.downloadDir,
-			headless: false,
-			scriptTimeout: 1_200_000,
-			pageLoadTimeout: 1_200_000,
-		};
-
-		this.driverFactory = new ChromeDriverFactory(config);
-		this.logger.debug('Driver factory inicializado com sucesso');
+	setBrowserFactory(factory: PlaywrightBrowserFactory): void {
+		this.browserFactory = factory;
+		this.logger.debug('Browser factory replaced');
 	}
 
-	setDriverFactory(factory: IWebDriverFactory): void {
-		this.driverFactory = factory;
-		this.logger.debug('Driver factory alterado');
-	}
-
-	private async removeDriver(driver: WebDriver) {
-		if (this.drivers.has(driver)) {
-			this.drivers.delete(driver);
+	private async getBrowser(): Promise<Browser> {
+		if (!this.browser || !this.browser.isConnected()) {
+			this.browser = await this.browserFactory.launch();
 		}
-		await driver.quit();
+		return this.browser;
 	}
 
-	private async fetchImageAsBase64(
-		driver: WebDriver,
-		imageUrl: string,
-	): Promise<string | null> {
+	private async createPageWithContext(): Promise<{
+		context: BrowserContext;
+		page: Page;
+	}> {
+		const browser = await this.getBrowser();
+		const context = await this.browserFactory.createContext(browser);
+		const page = await this.browserFactory.createPage(context);
+		return { context, page };
+	}
+
+	private async closeContext(context: BrowserContext): Promise<void> {
 		try {
-			const script = ScrapingUtils.readScript('scripts/fetchImageAsBase64.js');
-			const base64String = await driver.executeAsyncScript(script, imageUrl);
-			return base64String as string | null;
+			await context.close();
 		} catch (error) {
-			this.logger.error(
-				`Falha ao executar script de download para ${imageUrl}`,
-				error,
-			);
-			return null;
+			this.logger.warn('Error closing context', error);
 		}
-	}
-
-	private async waitForAllImagesLoaded(
-		driver: WebDriver,
-		selector = 'img',
-		timeout = 60000,
-	): Promise<void> {
-		const pollInterval = 500;
-		const maxTries = Math.ceil(timeout / pollInterval);
-		let tries = 0;
-		const script = ScrapingUtils.readScript('scripts/waitForAllImagesLoaded.js');
-		while (tries < maxTries) {
-			const allLoaded = await driver.executeScript<boolean>(script, selector);
-			if (allLoaded) return;
-			await driver.sleep(pollInterval);
-			tries++;
-		}
-		throw new Error(
-			'Timeout esperando todas as imagens carregarem (inclusive as que falharam)',
-		);
-	}
-
-	private async getImageUrls(
-		driver: WebDriver,
-		selector = 'img',
-	): Promise<string[]> {
-		const script = ScrapingUtils.readScript('scripts/getImageUrls.js');
-		return await driver.executeScript<string[]>(script, selector);
-	}
-
-	async failedImageUrls(
-		driver: WebDriver,
-		selector = 'img',
-	): Promise<string[]> {
-		const script = ScrapingUtils.readScript('scripts/failedImageUrls.js');
-		return await driver.executeScript<string[]>(script, selector);
 	}
 
 	private async getWebsiteConfig(url: string): Promise<WebsiteConfigDto> {
 		let selector = 'img';
-		let preScript = ``;
-		let posScript = ``;
+		let preScript = '';
+		let posScript = '';
 		let ignoreFiles: string[] = [];
 		let concurrencyLimit: number | null = null;
+		let blacklistTerms: string[] = [];
+		let whitelistTerms: string[] = [];
+		let useNetworkInterception = true;
+		let useScreenshotMode = false;
+
 		const domain = new URL(url).hostname;
 		const website = await this.webSiteService.getByUrl(domain);
+
 		if (website) {
 			selector = website.selector || selector;
 			preScript = website.preScript || preScript;
 			posScript = website.posScript || posScript;
 			ignoreFiles = website.ignoreFiles || [];
 			concurrencyLimit = website.concurrencyLimit ?? null;
+			blacklistTerms = website.blacklistTerms || [];
+			whitelistTerms = website.whitelistTerms || [];
+			useNetworkInterception = website.useNetworkInterception ?? true;
+			useScreenshotMode = website.useScreenshotMode ?? false;
 		}
-		return { selector, preScript, posScript, ignoreFiles, concurrencyLimit };
-	}
 
-	private async waitForPageTitle(driver: WebDriver): Promise<void> {
-		await driver.wait(
-			() => driver.getTitle().then((title) => title.length > 0),
-			10000,
-		);
-	}
-
-	private async scrollAndWait(
-		driver: WebDriver,
-		selector: string
-	): Promise<{ processedImageCount: number; failedImageCount: number; failedImages: string[]; }> {
-		const scrollScript = ScrapingUtils.readScript('scripts/scrollAndWait.js');
-		const result = await driver.executeAsyncScript(scrollScript, selector);
-		const { processedImageCount, failedImageCount, failedImages } = result as {
-			processedImageCount: number;
-			failedImageCount: number;
-			failedImages: string[];
+		return {
+			selector,
+			preScript,
+			posScript,
+			ignoreFiles,
+			concurrencyLimit,
+			blacklistTerms,
+			whitelistTerms,
+			useNetworkInterception,
+			useScreenshotMode,
 		};
-		return { processedImageCount, failedImageCount, failedImages };
 	}
 
-	private async downloadImages(
-		driver: WebDriver,
+	private async executeCustomScript(
+		page: Page,
+		script: string,
+	): Promise<void> {
+		if (!script) return;
+
+		try {
+			await page.evaluate(script);
+			await page.waitForTimeout(3000);
+		} catch (error) {
+			this.logger.warn('Error executing custom script', error);
+		}
+	}
+
+	private async downloadAndSaveImages(
+		imageDownloader: ImageDownloader,
 		imageUrls: string[],
 		failedUrls: string[],
 		ignoreFiles: string[],
+		networkInterceptor?: NetworkInterceptor,
 	): Promise<(string | null)[]> {
-		return Promise.all(
-			imageUrls.map(async (imageUrl) => {
-				if (failedUrls.includes(imageUrl)) {
-					this.logger.warn(
-						`Imagem falhou ao carregar: ${imageUrl}`,
-					);
-					return 'null';
-				}
-				if (ignoreFiles && ignoreFiles.includes(imageUrl)) {
-					this.logger.warn(
-						`Imagem ignorada por configuração: ${imageUrl}`,
-					);
-					return null;
-				}
-				const base64Data = await this.fetchImageAsBase64(
-					driver,
-					imageUrl,
-				);
-				if (!base64Data) return 'null';
+		const results: (string | null)[] = [];
 
-				const extension =
-					path.extname(new URL(imageUrl).pathname) || '.jpg';
-				return this.filesService.saveBase64File(
-					base64Data,
-					extension,
-				);
-			}),
-		);
-	}
+		for (const imageUrl of imageUrls) {
+			if (failedUrls.includes(imageUrl)) {
+				this.logger.warn(`Image failed to load: ${imageUrl}`);
+				results.push(null);
+				continue;
+			}
 
-	async createInstance() {
-		const driver = await this.driverFactory.createDriver();
-		this.drivers.add(driver);
-		return driver;
+			if (ignoreFiles.includes(imageUrl)) {
+				this.logger.warn(`Image ignored by config: ${imageUrl}`);
+				results.push(null);
+				continue;
+			}
+
+			let base64Data: string | null = null;
+			let extension: string;
+
+			// Try to get from network cache first (more efficient)
+			if (networkInterceptor?.hasImage(imageUrl)) {
+				base64Data = networkInterceptor.getCachedImageAsBase64(imageUrl);
+				extension = networkInterceptor.getExtension(imageUrl);
+				this.logger.debug(`Cache hit for: ${imageUrl}`);
+			} else {
+				// Fallback to fetch
+				base64Data = await imageDownloader.fetchImageAsBase64(imageUrl);
+				extension = path.extname(new URL(imageUrl).pathname) || '.jpg';
+				this.logger.debug(`Cache miss, fetched: ${imageUrl}`);
+			}
+
+			if (!base64Data) {
+				results.push(null);
+				continue;
+			}
+
+			const savedPath = await this.filesService.saveBase64File(
+				base64Data,
+				extension,
+			);
+			results.push(savedPath);
+		}
+
+		return results;
 	}
 
 	async scrapePages(url: string, pages = 0): Promise<string[] | null> {
-		const { selector, preScript, posScript, ignoreFiles, concurrencyLimit } = await this.getWebsiteConfig(url);
+		const config = await this.getWebsiteConfig(url);
+		const {
+			selector,
+			preScript,
+			posScript,
+			ignoreFiles,
+			concurrencyLimit,
+			blacklistTerms,
+			whitelistTerms,
+			useNetworkInterception,
+			useScreenshotMode,
+		} = config;
 		const domain = new URL(url).hostname;
+
 		await this.concurrencyManager.acquire(domain, concurrencyLimit);
-		const driver = await this.createInstance();
+
+		const { context, page } = await this.createPageWithContext();
+		let networkInterceptor: NetworkInterceptor | undefined;
+
 		try {
-			const timeSleep = 3000;
-
-			await driver.get(url);
-			await this.waitForPageTitle(driver);
-
-			if (preScript) {
-				await driver.executeAsyncScript(preScript);
-				await driver.sleep(timeSleep);
+			// Setup network interception BEFORE navigation (if enabled and not in screenshot mode)
+			if (useNetworkInterception && !useScreenshotMode) {
+				networkInterceptor = new NetworkInterceptor(page, {
+					blacklistTerms,
+					whitelistTerms,
+				});
+				await networkInterceptor.startInterception();
+				this.logger.debug('Network interception enabled');
 			}
 
-			await this.scrollAndWait(driver, selector);
+			// Navigate to the page
+			await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-			if (posScript) {
-				await driver.executeAsyncScript(posScript);
-				await driver.sleep(timeSleep);
+			// Wait for title to be present
+			await page.waitForFunction(() => document.title.length > 0, {
+				timeout: 10000,
+			});
+
+			// Execute pre-scraping script
+			await this.executeCustomScript(page, preScript);
+
+			// Scroll and wait for lazy-loaded images
+			const scroller = new PageScroller(page, { imageSelector: selector });
+			const scrollResult = await scroller.scrollAndWait();
+
+			// Execute post-scraping script
+			await this.executeCustomScript(page, posScript);
+
+			// Stop interception and log stats
+			if (networkInterceptor) {
+				networkInterceptor.stopInterception();
+				const stats = networkInterceptor.getStats();
+				this.logger.log(
+					`Network cache: ${stats.count} images, ${(stats.totalBytes / 1024 / 1024).toFixed(2)} MB`,
+				);
 			}
 
-			const failedUrls = await this.failedImageUrls(driver, selector);
-			const imageUrls = await this.getImageUrls(driver, selector);
+			let successfulPaths: (string | null)[];
 
-			if (imageUrls.length <= pages) {
-				return null;
+			if (useScreenshotMode) {
+				// Screenshot mode: capture elements as PNG (lossless)
+				this.logger.log('📸 Using screenshot mode for image capture (PNG)');
+				successfulPaths = await this.captureElementsAsScreenshots(
+					page,
+					selector,
+					pages,
+				);
+			} else {
+				// Standard mode: download images
+				const imageDownloader = new ImageDownloader(page);
+				const imageUrls = await imageDownloader.getImageUrls(selector);
+
+				// Check if we have enough pages
+				if (imageUrls.length <= pages) {
+					return null;
+				}
+
+				this.logger.log(
+					`Found ${imageUrls.length} valid image URLs. Starting downloads.`,
+				);
+
+				// Download and save images (using cache when available)
+				successfulPaths = await this.downloadAndSaveImages(
+					imageDownloader,
+					imageUrls,
+					scrollResult.failedImages,
+					ignoreFiles,
+					networkInterceptor,
+				);
 			}
-
-			this.logger.log(
-				`Encontradas ${imageUrls.length} URLs de imagem válidas. Iniciando downloads.`,
-			);
-
-			const successfulPaths = await this.downloadImages(
-				driver,
-				imageUrls,
-				failedUrls,
-				ignoreFiles,
-			);
 
 			return successfulPaths.filter(Boolean) as string[];
 		} catch (error) {
-			this.logger.error(
-				'Ocorreu um erro durante o processo de scraping.',
-				error,
-			);
-			await this.removeDriver(driver);
+			this.logger.error('Error during scraping process.', error);
 			throw error;
 		} finally {
-			await this.removeDriver(driver);
+			networkInterceptor?.clearCache();
+			await this.closeContext(context);
 			this.concurrencyManager.release(domain);
 		}
+	}
+
+	/**
+	 * Captura elementos como screenshots (modo alternativo para canvas/proteção)
+	/**
+	 * Captura elementos como screenshots PNG (lossless) para máxima qualidade
+	 */
+	private async captureElementsAsScreenshots(
+		page: Page,
+		selector: string,
+		minPages: number,
+	): Promise<(string | null)[]> {
+		const elementScreenshot = new ElementScreenshot(page, {
+			selector,
+			format: 'png', // Sempre PNG para máxima qualidade
+		});
+
+		const count = await elementScreenshot.getElementCount();
+
+		if (count <= minPages) {
+			return [];
+		}
+
+		this.logger.log(`Found ${count} elements. Capturing PNG screenshots...`);
+
+		const screenshots = await elementScreenshot.captureAllAsBase64();
+		const results: (string | null)[] = [];
+
+		for (const base64 of screenshots) {
+			try {
+				const savedPath = await this.filesService.saveBase64File(base64, '.png');
+				results.push(savedPath);
+			} catch (error) {
+				this.logger.warn('Failed to save screenshot', error);
+				results.push(null);
+			}
+		}
+
+		this.logger.log(`Captured ${results.filter(Boolean).length}/${count} screenshots`);
+		return results;
 	}
 
 	async scrapeSingleImage(url: string, imageUrl: string): Promise<string> {
-		const { concurrencyLimit } = await this.getWebsiteConfig(url);
+		const config = await this.getWebsiteConfig(url);
+		const { concurrencyLimit, blacklistTerms, whitelistTerms, useNetworkInterception } = config;
 		const domain = new URL(url).hostname;
-		await this.concurrencyManager.acquire(domain, concurrencyLimit);
-		const driver = await this.createInstance();
-		try {
-			await driver.get(url);
 
-			const base64Data = await this.fetchImageAsBase64(driver, imageUrl);
-			if (!base64Data) {
-				throw new Error(`Falha ao baixar a imagem: ${imageUrl}`);
+		await this.concurrencyManager.acquire(domain, concurrencyLimit);
+
+		const { context, page } = await this.createPageWithContext();
+		let networkInterceptor: NetworkInterceptor | undefined;
+
+		try {
+			// Setup network interception BEFORE navigation (if enabled)
+			if (useNetworkInterception) {
+				networkInterceptor = new NetworkInterceptor(page, {
+					blacklistTerms,
+					whitelistTerms,
+				});
+				await networkInterceptor.startInterception();
 			}
 
-			const extension =
-				path.extname(new URL(imageUrl).pathname) || '.jpg';
+			await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+			// Try to get from cache first
+			let base64Data: string | null = null;
+			let extension: string;
+
+			if (networkInterceptor?.hasImage(imageUrl)) {
+				base64Data = networkInterceptor.getCachedImageAsBase64(imageUrl);
+				extension = networkInterceptor.getExtension(imageUrl);
+			} else {
+				const imageDownloader = new ImageDownloader(page);
+				base64Data = await imageDownloader.fetchImageAsBase64(imageUrl);
+				extension = path.extname(new URL(imageUrl).pathname) || '.jpg';
+			}
+
+			if (!base64Data) {
+				throw new Error(`Failed to download image: ${imageUrl}`);
+			}
+
 			return this.filesService.saveBase64File(base64Data, extension);
 		} catch (error) {
-			this.logger.error(
-				'Ocorreu um erro durante o processo de scraping.',
-				error,
-			);
+			this.logger.error('Error during scraping process.', error);
 			throw error;
 		} finally {
-			await this.removeDriver(driver);
+			networkInterceptor?.clearCache();
+			await this.closeContext(context);
 			this.concurrencyManager.release(domain);
 		}
 	}
 
-	async scrapeMultipleImages(url: string, imageUrls: string[]): Promise<(string | null)[]> {
-		const { concurrencyLimit } = await this.getWebsiteConfig(url);
+	async scrapeMultipleImages(
+		url: string,
+		imageUrls: string[],
+	): Promise<(string | null)[]> {
+		const config = await this.getWebsiteConfig(url);
+		const { concurrencyLimit, blacklistTerms, whitelistTerms, useNetworkInterception } = config;
 		const domain = new URL(url).hostname;
-		await this.concurrencyManager.acquire(domain, concurrencyLimit);
-		const driver = await this.createInstance();
-		try {
-			await driver.get(url);
-			await this.waitForPageTitle(driver);
 
+		await this.concurrencyManager.acquire(domain, concurrencyLimit);
+
+		const { context, page } = await this.createPageWithContext();
+		let networkInterceptor: NetworkInterceptor | undefined;
+
+		try {
+			// Setup network interception BEFORE navigation (if enabled)
+			if (useNetworkInterception) {
+				networkInterceptor = new NetworkInterceptor(page, {
+					blacklistTerms,
+					whitelistTerms,
+				});
+				await networkInterceptor.startInterception();
+			}
+
+			await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+			// Wait for title
+			await page.waitForFunction(() => document.title.length > 0, {
+				timeout: 10000,
+			});
+
+			const imageDownloader = new ImageDownloader(page);
 			const results: (string | null)[] = [];
+
 			for (const imageUrl of imageUrls) {
 				try {
-					const base64Data = await this.fetchImageAsBase64(driver, imageUrl);
+					let base64Data: string | null = null;
+					let extension: string;
+
+					// Try cache first
+					if (networkInterceptor?.hasImage(imageUrl)) {
+						base64Data = networkInterceptor.getCachedImageAsBase64(imageUrl);
+						extension = networkInterceptor.getExtension(imageUrl);
+					} else {
+						base64Data = await imageDownloader.fetchImageAsBase64(imageUrl);
+						extension = path.extname(new URL(imageUrl).pathname) || '.jpg';
+					}
+
 					if (!base64Data) {
-						this.logger.warn(`Falha ao baixar a imagem: ${imageUrl}`);
-						results.push('null');
+						this.logger.warn(`Failed to download image: ${imageUrl}`);
+						results.push(null);
 						continue;
 					}
-					const extension = path.extname(new URL(imageUrl).pathname) || '.jpg';
-					const saved = await this.filesService.saveBase64File(base64Data, extension);
+
+					const saved = await this.filesService.saveBase64File(
+						base64Data,
+						extension,
+					);
 					results.push(saved);
 				} catch (err) {
-					this.logger.warn(`Erro ao processar imagem ${imageUrl}`, err);
-					results.push('null');
+					this.logger.warn(`Error processing image ${imageUrl}`, err);
+					results.push(null);
 				}
 			}
+
 			return results;
 		} finally {
-			await this.removeDriver(driver);
+			networkInterceptor?.clearCache();
+			await this.closeContext(context);
 			this.concurrencyManager.release(domain);
 		}
 	}
 
-	async onApplicationShutdown(signal: string) {
-		for (const driver of this.drivers) {
-			await this.removeDriver(driver);
+	async onApplicationShutdown(): Promise<void> {
+		this.logger.log('Shutting down scraping service...');
+		if (this.browser) {
+			try {
+				await this.browser.close();
+				this.browser = null;
+			} catch (error) {
+				this.logger.warn('Error closing browser', error);
+			}
 		}
 	}
 }

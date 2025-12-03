@@ -1,9 +1,14 @@
-FROM node:24.11.1-alpine AS development
+# Usar imagem do Playwright que já tem os browsers e dependências
+FROM mcr.microsoft.com/playwright:v1.49.1-noble AS development
 
 WORKDIR /usr/src/app
+
 COPY package*.json ./
 RUN npm ci
 
 COPY . .
+
+# Instalar apenas Chromium para desenvolvimento
+RUN npx playwright install chromium
 
 CMD ["npm", "run", "start:dev"]

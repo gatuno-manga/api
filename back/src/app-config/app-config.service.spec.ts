@@ -134,9 +134,12 @@ describe('AppConfigService', () => {
     });
 
     describe('other configurations', () => {
-        it('should return seleniumUrl', () => {
-            mockConfigService.get.mockReturnValueOnce('http://selenium:4444/wd/hub');
-            expect(service.seleniumUrl).toBe('http://selenium:4444/wd/hub');
+        it('should return playwright config', () => {
+            const playwrightConfig = service.playwright;
+            expect(playwrightConfig).toBeDefined();
+            expect(playwrightConfig).toHaveProperty('debugMode');
+            expect(playwrightConfig).toHaveProperty('slowMo');
+            expect(playwrightConfig).toHaveProperty('wsEndpoint');
         });
 
         it('should return apiUrl', () => {

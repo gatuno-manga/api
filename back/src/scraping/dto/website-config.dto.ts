@@ -4,4 +4,8 @@ export class WebsiteConfigDto {
     posScript: string;
     ignoreFiles: string[];
     concurrencyLimit?: number | null;
+    blacklistTerms: string[];
+    whitelistTerms: string[];
+    useNetworkInterception: boolean;
+    useScreenshotMode: boolean;
 }
