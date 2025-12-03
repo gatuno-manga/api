@@ -2,7 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { Chapter } from "../entitys/chapter.entity";
-import { In, Not, Repository } from "typeorm";
+import { Not, Repository } from "typeorm";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 
@@ -20,15 +20,23 @@ export class ChapterScrapingService {
         private readonly chapterRepository: Repository<Chapter>,
     ) {}
 
+    /**
+     * Adiciona um capítulo à fila de scraping.
+     * Usa jobId único para deduplicação eficiente O(1).
+     */
     public async addChapterToQueue(chapterId: string): Promise<void> {
-        const existingJobs = await this.chapterScrapingQueue.getJobs(['waiting', 'delayed', 'active']);
-        const isAlreadyQueued = existingJobs.some(job => job && job.data === chapterId)
+        const jobId = `chapter-scraping-${chapterId}`;
 
-        if (!isAlreadyQueued) {
+        try {
+            await this.chapterScrapingQueue.add(JOB_NAME, chapterId, { jobId });
             this.logger.debug(`Adicionando job para o capítulo: ${chapterId}`);
-            await this.chapterScrapingQueue.add(JOB_NAME, chapterId);
-        } else {
-            this.logger.debug(`Job para o capítulo ${chapterId} já está na fila.`);
+        } catch (error) {
+            // Job com mesmo ID já existe na fila
+            if (error.message?.includes('Job with this id already exists')) {
+                this.logger.debug(`Job para o capítulo ${chapterId} já está na fila.`);
+            } else {
+                throw error;
+            }
         }
     }
 

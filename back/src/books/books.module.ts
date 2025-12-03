@@ -23,6 +23,7 @@ import { TagsService } from './tags/tags.service';
 import { BullModule } from '@nestjs/bullmq';
 import { ChapterScrapingJob } from './jobs/chapter-scraping.job';
 import { ChapterScrapingService } from './jobs/chapter-scraping.service';
+import { ChapterScrapingSharedService } from './jobs/chapter-scraping.shared';
 import { CoverImageService } from './jobs/cover-image.service';
 import { CoverImageProcessor } from './jobs/cover-image.processor';
 import { FixChapterService } from './jobs/fix-chapter.service';
@@ -64,6 +65,7 @@ import { MetricsModule } from 'src/metrics/metrics.module';
 			{
 				name: 'chapter-scraping',
 				defaultJobOptions: {
+					attempts: 3,
 					removeOnFail: 10,
 					delay: 10000,
 					backoff: {
@@ -75,6 +77,7 @@ import { MetricsModule } from 'src/metrics/metrics.module';
 			{
 				name: 'cover-image-queue',
 				defaultJobOptions: {
+					attempts: 3,
 					removeOnFail: 10,
 					delay: 10000,
 					backoff: {
@@ -86,6 +89,7 @@ import { MetricsModule } from 'src/metrics/metrics.module';
 			{
 				name: 'fix-chapter-queue',
 				defaultJobOptions: {
+					attempts: 3,
 					removeOnFail: 10,
 					delay: 10000,
 					backoff: {
@@ -106,6 +110,7 @@ import { MetricsModule } from 'src/metrics/metrics.module';
 		TagsService,
 		ChapterScrapingJob,
 		ChapterScrapingService,
+		ChapterScrapingSharedService,
 		CoverImageService,
 		CoverImageProcessor,
 		FixChapterService,
