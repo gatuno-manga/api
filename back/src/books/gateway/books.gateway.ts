@@ -414,4 +414,178 @@ export class BooksGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
             this.logger.error(`Failed to broadcast cover.selected: ${error.message}`);
         }
     }
+
+    /**
+     * Notifica quando uma capa é atualizada
+     * Envia para room do livro e admins
+     */
+    @OnEvent('cover.updated')
+    handleCoverUpdated(data: { bookId: string; coverId: string }) {
+        try {
+            this.logger.debug(`Broadcasting cover.updated for book ${data.bookId}`);
+            this.server.to(`book:${data.bookId}`).emit('cover.updated', data);
+            this.server.to('admin').emit('cover.updated', data);
+        } catch (error) {
+            this.logger.error(`Failed to broadcast cover.updated: ${error.message}`);
+        }
+    }
+
+    /**
+     * Notifica quando uma capa é uploadada manualmente
+     * Envia para room do livro e admins
+     */
+    @OnEvent('cover.uploaded')
+    handleCoverUploaded(data: { bookId: string; coverId: string; url: string }) {
+        try {
+            this.logger.debug(`Broadcasting cover.uploaded for book ${data.bookId}`);
+            this.server.to(`book:${data.bookId}`).emit('cover.uploaded', data);
+            this.server.to('admin').emit('cover.uploaded', data);
+        } catch (error) {
+            this.logger.error(`Failed to broadcast cover.uploaded: ${error.message}`);
+        }
+    }
+
+    /**
+     * Notifica quando múltiplas capas são uploadadas
+     * Apenas admins recebem
+     */
+    @OnEvent('covers.uploaded')
+    handleCoversUploaded(data: { bookId: string; coverIds: string[]; count: number }) {
+        try {
+            this.logger.debug(`Broadcasting covers.uploaded for book ${data.bookId} (${data.count} covers)`);
+            this.server.to(`book:${data.bookId}`).emit('covers.uploaded', data);
+            this.server.to('admin').emit('covers.uploaded', data);
+        } catch (error) {
+            this.logger.error(`Failed to broadcast covers.uploaded: ${error.message}`);
+        }
+    }
+
+    // ==================== EVENTOS DE CAPÍTULOS CRIADOS/UPLOAD ====================
+
+    /**
+     * Notifica quando um capítulo é criado
+     * Envia para room do livro e admins
+     */
+    @OnEvent('chapter.created')
+    handleChapterCreated(chapter: Chapter) {
+        try {
+            const bookId = chapter.book?.id;
+            this.logger.debug(`Broadcasting chapter.created for chapter ${chapter.id}`);
+
+            const chapterData = {
+                id: chapter.id,
+                title: chapter.title,
+                index: chapter.index,
+                scrapingStatus: chapter.scrapingStatus,
+                bookId,
+            };
+
+            this.server.to(`book:${bookId}`).emit('chapter.created', chapterData);
+            this.server.to('admin').emit('chapter.created', chapterData);
+        } catch (error) {
+            this.logger.error(`Failed to broadcast chapter.created: ${error.message}`);
+        }
+    }
+
+    /**
+     * Notifica quando páginas de um capítulo são uploadadas
+     * Envia para room do livro e do capítulo
+     */
+    @OnEvent('chapter.pages.uploaded')
+    handleChapterPagesUploaded(data: { bookId: string; chapterId: string; count: number }) {
+        try {
+            this.logger.debug(`Broadcasting chapter.pages.uploaded for chapter ${data.chapterId}`);
+            this.server.to(`book:${data.bookId}`).emit('chapter.pages.uploaded', data);
+            this.server.to(`chapter:${data.chapterId}`).emit('chapter.pages.uploaded', data);
+            this.server.to('admin').emit('chapter.pages.uploaded', data);
+        } catch (error) {
+            this.logger.error(`Failed to broadcast chapter.pages.uploaded: ${error.message}`);
+        }
+    }
+
+    // ==================== EVENTOS DE DELEÇÃO ====================
+
+    /**
+     * Notifica quando um livro é deletado
+     * Apenas admins recebem
+     */
+    @OnEvent('book.deleted')
+    handleBookDeleted(data: { bookId: string; bookTitle: string; covers: string[]; pages: string[] }) {
+        try {
+            this.logger.debug(`Broadcasting book.deleted for book ${data.bookId}`);
+            const eventData = {
+                bookId: data.bookId,
+                title: data.bookTitle,
+                filesCount: data.covers.length + data.pages.length,
+            };
+            this.server.to('admin').emit('book.deleted', eventData);
+            // Também notifica quem estava inscrito no livro
+            this.server.to(`book:${data.bookId}`).emit('book.deleted', eventData);
+        } catch (error) {
+            this.logger.error(`Failed to broadcast book.deleted: ${error.message}`);
+        }
+    }
+
+    /**
+     * Notifica quando um capítulo é deletado
+     * Envia para room do livro e admins
+     */
+    @OnEvent('chapter.deleted')
+    handleChapterDeleted(data: { chapterId: string; bookId?: string; pages: string[] }) {
+        try {
+            this.logger.debug(`Broadcasting chapter.deleted for chapter ${data.chapterId}`);
+            const eventData = {
+                chapterId: data.chapterId,
+                bookId: data.bookId,
+                pagesCount: data.pages.length,
+            };
+            if (data.bookId) {
+                this.server.to(`book:${data.bookId}`).emit('chapter.deleted', eventData);
+            }
+            this.server.to(`chapter:${data.chapterId}`).emit('chapter.deleted', eventData);
+            this.server.to('admin').emit('chapter.deleted', eventData);
+        } catch (error) {
+            this.logger.error(`Failed to broadcast chapter.deleted: ${error.message}`);
+        }
+    }
+
+    /**
+     * Notifica quando uma capa é deletada
+     * Envia para room do livro e admins
+     */
+    @OnEvent('cover.deleted')
+    handleCoverDeleted(data: { coverId: string; url: string; bookId?: string }) {
+        try {
+            this.logger.debug(`Broadcasting cover.deleted for cover ${data.coverId}`);
+            const eventData = {
+                coverId: data.coverId,
+                bookId: data.bookId,
+            };
+            if (data.bookId) {
+                this.server.to(`book:${data.bookId}`).emit('cover.deleted', eventData);
+            }
+            this.server.to('admin').emit('cover.deleted', eventData);
+        } catch (error) {
+            this.logger.error(`Failed to broadcast cover.deleted: ${error.message}`);
+        }
+    }
+
+    /**
+     * Notifica quando uma página é deletada
+     * Envia para room do capítulo e admins
+     */
+    @OnEvent('page.deleted')
+    handlePageDeleted(data: { pageId: string; chapterId: string; path: string }) {
+        try {
+            this.logger.debug(`Broadcasting page.deleted for page ${data.pageId}`);
+            const eventData = {
+                pageId: data.pageId,
+                chapterId: data.chapterId,
+            };
+            this.server.to(`chapter:${data.chapterId}`).emit('page.deleted', eventData);
+            this.server.to('admin').emit('page.deleted', eventData);
+        } catch (error) {
+            this.logger.error(`Failed to broadcast page.deleted: ${error.message}`);
+        }
+    }
 }
