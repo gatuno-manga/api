@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Book } from "src/books/entitys/book.entity";
 import { Repository } from "typeorm";
@@ -23,9 +23,20 @@ export class CollectionsBooksService {
             where: { id: userId },
         });
         if (!user) {
-            throw new BadRequestException("User not found");
+            throw new NotFoundException("User not found");
         }
         return user;
+    }
+
+    private async findCollectionOrFail(idCollection: string, userId: string, loadBooks = false): Promise<CollectionBook> {
+        const collection = await this.collectionBookRepository.findOne({
+            where: { id: idCollection, user: { id: userId } },
+            relations: loadBooks ? ['books'] : [],
+        });
+        if (!collection) {
+            throw new NotFoundException("Collection not found or does not belong to the user");
+        }
+        return collection;
     }
 
     async getCollections(userId: string) {
@@ -56,64 +67,57 @@ export class CollectionsBooksService {
 
     async addBookToCollection(dto: AddBookCollectionDto, idCollection: string, userId: string) {
         await this.validateUser(userId);
-        const collection = await this.collectionBookRepository.findOne({
-            where: { id: idCollection, user: { id: userId } },
-            relations: ['books'],
-        });
-        if (!collection) {
-            throw new BadRequestException("Collection not found or does not belong to the user");
-        }
+        const collection = await this.findCollectionOrFail(idCollection, userId, true);
+
         const books = await this.bookRepository.find({
             where: dto.idsBook.map((id) => ({ id })),
         });
+
         if (books.length !== dto.idsBook.length) {
-            throw new BadRequestException("Some books not found");
+            const foundIds = books.map(b => b.id);
+            const notFoundIds = dto.idsBook.filter(id => !foundIds.includes(id));
+            throw new NotFoundException(`Books not found: ${notFoundIds.join(', ')}`);
         }
 
-        return this.collectionBookRepository.save(
-            this.collectionBookRepository.merge(collection, {
-                books: [...collection.books, ...books],
-            })
-        );
+        // Filtra livros que já estão na coleção para evitar duplicatas
+        const existingBookIds = new Set(collection.books.map(b => b.id));
+        const newBooks = books.filter(book => !existingBookIds.has(book.id));
+
+        if (newBooks.length === 0) {
+            throw new BadRequestException("All books are already in the collection");
+        }
+
+        collection.books = [...collection.books, ...newBooks];
+        const savedCollection = await this.collectionBookRepository.save(collection);
+
+        return {
+            ...savedCollection,
+            addedCount: newBooks.length,
+            skippedCount: books.length - newBooks.length,
+        };
     }
 
     async getCollectionBooks(userId: string, idCollection: string) {
         await this.validateUser(userId);
-        const collection = await this.collectionBookRepository.findOne({
-            where: { id: idCollection, user: { id: userId } },
-            relations: ['books'],
-        });
-        if (!collection) {
-            throw new BadRequestException("Collection not found or does not belong to the user");
-        }
-        return collection;
+        return this.findCollectionOrFail(idCollection, userId, true);
     }
 
     async removeBookFromCollection(idCollection: string, idBook: string, userId: string) {
         await this.validateUser(userId);
-        const collection = await this.collectionBookRepository.findOne({
-            where: { id: idCollection, user: { id: userId } },
-            relations: ['books'],
-        });
-        if (!collection) {
-            throw new BadRequestException("Collection not found or does not belong to the user");
-        }
+        const collection = await this.findCollectionOrFail(idCollection, userId, true);
+
         const bookIndex = collection.books.findIndex(book => book.id === idBook);
         if (bookIndex === -1) {
-            throw new BadRequestException("Book not found in the collection");
+            throw new NotFoundException("Book not found in the collection");
         }
+
         collection.books.splice(bookIndex, 1);
         return this.collectionBookRepository.save(collection);
     }
 
     async deleteCollection(idCollection: string, userId: string) {
         await this.validateUser(userId);
-        const collection = await this.collectionBookRepository.findOne({
-            where: { id: idCollection, user: { id: userId } },
-        });
-        if (!collection) {
-            throw new BadRequestException("Collection not found or does not belong to the user");
-        }
+        const collection = await this.findCollectionOrFail(idCollection, userId);
         return this.collectionBookRepository.remove(collection);
     }
 }
