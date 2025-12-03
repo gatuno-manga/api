@@ -179,6 +179,61 @@ export class AdminBooksController {
 		return this.booksService.updateCover(idBook, idCover, dto);
 	}
 
+	@Patch(':idBook/covers/:idCover/image')
+	@Throttle({ short: { limit: 10, ttl: 60000 } }) // 10 req/min
+	@ApiOperation({
+		summary: 'Replace cover image',
+		description: 'Replace the image of an existing cover (Admin only)'
+	})
+	@ApiConsumes('multipart/form-data')
+	@ApiParam({ name: 'idBook', description: 'Book unique identifier', example: '550e8400-e29b-41d4-a716-446655440000' })
+	@ApiParam({ name: 'idCover', description: 'Cover unique identifier', example: '6ba7b810-9dad-11d1-80b4-00c04fd430c8' })
+	@ApiBody({
+		schema: {
+			type: 'object',
+			properties: {
+				file: {
+					type: 'string',
+					format: 'binary',
+					description: 'New cover image file (JPG, PNG, WEBP)',
+				},
+				title: {
+					type: 'string',
+					description: 'Optional new cover title',
+					maxLength: 200,
+				}
+			},
+			required: ['file'],
+		},
+	})
+	@ApiResponse({ status: 200, description: 'Cover image replaced successfully' })
+	@ApiResponse({ status: 400, description: 'Invalid file or data' })
+	@ApiResponse({ status: 404, description: 'Book or cover not found' })
+	@ApiBearerAuth('JWT-auth')
+	@UseInterceptors(FileInterceptor('file', {
+		limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+		fileFilter: (req, file, callback) => {
+			if (!file.mimetype.match(/^image\//)) {
+				return callback(
+					new BadRequestException('Only image files are allowed'),
+					false
+				);
+			}
+			callback(null, true);
+		},
+	}))
+	replaceCoverImage(
+		@Param('idBook') idBook: string,
+		@Param('idCover') idCover: string,
+		@UploadedFile() file: Express.Multer.File,
+		@Body() dto: UploadCoverDto,
+	) {
+		if (!file) {
+			throw new BadRequestException('No file provided');
+		}
+		return this.bookUploadService.replaceCoverImage(idBook, idCover, file, dto.title);
+	}
+
 	// ==================== UPLOAD ENDPOINTS ====================
 
 	@Post(':idBook/covers/upload')
