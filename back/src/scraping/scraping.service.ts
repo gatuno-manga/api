@@ -87,6 +87,8 @@ export class ScrapingService implements OnApplicationShutdown {
 		let whitelistTerms: string[] = [];
 		let useNetworkInterception = true;
 		let useScreenshotMode = false;
+		let chapterListSelector: string | undefined;
+		let chapterExtractScript: string | undefined;
 
 		const domain = new URL(url).hostname;
 		const website = await this.webSiteService.getByUrl(domain);
@@ -101,6 +103,8 @@ export class ScrapingService implements OnApplicationShutdown {
 			whitelistTerms = website.whitelistTerms || [];
 			useNetworkInterception = website.useNetworkInterception ?? true;
 			useScreenshotMode = website.useScreenshotMode ?? false;
+			chapterListSelector = website.chapterListSelector || undefined;
+			chapterExtractScript = website.chapterExtractScript || undefined;
 		}
 
 		return {
@@ -113,6 +117,8 @@ export class ScrapingService implements OnApplicationShutdown {
 			whitelistTerms,
 			useNetworkInterception,
 			useScreenshotMode,
+			chapterListSelector,
+			chapterExtractScript,
 		};
 	}
 
@@ -442,6 +448,71 @@ export class ScrapingService implements OnApplicationShutdown {
 			return results;
 		} finally {
 			networkInterceptor?.clearCache();
+			await this.closeContext(context);
+			this.concurrencyManager.release(domain);
+		}
+	}
+
+	/**
+	 * Faz scraping da lista de capítulos de um livro.
+	 * @param bookUrl URL da página do livro
+	 * @returns Lista de capítulos encontrados com título, URL e índice
+	 */
+	async scrapeChapterList(bookUrl: string): Promise<{ title: string; url: string; index: number }[]> {
+		const config = await this.getWebsiteConfig(bookUrl);
+		const { chapterListSelector, chapterExtractScript, concurrencyLimit, preScript } = config;
+		const domain = new URL(bookUrl).hostname;
+
+		if (!chapterListSelector && !chapterExtractScript) {
+			this.logger.warn(`No chapter list configuration for domain: ${domain}`);
+			return [];
+		}
+
+		await this.concurrencyManager.acquire(domain, concurrencyLimit);
+
+		const { context, page } = await this.createPageWithContext();
+
+		try {
+			await page.goto(bookUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+			// Aguarda título carregar
+			await page.waitForFunction(() => document.title.length > 0, {
+				timeout: 10000,
+			});
+
+			// Executa script de pré-processamento se existir
+			await this.executeCustomScript(page, preScript);
+
+			let chapters: { title: string; url: string; index: number }[] = [];
+
+			if (chapterExtractScript) {
+				// Usa script customizado para extrair capítulos
+				try {
+					chapters = await page.evaluate(chapterExtractScript);
+				} catch (error) {
+					this.logger.error(`Error executing chapter extract script: ${error.message}`);
+				}
+			} else if (chapterListSelector) {
+				// Usa seletor CSS padrão
+				chapters = await page.evaluate((selector) => {
+					const elements = document.querySelectorAll(selector);
+					return Array.from(elements).map((el, index) => {
+						const anchor = el.tagName === 'A' ? el as HTMLAnchorElement : el.querySelector('a');
+						return {
+							title: el.textContent?.trim() || `Chapter ${index + 1}`,
+							url: anchor?.href || '',
+							index: index + 1,
+						};
+					}).filter(ch => ch.url);
+				}, chapterListSelector);
+			}
+
+			this.logger.log(`Found ${chapters.length} chapters on ${bookUrl}`);
+			return chapters;
+		} catch (error) {
+			this.logger.error(`Error scraping chapter list from ${bookUrl}: ${error.message}`);
+			throw error;
+		} finally {
 			await this.closeContext(context);
 			this.concurrencyManager.release(domain);
 		}

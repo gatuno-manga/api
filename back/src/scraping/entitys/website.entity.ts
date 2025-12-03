@@ -31,6 +31,26 @@ export class Website {
 	})
 	selector: string;
 
+	/**
+	 * Seletor CSS para a lista de capítulos na página do livro.
+	 * Ex: '.chapter-list a', '#chapters li a'
+	 */
+	@Column({
+		type: 'text',
+		nullable: true,
+	})
+	chapterListSelector: string;
+
+	/**
+	 * Script para extrair informações de capítulos da página.
+	 * Deve retornar um array de objetos {title, url, index}.
+	 */
+	@Column({
+		type: 'text',
+		nullable: true,
+	})
+	chapterExtractScript: string;
+
 	@Column({
 		type: 'json',
 		nullable: true,

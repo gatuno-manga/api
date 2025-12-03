@@ -81,6 +81,7 @@ export class AppConfigService {
 			chapterScraping: this.config.get<number>('CHAPTER_SCRAPING_CONCURRENCY') || 6,
 			coverImage: this.config.get<number>('COVER_IMAGE_CONCURRENCY') || 3,
 			fixChapter: this.config.get<number>('FIX_CHAPTER_CONCURRENCY') || 2,
+			bookUpdate: this.config.get<number>('BOOK_UPDATE_CONCURRENCY') || 2,
 		};
 	}
 
@@ -155,6 +156,13 @@ export class AppConfigService {
 			debugMode: this.config.get<boolean>('PLAYWRIGHT_DEBUG') ?? false,
 			slowMo: this.config.get<number>('PLAYWRIGHT_SLOW_MO') ?? 0,
 			wsEndpoint: this.config.get<string>('PLAYWRIGHT_WS_ENDPOINT') ?? '',
+		};
+	}
+
+	get bookUpdate() {
+		return {
+			enabled: this.config.get<boolean>('BOOK_UPDATE_ENABLED') ?? true,
+			cronExpression: this.config.get<string>('BOOK_UPDATE_CRON') || '0 */6 * * *', // Every 6 hours
 		};
 	}
 }

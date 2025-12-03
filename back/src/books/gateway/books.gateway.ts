@@ -588,4 +588,28 @@ export class BooksGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
             this.logger.error(`Failed to broadcast page.deleted: ${error.message}`);
         }
     }
+
+    /**
+     * Notifica quando novos capítulos são encontrados durante atualização automática
+     * Envia para room do livro e admins
+     */
+    @OnEvent('book.new-chapters')
+    handleBookNewChapters(data: { 
+        bookId: string; 
+        newChaptersCount: number; 
+        chapters: Array<{ id: string; title: string; index: number }> 
+    }) {
+        try {
+            this.logger.debug(`Broadcasting book.new-chapters for book ${data.bookId} with ${data.newChaptersCount} new chapters`);
+            const eventData = {
+                bookId: data.bookId,
+                newChaptersCount: data.newChaptersCount,
+                chapters: data.chapters,
+            };
+            this.server.to(`book:${data.bookId}`).emit('book.new-chapters', eventData);
+            this.server.to('admin').emit('book.new-chapters', eventData);
+        } catch (error) {
+            this.logger.error(`Failed to broadcast book.new-chapters: ${error.message}`);
+        }
+    }
 }

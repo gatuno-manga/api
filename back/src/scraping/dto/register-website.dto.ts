@@ -34,6 +34,22 @@ export class RegisterWebSiteDto {
 	selector: string;
 
 	@ApiPropertyOptional({
+		description: 'CSS selector for chapter list on book page',
+		example: '.chapter-list a',
+	})
+	@IsString()
+	@IsOptional()
+	chapterListSelector?: string;
+
+	@ApiPropertyOptional({
+		description: 'JavaScript code to extract chapter info. Should return array of {title, url, index}',
+		example: `Array.from(document.querySelectorAll('.chapter-list a')).map((el, i) => ({ title: el.textContent, url: el.href, index: i + 1 }))`,
+	})
+	@IsString()
+	@IsOptional()
+	chapterExtractScript?: string;
+
+	@ApiPropertyOptional({
 		description: 'Array of file patterns to ignore during scraping',
 		example: ['ads.jpg', 'banner.png'],
 		type: [String],

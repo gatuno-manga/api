@@ -28,6 +28,9 @@ import { CoverImageService } from './jobs/cover-image.service';
 import { CoverImageProcessor } from './jobs/cover-image.processor';
 import { FixChapterService } from './jobs/fix-chapter.service';
 import { FixChapterProcessor } from './jobs/fix-chapter.processor';
+import { BookUpdateJobService } from './jobs/book-update.service';
+import { BookUpdateProcessor } from './jobs/book-update.processor';
+import { BookUpdateScheduler } from './jobs/book-update.scheduler';
 import { AdminBooksController } from './admin-books.controller';
 import { Cover } from './entitys/cover.entity';
 import { BookCreationService } from './services/book-creation.service';
@@ -42,6 +45,7 @@ import { FileDeletionEvents } from './events/file-deletion.events';
 import { FilesModule } from 'src/files/files.module';
 import { LoggingModule } from 'src/logging/logging.module';
 import { MetricsModule } from 'src/metrics/metrics.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
 	imports: [
@@ -50,6 +54,7 @@ import { MetricsModule } from 'src/metrics/metrics.module';
 		FilesModule,
 		LoggingModule,
 		MetricsModule,
+		ScheduleModule.forRoot(),
 		TypeOrmModule.forFeature([
 			Book,
 			Page,
@@ -98,6 +103,18 @@ import { MetricsModule } from 'src/metrics/metrics.module';
 					},
 				},
 			},
+			{
+				name: 'book-update-queue',
+				defaultJobOptions: {
+					attempts: 3,
+					removeOnFail: 10,
+					delay: 30000, // 30 segundos entre jobs
+					backoff: {
+						type: 'exponential',
+						delay: 60000, // 1 minuto de backoff
+					},
+				},
+			},
 		),
 	],
 	controllers: [BooksController, ChapterController, SensitiveContentController, TagsController, AdminBooksController],
@@ -115,6 +132,10 @@ import { MetricsModule } from 'src/metrics/metrics.module';
 		CoverImageProcessor,
 		FixChapterService,
 		FixChapterProcessor,
+		// Book Update Jobs
+		BookUpdateJobService,
+		BookUpdateProcessor,
+		BookUpdateScheduler,
 		// serviços especializados
 		BookCreationService,
 		BookUpdateService,

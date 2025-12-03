@@ -8,4 +8,6 @@ export class WebsiteConfigDto {
     whitelistTerms: string[];
     useNetworkInterception: boolean;
     useScreenshotMode: boolean;
+    chapterListSelector?: string;
+    chapterExtractScript?: string;
 }
