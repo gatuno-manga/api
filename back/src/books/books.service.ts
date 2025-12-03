@@ -80,6 +80,10 @@ export class BooksService {
 		return this.bookUpdateService.selectCover(idBook, idCover);
 	}
 
+	async updateCover(idBook: string, idCover: string, dto: { title?: string }) {
+		return this.bookUpdateService.updateCover(idBook, idCover, dto);
+	}
+
 	// ==================== CONSULTA ====================
 
 	async getAllBooks(options: BookPageOptionsDto, maxWeightSensitiveContent: number = 0): Promise<PageDto<any>> {

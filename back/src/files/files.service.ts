@@ -81,4 +81,21 @@ export class FilesService {
 		const buffer = Buffer.from(base64Data, 'base64');
 		return this.saveBufferFile(buffer, extension);
 	}
+
+	/**
+	 * Deleta um arquivo do sistema de arquivos
+	 * @param publicPath Caminho público do arquivo (ex: '/data/arquivo.jpg')
+	 */
+	async deleteFile(publicPath: string): Promise<void> {
+		try {
+			// Converte o caminho público para o caminho real no filesystem
+			const fileName = publicPath.replace('/data/', '');
+			const filePath = path.join(this.downloadDir, fileName);
+			await fs.unlink(filePath);
+			this.logger.log(`Arquivo deletado: ${filePath}`);
+		} catch (error) {
+			this.logger.warn(`Erro ao deletar arquivo ${publicPath}:`, error);
+			// Não lança erro para não interromper operações em cascata
+		}
+	}
 }

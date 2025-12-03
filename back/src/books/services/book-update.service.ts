@@ -2,7 +2,9 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Book } from '../entitys/book.entity';
+import { Cover } from '../entitys/cover.entity';
 import { UpdateBookDto } from '../dto/update-book.dto';
+import { UpdateCoverDto } from '../dto/update-cover.dto';
 import { CoverImageService } from '../jobs/cover-image.service';
 import { BookRelationshipService } from './book-relationship.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -17,6 +19,8 @@ export class BookUpdateService {
     constructor(
         @InjectRepository(Book)
         private readonly bookRepository: Repository<Book>,
+        @InjectRepository(Cover)
+        private readonly coverRepository: Repository<Cover>,
         private readonly bookRelationshipService: BookRelationshipService,
         private readonly coverImageService: CoverImageService,
         private readonly eventEmitter: EventEmitter2,
@@ -98,5 +102,31 @@ export class BookUpdateService {
 
         // Emite evento de seleção de capa
         this.eventEmitter.emit('cover.selected', { bookId: idBook, coverId: idCover });
+    }
+
+    /**
+     * Atualiza os dados de uma capa específica
+     */
+    async updateCover(idBook: string, idCover: string, dto: UpdateCoverDto): Promise<Cover> {
+        const cover = await this.coverRepository.findOne({
+            where: { id: idCover, book: { id: idBook } },
+            relations: ['book'],
+        });
+
+        if (!cover) {
+            this.logger.warn(`Cover with id ${idCover} not found for book ${idBook}`);
+            throw new NotFoundException(`Cover with id ${idCover} not found for book ${idBook}`);
+        }
+
+        if (dto.title !== undefined) {
+            cover.title = dto.title;
+        }
+
+        const updatedCover = await this.coverRepository.save(cover);
+
+        // Emite evento de atualização de capa
+        this.eventEmitter.emit('cover.updated', { bookId: idBook, coverId: idCover });
+
+        return updatedCover;
     }
 }

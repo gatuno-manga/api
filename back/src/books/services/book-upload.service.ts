@@ -144,6 +144,105 @@ export class BookUploadService {
     }
 
     /**
+     * Substitui a imagem de uma capa existente
+     */
+    async replaceCoverImage(
+        bookId: string,
+        coverId: string,
+        file: Express.Multer.File,
+        title?: string,
+    ): Promise<Cover> {
+        const startTime = Date.now();
+
+        this.logger.logFileUpload({
+            fileName: file.originalname,
+            message: 'Starting cover image replacement',
+            metadata: {
+                bookId,
+                coverId,
+                fileSize: file.size,
+                mimeType: file.mimetype,
+            },
+        });
+
+        this.uploadSize.observe({ type: 'cover_replace' }, file.size);
+
+        const cover = await this.coverRepository.findOne({
+            where: { id: coverId, book: { id: bookId } },
+            relations: ['book'],
+        });
+
+        if (!cover) {
+            this.logger.warn(`Cover with id ${coverId} not found for book ${bookId}`, 'BookUploadService');
+            this.uploadCounter.inc({ type: 'cover_replace', status: 'error' });
+            throw new NotFoundException(`Cover with id ${coverId} not found for book ${bookId}`);
+        }
+
+        if (!file.mimetype.match(/^image\//)) {
+            this.uploadCounter.inc({ type: 'cover_replace', status: 'error' });
+            throw new BadRequestException('Only image files are allowed');
+        }
+
+        try {
+            // Delete old image file if exists
+            if (cover.url) {
+                try {
+                    await this.filesService.deleteFile(cover.url);
+                } catch (deleteError) {
+                    this.logger.warn(`Failed to delete old cover image: ${cover.url}`, 'BookUploadService');
+                }
+            }
+
+            const extension = path.extname(file.originalname) || '.jpg';
+            const savedPath = await this.filesService.saveBufferFile(
+                file.buffer,
+                extension,
+            );
+
+            cover.url = savedPath;
+            if (title !== undefined) {
+                cover.title = title;
+            }
+
+            const updatedCover = await this.coverRepository.save(cover);
+
+            const duration = Date.now() - startTime;
+
+            this.uploadCounter.inc({ type: 'cover_replace', status: 'success' });
+            this.uploadDuration.observe({ type: 'cover_replace' }, duration / 1000);
+
+            this.logger.logFileUpload({
+                fileName: file.originalname,
+                message: 'Cover image replaced successfully',
+                metadata: {
+                    bookId,
+                    coverId,
+                    duration,
+                },
+            });
+
+            this.eventEmitter.emit('cover.updated', {
+                bookId,
+                coverId,
+                url: savedPath,
+            });
+
+            return updatedCover;
+        } catch (error) {
+            const duration = Date.now() - startTime;
+            this.uploadCounter.inc({ type: 'cover_replace', status: 'error' });
+            this.uploadDuration.observe({ type: 'cover_replace' }, duration / 1000);
+
+            this.logger.error(error, 'BookUploadService', {
+                bookId,
+                coverId,
+                fileName: file.originalname,
+            });
+            throw error;
+        }
+    }
+
+    /**
      * Upload de múltiplas capas para um livro
      */
     async uploadMultipleCovers(
