@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, OnModuleInit, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, OnApplicationBootstrap, Logger } from '@nestjs/common';
 import { User } from './entitys/user.entity';
 import { Role } from './entitys/role.entity';
 import { DataSource, Repository } from 'typeorm';
@@ -7,7 +7,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { RolesEnum } from './enum/roles.enum';
 
 @Injectable()
-export class UsersService implements OnModuleInit {
+export class UsersService implements OnApplicationBootstrap {
     private readonly logger = new Logger(UsersService.name);
     constructor(
         @InjectRepository(User)
@@ -17,7 +17,7 @@ export class UsersService implements OnModuleInit {
         private readonly dataSource: DataSource,
     ) {}
 
-    async onModuleInit() {
+    async onApplicationBootstrap() {
         const roles = [
             {
                 name: RolesEnum.ADMIN,

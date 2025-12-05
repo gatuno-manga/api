@@ -219,6 +219,8 @@ export class ChapterManagementService {
         ];
 
         const savedBook = await this.bookRepository.save(book);
+
+        savedBook.chapters.forEach((ch) => (ch.book = savedBook));
         this.eventEmitter.emit('chapters.updated', savedBook.chapters);
 
         return savedBook.chapters;
@@ -281,7 +283,13 @@ export class ChapterManagementService {
         );
         book.chapters = orderedChapters;
 
-        return await this.bookRepository.save(book);
+        const savedBook = await this.bookRepository.save(book);
+
+        // Emit event for reordering
+        savedBook.chapters.forEach((ch) => (ch.book = savedBook));
+        this.eventEmitter.emit('chapters.updated', savedBook.chapters);
+
+        return savedBook;
     }
 
     /**
@@ -303,6 +311,9 @@ export class ChapterManagementService {
         }
 
         await this.bookRepository.save(book);
+
+        // Ensure book is attached for event
+        book.chapters.forEach((ch) => (ch.book = book));
         this.eventEmitter.emit('chapters.updated', book.chapters);
 
         return book;
@@ -322,6 +333,8 @@ export class ChapterManagementService {
             throw new NotFoundException(`Book with id ${idBook} not found`);
         }
 
+        // Ensure book is attached for event
+        book.chapters.forEach((ch) => (ch.book = book));
         this.eventEmitter.emit('chapters.fix', book.chapters);
 
         return book;
