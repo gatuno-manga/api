@@ -24,7 +24,19 @@ export class ChapterScrapingJob extends WorkerHost implements OnModuleInit {
     }
 
     onModuleInit() {
-        this.worker.concurrency = this.configService.queueConcurrency.chapterScraping;
+        const concurrency = this.configService.queueConcurrency.chapterScraping;
+        this.worker.concurrency = concurrency;
+        this.logger.log(`Worker initialized with concurrency: ${concurrency}`);
+    }
+
+    @OnWorkerEvent('ready')
+    onReady() {
+        this.logger.log('Worker is ready and listening for jobs');
+    }
+
+    @OnWorkerEvent('error')
+    onError(error: Error) {
+        this.logger.error(`Worker error: ${error.message}`, error.stack);
     }
 
     async process(job: Job<string>): Promise<void> {

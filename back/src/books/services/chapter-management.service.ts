@@ -9,6 +9,7 @@ import { UpdateChapterDto } from '../dto/update-chapter.dto';
 import { OrderChaptersDto } from '../dto/order-chapters.dto';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { console } from 'inspector';
 
 /**
  * Service responsável por gerenciar capítulos de livros
@@ -313,8 +314,12 @@ export class ChapterManagementService {
         await this.bookRepository.save(book);
 
         // Ensure book is attached for event
+        this.logger.debug('Emitting chapters.updated event for resetBookChapters');
         book.chapters.forEach((ch) => (ch.book = book));
         this.eventEmitter.emit('chapters.updated', book.chapters);
+
+        // Remove circular references before returning
+        book.chapters.forEach((ch) => delete (ch as any).book);
 
         return book;
     }
@@ -336,6 +341,9 @@ export class ChapterManagementService {
         // Ensure book is attached for event
         book.chapters.forEach((ch) => (ch.book = book));
         this.eventEmitter.emit('chapters.fix', book.chapters);
+
+        // Remove circular references before returning
+        book.chapters.forEach((ch) => delete (ch as any).book);
 
         return book;
     }

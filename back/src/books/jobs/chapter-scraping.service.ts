@@ -22,12 +22,25 @@ export class ChapterScrapingService {
 
     /**
      * Adiciona um capítulo à fila de scraping.
-     * Usa jobId único para deduplicação eficiente O(1).
+     * Remove jobs antigos (completados/falhos) antes de adicionar para permitir reprocessamento.
      */
     public async addChapterToQueue(chapterId: string): Promise<void> {
         const jobId = `chapter-scraping-${chapterId}`;
 
         try {
+            // Remove job anterior se existir (completado ou falho)
+            const existingJob = await this.chapterScrapingQueue.getJob(jobId);
+            if (existingJob) {
+                const state = await existingJob.getState();
+                if (state === 'completed' || state === 'failed') {
+                    await existingJob.remove();
+                    this.logger.debug(`Job anterior removido para capítulo: ${chapterId} (estado: ${state})`);
+                } else if (state === 'active' || state === 'waiting' || state === 'delayed') {
+                    this.logger.debug(`Job para capítulo ${chapterId} já está ${state}, ignorando`);
+                    return;
+                }
+            }
+
             await this.chapterScrapingQueue.add(JOB_NAME, chapterId, { jobId });
             this.logger.debug(`Adicionando job para o capítulo: ${chapterId}`);
         } catch (error) {
@@ -35,6 +48,7 @@ export class ChapterScrapingService {
             if (error.message?.includes('Job with this id already exists')) {
                 this.logger.debug(`Job para o capítulo ${chapterId} já está na fila.`);
             } else {
+                this.logger.error(`Erro ao adicionar job para capítulo ${chapterId}: ${error.message}`);
                 throw error;
             }
         }

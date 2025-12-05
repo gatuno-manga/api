@@ -65,8 +65,14 @@ export class MetricsInterceptor implements NestInterceptor {
                     duration,
                 );
 
-                // Tamanho da resposta
-                const resSize = data ? JSON.stringify(data).length : 0;
+                // Tamanho da resposta (com tratamento para referências circulares)
+                let resSize = 0;
+                try {
+                    resSize = data ? JSON.stringify(data).length : 0;
+                } catch {
+                    // Ignora erro de referência circular
+                    resSize = 0;
+                }
                 if (resSize > 0) {
                     this.responseSize.observe(
                         {
