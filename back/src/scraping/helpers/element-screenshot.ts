@@ -162,7 +162,15 @@ export class ElementScreenshot {
     }
 
     /**
+     * Captura todos os elementos e retorna como Buffers (mais eficiente)
+     */
+    async captureAllAsBuffers(): Promise<Buffer[]> {
+        return this.captureAllElements();
+    }
+
+    /**
      * Captura todos os elementos e retorna como base64
+     * @deprecated Use captureAllAsBuffers para melhor performance
      */
     async captureAllAsBase64(): Promise<string[]> {
         const screenshots = await this.captureAllElements();
@@ -171,6 +179,7 @@ export class ElementScreenshot {
 
     /**
      * Captura elemento específico e retorna como base64
+     * @deprecated Use captureElement para melhor performance
      */
     async captureElementAsBase64(element: Locator): Promise<string | null> {
         const screenshot = await this.captureElement(element);

@@ -7,7 +7,7 @@ import { WebsiteService } from './website.service';
 import { WebsiteConfigDto } from './dto/website-config.dto';
 import { PlaywrightBrowserFactory } from './browser';
 import { IConcurrencyManager, InMemoryConcurrencyManager } from './concurrency';
-import { ImageDownloader, PageScroller, NetworkInterceptor, ElementScreenshot } from './helpers';
+import { ImageDownloader, PageScroller, NetworkInterceptor, ElementScreenshot, ImageCompressor } from './helpers';
 
 @Injectable()
 export class ScrapingService implements OnApplicationShutdown {
@@ -16,6 +16,7 @@ export class ScrapingService implements OnApplicationShutdown {
 	private browserFactory: PlaywrightBrowserFactory;
 	private concurrencyManager: IConcurrencyManager =
 		new InMemoryConcurrencyManager();
+	private imageCompressor: ImageCompressor | undefined;
 
 	constructor(
 		private readonly appConfigService: AppConfigService,
@@ -23,6 +24,7 @@ export class ScrapingService implements OnApplicationShutdown {
 		private readonly webSiteService: WebsiteService,
 	) {
 		this.initializeBrowserFactory();
+		this.initializeImageCompressor();
 	}
 
 	private initializeBrowserFactory(): void {
@@ -40,6 +42,22 @@ export class ScrapingService implements OnApplicationShutdown {
 			this.logger.log('🔍 Playwright DEBUG mode enabled');
 		}
 		this.logger.debug('Browser factory initialized');
+	}
+
+	private initializeImageCompressor(): void {
+		const compressorFactory = this.filesService.getCompressorFactory();
+
+		// Create an adapter that implements ImageCompressor interface
+		this.imageCompressor = {
+			compress: (buffer: Buffer) => compressorFactory.compress(buffer, '.jpg').then(r => r.buffer),
+			getOutputExtension: (ext: string) => {
+				// Get actual output extension from compressor
+				const compressor = compressorFactory.getCompressor(ext);
+				return compressor?.getOutputExtension(ext) ?? ext;
+			},
+		};
+
+		this.logger.debug('Image compressor initialized for network interception');
 	}
 
 	setConcurrencyManager(manager: IConcurrencyManager): void {
@@ -158,30 +176,33 @@ export class ScrapingService implements OnApplicationShutdown {
 				continue;
 			}
 
-			let base64Data: string | null = null;
+			let bufferData: Buffer | null = null;
 			let extension: string;
+			let isPreCompressed = false;
 
 			// Try to get from network cache first (more efficient)
 			if (networkInterceptor?.hasImage(imageUrl)) {
-				base64Data = networkInterceptor.getCachedImageAsBase64(imageUrl);
+				bufferData = networkInterceptor.getCachedImageAsBuffer(imageUrl);
 				extension = networkInterceptor.getExtension(imageUrl);
-				this.logger.debug(`Cache hit for: ${imageUrl}`);
+				isPreCompressed = networkInterceptor.isCompressed(imageUrl);
+				this.logger.debug(`Cache hit for: ${imageUrl} (compressed: ${isPreCompressed})`);
 			} else {
-				// Fallback to fetch
-				base64Data = await imageDownloader.fetchImageAsBase64(imageUrl);
+				// Fallback to fetch using Playwright's request context
+				bufferData = await imageDownloader.fetchImageAsBuffer(imageUrl);
 				extension = path.extname(new URL(imageUrl).pathname) || '.jpg';
 				this.logger.debug(`Cache miss, fetched: ${imageUrl}`);
 			}
 
-			if (!base64Data) {
+			if (!bufferData) {
 				results.push(null);
 				continue;
 			}
 
-			const savedPath = await this.filesService.saveBase64File(
-				base64Data,
-				extension,
-			);
+			// Save file - skip compression if already compressed during interception
+			const savedPath = isPreCompressed
+				? await this.filesService.savePreCompressedFile(bufferData, extension)
+				: await this.filesService.saveBufferFile(bufferData, extension);
+
 			results.push(savedPath);
 		}
 
@@ -210,13 +231,15 @@ export class ScrapingService implements OnApplicationShutdown {
 
 		try {
 			// Setup network interception BEFORE navigation (if enabled and not in screenshot mode)
+			// Pass compressor for immediate compression during caching (memory optimization)
 			if (useNetworkInterception && !useScreenshotMode) {
-				networkInterceptor = new NetworkInterceptor(page, {
-					blacklistTerms,
-					whitelistTerms,
-				});
+				networkInterceptor = new NetworkInterceptor(
+					page,
+					{ blacklistTerms, whitelistTerms },
+					this.imageCompressor, // Compress images as they are intercepted
+				);
 				await networkInterceptor.startInterception();
-				this.logger.debug('Network interception enabled');
+				this.logger.debug('Network interception enabled with immediate compression');
 			}
 
 			// Navigate to the page
@@ -237,12 +260,13 @@ export class ScrapingService implements OnApplicationShutdown {
 			// Execute post-scraping script
 			await this.executeCustomScript(page, posScript);
 
-			// Stop interception and log stats
+			// Stop interception, wait for compressions, and log stats
 			if (networkInterceptor) {
 				networkInterceptor.stopInterception();
+				await networkInterceptor.waitForCompressions();
 				const stats = networkInterceptor.getStats();
 				this.logger.log(
-					`Network cache: ${stats.count} images, ${(stats.totalBytes / 1024 / 1024).toFixed(2)} MB`,
+					`Network cache: ${stats.count} images (${stats.compressedCount} compressed), ${(stats.totalBytes / 1024 / 1024).toFixed(2)} MB`,
 				);
 			}
 
@@ -292,8 +316,6 @@ export class ScrapingService implements OnApplicationShutdown {
 	}
 
 	/**
-	 * Captura elementos como screenshots (modo alternativo para canvas/proteção)
-	/**
 	 * Captura elementos como screenshots PNG (lossless) para máxima qualidade
 	 */
 	private async captureElementsAsScreenshots(
@@ -314,12 +336,13 @@ export class ScrapingService implements OnApplicationShutdown {
 
 		this.logger.log(`Found ${count} elements. Capturing PNG screenshots...`);
 
-		const screenshots = await elementScreenshot.captureAllAsBase64();
+		// Usa Buffer diretamente em vez de base64 para melhor performance
+		const screenshots = await elementScreenshot.captureAllAsBuffers();
 		const results: (string | null)[] = [];
 
-		for (const base64 of screenshots) {
+		for (const buffer of screenshots) {
 			try {
-				const savedPath = await this.filesService.saveBase64File(base64, '.png');
+				const savedPath = await this.filesService.saveBufferFile(buffer, '.png');
 				results.push(savedPath);
 			} catch (error) {
 				this.logger.warn('Failed to save screenshot', error);
@@ -342,35 +365,43 @@ export class ScrapingService implements OnApplicationShutdown {
 		let networkInterceptor: NetworkInterceptor | undefined;
 
 		try {
-			// Setup network interception BEFORE navigation (if enabled)
+			// Setup network interception with immediate compression
 			if (useNetworkInterception) {
-				networkInterceptor = new NetworkInterceptor(page, {
-					blacklistTerms,
-					whitelistTerms,
-				});
+				networkInterceptor = new NetworkInterceptor(
+					page,
+					{ blacklistTerms, whitelistTerms },
+					this.imageCompressor,
+				);
 				await networkInterceptor.startInterception();
 			}
 
 			await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-			// Try to get from cache first
-			let base64Data: string | null = null;
+			// Wait for compressions to complete
+			await networkInterceptor?.waitForCompressions();
+
+			// Try to get from cache first (using Buffer for efficiency)
+			let bufferData: Buffer | null = null;
 			let extension: string;
+			let isPreCompressed = false;
 
 			if (networkInterceptor?.hasImage(imageUrl)) {
-				base64Data = networkInterceptor.getCachedImageAsBase64(imageUrl);
+				bufferData = networkInterceptor.getCachedImageAsBuffer(imageUrl);
 				extension = networkInterceptor.getExtension(imageUrl);
+				isPreCompressed = networkInterceptor.isCompressed(imageUrl);
 			} else {
 				const imageDownloader = new ImageDownloader(page);
-				base64Data = await imageDownloader.fetchImageAsBase64(imageUrl);
+				bufferData = await imageDownloader.fetchImageAsBuffer(imageUrl);
 				extension = path.extname(new URL(imageUrl).pathname) || '.jpg';
 			}
 
-			if (!base64Data) {
+			if (!bufferData) {
 				throw new Error(`Failed to download image: ${imageUrl}`);
 			}
 
-			return this.filesService.saveBase64File(base64Data, extension);
+			return isPreCompressed
+				? this.filesService.savePreCompressedFile(bufferData, extension)
+				: this.filesService.saveBufferFile(bufferData, extension);
 		} catch (error) {
 			this.logger.error('Error during scraping process.', error);
 			throw error;
@@ -395,12 +426,13 @@ export class ScrapingService implements OnApplicationShutdown {
 		let networkInterceptor: NetworkInterceptor | undefined;
 
 		try {
-			// Setup network interception BEFORE navigation (if enabled)
+			// Setup network interception with immediate compression
 			if (useNetworkInterception) {
-				networkInterceptor = new NetworkInterceptor(page, {
-					blacklistTerms,
-					whitelistTerms,
-				});
+				networkInterceptor = new NetworkInterceptor(
+					page,
+					{ blacklistTerms, whitelistTerms },
+					this.imageCompressor,
+				);
 				await networkInterceptor.startInterception();
 			}
 
@@ -411,33 +443,37 @@ export class ScrapingService implements OnApplicationShutdown {
 				timeout: 10000,
 			});
 
+			// Wait for compressions to complete
+			await networkInterceptor?.waitForCompressions();
+
 			const imageDownloader = new ImageDownloader(page);
 			const results: (string | null)[] = [];
 
 			for (const imageUrl of imageUrls) {
 				try {
-					let base64Data: string | null = null;
+					let bufferData: Buffer | null = null;
 					let extension: string;
+					let isPreCompressed = false;
 
-					// Try cache first
+					// Try cache first (using Buffer for efficiency)
 					if (networkInterceptor?.hasImage(imageUrl)) {
-						base64Data = networkInterceptor.getCachedImageAsBase64(imageUrl);
+						bufferData = networkInterceptor.getCachedImageAsBuffer(imageUrl);
 						extension = networkInterceptor.getExtension(imageUrl);
+						isPreCompressed = networkInterceptor.isCompressed(imageUrl);
 					} else {
-						base64Data = await imageDownloader.fetchImageAsBase64(imageUrl);
+						bufferData = await imageDownloader.fetchImageAsBuffer(imageUrl);
 						extension = path.extname(new URL(imageUrl).pathname) || '.jpg';
 					}
 
-					if (!base64Data) {
+					if (!bufferData) {
 						this.logger.warn(`Failed to download image: ${imageUrl}`);
 						results.push(null);
 						continue;
 					}
 
-					const saved = await this.filesService.saveBase64File(
-						base64Data,
-						extension,
-					);
+					const saved = isPreCompressed
+						? await this.filesService.savePreCompressedFile(bufferData, extension)
+						: await this.filesService.saveBufferFile(bufferData, extension);
 					results.push(saved);
 				} catch (err) {
 					this.logger.warn(`Error processing image ${imageUrl}`, err);

@@ -18,22 +18,36 @@ export interface UrlFilterConfig {
 }
 
 /**
+ * Interface for image compression during interception.
+ */
+export interface ImageCompressor {
+    compress(buffer: Buffer): Promise<Buffer>;
+    getOutputExtension(originalExtension: string): string;
+}
+
+/**
  * Cached image data.
  */
 export interface CachedImage {
     url: string;
     data: Buffer;
     contentType: string;
+    /** Whether the image has been compressed */
+    compressed: boolean;
+    /** Final extension after compression */
+    extension: string;
 }
 
 /**
  * Helper for intercepting network traffic and caching images.
  * This is more efficient than fetching images separately after the page loads.
+ * Optionally compresses images immediately upon caching for memory efficiency.
  */
 export class NetworkInterceptor {
     private readonly logger = new Logger(NetworkInterceptor.name);
     private readonly imageCache = new Map<string, CachedImage>();
     private isIntercepting = false;
+    private compressionQueue: Promise<void>[] = [];
 
     constructor(
         private readonly page: Page,
@@ -41,6 +55,7 @@ export class NetworkInterceptor {
             blacklistTerms: [],
             whitelistTerms: [],
         },
+        private readonly compressor?: ImageCompressor,
     ) {}
 
     /**
@@ -74,7 +89,30 @@ export class NetworkInterceptor {
     }
 
     /**
+     * Extract extension from content-type or URL.
+     */
+    private getExtensionFromResponse(url: string, contentType: string): string {
+        // Try content-type first
+        const ct = contentType.toLowerCase();
+        if (ct.includes('png')) return '.png';
+        if (ct.includes('webp')) return '.webp';
+        if (ct.includes('gif')) return '.gif';
+        if (ct.includes('svg')) return '.svg';
+        if (ct.includes('jpeg') || ct.includes('jpg')) return '.jpg';
+
+        // Fallback to URL
+        const urlPath = new URL(url).pathname.toLowerCase();
+        if (urlPath.includes('.png')) return '.png';
+        if (urlPath.includes('.webp')) return '.webp';
+        if (urlPath.includes('.gif')) return '.gif';
+        if (urlPath.includes('.svg')) return '.svg';
+
+        return '.jpg';
+    }
+
+    /**
      * Handle a network response and cache image data.
+     * Optionally compresses the image immediately for memory efficiency.
      */
     private async handleResponse(response: Response): Promise<void> {
         try {
@@ -99,19 +137,79 @@ export class NetworkInterceptor {
             const body = await response.body();
             const contentType =
                 response.headers()['content-type'] || 'image/jpeg';
+            const originalExtension = this.getExtensionFromResponse(url, contentType);
+            const originalSize = body.length;
 
-            // Cache the image
+            // If compressor is available, compress immediately (non-blocking)
+            if (this.compressor) {
+                const compressionTask = this.compressAndCache(url, body, contentType, originalExtension, originalSize);
+                this.compressionQueue.push(compressionTask);
+            } else {
+                // Cache without compression
+                this.imageCache.set(url, {
+                    url,
+                    data: body,
+                    contentType,
+                    compressed: false,
+                    extension: originalExtension,
+                });
+                this.logger.debug(`Cached image: ${url} (${originalSize} bytes)`);
+            }
+        } catch (error) {
+            // Silently ignore errors (response might be unavailable)
+        }
+    }
+
+    /**
+     * Compress and cache an image asynchronously.
+     */
+    private async compressAndCache(
+        url: string,
+        body: Buffer,
+        contentType: string,
+        originalExtension: string,
+        originalSize: number,
+    ): Promise<void> {
+        try {
+            const compressedData = await this.compressor!.compress(body);
+            const outputExtension = this.compressor!.getOutputExtension(originalExtension);
+            const compressedSize = compressedData.length;
+            const savings = ((1 - compressedSize / originalSize) * 100).toFixed(1);
+
+            this.imageCache.set(url, {
+                url,
+                data: compressedData,
+                contentType: 'image/webp', // After compression
+                compressed: true,
+                extension: outputExtension,
+            });
+
+            this.logger.debug(
+                `Cached & compressed: ${url} (${originalSize} → ${compressedSize} bytes, -${savings}%)`,
+            );
+        } catch (error) {
+            // Fallback: cache original on compression error
             this.imageCache.set(url, {
                 url,
                 data: body,
                 contentType,
+                compressed: false,
+                extension: originalExtension,
             });
+            this.logger.warn(`Compression failed for ${url}, caching original`);
+        }
+    }
 
-            this.logger.debug(
-                `Cached image: ${url} (${body.length} bytes)`,
-            );
-        } catch (error) {
-            // Silently ignore errors (response might be unavailable)
+    /**
+     * Wait for all pending compressions to complete.
+     * Call this before accessing the cache to ensure all images are ready.
+     */
+    async waitForCompressions(): Promise<void> {
+        if (this.compressionQueue.length > 0) {
+            this.logger.debug(`Waiting for ${this.compressionQueue.length} compressions...`);
+            await Promise.all(this.compressionQueue);
+            this.compressionQueue = [];
+            this.logger.debug('All compressions complete');
         }
     }
 
@@ -157,7 +255,17 @@ export class NetworkInterceptor {
     }
 
     /**
+     * Get a cached image as Buffer (preferred - more efficient).
+     */
+    getCachedImageAsBuffer(url: string): Buffer | null {
+        const cached = this.getCachedImage(url);
+        if (!cached) return null;
+        return cached.data;
+    }
+
+    /**
      * Get a cached image as base64.
+     * @deprecated Use getCachedImageAsBuffer for better performance
      */
     getCachedImageAsBase64(url: string): string | null {
         const cached = this.getCachedImage(url);
@@ -173,6 +281,14 @@ export class NetworkInterceptor {
     }
 
     /**
+     * Check if an image was compressed.
+     */
+    isCompressed(url: string): boolean {
+        const cached = this.getCachedImage(url);
+        return cached?.compressed ?? false;
+    }
+
+    /**
      * Get all cached image URLs.
      */
     getCachedUrls(): string[] {
@@ -182,14 +298,17 @@ export class NetworkInterceptor {
     /**
      * Get cache statistics.
      */
-    getStats(): { count: number; totalBytes: number } {
+    getStats(): { count: number; totalBytes: number; compressedCount: number } {
         let totalBytes = 0;
+        let compressedCount = 0;
         for (const image of this.imageCache.values()) {
             totalBytes += image.data.length;
+            if (image.compressed) compressedCount++;
         }
         return {
             count: this.imageCache.size,
             totalBytes,
+            compressedCount,
         };
     }
 
@@ -198,19 +317,17 @@ export class NetworkInterceptor {
      */
     clearCache(): void {
         this.imageCache.clear();
+        this.compressionQueue = [];
     }
 
     /**
-     * Get file extension from content type or URL.
+     * Get file extension for a cached image.
+     * Returns the final extension (after compression if applicable).
      */
     getExtension(url: string): string {
         const cached = this.getCachedImage(url);
         if (cached) {
-            const contentType = cached.contentType.toLowerCase();
-            if (contentType.includes('png')) return '.png';
-            if (contentType.includes('webp')) return '.webp';
-            if (contentType.includes('gif')) return '.gif';
-            if (contentType.includes('svg')) return '.svg';
+            return cached.extension;
         }
 
         // Fallback to URL extension

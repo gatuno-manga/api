@@ -10,7 +10,29 @@ export class ImageDownloader {
     constructor(private readonly page: Page) {}
 
     /**
+     * Fetch an image as Buffer using Playwright's request context.
+     * More efficient than base64 conversion.
+     */
+    async fetchImageAsBuffer(imageUrl: string): Promise<Buffer | null> {
+        try {
+            const context = this.page.context();
+            const response = await context.request.get(imageUrl);
+
+            if (!response.ok()) {
+                this.logger.warn(`HTTP ${response.status()} for: ${imageUrl}`);
+                return null;
+            }
+
+            return await response.body();
+        } catch (error) {
+            this.logger.error(`Failed to fetch image as buffer: ${imageUrl}`, error);
+            return null;
+        }
+    }
+
+    /**
      * Fetch an image as base64 string.
+     * @deprecated Use fetchImageAsBuffer for better performance
      */
     async fetchImageAsBase64(imageUrl: string): Promise<string | null> {
         try {

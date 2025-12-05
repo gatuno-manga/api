@@ -44,8 +44,19 @@ describe('ScrapingService', () => {
 		},
 	};
 
+	const mockCompressorFactory = {
+		compress: jest.fn().mockResolvedValue({ buffer: Buffer.from('compressed'), extension: '.webp' }),
+		getCompressor: jest.fn().mockReturnValue({
+			getOutputExtension: jest.fn().mockReturnValue('.webp'),
+		}),
+		hasCompressor: jest.fn().mockReturnValue(true),
+	};
+
 	const mockFilesService = {
+		saveBufferFile: jest.fn().mockResolvedValue('/path/to/saved/file.jpg'),
+		savePreCompressedFile: jest.fn().mockResolvedValue('/path/to/saved/file.webp'),
 		saveBase64File: jest.fn().mockResolvedValue('/path/to/saved/file.jpg'),
+		getCompressorFactory: jest.fn().mockReturnValue(mockCompressorFactory),
 		getPublicPath: jest.fn(),
 	};
 

@@ -17,12 +17,35 @@ export class FilesService {
 		return `/data/${fileName}`;
 	}
 
+	/**
+	 * Returns the compressor factory for external use (e.g., NetworkInterceptor)
+	 */
+	getCompressorFactory(): FileCompressorFactory {
+		return this.compressorFactory;
+	}
+
 	async compressFile(
 		base64Data: string,
 		extension: string,
 	): Promise<{ buffer: Buffer; extension: string }> {
 		const buffer = Buffer.from(base64Data, 'base64');
 		return await this.compressorFactory.compress(buffer, extension);
+	}
+
+	/**
+	 * Salva um arquivo que já foi comprimido (sem recompressão)
+	 * @param buffer Buffer contendo os dados já comprimidos
+	 * @param extension Extensão final do arquivo (ex: '.webp')
+	 * @returns Caminho público do arquivo salvo
+	 */
+	async savePreCompressedFile(
+		buffer: Buffer,
+		extension: string,
+	): Promise<string> {
+		const fileName = `${uuidv4()}${extension}`;
+		const filePath = path.join(this.downloadDir, fileName);
+		await fs.writeFile(filePath, buffer);
+		return this.getPublicPath(fileName);
 	}
 
 	/**

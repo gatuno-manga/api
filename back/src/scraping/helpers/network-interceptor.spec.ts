@@ -150,4 +150,53 @@ describe('NetworkInterceptor', () => {
             expect(interceptor['isIntercepting']).toBe(false);
         });
     });
+
+    describe('Buffer operations', () => {
+        it('should return null for non-cached URL when getting buffer', () => {
+            const interceptor = new NetworkInterceptor(mockPage);
+            expect(interceptor.getCachedImageAsBuffer('https://example.com/image.jpg')).toBeNull();
+        });
+
+        it('should return null for non-cached URL when getting base64', () => {
+            const interceptor = new NetworkInterceptor(mockPage);
+            expect(interceptor.getCachedImageAsBase64('https://example.com/image.jpg')).toBeNull();
+        });
+    });
+
+    describe('Compression', () => {
+        it('should initialize without compressor', () => {
+            const interceptor = new NetworkInterceptor(mockPage);
+            expect(interceptor['compressor']).toBeUndefined();
+        });
+
+        it('should initialize with compressor', () => {
+            const mockCompressor = {
+                compress: jest.fn(),
+                getOutputExtension: jest.fn(),
+            };
+            const interceptor = new NetworkInterceptor(
+                mockPage,
+                { blacklistTerms: [], whitelistTerms: [] },
+                mockCompressor,
+            );
+            expect(interceptor['compressor']).toBe(mockCompressor);
+        });
+
+        it('should report compressed count in stats', () => {
+            const interceptor = new NetworkInterceptor(mockPage);
+            const stats = interceptor.getStats();
+            expect(stats).toHaveProperty('compressedCount');
+            expect(stats.compressedCount).toBe(0);
+        });
+
+        it('should check if image is compressed', () => {
+            const interceptor = new NetworkInterceptor(mockPage);
+            expect(interceptor.isCompressed('https://example.com/image.jpg')).toBe(false);
+        });
+
+        it('should wait for compressions (no-op when empty)', async () => {
+            const interceptor = new NetworkInterceptor(mockPage);
+            await expect(interceptor.waitForCompressions()).resolves.not.toThrow();
+        });
+    });
 });

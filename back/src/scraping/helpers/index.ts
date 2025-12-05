@@ -4,6 +4,7 @@ export {
     NetworkInterceptor,
     UrlFilterConfig,
     CachedImage,
+    ImageCompressor,
 } from './network-interceptor';
 export {
     ElementScreenshot,
