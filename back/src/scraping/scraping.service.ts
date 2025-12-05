@@ -99,7 +99,6 @@ export class ScrapingService implements OnApplicationShutdown {
 		let selector = 'img';
 		let preScript = '';
 		let posScript = '';
-		let ignoreFiles: string[] = [];
 		let concurrencyLimit: number | null = null;
 		let blacklistTerms: string[] = [];
 		let whitelistTerms: string[] = [];
@@ -115,7 +114,6 @@ export class ScrapingService implements OnApplicationShutdown {
 			selector = website.selector || selector;
 			preScript = website.preScript || preScript;
 			posScript = website.posScript || posScript;
-			ignoreFiles = website.ignoreFiles || [];
 			concurrencyLimit = website.concurrencyLimit ?? null;
 			blacklistTerms = website.blacklistTerms || [];
 			whitelistTerms = website.whitelistTerms || [];
@@ -129,7 +127,6 @@ export class ScrapingService implements OnApplicationShutdown {
 			selector,
 			preScript,
 			posScript,
-			ignoreFiles,
 			concurrencyLimit,
 			blacklistTerms,
 			whitelistTerms,
@@ -158,7 +155,6 @@ export class ScrapingService implements OnApplicationShutdown {
 		imageDownloader: ImageDownloader,
 		imageUrls: string[],
 		failedUrls: string[],
-		ignoreFiles: string[],
 		networkInterceptor?: NetworkInterceptor,
 	): Promise<(string | null)[]> {
 		const results: (string | null)[] = [];
@@ -166,12 +162,6 @@ export class ScrapingService implements OnApplicationShutdown {
 		for (const imageUrl of imageUrls) {
 			if (failedUrls.includes(imageUrl)) {
 				this.logger.warn(`Image failed to load: ${imageUrl}`);
-				results.push(null);
-				continue;
-			}
-
-			if (ignoreFiles.includes(imageUrl)) {
-				this.logger.warn(`Image ignored by config: ${imageUrl}`);
 				results.push(null);
 				continue;
 			}
@@ -215,7 +205,6 @@ export class ScrapingService implements OnApplicationShutdown {
 			selector,
 			preScript,
 			posScript,
-			ignoreFiles,
 			concurrencyLimit,
 			blacklistTerms,
 			whitelistTerms,
@@ -299,7 +288,6 @@ export class ScrapingService implements OnApplicationShutdown {
 					imageDownloader,
 					imageUrls,
 					scrollResult.failedImages,
-					ignoreFiles,
 					networkInterceptor,
 				);
 			}

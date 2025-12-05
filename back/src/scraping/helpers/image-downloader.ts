@@ -115,19 +115,12 @@ export class ImageDownloader {
     async downloadImages(
         imageUrls: string[],
         failedUrls: string[] = [],
-        ignoreFiles: string[] = [],
     ): Promise<(string | null)[]> {
         const results: (string | null)[] = [];
 
         for (const imageUrl of imageUrls) {
             if (failedUrls.includes(imageUrl)) {
                 this.logger.warn(`Image failed to load: ${imageUrl}`);
-                results.push(null);
-                continue;
-            }
-
-            if (ignoreFiles.includes(imageUrl)) {
-                this.logger.warn(`Image ignored by config: ${imageUrl}`);
                 results.push(null);
                 continue;
             }

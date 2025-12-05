@@ -50,16 +50,6 @@ export class RegisterWebSiteDto {
 	chapterExtractScript?: string;
 
 	@ApiPropertyOptional({
-		description: 'Array of file patterns to ignore during scraping',
-		example: ['ads.jpg', 'banner.png'],
-		type: [String],
-		isArray: true,
-	})
-	@IsOptional()
-	@IsString({ each: true })
-	ignoreFiles?: string[];
-
-	@ApiPropertyOptional({
 		description: 'Optional concurrency limit for simultaneous scrapes of this site. Null or omitted = unlimited',
 		example: 3,
 	})

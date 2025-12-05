@@ -52,12 +52,6 @@ export class Website {
 	chapterExtractScript: string;
 
 	@Column({
-		type: 'json',
-		nullable: true,
-	})
-	ignoreFiles: string[];
-
-	@Column({
 		type: 'int',
 		nullable: true,
 	})
