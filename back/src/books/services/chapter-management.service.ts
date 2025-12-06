@@ -9,7 +9,6 @@ import { UpdateChapterDto } from '../dto/update-chapter.dto';
 import { OrderChaptersDto } from '../dto/order-chapters.dto';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { console } from 'inspector';
 
 /**
  * Service responsável por gerenciar capítulos de livros
