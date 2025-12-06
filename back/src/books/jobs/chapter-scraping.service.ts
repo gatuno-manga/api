@@ -2,7 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { Chapter } from "../entitys/chapter.entity";
-import { In, Not, Repository } from "typeorm";
+import { Not, Repository } from "typeorm";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 
@@ -20,15 +20,37 @@ export class ChapterScrapingService {
         private readonly chapterRepository: Repository<Chapter>,
     ) {}
 
+    /**
+     * Adiciona um capítulo à fila de scraping.
+     * Remove jobs antigos (completados/falhos) antes de adicionar para permitir reprocessamento.
+     */
     public async addChapterToQueue(chapterId: string): Promise<void> {
-        const existingJobs = await this.chapterScrapingQueue.getJobs(['waiting', 'delayed', 'active']);
-        const isAlreadyQueued = existingJobs.some(job => job && job.data === chapterId)
+        const jobId = `chapter-scraping-${chapterId}`;
 
-        if (!isAlreadyQueued) {
+        try {
+            // Remove job anterior se existir (completado ou falho)
+            const existingJob = await this.chapterScrapingQueue.getJob(jobId);
+            if (existingJob) {
+                const state = await existingJob.getState();
+                if (state === 'completed' || state === 'failed') {
+                    await existingJob.remove();
+                    this.logger.debug(`Job anterior removido para capítulo: ${chapterId} (estado: ${state})`);
+                } else if (state === 'active' || state === 'waiting' || state === 'delayed') {
+                    this.logger.debug(`Job para capítulo ${chapterId} já está ${state}, ignorando`);
+                    return;
+                }
+            }
+
+            await this.chapterScrapingQueue.add(JOB_NAME, chapterId, { jobId });
             this.logger.debug(`Adicionando job para o capítulo: ${chapterId}`);
-            await this.chapterScrapingQueue.add(JOB_NAME, chapterId);
-        } else {
-            this.logger.debug(`Job para o capítulo ${chapterId} já está na fila.`);
+        } catch (error) {
+            // Job com mesmo ID já existe na fila
+            if (error.message?.includes('Job with this id already exists')) {
+                this.logger.debug(`Job para o capítulo ${chapterId} já está na fila.`);
+            } else {
+                this.logger.error(`Erro ao adicionar job para capítulo ${chapterId}: ${error.message}`);
+                throw error;
+            }
         }
     }
 

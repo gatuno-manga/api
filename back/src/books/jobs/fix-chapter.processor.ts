@@ -1,30 +1,23 @@
-import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { Logger, OnModuleInit } from '@nestjs/common';
-import { Page } from '../entitys/page.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Chapter } from '../entitys/chapter.entity';
-import { ScrapingService } from 'src/scraping/scraping.service';
-import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { AppConfigService } from 'src/app-config/app-config.service';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ChapterScrapingSharedService } from './chapter-scraping.shared';
 
 const QUEUE_NAME = 'fix-chapter-queue';
-const JOB_NAME = 'fix-chapter';
 
 @Processor(QUEUE_NAME)
 export class FixChapterProcessor extends WorkerHost implements OnModuleInit {
     private readonly logger = new Logger(FixChapterProcessor.name);
 
     constructor(
-        @InjectRepository(Page)
-        private readonly pageRepository: Repository<Page>,
         @InjectRepository(Chapter)
         private readonly chapterRepository: Repository<Chapter>,
-        private readonly scrapingService: ScrapingService,
         private readonly configService: AppConfigService,
-        private readonly eventEmitter: EventEmitter2,
+        private readonly chapterScrapingShared: ChapterScrapingSharedService,
     ) {
         super();
     }
@@ -36,66 +29,43 @@ export class FixChapterProcessor extends WorkerHost implements OnModuleInit {
     async process(job: Job<{ chapterId: string }>): Promise<void> {
         const { chapterId } = job.data;
         this.logger.debug(`Processando conserto para o capítulo: ${chapterId}`);
+
         const chapter = await this.chapterRepository.findOne({
             where: { id: chapterId },
             relations: ['book', 'pages'],
         });
+
         if (!chapter) {
             this.logger.warn(`Capítulo com ID ${chapterId} não encontrado.`);
             throw new Error(`Capítulo com ID ${chapterId} não encontrado.`);
         }
-        await this.fixChapter(chapter);
+
+        // Emite evento de início
+        this.chapterScrapingShared.emitStartedEvent(chapter);
+
+        // Processa usando o serviço compartilhado com minPages
+        const minPages = chapter.pages?.length || undefined;
+        await this.chapterScrapingShared.processChapterPages(chapter, minPages);
+
         this.logger.log(`Capítulo ${chapterId} processado para conserto.`);
     }
 
-    private async fixChapter(chapter: Chapter): Promise<void> {
-        this.logger.debug(`Iniciando conserto para o capítulo: ${chapter.id}`);
-
-        // Emite evento de scraping iniciado
-        this.eventEmitter.emit('chapter.scraping.started', {
-            chapterId: chapter.id,
-            bookId: chapter.book?.id,
-        });
+    @OnWorkerEvent('failed')
+    async onFailed(job: Job<{ chapterId: string }>): Promise<void> {
+        const { chapterId } = job.data;
+        this.logger.error(`Job de conserto com id ${job.id} FAILED! Attempt ${job.attemptsMade} for chapter ID: ${chapterId}`);
 
         try {
-            const pages = await this.scrapingService.scrapePages(chapter.originalUrl, chapter.pages.length);
-            if (!pages) return;
-            await this.pageRepository.delete({ chapter: { id: chapter.id } });
-            let index = 1;
-            const newPages = pages.map((pageContent) =>
-                this.pageRepository.create({ path: pageContent, index: index++ })
-            );
-            chapter.pages = newPages;
-            chapter.scrapingStatus = ScrapingStatus.READY;
-            await this.chapterRepository.save(chapter);
-
-            // Emite evento de scraping completado
-            this.eventEmitter.emit('chapter.scraping.completed', {
-                chapterId: chapter.id,
-                bookId: chapter.book?.id,
-                pagesCount: pages.length,
+            const chapter = await this.chapterRepository.findOne({
+                where: { id: chapterId },
+                relations: ['book'],
             });
 
-            // Emite evento de atualização de capítulo
-            this.eventEmitter.emit('chapters.updated', chapter);
-
-            this.logger.log(`Páginas salvas para o capítulo: ${chapter.book.title} (${chapter.index})`);
+            if (chapter) {
+                this.chapterScrapingShared.emitFailedEvent(chapter, job.failedReason || 'Unknown error');
+            }
         } catch (error) {
-            this.logger.error(`Falha no scraping do capítulo ${chapter.id}: ${error.message}`, error.stack);
-            chapter.scrapingStatus = ScrapingStatus.ERROR;
-            await this.chapterRepository.save(chapter);
-
-            // Emite evento de falha no scraping
-            this.eventEmitter.emit('chapter.scraping.failed', {
-                chapterId: chapter.id,
-                bookId: chapter.book?.id,
-                error: error.message,
-            });
-
-            // Emite evento de atualização de capítulo (status ERROR)
-            this.eventEmitter.emit('chapters.updated', chapter);
-
-            throw error;
+            this.logger.error(`Erro ao emitir evento de falha para o capítulo ${chapterId}: ${error.message}`);
         }
     }
 }

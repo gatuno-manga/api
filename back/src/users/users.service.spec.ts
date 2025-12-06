@@ -63,8 +63,8 @@ describe('UsersService', () => {
     userRepository = module.get(getRepositoryToken(User));
     roleRepository = module.get(getRepositoryToken(Role));
 
-    // Mock onModuleInit to avoid database operations
-    jest.spyOn(service, 'onModuleInit').mockResolvedValue(undefined);
+    // Mock onApplicationBootstrap to avoid database operations
+    jest.spyOn(service, 'onApplicationBootstrap').mockResolvedValue(undefined);
   });
 
   it('should be defined', () => {

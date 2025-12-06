@@ -31,6 +31,7 @@ import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { BookUploadService } from './services/book-upload.service';
 import { ChapterManagementService } from './services/chapter-management.service';
 import { BookDeletionService } from './services/book-deletion.service';
+import { BookUpdateScheduler } from './jobs/book-update.scheduler';
 
 @ApiTags('Books Admin')
 @Controller('books')
@@ -42,6 +43,7 @@ export class AdminBooksController {
 		private readonly bookUploadService: BookUploadService,
 		private readonly chapterManagementService: ChapterManagementService,
 		private readonly bookDeletionService: BookDeletionService,
+		private readonly bookUpdateScheduler: BookUpdateScheduler,
 	) {}
 
 	@Post()
@@ -91,6 +93,26 @@ export class AdminBooksController {
 		@Param('idBook') idBook: string,
 	) {
 		return this.booksService.resetBook(idBook);
+	}
+
+	@Post(':idBook/check-updates')
+	@ApiOperation({ summary: 'Check for book updates', description: 'Force check for new chapters on a specific book (Admin only)' })
+	@ApiParam({ name: 'idBook', description: 'Book unique identifier', example: '550e8400-e29b-41d4-a716-446655440000' })
+	@ApiResponse({ status: 200, description: 'Update check scheduled' })
+	@ApiResponse({ status: 404, description: 'Book not found' })
+	@ApiBearerAuth('JWT-auth')
+	async checkBookUpdates(@Param('idBook') idBook: string) {
+		await this.bookUpdateScheduler.forceUpdateBook(idBook);
+		return { message: 'Update check scheduled', bookId: idBook };
+	}
+
+	@Post('check-all-updates')
+	@ApiOperation({ summary: 'Check updates for all books', description: 'Force check for new chapters on all books (Admin only)' })
+	@ApiResponse({ status: 200, description: 'Update check scheduled for all books' })
+	@ApiBearerAuth('JWT-auth')
+	async checkAllBooksUpdates() {
+		await this.bookUpdateScheduler.forceUpdateAllBooks();
+		return { message: 'Update check scheduled for all books' };
 	}
 
 	@Patch(':idBook')

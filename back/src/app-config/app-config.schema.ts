@@ -10,7 +10,6 @@ export const validationSchema = Joi.object({
 		.max(65535)
 		.default(3000)
 		.description('The port on which the application will run'),
-	SELENIUM_URL: Joi.string().uri().required(),
 	DB_TYPE: Joi.string().required(),
 	DB_NAME: Joi.string().required(),
 	DB_MASTER_HOST: Joi.string().required(),
@@ -47,4 +46,8 @@ export const validationSchema = Joi.object({
 	HEALTH_RSS_LIMIT_MB: Joi.number().min(1).default(500).description('RSS limit in MB for health check'),
 	HEALTH_READINESS_HEAP_LIMIT_MB: Joi.number().min(1).default(400).description('Heap limit in MB for readiness check'),
 	HEALTH_DISK_THRESHOLD_PERCENT: Joi.number().min(0).max(1).default(0.7).description('Disk usage threshold (fraction) for storage health check'),
+	// Playwright / Scraping Debug
+	PLAYWRIGHT_DEBUG: Joi.boolean().default(false).description('Enable Playwright debug mode with visible browser'),
+	PLAYWRIGHT_SLOW_MO: Joi.number().min(0).default(0).description('Slow down Playwright operations by specified ms'),
+	PLAYWRIGHT_WS_ENDPOINT: Joi.string().optional().allow('').description('WebSocket endpoint for remote browser connection'),
 });

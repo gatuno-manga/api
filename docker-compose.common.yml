@@ -3,9 +3,10 @@ services:
   api:
     image: gatuno-api
     container_name: gatuno-api
+    # Playwright precisa de mais memória compartilhada
+    shm_size: 2g
     environment:
       - NODE_ENV=${NODE_ENV}
-      - SELENIUM_URL=http://selenium-hub:4444/wd/hub
       - API_URL=http://${API_HOST}
       - APP_URL=http://${APP_HOST}
       - ALLOWED_URL=http://${APP_HOST}
@@ -19,6 +20,8 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
+      # Playwright config
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
     depends_on:
       database-master:
         condition: service_healthy
@@ -119,32 +122,10 @@ services:
     networks:
       - gatuno-net
 
-  selenium-hub:
-    image: selenium/hub:4.27
-    networks:
-      - gatuno-net
-
-  node-docker:
-    image: selenium/node-docker:4.27.0
-    shm_size: 2g
-    depends_on:
-      - selenium-hub
-    environment:
-      - SE_EVENT_BUS_HOST=selenium-hub
-      - SE_EVENT_BUS_PUBLISH_PORT=4442
-      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
-    volumes:
-      - ./config.toml:/opt/bin/config.toml
-      - /var/run/docker.sock:/var/run/docker.sock
-      - selenium-data:/opt/selenium/assets
-    networks:
-      - gatuno-net
-
 volumes:
   database-data:
   database-slave-1-data:
   database-slave-2-data:
-  selenium-data:
   api-data:
   redis_data:
 

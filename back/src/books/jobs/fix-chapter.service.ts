@@ -11,17 +11,26 @@ export class FixChapterService {
 
     constructor(
         @InjectQueue(QUEUE_NAME)
-        private readonly fixChapterQueue: Queue<any>,
+        private readonly fixChapterQueue: Queue<{ chapterId: string }>,
     ) {}
 
+    /**
+     * Adiciona um capítulo à fila de conserto.
+     * Usa jobId único para deduplicação eficiente O(1).
+     */
     public async addChapterToFixQueue(chapterId: string): Promise<void> {
-        const existingJobs = await this.fixChapterQueue.getJobs(['waiting', 'delayed', 'active']);
-        const isAlreadyQueued = existingJobs.some(job => job && job.data.chapterId === chapterId);
-        if (!isAlreadyQueued) {
+        const jobId = `fix-chapter-${chapterId}`;
+
+        try {
+            await this.fixChapterQueue.add(JOB_NAME, { chapterId }, { jobId });
             this.logger.debug(`Adicionando job de conserto para o capítulo: ${chapterId}`);
-            await this.fixChapterQueue.add(JOB_NAME, { chapterId });
-        } else {
-            this.logger.debug(`Job de conserto para o capítulo ${chapterId} já está na fila.`);
+        } catch (error) {
+            // Job com mesmo ID já existe na fila
+            if (error.message?.includes('Job with this id already exists')) {
+                this.logger.debug(`Job de conserto para o capítulo ${chapterId} já está na fila.`);
+            } else {
+                throw error;
+            }
         }
     }
 }

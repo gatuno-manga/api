@@ -34,9 +34,6 @@ services:
   database-slave-2:
     restart: always
 
-  selenium-hub:
-    restart: always
-
 networks:
   traefik_traefik-proxy-net:
     external: true

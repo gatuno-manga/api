@@ -1,29 +1,32 @@
-FROM node:24.11.1-alpine AS base
+# Build stage - usar node para build
+FROM node:24.11.1-alpine AS builder
 
 WORKDIR /usr/src/app
 
-FROM base AS deps
-
 COPY package.json package-lock.json* ./
-
-RUN --mount=type=cache,target=/root/.npm npm ci
-
-FROM deps AS builder
+RUN npm ci
 
 COPY . .
-
 RUN npm run build
 
-FROM base AS production
+# Production stage - usar imagem do Playwright
+FROM mcr.microsoft.com/playwright:v1.49.1-noble AS production
 
+WORKDIR /usr/src/app
+
+# Copiar apenas dependências de produção
 COPY package.json package-lock.json* ./
+RUN npm ci --omit=dev
 
-RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
+# Instalar apenas Chromium
+RUN npx playwright install chromium
 
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+# Criar usuário não-root
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+
+# Copiar build
+COPY --from=builder --chown=appuser:appgroup /usr/src/app/dist ./dist
 
 USER appuser
-
-COPY --from=builder --chown=appuser:appgroup /usr/src/app/dist ./dist
 
 CMD ["node", "dist/main.js"]

@@ -14,13 +14,6 @@ export class AppConfigService {
 		return this.config.get<number>('PORT') || 3000;
 	}
 
-	get seleniumUrl(): string {
-		return (
-			this.config.get<string>('SELENIUM_URL') ||
-			'http://localhost:4444/wd/hub'
-		);
-	}
-
 	get apiUrl(): string {
 		return this.config.get<string>('API_URL') || 'http://localhost:3000';
 	}
@@ -88,6 +81,7 @@ export class AppConfigService {
 			chapterScraping: this.config.get<number>('CHAPTER_SCRAPING_CONCURRENCY') || 6,
 			coverImage: this.config.get<number>('COVER_IMAGE_CONCURRENCY') || 3,
 			fixChapter: this.config.get<number>('FIX_CHAPTER_CONCURRENCY') || 2,
+			bookUpdate: this.config.get<number>('BOOK_UPDATE_CONCURRENCY') || 2,
 		};
 	}
 
@@ -155,5 +149,20 @@ export class AppConfigService {
 	get refreshTokenTtl(): number {
 		const duration = this.jwtRefreshExpiration;
 		return this.parseDurationToMilliseconds(duration);
+	}
+
+	get playwright() {
+		return {
+			debugMode: this.config.get<boolean>('PLAYWRIGHT_DEBUG') ?? false,
+			slowMo: this.config.get<number>('PLAYWRIGHT_SLOW_MO') ?? 0,
+			wsEndpoint: this.config.get<string>('PLAYWRIGHT_WS_ENDPOINT') ?? '',
+		};
+	}
+
+	get bookUpdate() {
+		return {
+			enabled: this.config.get<boolean>('BOOK_UPDATE_ENABLED') ?? true,
+			cronExpression: this.config.get<string>('BOOK_UPDATE_CRON') || '0 */6 * * *', // Every 6 hours
+		};
 	}
 }

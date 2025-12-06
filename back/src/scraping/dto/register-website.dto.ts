@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUrl, IsInt } from 'class-validator';
+import { IsOptional, IsString, IsUrl, IsInt, IsBoolean, IsArray } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class RegisterWebSiteDto {
@@ -34,14 +34,54 @@ export class RegisterWebSiteDto {
 	selector: string;
 
 	@ApiPropertyOptional({
-		description: 'Array of file patterns to ignore during scraping',
-		example: ['ads.jpg', 'banner.png'],
-		type: [String],
-		isArray: true,
+		description: 'CSS selector for chapter list on book page',
+		example: '.chapter-list a',
 	})
+	@IsString()
 	@IsOptional()
-	@IsString({ each: true })
-	ignoreFiles?: string[];
+	chapterListSelector?: string;
+
+	@ApiPropertyOptional({
+		description: `JavaScript code to extract all book info at once. Should return an object with:
+- covers: array of {url, title?} (capas do livro)
+- chapters: array of {title, url, index, isFinal?}
+
+Example output:
+{
+  covers: [
+    { url: "https://site.com/cover1.jpg", title: "Capa Volume 1" },
+    { url: "https://site.com/cover2.jpg", title: "Capa Alternativa" }
+  ],
+  chapters: [
+    { title: "Cap 1", url: "https://...", index: 1, isFinal: false },
+    { title: "Cap Final", url: "https://...", index: 100, isFinal: true }
+  ]
+}`,
+		example: `(() => {
+  const coverElements = document.querySelectorAll('.book-cover img, .gallery-thumb img');
+  const covers = Array.from(coverElements).map((img, i) => ({
+    url: img.src,
+    title: img.alt || img.title || 'Capa ' + (i + 1)
+  })).filter(c => c.url);
+
+  if (covers.length === 0) {
+    const ogImage = document.querySelector('meta[property="og:image"]')?.content;
+    if (ogImage) covers.push({ url: ogImage, title: 'Capa Principal' });
+  }
+
+  const chapters = Array.from(document.querySelectorAll('.chapter-list a')).map((el, i, arr) => ({
+    title: el.textContent?.trim() || 'Cap ' + (i + 1),
+    url: el.href,
+    index: i + 1,
+    isFinal: i === arr.length - 1
+  }));
+
+  return { covers, chapters };
+})()`,
+	})
+	@IsString()
+	@IsOptional()
+	bookInfoExtractScript?: string;
 
 	@ApiPropertyOptional({
 		description: 'Optional concurrency limit for simultaneous scrapes of this site. Null or omitted = unlimited',
@@ -50,4 +90,44 @@ export class RegisterWebSiteDto {
 	@IsOptional()
 	@IsInt()
 	concurrencyLimit?: number;
+
+	@ApiPropertyOptional({
+		description: 'Blacklist terms: URLs containing these terms will be ignored',
+		example: ['logo', 'icon', 'avatar', 'ads', 'banner', 'sprite', '.gif'],
+		type: [String],
+		isArray: true,
+	})
+	@IsOptional()
+	@IsArray()
+	@IsString({ each: true })
+	blacklistTerms?: string[];
+
+	@ApiPropertyOptional({
+		description: 'Whitelist terms: If filled, only URLs containing these terms will be accepted',
+		example: ['cdn.site.com', 'uploads/chapters'],
+		type: [String],
+		isArray: true,
+	})
+	@IsOptional()
+	@IsArray()
+	@IsString({ each: true })
+	whitelistTerms?: string[];
+
+	@ApiPropertyOptional({
+		description: 'Enable network traffic interception for image caching (more efficient)',
+		example: true,
+		default: true,
+	})
+	@IsOptional()
+	@IsBoolean()
+	useNetworkInterception?: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Use screenshot/print mode to capture images instead of downloading. Captures in PNG (lossless) for maximum quality. Useful for canvas-rendered images or sites with download protection.',
+		example: false,
+		default: false,
+	})
+	@IsOptional()
+	@IsBoolean()
+	useScreenshotMode?: boolean;
 }
