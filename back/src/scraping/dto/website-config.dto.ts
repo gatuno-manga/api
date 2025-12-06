@@ -8,5 +8,5 @@ export class WebsiteConfigDto {
     useNetworkInterception: boolean;
     useScreenshotMode: boolean;
     chapterListSelector?: string;
-    chapterExtractScript?: string;
+    bookInfoExtractScript?: string;
 }

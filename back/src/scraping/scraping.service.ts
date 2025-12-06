@@ -105,7 +105,7 @@ export class ScrapingService implements OnApplicationShutdown {
 		let useNetworkInterception = true;
 		let useScreenshotMode = false;
 		let chapterListSelector: string | undefined;
-		let chapterExtractScript: string | undefined;
+		let bookInfoExtractScript: string | undefined;
 
 		const domain = new URL(url).hostname;
 		const website = await this.webSiteService.getByUrl(domain);
@@ -120,7 +120,7 @@ export class ScrapingService implements OnApplicationShutdown {
 			useNetworkInterception = website.useNetworkInterception ?? true;
 			useScreenshotMode = website.useScreenshotMode ?? false;
 			chapterListSelector = website.chapterListSelector || undefined;
-			chapterExtractScript = website.chapterExtractScript || undefined;
+			bookInfoExtractScript = website.bookInfoExtractScript || undefined;
 		}
 
 		return {
@@ -133,7 +133,7 @@ export class ScrapingService implements OnApplicationShutdown {
 			useNetworkInterception,
 			useScreenshotMode,
 			chapterListSelector,
-			chapterExtractScript,
+			bookInfoExtractScript,
 		};
 	}
 
@@ -468,18 +468,18 @@ export class ScrapingService implements OnApplicationShutdown {
 	}
 
 	/**
-	 * Faz scraping da lista de capítulos de um livro.
+	 * Faz scraping das informações do livro (capas e capítulos).
 	 * @param bookUrl URL da página do livro
-	 * @returns Lista de capítulos encontrados com título, URL e índice
+	 * @returns Objeto com covers (array de capas com url e title) e chapters (lista de capítulos)
 	 */
-	async scrapeChapterList(bookUrl: string): Promise<{ title: string; url: string; index: number }[]> {
+	async scrapeBookInfo(bookUrl: string): Promise<{ covers?: { url: string; title?: string }[]; chapters: { title: string; url: string; index: number; isFinal?: boolean }[] }> {
 		const config = await this.getWebsiteConfig(bookUrl);
-		const { chapterListSelector, chapterExtractScript, concurrencyLimit, preScript } = config;
+		const { chapterListSelector, bookInfoExtractScript, concurrencyLimit, preScript } = config;
 		const domain = new URL(bookUrl).hostname;
 
-		if (!chapterListSelector && !chapterExtractScript) {
-			this.logger.warn(`No chapter list configuration for domain: ${domain}`);
-			return [];
+		if (!chapterListSelector && !bookInfoExtractScript) {
+			this.logger.warn(`No book info configuration for domain: ${domain}`);
+			return { chapters: [] };
 		}
 
 		await this.concurrencyManager.acquire(domain, concurrencyLimit);
@@ -497,39 +497,82 @@ export class ScrapingService implements OnApplicationShutdown {
 			// Executa script de pré-processamento se existir
 			await this.executeCustomScript(page, preScript);
 
-			let chapters: { title: string; url: string; index: number }[] = [];
+			let result: { covers?: { url: string; title?: string }[]; chapters: { title: string; url: string; index: number; isFinal?: boolean }[] } = { chapters: [] };
 
-			if (chapterExtractScript) {
-				// Usa script customizado para extrair capítulos
+			if (bookInfoExtractScript) {
+				// Usa script unificado para extrair todas as informações
 				try {
-					chapters = await page.evaluate(chapterExtractScript);
+					const rawResult = await page.evaluate(bookInfoExtractScript) as {
+						covers?: Array<string | { url: string; title?: string }>;
+						cover?: string | { url: string; title?: string };
+						chapters?: unknown[]
+					};
+					// Valida a estrutura do resultado
+					if (!rawResult || typeof rawResult !== 'object') {
+						throw new Error('Script must return an object');
+					}
+
+					// Normaliza covers para o formato { url, title }
+					let normalizedCovers: { url: string; title?: string }[] = [];
+					if (Array.isArray(rawResult.covers)) {
+						normalizedCovers = rawResult.covers.map((c, i) => {
+							if (typeof c === 'string') {
+								return { url: c, title: `Capa ${i + 1}` };
+							}
+							return { url: c.url, title: c.title || `Capa ${i + 1}` };
+						}).filter(c => c.url);
+					} else if (rawResult.cover) {
+						if (typeof rawResult.cover === 'string') {
+							normalizedCovers = [{ url: rawResult.cover, title: 'Capa Principal' }];
+						} else {
+							normalizedCovers = [{ url: rawResult.cover.url, title: rawResult.cover.title || 'Capa Principal' }];
+						}
+					}
+
+					result = {
+						covers: normalizedCovers,
+						chapters: Array.isArray(rawResult.chapters) ? rawResult.chapters as { title: string; url: string; index: number; isFinal?: boolean }[] : [],
+					};
 				} catch (error) {
-					this.logger.error(`Error executing chapter extract script: ${error.message}`);
+					this.logger.error(`Error executing bookInfoExtractScript: ${error.message}`);
 				}
 			} else if (chapterListSelector) {
-				// Usa seletor CSS padrão
-				chapters = await page.evaluate((selector) => {
+				// Fallback: Usa seletor CSS padrão apenas para capítulos
+				const chapters = await page.evaluate((selector) => {
 					const elements = document.querySelectorAll(selector);
-					return Array.from(elements).map((el, index) => {
+					return Array.from(elements).map((el, index, arr) => {
 						const anchor = el.tagName === 'A' ? el as HTMLAnchorElement : el.querySelector('a');
 						return {
 							title: el.textContent?.trim() || `Chapter ${index + 1}`,
 							url: anchor?.href || '',
 							index: index + 1,
+							isFinal: index === arr.length - 1,
 						};
 					}).filter(ch => ch.url);
 				}, chapterListSelector);
+				result = { chapters };
 			}
 
-			this.logger.log(`Found ${chapters.length} chapters on ${bookUrl}`);
-			return chapters;
+			this.logger.log(`Found ${result.chapters.length} chapters on ${bookUrl}${result.covers?.length ? ` (with ${result.covers.length} covers)` : ''}`);
+			return result;
 		} catch (error) {
-			this.logger.error(`Error scraping chapter list from ${bookUrl}: ${error.message}`);
+			this.logger.error(`Error scraping book info from ${bookUrl}: ${error.message}`);
 			throw error;
 		} finally {
 			await this.closeContext(context);
 			this.concurrencyManager.release(domain);
 		}
+	}
+
+	/**
+	 * @deprecated Use scrapeBookInfo instead
+	 * Faz scraping da lista de capítulos de um livro.
+	 * @param bookUrl URL da página do livro
+	 * @returns Lista de capítulos encontrados com título, URL e índice
+	 */
+	async scrapeChapterList(bookUrl: string): Promise<{ title: string; url: string; index: number }[]> {
+		const result = await this.scrapeBookInfo(bookUrl);
+		return result.chapters;
 	}
 
 	async onApplicationShutdown(): Promise<void> {

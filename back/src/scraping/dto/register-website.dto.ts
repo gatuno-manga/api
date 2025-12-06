@@ -42,12 +42,46 @@ export class RegisterWebSiteDto {
 	chapterListSelector?: string;
 
 	@ApiPropertyOptional({
-		description: 'JavaScript code to extract chapter info. Should return array of {title, url, index}',
-		example: `Array.from(document.querySelectorAll('.chapter-list a')).map((el, i) => ({ title: el.textContent, url: el.href, index: i + 1 }))`,
+		description: `JavaScript code to extract all book info at once. Should return an object with:
+- covers: array of {url, title?} (capas do livro)
+- chapters: array of {title, url, index, isFinal?}
+
+Example output:
+{
+  covers: [
+    { url: "https://site.com/cover1.jpg", title: "Capa Volume 1" },
+    { url: "https://site.com/cover2.jpg", title: "Capa Alternativa" }
+  ],
+  chapters: [
+    { title: "Cap 1", url: "https://...", index: 1, isFinal: false },
+    { title: "Cap Final", url: "https://...", index: 100, isFinal: true }
+  ]
+}`,
+		example: `(() => {
+  const coverElements = document.querySelectorAll('.book-cover img, .gallery-thumb img');
+  const covers = Array.from(coverElements).map((img, i) => ({
+    url: img.src,
+    title: img.alt || img.title || 'Capa ' + (i + 1)
+  })).filter(c => c.url);
+
+  if (covers.length === 0) {
+    const ogImage = document.querySelector('meta[property="og:image"]')?.content;
+    if (ogImage) covers.push({ url: ogImage, title: 'Capa Principal' });
+  }
+
+  const chapters = Array.from(document.querySelectorAll('.chapter-list a')).map((el, i, arr) => ({
+    title: el.textContent?.trim() || 'Cap ' + (i + 1),
+    url: el.href,
+    index: i + 1,
+    isFinal: i === arr.length - 1
+  }));
+
+  return { covers, chapters };
+})()`,
 	})
 	@IsString()
 	@IsOptional()
-	chapterExtractScript?: string;
+	bookInfoExtractScript?: string;
 
 	@ApiPropertyOptional({
 		description: 'Optional concurrency limit for simultaneous scrapes of this site. Null or omitted = unlimited',

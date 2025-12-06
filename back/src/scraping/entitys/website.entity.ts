@@ -42,14 +42,16 @@ export class Website {
 	chapterListSelector: string;
 
 	/**
-	 * Script para extrair informações de capítulos da página.
-	 * Deve retornar um array de objetos {title, url, index}.
+	 * Script unificado para extrair todas as informações do livro.
+	 * Deve retornar um objeto com:
+	 * - cover: string (URL da capa)
+	 * - chapters: array de {title, url, index, isFinal?}
 	 */
 	@Column({
 		type: 'text',
 		nullable: true,
 	})
-	chapterExtractScript: string;
+	bookInfoExtractScript: string;
 
 	@Column({
 		type: 'int',

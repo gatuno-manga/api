@@ -16,20 +16,31 @@ export class BookUpdateJobService {
 
     /**
      * Adiciona um livro à fila de atualização.
-     * Usa jobId único para deduplicação.
+     * Remove job anterior (se existir) para permitir re-execução.
      */
     async addBookToUpdateQueue(bookId: string): Promise<void> {
         const jobId = `book-update-${bookId}`;
 
         try {
+            // Remove job anterior se existir (para permitir re-execução)
+            const existingJob = await this.bookUpdateQueue.getJob(jobId);
+            if (existingJob) {
+                const state = await existingJob.getState();
+                // Remove apenas se já foi processado (completed, failed) ou está parado (stalled)
+                if (['completed', 'failed'].includes(state)) {
+                    await existingJob.remove();
+                    this.logger.debug(`Removed previous job for book ${bookId} (state: ${state})`);
+                } else if (state === 'active' || state === 'waiting' || state === 'delayed') {
+                    this.logger.debug(`Book ${bookId} already has a pending job (state: ${state})`);
+                    return;
+                }
+            }
+
             await this.bookUpdateQueue.add(JOB_NAME, { bookId }, { jobId });
             this.logger.debug(`Book ${bookId} added to update queue`);
         } catch (error) {
-            if (error.message?.includes('Job with this id already exists')) {
-                this.logger.debug(`Book ${bookId} is already in update queue`);
-            } else {
-                throw error;
-            }
+            this.logger.error(`Error adding book ${bookId} to queue: ${error.message}`);
+            throw error;
         }
     }
 

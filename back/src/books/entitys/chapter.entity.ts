@@ -51,6 +51,12 @@ export class Chapter {
 	@OneToMany(() => Page, (page) => page.chapter, { cascade: true })
 	pages: Relation<Page[]>;
 
+	@Column({
+		type: 'boolean',
+		default: false,
+	})
+	isFinal: boolean;
+
 	@DeleteDateColumn()
 	deletedAt: Date;
 }
