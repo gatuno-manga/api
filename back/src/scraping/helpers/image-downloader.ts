@@ -12,6 +12,7 @@ export class ImageDownloader {
     /**
      * Fetch an image as Buffer using Playwright's request context.
      * More efficient than base64 conversion.
+     * Note: This may fail with 403 if the site checks Referer headers.
      */
     async fetchImageAsBuffer(imageUrl: string): Promise<Buffer | null> {
         try {
@@ -26,6 +27,48 @@ export class ImageDownloader {
             return await response.body();
         } catch (error) {
             this.logger.error(`Failed to fetch image as buffer: ${imageUrl}`, error);
+            return null;
+        }
+    }
+
+    /**
+     * Fetch an image as Buffer using page.evaluate with fetch.
+     * This method inherits cookies and Referer headers from the page context,
+     * which is useful for sites that check Referer headers.
+     */
+    async fetchImageViaPageContext(imageUrl: string): Promise<Buffer | null> {
+        try {
+            const base64 = await this.page.evaluate(async (url: string) => {
+                try {
+                    const response = await fetch(url, {
+                        credentials: 'include',
+                    });
+                    if (!response.ok) {
+                        return null;
+                    }
+                    const blob = await response.blob();
+                    return new Promise<string | null>((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            const result = reader.result as string;
+                            resolve(result.split(',')[1] || null);
+                        };
+                        reader.onerror = () => resolve(null);
+                        reader.readAsDataURL(blob);
+                    });
+                } catch {
+                    return null;
+                }
+            }, imageUrl);
+
+            if (!base64) {
+                this.logger.warn(`Failed to fetch via page context: ${imageUrl}`);
+                return null;
+            }
+
+            return Buffer.from(base64, 'base64');
+        } catch (error) {
+            this.logger.error(`Failed to fetch image via page context: ${imageUrl}`, error);
             return null;
         }
     }

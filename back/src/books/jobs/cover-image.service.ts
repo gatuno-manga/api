@@ -18,16 +18,16 @@ export class CoverImageService {
 
     /**
      * Adiciona um job de capa à fila.
-     * Usa jobId único para deduplicação eficiente O(1).
+     * Usa jobId único com timestamp para permitir reprocessamento.
      */
     public async addCoverToQueue(bookId: string, urlOrigin: string, covers: UrlImageDto[]): Promise<void> {
-        const jobId = `cover-image-${bookId}`;
+        const jobId = `cover-image-${bookId}-${Date.now()}`;
 
         try {
             await this.coverImageQueue.add(JOB_NAME, { bookId, urlOrigin, covers }, { jobId });
             this.logger.debug(`Adicionando job de capa (batch) para o livro: ${bookId}`);
         } catch (error) {
-            // Job com mesmo ID já existe na fila
+            // Job com mesmo ID já existe na fila (muito raro com timestamp)
             if (error.message?.includes('Job with this id already exists')) {
                 this.logger.debug(`Job de capa para o livro ${bookId} já está na fila.`);
             } else {
