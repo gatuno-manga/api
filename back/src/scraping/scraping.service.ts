@@ -242,9 +242,13 @@ export class ScrapingService implements OnApplicationShutdown {
 			// Execute pre-scraping script
 			await this.executeCustomScript(page, preScript);
 
-			// Scroll and wait for lazy-loaded images
-			const scroller = new PageScroller(page, { imageSelector: selector });
-			const scrollResult = await scroller.scrollAndWait();
+			// Scroll para carregar imagens lazy-loaded (apenas se NÃO for screenshot mode)
+			// No screenshot mode, o ElementScreenshot já faz seu próprio scroll agressivo
+			let scrollResult = { processedImageCount: 0, failedImageCount: 0, failedImages: [] as string[] };
+			if (!useScreenshotMode) {
+				const scroller = new PageScroller(page, { imageSelector: selector });
+				scrollResult = await scroller.scrollAndWait();
+			}
 
 			// Execute post-scraping script
 			await this.executeCustomScript(page, posScript);
@@ -262,8 +266,8 @@ export class ScrapingService implements OnApplicationShutdown {
 			let successfulPaths: (string | null)[];
 
 			if (useScreenshotMode) {
-				// Screenshot mode: capture elements as PNG (lossless)
-				this.logger.log('📸 Using screenshot mode for image capture (PNG)');
+				// Screenshot mode: captura elementos como PNG (máxima qualidade)
+				this.logger.log('📸 Using screenshot mode for image capture (PNG, lossless)');
 				successfulPaths = await this.captureElementsAsScreenshots(
 					page,
 					selector,
@@ -304,7 +308,8 @@ export class ScrapingService implements OnApplicationShutdown {
 	}
 
 	/**
-	 * Captura elementos como screenshots PNG (lossless) para máxima qualidade
+	 * Captura elementos como screenshots JPEG para máxima velocidade
+	 * Otimizado baseado no fluxo Python que é 10x mais rápido
 	 */
 	private async captureElementsAsScreenshots(
 		page: Page,
@@ -313,7 +318,10 @@ export class ScrapingService implements OnApplicationShutdown {
 	): Promise<(string | null)[]> {
 		const elementScreenshot = new ElementScreenshot(page, {
 			selector,
-			format: 'png', // Sempre PNG para máxima qualidade
+			format: 'png', // PNG para máxima qualidade (compressão será feita depois)
+			minSize: 50, // Ignora elementos < 50px
+			scrollWaitMs: 300, // Espera após scroll para renderização
+			scrollPauseMs: 1000, // 1s entre scrolls (igual ao Python: time.sleep(1))
 		});
 
 		const count = await elementScreenshot.getElementCount();
@@ -430,6 +438,14 @@ export class ScrapingService implements OnApplicationShutdown {
 			await page.waitForFunction(() => document.title.length > 0, {
 				timeout: 10000,
 			});
+
+			// Scroll the page to trigger lazy loading of images (especially covers)
+			const scroller = new PageScroller(page, {
+				scrollPauseMs: 500,
+				stabilityChecks: 2,
+				useIncrementalScroll: true,
+			});
+			await scroller.scrollAndWait();
 
 			// Wait for compressions to complete
 			await networkInterceptor?.waitForCompressions();

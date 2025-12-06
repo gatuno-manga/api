@@ -7,7 +7,7 @@ import type { Page } from 'playwright';
 export interface ScrollConfig {
     /**
      * Pause between scrolls in milliseconds.
-     * @default 1500
+     * @default 800
      */
     scrollPauseMs?: number;
 
@@ -34,14 +34,28 @@ export interface ScrollConfig {
      * @default 'img'
      */
     imageSelector?: string;
+
+    /**
+     * Scroll step size in pixels. Uses viewport height if not set.
+     * @default undefined (uses viewport height * 0.7)
+     */
+    scrollStep?: number;
+
+    /**
+     * Whether to use incremental scrolling (smoother, better for lazy loading)
+     * @default true
+     */
+    useIncrementalScroll?: boolean;
 }
 
 const DEFAULT_SCROLL_CONFIG: Required<ScrollConfig> = {
-    scrollPauseMs: 1500,
-    stabilityChecks: 3,
-    maxImageRetries: 3,
-    retryDelayMs: 1000,
+    scrollPauseMs: 300,
+    stabilityChecks: 2,
+    maxImageRetries: 1,
+    retryDelayMs: 500,
     imageSelector: 'img',
+    scrollStep: 3000, // Scroll grande para velocidade (estilo Python)
+    useIncrementalScroll: true,
 };
 
 /**
@@ -167,23 +181,66 @@ export class PageScroller {
                     .querySelectorAll(config.imageSelector)
                     .forEach((img) => processNewImageNode(img as HTMLImageElement));
 
-                // Scroll to bottom
-                let lastHeight = 0;
-                let stableChecks = 0;
+                // First, scroll to top to ensure cover/header images load
+                window.scrollTo(0, 0);
+                await new Promise((resolve) => setTimeout(resolve, 500));
 
-                while (stableChecks < config.stabilityChecks) {
-                    lastHeight = document.body.scrollHeight;
-                    window.scrollTo(0, document.body.scrollHeight);
-                    await new Promise((resolve) =>
-                        setTimeout(resolve, config.scrollPauseMs),
-                    );
-                    const newHeight = document.body.scrollHeight;
-                    if (newHeight === lastHeight) {
-                        stableChecks++;
-                    } else {
-                        stableChecks = 0;
+                // Calculate scroll step
+                const viewportHeight = window.innerHeight;
+                const scrollStep = config.scrollStep > 0
+                    ? config.scrollStep
+                    : Math.floor(viewportHeight * 0.7);
+
+                if (config.useIncrementalScroll) {
+                    // Scroll agressivo estilo Python - muito mais rápido
+                    let lastHeight = document.body.scrollHeight;
+                    let retries = 0;
+
+                    while (retries < config.stabilityChecks) {
+                        // Scroll grande para baixo
+                        window.scrollBy(0, scrollStep);
+
+                        await new Promise((resolve) =>
+                            setTimeout(resolve, config.scrollPauseMs)
+                        );
+
+                        const newHeight = document.body.scrollHeight;
+
+                        if (newHeight > lastHeight) {
+                            lastHeight = newHeight;
+                            retries = 0;
+                        } else {
+                            retries++;
+                            // Pequeno scroll reverso para destravar lazy loads
+                            window.scrollBy(0, -200);
+                            await new Promise((resolve) =>
+                                setTimeout(resolve, 100)
+                            );
+                        }
+                    }
+                } else {
+                    // Original behavior - jump to bottom
+                    let lastHeight = 0;
+                    let stableChecks = 0;
+
+                    while (stableChecks < config.stabilityChecks) {
+                        lastHeight = document.body.scrollHeight;
+                        window.scrollTo(0, document.body.scrollHeight);
+                        await new Promise((resolve) =>
+                            setTimeout(resolve, config.scrollPauseMs),
+                        );
+                        const newHeight = document.body.scrollHeight;
+                        if (newHeight === lastHeight) {
+                            stableChecks++;
+                        } else {
+                            stableChecks = 0;
+                        }
                     }
                 }
+
+                // Scroll back to top briefly to ensure top elements are visible
+                window.scrollTo(0, 0);
+                await new Promise((resolve) => setTimeout(resolve, 300));
 
                 // Wait for all images to finish processing
                 await Promise.all(imageProcessingPromises);
