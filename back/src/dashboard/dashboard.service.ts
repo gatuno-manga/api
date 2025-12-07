@@ -8,7 +8,6 @@ import { Page } from '../books/entitys/page.entity';
 import { Tag } from '../books/entitys/tags.entity';
 import { Author } from '../books/entitys/author.entity';
 import { SensitiveContent } from '../books/entitys/sensitive-content.entity';
-import { ScrapingStatus } from '../books/enum/scrapingStatus.enum';
 
 @Injectable()
 export class DashboardService {
