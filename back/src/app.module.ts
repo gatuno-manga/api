@@ -22,10 +22,12 @@ import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CommonModule } from './common/common.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
 	imports: [
 		CommonModule,
+		DashboardModule,
 		LoggingModule,
 		HealthModule,
 		MetricsModule,

@@ -7,6 +7,7 @@ import { UpdateSavedPageDto } from './dto/update-saved-page.dto';
 import { Page } from 'src/books/entitys/page.entity';
 import { Chapter } from 'src/books/entitys/chapter.entity';
 import { Book } from 'src/books/entitys/book.entity';
+import { AppConfigService } from 'src/app-config/app-config.service';
 
 @Injectable()
 export class SavedPagesService {
@@ -19,7 +20,15 @@ export class SavedPagesService {
         private readonly chapterRepository: Repository<Chapter>,
         @InjectRepository(Book)
         private readonly bookRepository: Repository<Book>,
+        private readonly appConfig: AppConfigService,
     ) {}
+
+    private urlImage(url: string): string {
+        if (!url || url.startsWith('null') || url.startsWith('undefined') || url.startsWith('http'))
+            return url || '';
+        const appUrl = this.appConfig.apiUrl;
+        return `${appUrl}${url}`;
+    }
 
     /**
      * Salva uma página para o usuário
@@ -70,10 +79,17 @@ export class SavedPagesService {
      * Lista todas as páginas salvas do usuário
      */
     async getSavedPages(userId: string): Promise<SavedPage[]> {
-        return this.savedPageRepository.find({
+        const savedPages = await this.savedPageRepository.find({
             where: { user: { id: userId } },
             relations: ['page', 'chapter', 'book'],
             order: { createdAt: 'DESC' },
+        });
+
+        return savedPages.map(savedPage => {
+            if (savedPage.page) {
+                savedPage.page.path = this.urlImage(savedPage.page.path);
+            }
+            return savedPage;
         });
     }
 
@@ -81,7 +97,7 @@ export class SavedPagesService {
      * Lista páginas salvas por livro
      */
     async getSavedPagesByBook(userId: string, bookId: string): Promise<SavedPage[]> {
-        return this.savedPageRepository.find({
+        const savedPages = await this.savedPageRepository.find({
             where: {
                 user: { id: userId },
                 book: { id: bookId },
@@ -89,19 +105,33 @@ export class SavedPagesService {
             relations: ['page', 'chapter'],
             order: { chapter: { index: 'ASC' }, page: { index: 'ASC' } },
         });
+
+        return savedPages.map(savedPage => {
+            if (savedPage.page) {
+                savedPage.page.path = this.urlImage(savedPage.page.path);
+            }
+            return savedPage;
+        });
     }
 
     /**
      * Lista páginas salvas por capítulo
      */
     async getSavedPagesByChapter(userId: string, chapterId: string): Promise<SavedPage[]> {
-        return this.savedPageRepository.find({
+        const savedPages = await this.savedPageRepository.find({
             where: {
                 user: { id: userId },
                 chapter: { id: chapterId },
             },
             relations: ['page'],
             order: { page: { index: 'ASC' } },
+        });
+
+        return savedPages.map(savedPage => {
+            if (savedPage.page) {
+                savedPage.page.path = this.urlImage(savedPage.page.path);
+            }
+            return savedPage;
         });
     }
 
@@ -116,6 +146,10 @@ export class SavedPagesService {
 
         if (!savedPage) {
             throw new NotFoundException('Saved page not found');
+        }
+
+        if (savedPage.page) {
+            savedPage.page.path = this.urlImage(savedPage.page.path);
         }
 
         return savedPage;
