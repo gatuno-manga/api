@@ -72,14 +72,30 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
                             this.logger.warn(`Falha ao salvar capa ${original.url} para livro ${book.title}`);
                             continue;
                         }
-                        const coverBook = this.coverRepository.create({
-                            title: original.title || 'Cover Image',
-                            url: saved,
-                            book: book,
-                            selected: book.covers.length === 0 ? true : false,
+
+                        // Procura uma capa existente pela originalUrl para atualizar
+                        let existingCover = await this.coverRepository.findOne({
+                            where: { originalUrl: original.url, book: { id: book.id } },
                         });
-                        const savedCover = await this.coverRepository.save(coverBook);
-                        this.logger.log(`Capa salva para o livro: ${book.title}`);
+
+                        let savedCover: Cover;
+                        if (existingCover) {
+                            // Atualiza a capa existente com o caminho local
+                            existingCover.url = saved;
+                            savedCover = await this.coverRepository.save(existingCover);
+                            this.logger.log(`Capa atualizada para o livro: ${book.title}`);
+                        } else {
+                            // Cria nova capa (fluxo legado)
+                            const coverBook = this.coverRepository.create({
+                                title: original.title || 'Cover Image',
+                                url: saved,
+                                originalUrl: original.url,
+                                book: book,
+                                selected: book.covers.length === 0 ? true : false,
+                            });
+                            savedCover = await this.coverRepository.save(coverBook);
+                            this.logger.log(`Capa salva para o livro: ${book.title}`);
+                        }
 
                         // Emite evento de capa processada
                         this.eventEmitter.emit('cover.processed', {

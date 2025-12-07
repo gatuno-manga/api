@@ -12,6 +12,7 @@ import { Cover } from '../entitys/cover.entity';
 import { ScrapingService } from 'src/scraping/scraping.service';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
+import { CoverImageService } from './cover-image.service';
 
 const QUEUE_NAME = 'book-update-queue';
 
@@ -49,6 +50,7 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
         private readonly scrapingService: ScrapingService,
         private readonly configService: AppConfigService,
         private readonly eventEmitter: EventEmitter2,
+        private readonly coverImageService: CoverImageService,
     ) {
         super();
     }
@@ -68,6 +70,7 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
     private async recalculateMissingCoverHashes(): Promise<void> {
         const coversWithoutHash = await this.coverRepository.find({
             where: { imageHash: null as any },
+            relations: ['book'],
         });
 
         if (coversWithoutHash.length === 0) {
@@ -82,7 +85,9 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
 
         for (const cover of coversWithoutHash) {
             try {
-                const imageHash = await this.calculateImageHash(cover.url);
+                // Use first original URL as referer if available
+                const refererUrl = cover.book?.originalUrl?.[0];
+                const imageHash = await this.calculateImageHash(cover.url, refererUrl);
                 cover.imageHash = imageHash;
                 await this.coverRepository.save(cover);
                 successCount++;
@@ -127,7 +132,7 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
                 const bookInfo = await this.scrapingService.scrapeBookInfo(bookUrl);
 
                 // Processa novas capas (com deduplicação por hash)
-                const newCovers = await this.processNewCovers(book, bookInfo.covers || []);
+                const newCovers = await this.processNewCovers(book, bookInfo.covers || [], bookUrl);
                 totalNewCovers += newCovers;
 
                 if (bookInfo.chapters.length === 0) {
@@ -205,9 +210,10 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
      * Processa novas capas, verificando duplicatas por hash da imagem.
      * @param book Livro para adicionar as capas
      * @param scrapedCovers Capas extraídas do scraping
+     * @param refererUrl URL de origem para usar como referer no download
      * @returns Número de novas capas adicionadas
      */
-    private async processNewCovers(book: Book, scrapedCovers: ScrapedCover[]): Promise<number> {
+    private async processNewCovers(book: Book, scrapedCovers: ScrapedCover[], refererUrl: string): Promise<number> {
         if (scrapedCovers.length === 0) {
             return 0;
         }
@@ -223,7 +229,7 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
         for (const scrapedCover of scrapedCovers) {
             try {
                 // Baixa a imagem e calcula o hash
-                const imageHash = await this.calculateImageHash(scrapedCover.url);
+                const imageHash = await this.calculateImageHash(scrapedCover.url, refererUrl);
 
                 // Verifica se já existe uma capa com esse hash
                 if (existingHashes.has(imageHash)) {
@@ -241,9 +247,16 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
                     book: book,
                 });
 
-                await this.coverRepository.save(cover);
+                const savedCover = await this.coverRepository.save(cover);
                 existingHashes.add(imageHash);
                 newCoversCount++;
+
+                // Adiciona a capa à fila para download da imagem
+                await this.coverImageService.addCoverToQueue(
+                    book.id,
+                    refererUrl,
+                    [{ url: scrapedCover.url, title: savedCover.title }],
+                );
 
                 this.logger.debug(`Added new cover for book ${book.title}: ${scrapedCover.title || scrapedCover.url}`);
             } catch (error) {
@@ -262,22 +275,25 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
      * Calcula o hash SHA-256 do conteúdo de uma imagem.
      * Suporta tanto URLs HTTP/HTTPS quanto caminhos de arquivo locais.
      * @param imageSource URL ou caminho local da imagem
+     * @param refererUrl URL de origem para usar como referer (opcional)
      * @returns Hash da imagem em hexadecimal
      */
-    private async calculateImageHash(imageSource: string): Promise<string> {
+    private async calculateImageHash(imageSource: string, refererUrl?: string): Promise<string> {
         let buffer: Buffer;
 
         // Verifica se é uma URL ou um caminho local
         if (imageSource.startsWith('http://') || imageSource.startsWith('https://')) {
-            // É uma URL - faz fetch
-            const response = await fetch(imageSource);
+            // Se refererUrl não for fornecido, usa a origem da imagem como contexto
+            // Isso garante que usamos o browser (Playwright) em vez de fetch direto,
+            // evitando bloqueios 403 e problemas de fingerprint
+            const pageUrl = refererUrl || new URL(imageSource).origin;
 
-            if (!response.ok) {
-                throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+            try {
+                buffer = await this.scrapingService.fetchImageBuffer(pageUrl, imageSource);
+            } catch (error) {
+                this.logger.error(`Failed to download image for hash calculation: ${imageSource} (referer: ${pageUrl})`, error);
+                throw error;
             }
-
-            const arrayBuffer = await response.arrayBuffer();
-            buffer = Buffer.from(arrayBuffer);
         } else {
             // É um caminho local - converte o caminho público para o caminho real
             // O caminho público é '/data/xxx.webp', mas o real é '/usr/src/app/data/xxx.webp'

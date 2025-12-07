@@ -167,18 +167,27 @@ export class ScrapingService implements OnApplicationShutdown {
 			}
 
 			let bufferData: Buffer | null = null;
-			let extension: string;
+			let extension: string = '.jpg';
 			let isPreCompressed = false;
 
 			// Try to get from network cache first (more efficient)
-			if (networkInterceptor?.hasImage(imageUrl)) {
-				bufferData = networkInterceptor.getCachedImageAsBuffer(imageUrl);
-				extension = networkInterceptor.getExtension(imageUrl);
-				isPreCompressed = networkInterceptor.isCompressed(imageUrl);
-				this.logger.debug(`Cache hit for: ${imageUrl} (compressed: ${isPreCompressed})`);
+			if (networkInterceptor) {
+				if (networkInterceptor.hasImage(imageUrl)) {
+					bufferData = networkInterceptor.getCachedImageAsBuffer(imageUrl);
+					extension = networkInterceptor.getExtension(imageUrl);
+					isPreCompressed = networkInterceptor.isCompressed(imageUrl);
+					this.logger.debug(`Cache hit for: ${imageUrl} (compressed: ${isPreCompressed})`);
+				} else {
+					this.logger.warn(`Image not found in network cache: ${imageUrl}`);
+				}
 			} else {
 				// Fallback to fetch using Playwright's request context
 				bufferData = await imageDownloader.fetchImageAsBuffer(imageUrl);
+				if (!bufferData) {
+					// Fallback to page context fetch if 403
+					this.logger.debug(`Retrying with page context fetch: ${imageUrl}`);
+					bufferData = await imageDownloader.fetchImageViaPageContext(imageUrl);
+				}
 				extension = path.extname(new URL(imageUrl).pathname) || '.jpg';
 				this.logger.debug(`Cache miss, fetched: ${imageUrl}`);
 			}
@@ -378,16 +387,25 @@ export class ScrapingService implements OnApplicationShutdown {
 
 			// Try to get from cache first (using Buffer for efficiency)
 			let bufferData: Buffer | null = null;
-			let extension: string;
+			let extension: string = '.jpg';
 			let isPreCompressed = false;
 
-			if (networkInterceptor?.hasImage(imageUrl)) {
-				bufferData = networkInterceptor.getCachedImageAsBuffer(imageUrl);
-				extension = networkInterceptor.getExtension(imageUrl);
-				isPreCompressed = networkInterceptor.isCompressed(imageUrl);
+			if (networkInterceptor) {
+				if (networkInterceptor.hasImage(imageUrl)) {
+					bufferData = networkInterceptor.getCachedImageAsBuffer(imageUrl);
+					extension = networkInterceptor.getExtension(imageUrl);
+					isPreCompressed = networkInterceptor.isCompressed(imageUrl);
+				} else {
+					this.logger.warn(`Image not found in network cache: ${imageUrl}`);
+				}
 			} else {
 				const imageDownloader = new ImageDownloader(page);
 				bufferData = await imageDownloader.fetchImageAsBuffer(imageUrl);
+
+				if (!bufferData) {
+					this.logger.debug(`Retrying with page context fetch: ${imageUrl}`);
+					bufferData = await imageDownloader.fetchImageViaPageContext(imageUrl);
+				}
 				extension = path.extname(new URL(imageUrl).pathname) || '.jpg';
 			}
 
@@ -408,6 +426,89 @@ export class ScrapingService implements OnApplicationShutdown {
 		}
 	}
 
+	async fetchImageBuffer(pageUrl: string, imageUrl: string): Promise<Buffer> {
+		const config = await this.getWebsiteConfig(pageUrl);
+		const { concurrencyLimit, blacklistTerms, whitelistTerms, useNetworkInterception } = config;
+		const domain = new URL(pageUrl).hostname;
+
+		await this.concurrencyManager.acquire(domain, concurrencyLimit);
+
+		const { context, page } = await this.createPageWithContext();
+		let networkInterceptor: NetworkInterceptor | undefined;
+
+		try {
+			// Setup network interception with immediate compression
+			if (useNetworkInterception) {
+				networkInterceptor = new NetworkInterceptor(
+					page,
+					{ blacklistTerms, whitelistTerms },
+					this.imageCompressor,
+				);
+				await networkInterceptor.startInterception();
+			}
+
+			await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+			// Wait for compressions to complete
+			await networkInterceptor?.waitForCompressions();
+
+			// Try to get from cache first (using Buffer for efficiency)
+			let bufferData: Buffer | null = null;
+
+			if (networkInterceptor) {
+				// If not in cache, try to force load it via DOM to trigger network request
+				if (!networkInterceptor.hasImage(imageUrl)) {
+					this.logger.debug(`Image not in cache, forcing load via DOM: ${imageUrl}`);
+					try {
+						await page.evaluate(async (url) => {
+							await new Promise<void>((resolve) => {
+								const img = new Image();
+								img.src = url;
+								img.style.display = 'none';
+								img.onload = () => resolve();
+								img.onerror = () => resolve(); // Resolve anyway, interceptor might catch it
+								document.body.appendChild(img);
+							});
+						}, imageUrl);
+
+						// Give some time for the interceptor to process the response
+						await page.waitForTimeout(1000);
+						await networkInterceptor.waitForCompressions();
+					} catch (e) {
+						this.logger.warn(`Failed to force load image via DOM: ${e.message}`);
+					}
+				}
+
+				if (networkInterceptor.hasImage(imageUrl)) {
+					bufferData = networkInterceptor.getCachedImageAsBuffer(imageUrl);
+				} else {
+					this.logger.warn(`Image not found in network cache even after force load: ${imageUrl}`);
+				}
+			} else {
+				const imageDownloader = new ImageDownloader(page);
+				bufferData = await imageDownloader.fetchImageAsBuffer(imageUrl);
+
+				if (!bufferData) {
+					this.logger.debug(`Retrying with page context fetch: ${imageUrl}`);
+					bufferData = await imageDownloader.fetchImageViaPageContext(imageUrl);
+				}
+			}
+
+			if (!bufferData) {
+				throw new Error(`Failed to download image: ${imageUrl}`);
+			}
+
+			return bufferData;
+		} catch (error) {
+			this.logger.error('Error fetching image buffer.', error);
+			throw error;
+		} finally {
+			networkInterceptor?.clearCache();
+			await this.closeContext(context);
+			this.concurrencyManager.release(domain);
+		}
+	}
+
 	/**
 	 * Downloads multiple specific images by their URLs.
 	 * This method directly fetches the provided image URLs without page navigation or scrolling.
@@ -418,16 +519,30 @@ export class ScrapingService implements OnApplicationShutdown {
 		imageUrls: string[],
 	): Promise<(string | null)[]> {
 		const config = await this.getWebsiteConfig(url);
-		const { concurrencyLimit } = config;
+		const { concurrencyLimit, blacklistTerms, whitelistTerms, useNetworkInterception } = config;
 		const domain = new URL(url).hostname;
 
 		await this.concurrencyManager.acquire(domain, concurrencyLimit);
 
 		const { context, page } = await this.createPageWithContext();
+		let networkInterceptor: NetworkInterceptor | undefined;
 
 		try {
+			// Setup network interception with immediate compression
+			if (useNetworkInterception) {
+				networkInterceptor = new NetworkInterceptor(
+					page,
+					{ blacklistTerms, whitelistTerms },
+					this.imageCompressor,
+				);
+				await networkInterceptor.startInterception();
+			}
+
 			// Navigate to the origin URL to establish cookies/session and Referer header
 			await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+			// Wait for compressions to complete
+			await networkInterceptor?.waitForCompressions();
 
 			const imageDownloader = new ImageDownloader(page);
 			const results: (string | null)[] = [];
@@ -435,16 +550,55 @@ export class ScrapingService implements OnApplicationShutdown {
 			// Download each specific image URL
 			for (const imageUrl of imageUrls) {
 				try {
-					// Try direct fetch first, fallback to page context fetch if 403
-					let bufferData = await imageDownloader.fetchImageAsBuffer(imageUrl);
+					let bufferData: Buffer | null = null;
+					let extension: string = '.jpg';
+					let isPreCompressed = false;
 
-					// If direct fetch failed (likely 403), try via page context which inherits Referer
-					if (!bufferData) {
-						this.logger.debug(`Retrying with page context fetch: ${imageUrl}`);
-						bufferData = await imageDownloader.fetchImageViaPageContext(imageUrl);
+					if (networkInterceptor) {
+						// If not in cache, try to force load it via DOM to trigger network request
+						if (!networkInterceptor.hasImage(imageUrl)) {
+							this.logger.debug(`Image not in cache, forcing load via DOM: ${imageUrl}`);
+							try {
+								await page.evaluate(async (url) => {
+									await new Promise<void>((resolve) => {
+										const img = new Image();
+										img.src = url;
+										img.style.display = 'none';
+										img.onload = () => resolve();
+										img.onerror = () => resolve(); // Resolve anyway, interceptor might catch it
+										document.body.appendChild(img);
+									});
+								}, imageUrl);
+
+								// Give some time for the interceptor to process the response
+								await page.waitForTimeout(1000);
+								await networkInterceptor.waitForCompressions();
+							} catch (e) {
+								this.logger.warn(`Failed to force load image via DOM: ${e.message}`);
+							}
+						}
+
+						if (networkInterceptor.hasImage(imageUrl)) {
+							bufferData = networkInterceptor.getCachedImageAsBuffer(imageUrl);
+							extension = networkInterceptor.getExtension(imageUrl);
+							isPreCompressed = networkInterceptor.isCompressed(imageUrl);
+						} else {
+							this.logger.warn(`Image not found in network cache even after force load: ${imageUrl}`);
+						}
 					}
 
-					const extension = path.extname(new URL(imageUrl).pathname) || '.jpg';
+					// Fallback if network interceptor failed or wasn't used
+					if (!bufferData) {
+						// Try direct fetch first, fallback to page context fetch if 403
+						bufferData = await imageDownloader.fetchImageAsBuffer(imageUrl);
+
+						// If direct fetch failed (likely 403), try via page context which inherits Referer
+						if (!bufferData) {
+							this.logger.debug(`Retrying with page context fetch: ${imageUrl}`);
+							bufferData = await imageDownloader.fetchImageViaPageContext(imageUrl);
+						}
+						extension = path.extname(new URL(imageUrl).pathname) || '.jpg';
+					}
 
 					if (!bufferData) {
 						this.logger.warn(`Failed to download image: ${imageUrl}`);
@@ -452,7 +606,9 @@ export class ScrapingService implements OnApplicationShutdown {
 						continue;
 					}
 
-					const saved = await this.filesService.saveBufferFile(bufferData, extension);
+					const saved = isPreCompressed
+						? await this.filesService.savePreCompressedFile(bufferData, extension)
+						: await this.filesService.saveBufferFile(bufferData, extension);
 					results.push(saved);
 				} catch (err) {
 					this.logger.warn(`Error processing image ${imageUrl}`, err);
@@ -462,6 +618,7 @@ export class ScrapingService implements OnApplicationShutdown {
 
 			return results;
 		} finally {
+			networkInterceptor?.clearCache();
 			await this.closeContext(context);
 			this.concurrencyManager.release(domain);
 		}
