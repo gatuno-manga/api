@@ -1,7 +1,10 @@
-# Build stage - usar node para build
-FROM node:24.11.1-alpine AS builder
+# Build stage
+FROM node:24.11.1-bookworm-slim AS builder
 
 WORKDIR /usr/src/app
+
+# Instalar dependências de build para módulos nativos (sharp, bcrypt)
+RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json* ./
 RUN npm ci
@@ -9,23 +12,39 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# Production stage - usar imagem do Playwright
-FROM mcr.microsoft.com/playwright:v1.49.1-noble AS production
+# Remover dependências de dev
+RUN npm prune --production
+
+# Production stage
+FROM node:24.11.1-bookworm-slim AS production
 
 WORKDIR /usr/src/app
 
-# Copiar apenas dependências de produção
-COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev
+# Definir path dos browsers para um local acessível e persistente se necessário
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-# Instalar apenas Chromium
-RUN npx playwright install chromium
+# Copiar dependências de produção primeiro para poder rodar o install do playwright
+COPY --from=builder /usr/src/app/node_modules ./node_modules
+COPY --from=builder /usr/src/app/package.json ./package.json
+
+# Instalar dependências do OS para o Chromium e o próprio Chromium
+# Usamos o playwright do node_modules copiado
+RUN npx playwright install --with-deps chromium && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -rf /root/.npm
 
 # Criar usuário não-root
-RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+RUN groupadd -r appgroup && useradd -r -g appgroup -d /home/appuser appuser && \
+    mkdir -p /home/appuser && chown -R appuser:appgroup /home/appuser && \
+    mkdir -p /ms-playwright && chown -R appuser:appgroup /ms-playwright && \
+    mkdir -p /usr/src/app/data && chown -R appuser:appgroup /usr/src/app/data
 
-# Copiar build
+# Copiar código compilado e .env
 COPY --from=builder --chown=appuser:appgroup /usr/src/app/dist ./dist
+COPY --from=builder --chown=appuser:appgroup /usr/src/app/.env ./.env
+
+# Garantir permissões no node_modules (foi copiado como root antes)
+RUN chown -R appuser:appgroup ./node_modules
 
 USER appuser
 

@@ -22,6 +22,8 @@ services:
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       # Playwright config
       - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    volumes:
+      - api-data:/usr/src/app/data
     depends_on:
       database-master:
         condition: service_healthy
