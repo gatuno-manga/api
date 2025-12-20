@@ -143,6 +143,12 @@ describe('ScrapingService', () => {
 				whitelistTerms: [],
 				useNetworkInterception: true,
 				useScreenshotMode: false,
+				bookInfoExtractScript: undefined,
+				chapterListSelector: undefined,
+				cookies: undefined,
+				localStorage: undefined,
+				sessionStorage: undefined,
+				reloadAfterStorageInjection: undefined,
 			});
 		});
 
@@ -169,6 +175,12 @@ describe('ScrapingService', () => {
 				whitelistTerms: ['cdn.example.com'],
 				useNetworkInterception: true,
 				useScreenshotMode: false,
+				bookInfoExtractScript: undefined,
+				chapterListSelector: undefined,
+				cookies: undefined,
+				localStorage: undefined,
+				sessionStorage: undefined,
+				reloadAfterStorageInjection: false,
 			});
 		});
 

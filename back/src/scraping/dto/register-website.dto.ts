@@ -1,5 +1,69 @@
-import { IsOptional, IsString, IsUrl, IsInt, IsBoolean, IsArray } from 'class-validator';
+import { IsOptional, IsString, IsUrl, IsInt, IsBoolean, IsArray, ValidateNested, IsObject } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+
+/**
+ * Cookie configuration for injection into browser context.
+ */
+export class CookieConfigDto {
+	@ApiProperty({ description: 'Cookie name', example: 'lang' })
+	@IsString()
+	name: string;
+
+	@ApiProperty({ description: 'Cookie value', example: 'en' })
+	@IsString()
+	value: string;
+
+	@ApiPropertyOptional({
+		description: 'Domain for the cookie. If omitted, uses the page domain',
+		example: '.example.com',
+	})
+	@IsOptional()
+	@IsString()
+	domain?: string;
+
+	@ApiPropertyOptional({
+		description: 'Path for the cookie',
+		example: '/',
+		default: '/',
+	})
+	@IsOptional()
+	@IsString()
+	path?: string;
+
+	@ApiPropertyOptional({
+		description: 'Whether the cookie is secure (HTTPS only)',
+		default: false,
+	})
+	@IsOptional()
+	@IsBoolean()
+	secure?: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Whether the cookie is HTTP-only',
+		default: false,
+	})
+	@IsOptional()
+	@IsBoolean()
+	httpOnly?: boolean;
+
+	@ApiPropertyOptional({
+		description: 'SameSite attribute',
+		enum: ['Strict', 'Lax', 'None'],
+		default: 'Lax',
+	})
+	@IsOptional()
+	@IsString()
+	sameSite?: 'Strict' | 'Lax' | 'None';
+
+	@ApiPropertyOptional({
+		description: 'Expiration as Unix timestamp in seconds',
+		example: 'Math.floor(Date.now() / 1000) + 86400 * 365',
+	})
+	@IsOptional()
+	@IsInt()
+	expires?: number;
+}
 
 export class RegisterWebSiteDto {
 	@ApiProperty({
@@ -130,4 +194,51 @@ Example output:
 	@IsOptional()
 	@IsBoolean()
 	useScreenshotMode?: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Cookies to inject before navigation. Useful for language settings, consent bypassing, etc.',
+		type: [CookieConfigDto],
+		example: [
+			{ name: 'lang', value: 'en' },
+			{ name: 'gdpr_accepted', value: 'true' },
+			{ name: 'adult_content', value: '1' },
+		],
+	})
+	@IsOptional()
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => CookieConfigDto)
+	cookies?: CookieConfigDto[];
+
+	@ApiPropertyOptional({
+		description: 'localStorage items to inject after page load. Keys and values as strings.',
+		example: {
+			reader_mode: 'vertical',
+			image_fit: 'width',
+			language: 'en-US',
+		},
+	})
+	@IsOptional()
+	@IsObject()
+	localStorage?: Record<string, string>;
+
+	@ApiPropertyOptional({
+		description: 'sessionStorage items to inject after page load. Keys and values as strings.',
+		example: {
+			verified_age: 'true',
+			session_quality: 'high',
+		},
+	})
+	@IsOptional()
+	@IsObject()
+	sessionStorage?: Record<string, string>;
+
+	@ApiPropertyOptional({
+		description: 'Whether to reload the page after injecting localStorage/sessionStorage. Some sites read configs only on initial load.',
+		example: false,
+		default: false,
+	})
+	@IsOptional()
+	@IsBoolean()
+	reloadAfterStorageInjection?: boolean;
 }

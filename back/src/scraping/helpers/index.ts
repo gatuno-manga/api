@@ -10,3 +10,8 @@ export {
     ElementScreenshot,
     ElementScreenshotOptions,
 } from './element-screenshot';
+export {
+    StorageInjector,
+    StorageConfig,
+    CookieConfig,
+} from './storage-injector';
