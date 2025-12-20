@@ -778,8 +778,8 @@ export class ScrapingService implements OnApplicationShutdown {
 				}
 			}
 
-			// SPAs (ex: MangaDex) carregam capítulos via API após o primeiro paint.
-			// Aguarda estabilizar rede e, se houver seletor, aguarda capítulos aparecerem.
+			// SPAs (e.g. MangaDex) load chapters via API after the first paint.
+			// Wait for the network to stabilize and, if a selector is provided, wait for chapters to appear.
 			await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => undefined);
 			if (chapterListSelector) {
 				this.logger.debug(`Waiting for chapter selector: ${chapterListSelector}`);
