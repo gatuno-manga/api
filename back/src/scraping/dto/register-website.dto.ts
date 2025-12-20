@@ -58,7 +58,7 @@ export class CookieConfigDto {
 
 	@ApiPropertyOptional({
 		description: 'Expiration as Unix timestamp in seconds',
-		example: 1735689600,
+		example: 'Math.floor(Date.now() / 1000) + 86400 * 365',
 	})
 	@IsOptional()
 	@IsInt()
