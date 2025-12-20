@@ -115,7 +115,7 @@ export class Website {
 	}>;
 
 	/**
-	 * Itens de localStorage a serem injetados após carregamento da página.
+	 * LocalStorage items to be injected after the page has loaded.
 	 */
 	@Column({
 		type: 'json',
