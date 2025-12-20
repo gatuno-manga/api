@@ -7,7 +7,7 @@ import { WebsiteService } from './website.service';
 import { WebsiteConfigDto } from './dto/website-config.dto';
 import { PlaywrightBrowserFactory } from './browser';
 import { IConcurrencyManager, InMemoryConcurrencyManager } from './concurrency';
-import { ImageDownloader, PageScroller, NetworkInterceptor, ElementScreenshot, ImageCompressor } from './helpers';
+import { ImageDownloader, PageScroller, NetworkInterceptor, ElementScreenshot, ImageCompressor, StorageInjector, StorageConfig, CookieConfig } from './helpers';
 
 @Injectable()
 export class ScrapingService implements OnApplicationShutdown {
@@ -106,6 +106,10 @@ export class ScrapingService implements OnApplicationShutdown {
 		let useScreenshotMode = false;
 		let chapterListSelector: string | undefined;
 		let bookInfoExtractScript: string | undefined;
+		let cookies: CookieConfig[] | undefined;
+		let localStorage: Record<string, string> | undefined;
+		let sessionStorage: Record<string, string> | undefined;
+		let reloadAfterStorageInjection: boolean | undefined;
 
 		const domain = new URL(url).hostname;
 		const website = await this.webSiteService.getByUrl(domain);
@@ -121,6 +125,10 @@ export class ScrapingService implements OnApplicationShutdown {
 			useScreenshotMode = website.useScreenshotMode ?? false;
 			chapterListSelector = website.chapterListSelector || undefined;
 			bookInfoExtractScript = website.bookInfoExtractScript || undefined;
+			cookies = website.cookies || undefined;
+			localStorage = website.localStorage || undefined;
+			sessionStorage = website.sessionStorage || undefined;
+			reloadAfterStorageInjection = website.reloadAfterStorageInjection ?? false;
 		}
 
 		return {
@@ -134,7 +142,26 @@ export class ScrapingService implements OnApplicationShutdown {
 			useScreenshotMode,
 			chapterListSelector,
 			bookInfoExtractScript,
+			cookies,
+			localStorage,
+			sessionStorage,
+			reloadAfterStorageInjection,
 		};
+	}
+
+	/**
+	 * Creates a StorageInjector from the website config.
+	 */
+	private createStorageInjector(config: WebsiteConfigDto): StorageInjector | null {
+		const storageConfig: StorageConfig = {
+			cookies: config.cookies,
+			localStorage: config.localStorage,
+			sessionStorage: config.sessionStorage,
+			reloadAfterStorageInjection: config.reloadAfterStorageInjection,
+		};
+
+		const injector = new StorageInjector(storageConfig);
+		return injector.hasStorageConfig() ? injector : null;
 	}
 
 	private async executeCustomScript(
@@ -226,8 +253,16 @@ export class ScrapingService implements OnApplicationShutdown {
 
 		const { context, page } = await this.createPageWithContext();
 		let networkInterceptor: NetworkInterceptor | undefined;
+		const storageInjector = this.createStorageInjector(config);
 
 		try {
+			// Inject cookies BEFORE navigation (they will be sent with the first request)
+			if (storageInjector) {
+				await storageInjector.injectCookies(context, domain);
+				// Ensure storage is applied before any site scripts execute
+				await storageInjector.addInitScriptForStorage(page);
+			}
+
 			// Setup network interception BEFORE navigation (if enabled and not in screenshot mode)
 			// Pass compressor for immediate compression during caching (memory optimization)
 			if (useNetworkInterception && !useScreenshotMode) {
@@ -247,6 +282,33 @@ export class ScrapingService implements OnApplicationShutdown {
 			await page.waitForFunction(() => document.title.length > 0, {
 				timeout: 10000,
 			});
+
+			// Inject localStorage/sessionStorage AFTER navigation (requires domain to be loaded)
+			// and optionally reload the page if configured
+			if (storageInjector) {
+				const reloaded = await storageInjector.injectStorageAndReload(page);
+				if (reloaded) {
+					this.logger.debug('Page reloaded after storage injection');
+					// After reload, NetworkInterceptor needs to re-intercept new requests
+					// The init script will re-apply storage on reload automatically
+
+					// Wait for page to stabilize after reload (especially for SPAs)
+					await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => undefined);
+				}
+			}
+
+			// Wait for title to be present after potential reload
+			await page.waitForFunction(() => document.title.length > 0, {
+				timeout: 10000,
+			});
+
+			// For SPAs, wait for content images to appear before scrolling
+			if (selector && selector !== 'img') {
+				this.logger.debug(`Waiting for selector: ${selector}`);
+				await page.waitForSelector(selector, { timeout: 15000 }).catch(() => {
+					this.logger.debug(`Selector "${selector}" not found within timeout, proceeding anyway`);
+				});
+			}
 
 			// Execute pre-scraping script
 			await this.executeCustomScript(page, preScript);
@@ -368,8 +430,15 @@ export class ScrapingService implements OnApplicationShutdown {
 
 		const { context, page } = await this.createPageWithContext();
 		let networkInterceptor: NetworkInterceptor | undefined;
+		const storageInjector = this.createStorageInjector(config);
 
 		try {
+			// Inject cookies BEFORE navigation
+			if (storageInjector) {
+				await storageInjector.injectCookies(context, domain);
+				await storageInjector.addInitScriptForStorage(page);
+			}
+
 			// Setup network interception with immediate compression
 			if (useNetworkInterception) {
 				networkInterceptor = new NetworkInterceptor(
@@ -381,6 +450,11 @@ export class ScrapingService implements OnApplicationShutdown {
 			}
 
 			await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+			// Inject localStorage/sessionStorage after navigation
+			if (storageInjector) {
+				await storageInjector.injectStorageAndReload(page);
+			}
 
 			// Wait for compressions to complete
 			await networkInterceptor?.waitForCompressions();
@@ -435,8 +509,15 @@ export class ScrapingService implements OnApplicationShutdown {
 
 		const { context, page } = await this.createPageWithContext();
 		let networkInterceptor: NetworkInterceptor | undefined;
+		const storageInjector = this.createStorageInjector(config);
 
 		try {
+			// Inject cookies BEFORE navigation
+			if (storageInjector) {
+				await storageInjector.injectCookies(context, domain);
+				await storageInjector.addInitScriptForStorage(page);
+			}
+
 			// Setup network interception with immediate compression
 			if (useNetworkInterception) {
 				networkInterceptor = new NetworkInterceptor(
@@ -448,6 +529,11 @@ export class ScrapingService implements OnApplicationShutdown {
 			}
 
 			await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+			// Inject localStorage/sessionStorage after navigation
+			if (storageInjector) {
+				await storageInjector.injectStorageAndReload(page);
+			}
 
 			// Wait for compressions to complete
 			await networkInterceptor?.waitForCompressions();
@@ -526,8 +612,15 @@ export class ScrapingService implements OnApplicationShutdown {
 
 		const { context, page } = await this.createPageWithContext();
 		let networkInterceptor: NetworkInterceptor | undefined;
+		const storageInjector = this.createStorageInjector(config);
 
 		try {
+			// Inject cookies BEFORE navigation
+			if (storageInjector) {
+				await storageInjector.injectCookies(context, domain);
+				await storageInjector.addInitScriptForStorage(page);
+			}
+
 			// Setup network interception with immediate compression
 			if (useNetworkInterception) {
 				networkInterceptor = new NetworkInterceptor(
@@ -540,6 +633,11 @@ export class ScrapingService implements OnApplicationShutdown {
 
 			// Navigate to the origin URL to establish cookies/session and Referer header
 			await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+			// Inject localStorage/sessionStorage after navigation
+			if (storageInjector) {
+				await storageInjector.injectStorageAndReload(page);
+			}
 
 			// Wait for compressions to complete
 			await networkInterceptor?.waitForCompressions();
@@ -633,7 +731,9 @@ export class ScrapingService implements OnApplicationShutdown {
 		const config = await this.getWebsiteConfig(bookUrl);
 		const { chapterListSelector, bookInfoExtractScript, concurrencyLimit, preScript } = config;
 		const domain = new URL(bookUrl).hostname;
-
+		console.log(bookUrl);
+		console.log(domain);
+		console.log(config);
 		if (!chapterListSelector && !bookInfoExtractScript) {
 			this.logger.warn(`No book info configuration for domain: ${domain}`);
 			return { chapters: [] };
@@ -642,14 +742,64 @@ export class ScrapingService implements OnApplicationShutdown {
 		await this.concurrencyManager.acquire(domain, concurrencyLimit);
 
 		const { context, page } = await this.createPageWithContext();
+		const storageInjector = this.createStorageInjector(config);
 
 		try {
+			// Inject cookies BEFORE navigation
+			if (storageInjector) {
+				await storageInjector.injectCookies(context, domain);
+				await storageInjector.addInitScriptForStorage(page);
+			}
+
 			await page.goto(bookUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
 			// Aguarda título carregar
 			await page.waitForFunction(() => document.title.length > 0, {
 				timeout: 10000,
 			});
+
+			// Inject localStorage/sessionStorage after navigation
+			// For SPAs like MangaDex, we MUST reload to apply preferences correctly
+			if (storageInjector) {
+				// Force reload for book info scraping since SPAs read preferences on init
+				const hasLocalStorage = config.localStorage && Object.keys(config.localStorage).length > 0;
+				if (hasLocalStorage) {
+					// Inject first
+					await storageInjector.injectLocalStorage(page);
+					await storageInjector.injectSessionStorage(page);
+
+					this.logger.debug('Forcing reload to apply localStorage preferences for SPA');
+					await page.reload({ waitUntil: 'domcontentloaded' });
+
+					// Wait for SPA to stabilize and make API calls with new preferences
+					await page.waitForLoadState('networkidle', { timeout: 20000 }).catch(() => undefined);
+				} else {
+					await storageInjector.injectStorageAndReload(page);
+				}
+			}
+
+			// SPAs (ex: MangaDex) carregam capítulos via API após o primeiro paint.
+			// Aguarda estabilizar rede e, se houver seletor, aguarda capítulos aparecerem.
+			await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => undefined);
+			if (chapterListSelector) {
+				this.logger.debug(`Waiting for chapter selector: ${chapterListSelector}`);
+				await page
+					.waitForSelector(chapterListSelector, { timeout: 15000 })
+					.catch(() => {
+						this.logger.debug(`Chapter selector "${chapterListSelector}" not found within timeout`);
+					});
+			}
+
+			// Debug: log page state before extraction
+			const debugInfo = await page.evaluate(() => {
+				return {
+					url: window.location.href,
+					title: document.title,
+					bodyLength: document.body?.innerHTML?.length || 0,
+					localStorage_md: window.localStorage.getItem('md')?.substring(0, 200),
+				};
+			});
+			this.logger.debug(`Page state before extraction: ${JSON.stringify(debugInfo)}`);
 
 			// Executa script de pré-processamento se existir
 			await this.executeCustomScript(page, preScript);

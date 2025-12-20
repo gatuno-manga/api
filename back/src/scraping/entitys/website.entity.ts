@@ -95,6 +95,53 @@ export class Website {
 	})
 	useScreenshotMode: boolean;
 
+	/**
+	 * Cookies a serem injetados antes da navegação.
+	 * Útil para configurações de idioma, bypass de consentimento, etc.
+	 */
+	@Column({
+		type: 'json',
+		nullable: true,
+	})
+	cookies: Array<{
+		name: string;
+		value: string;
+		domain?: string;
+		path?: string;
+		secure?: boolean;
+		httpOnly?: boolean;
+		sameSite?: 'Strict' | 'Lax' | 'None';
+		expires?: number;
+	}>;
+
+	/**
+	 * Itens de localStorage a serem injetados após carregamento da página.
+	 */
+	@Column({
+		type: 'json',
+		nullable: true,
+	})
+	localStorage: Record<string, string>;
+
+	/**
+	 * Itens de sessionStorage a serem injetados após carregamento da página.
+	 */
+	@Column({
+		type: 'json',
+		nullable: true,
+	})
+	sessionStorage: Record<string, string>;
+
+	/**
+	 * Se deve recarregar a página após injetar localStorage/sessionStorage.
+	 * Alguns sites leem configurações apenas no carregamento inicial.
+	 */
+	@Column({
+		type: 'boolean',
+		default: false,
+	})
+	reloadAfterStorageInjection: boolean;
+
 	@CreateDateColumn()
 	createdAt: Date;
 
