@@ -34,13 +34,20 @@ export class PlaywrightBrowserFactory implements IBrowserFactory {
     async launch(): Promise<Browser> {
         this.logger.debug('Launching browser...');
 
-        // Se wsEndpoint estiver configurado, conecta a um browser remoto
+        // Se wsEndpoint estiver configurado, tenta conectar a um browser remoto via CDP
         if (this.config.wsEndpoint) {
-            this.logger.debug(`Connecting to remote browser at ${this.config.wsEndpoint}`);
-            const { chromium } = await import('playwright');
-            const browser = await chromium.connect(this.config.wsEndpoint);
-            this.logger.debug('Connected to remote browser');
-            return browser;
+            try {
+                this.logger.debug(`Attempting to connect to remote browser via CDP at ${this.config.wsEndpoint}`);
+                const { chromium } = await import('playwright');
+                const browser = await chromium.connectOverCDP(this.config.wsEndpoint, {
+                    timeout: 5000, // 5 segundos de timeout para conexão
+                });
+                this.logger.debug('Connected to remote browser via CDP');
+                return browser;
+            } catch (error) {
+                this.logger.warn(`Failed to connect to remote browser at ${this.config.wsEndpoint}, falling back to local browser: ${error.message}`);
+                // Fallback para browser local
+            }
         }
 
         // Configuração para modo debug (browser visível)
