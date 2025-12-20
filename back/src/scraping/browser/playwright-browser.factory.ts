@@ -45,7 +45,13 @@ export class PlaywrightBrowserFactory implements IBrowserFactory {
                 this.logger.debug('Connected to remote browser via CDP');
                 return browser;
             } catch (error) {
-                this.logger.warn(`Failed to connect to remote browser at ${this.config.wsEndpoint}, falling back to local browser: ${error.message}`);
+                const errorMessage =
+                    error instanceof Error
+                        ? error.message
+                        : String(error);
+                this.logger.warn(
+                    `Failed to connect to remote browser at ${this.config.wsEndpoint}, falling back to local browser: ${errorMessage}`,
+                );
                 // Fallback para browser local
             }
         }
