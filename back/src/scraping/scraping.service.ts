@@ -456,7 +456,7 @@ export class ScrapingService implements OnApplicationShutdown {
 				await storageInjector.injectStorageAndReload(page);
 			}
 
-			// Wait for compressions to complete
+			// Ensure all intercepted network operations (including compressions) have completed
 			await networkInterceptor?.waitForCompressions();
 
 			// Try to get from cache first (using Buffer for efficiency)
