@@ -801,7 +801,7 @@ export class ScrapingService implements OnApplicationShutdown {
 			});
 			this.logger.debug(`Page state before extraction: ${JSON.stringify(debugInfo)}`);
 
-			// Executa script de pré-processamento se existir
+			// Execute pre-processing script if it exists
 			await this.executeCustomScript(page, preScript);
 
 			let result: { covers?: { url: string; title?: string }[]; chapters: { title: string; url: string; index: number; isFinal?: boolean }[] } = { chapters: [] };
