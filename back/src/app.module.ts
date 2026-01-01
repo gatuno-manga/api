@@ -73,7 +73,17 @@ import { DashboardModule } from './dashboard/dashboard.module';
 				connection: {
 					host: configService.redis.host,
 					port: configService.redis.port,
-					password: configService.redis.password,
+					password: configService.redis.password || undefined,
+					connectTimeout: 10000,
+					commandTimeout: 30000,
+					keepAlive: 30000,
+					maxRetriesPerRequest: null,
+					retryStrategy: (times: number) => {
+						if (times > 10) return null;
+						return Math.min(times * 50, 2000);
+					},
+					enableReadyCheck: true,
+					enableOfflineQueue: true,
 				},
 			}),
 		}),

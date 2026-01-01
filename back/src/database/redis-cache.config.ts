@@ -4,22 +4,23 @@ import { AppConfigService } from 'src/app-config/app-config.service';
 import { CacheableMemory, Keyv } from 'cacheable';
 import { createKeyv } from '@keyv/redis';
 
-export const config = (
-    configService: AppConfigService,
-): CacheModuleAsyncOptions => ({
+export const config: CacheModuleAsyncOptions = {
     isGlobal: true,
     imports: [AppConfigModule],
     inject: [AppConfigService],
     useFactory: async (configService: AppConfigService) => {
-        const password = configService.redis.password ? `:${configService.redis.password}@` : '';
-        const redisUrl = `redis://${password}${configService.redis.host}:${configService.redis.port}`;
+        const { host, port, password } = configService.redis;
+        const redisUrl = password
+            ? `redis://:${password}@${host}:${port}`
+            : `redis://${host}:${port}`;
+
         return {
             stores: [
                 new Keyv({
                     store: new CacheableMemory({ ttl: 60000, lruSize: 5000 }),
                 }),
                 createKeyv(redisUrl),
-            ]
+            ],
         };
     },
-});
+};

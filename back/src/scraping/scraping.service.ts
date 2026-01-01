@@ -1,12 +1,14 @@
-import { Injectable, Logger, OnApplicationShutdown } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationShutdown, Inject } from '@nestjs/common';
 import type { Browser, BrowserContext, Page } from 'playwright';
 import * as path from 'path';
+import type { Redis } from 'ioredis';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { FilesService } from 'src/files/files.service';
 import { WebsiteService } from './website.service';
 import { WebsiteConfigDto } from './dto/website-config.dto';
 import { PlaywrightBrowserFactory } from './browser';
-import { IConcurrencyManager, InMemoryConcurrencyManager } from './concurrency';
+import { IConcurrencyManager, RedisConcurrencyManager } from './concurrency';
+import { REDIS_CLIENT } from 'src/redis';
 import { ImageDownloader, PageScroller, NetworkInterceptor, ElementScreenshot, ImageCompressor, StorageInjector, StorageConfig, CookieConfig } from './helpers';
 
 @Injectable()
@@ -14,17 +16,18 @@ export class ScrapingService implements OnApplicationShutdown {
 	private readonly logger = new Logger(ScrapingService.name);
 	private browser: Browser | null = null;
 	private browserFactory: PlaywrightBrowserFactory;
-	private concurrencyManager: IConcurrencyManager =
-		new InMemoryConcurrencyManager();
+	private concurrencyManager: IConcurrencyManager;
 	private imageCompressor: ImageCompressor | undefined;
 
 	constructor(
 		private readonly appConfigService: AppConfigService,
 		private readonly filesService: FilesService,
 		private readonly webSiteService: WebsiteService,
+		@Inject(REDIS_CLIENT) private readonly redis: Redis,
 	) {
 		this.initializeBrowserFactory();
 		this.initializeImageCompressor();
+		this.initializeConcurrencyManager();
 	}
 
 	private initializeBrowserFactory(): void {
@@ -42,6 +45,15 @@ export class ScrapingService implements OnApplicationShutdown {
 			this.logger.log('🔍 Playwright DEBUG mode enabled');
 		}
 		this.logger.debug('Browser factory initialized');
+	}
+
+	private initializeConcurrencyManager(): void {
+		this.concurrencyManager = new RedisConcurrencyManager(this.redis, {
+			slotTtlMs: 1_200_000, // 20 minutos
+			pollIntervalMs: 500, // 500ms entre tentativas
+			maxWaitMs: 3_600_000, // 1 hora máximo de espera
+		});
+		this.logger.log('✅ Redis concurrency manager initialized');
 	}
 
 	private initializeImageCompressor(): void {
@@ -727,7 +739,7 @@ export class ScrapingService implements OnApplicationShutdown {
 	 * @param bookUrl URL da página do livro
 	 * @returns Objeto com covers (array de capas com url e title) e chapters (lista de capítulos)
 	 */
-	async scrapeBookInfo(bookUrl: string): Promise<{ covers?: { url: string; title?: string }[]; chapters: { title: string; url: string; index: number; isFinal?: boolean }[] }> {
+	async scrapeBookInfo(bookUrl: string): Promise<{ covers?: { url: string; title?: string; }[]; chapters: { title: string; url: string; index: number; isFinal?: boolean; }[]; }> {
 		const config = await this.getWebsiteConfig(bookUrl);
 		const { chapterListSelector, bookInfoExtractScript, concurrencyLimit, preScript } = config;
 		const domain = new URL(bookUrl).hostname;
@@ -804,15 +816,15 @@ export class ScrapingService implements OnApplicationShutdown {
 			// Execute pre-processing script if it exists
 			await this.executeCustomScript(page, preScript);
 
-			let result: { covers?: { url: string; title?: string }[]; chapters: { title: string; url: string; index: number; isFinal?: boolean }[] } = { chapters: [] };
+			let result: { covers?: { url: string; title?: string; }[]; chapters: { title: string; url: string; index: number; isFinal?: boolean; }[]; } = { chapters: [] };
 
 			if (bookInfoExtractScript) {
 				// Usa script unificado para extrair todas as informações
 				try {
 					const rawResult = await page.evaluate(bookInfoExtractScript) as {
-						covers?: Array<string | { url: string; title?: string }>;
-						cover?: string | { url: string; title?: string };
-						chapters?: unknown[]
+						covers?: Array<string | { url: string; title?: string; }>;
+						cover?: string | { url: string; title?: string; };
+						chapters?: unknown[];
 					};
 					// Valida a estrutura do resultado
 					if (!rawResult || typeof rawResult !== 'object') {
@@ -820,7 +832,7 @@ export class ScrapingService implements OnApplicationShutdown {
 					}
 
 					// Normaliza covers para o formato { url, title }
-					let normalizedCovers: { url: string; title?: string }[] = [];
+					let normalizedCovers: { url: string; title?: string; }[] = [];
 					if (Array.isArray(rawResult.covers)) {
 						normalizedCovers = rawResult.covers.map((c, i) => {
 							if (typeof c === 'string') {
@@ -838,7 +850,7 @@ export class ScrapingService implements OnApplicationShutdown {
 
 					result = {
 						covers: normalizedCovers,
-						chapters: Array.isArray(rawResult.chapters) ? rawResult.chapters as { title: string; url: string; index: number; isFinal?: boolean }[] : [],
+						chapters: Array.isArray(rawResult.chapters) ? rawResult.chapters as { title: string; url: string; index: number; isFinal?: boolean; }[] : [],
 					};
 				} catch (error) {
 					this.logger.error(`Error executing bookInfoExtractScript: ${error.message}`);
@@ -877,7 +889,7 @@ export class ScrapingService implements OnApplicationShutdown {
 	 * @param bookUrl URL da página do livro
 	 * @returns Lista de capítulos encontrados com título, URL e índice
 	 */
-	async scrapeChapterList(bookUrl: string): Promise<{ title: string; url: string; index: number }[]> {
+	async scrapeChapterList(bookUrl: string): Promise<{ title: string; url: string; index: number; }[]> {
 		const result = await this.scrapeBookInfo(bookUrl);
 		return result.chapters;
 	}

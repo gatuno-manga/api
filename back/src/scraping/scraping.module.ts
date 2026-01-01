@@ -7,6 +7,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { WebsiteService } from './website.service';
 import { WebsiteController } from './website.controller';
 import { AuthModule } from 'src/auth/auth.module';
+import { RedisModule } from 'src/redis';
 
 @Module({
 	controllers: [WebsiteController],
@@ -16,6 +17,7 @@ import { AuthModule } from 'src/auth/auth.module';
 		AppConfigModule,
 		FilesModule,
 		AuthModule,
+		RedisModule,
 		TypeOrmModule.forFeature([Website]),
 	],
 })

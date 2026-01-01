@@ -15,23 +15,7 @@ import { createKeyv } from '@keyv/redis';
 			inject: [AppConfigService],
 			useFactory: primaryDatabaseConfig,
 		}),
-		CacheModule.registerAsync({
-			isGlobal: true,
-			imports: [AppConfigModule],
-			inject: [AppConfigService],
-			useFactory:
-				async (configService: AppConfigService) => {
-					const redisUrl = `redis://${configService.redis.host}:${configService.redis.port}`;
-					return {
-						stores: [
-							new Keyv({
-								store: new CacheableMemory(),
-							}),
-							createKeyv(redisUrl),
-						],
-					};
-				},
-		}),
+		CacheModule.registerAsync(redisCacheConfig),
 	],
 })
 export class DatabaseModule {}
