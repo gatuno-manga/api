@@ -12,11 +12,19 @@ import { SensitiveContent } from '../books/entitys/sensitive-content.entity';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Book, Chapter, User, Page, Tag, Author, SensitiveContent]),
-    AuthModule
-  ],
-  controllers: [DashboardController],
-  providers: [DashboardService],
+	imports: [
+		TypeOrmModule.forFeature([
+			Book,
+			Chapter,
+			User,
+			Page,
+			Tag,
+			Author,
+			SensitiveContent,
+		]),
+		AuthModule,
+	],
+	controllers: [DashboardController],
+	providers: [DashboardService],
 })
 export class DashboardModule {}

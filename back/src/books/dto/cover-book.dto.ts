@@ -12,7 +12,10 @@ export class CoverBookDto {
 	@IsUrl()
 	urlOrigin: string;
 
-	static fromLegacyFormat(data: { urlImg: string; urlOrigin: string }): CoverBookDto {
+	static fromLegacyFormat(data: {
+		urlImg: string;
+		urlOrigin: string;
+	}): CoverBookDto {
 		const cover = new CoverBookDto();
 		const urlImage = new UrlImageDto();
 		urlImage.url = data.urlImg;

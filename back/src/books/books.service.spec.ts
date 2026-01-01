@@ -136,7 +136,9 @@ describe('BooksService', () => {
 
 			const result = await service.createBook(dto);
 
-			expect(mockBookCreationService.createBook).toHaveBeenCalledWith(dto);
+			expect(mockBookCreationService.createBook).toHaveBeenCalledWith(
+				dto,
+			);
 			expect(result).toEqual(mockResult);
 		});
 	});
@@ -146,21 +148,32 @@ describe('BooksService', () => {
 			const title = 'Test Book';
 			const altTitles = ['Alt1', 'Alt2'];
 			const mockResult = { conflict: false };
-			mockBookCreationService.checkBookTitleConflict.mockResolvedValue(mockResult);
+			mockBookCreationService.checkBookTitleConflict.mockResolvedValue(
+				mockResult,
+			);
 
-			const result = await service.checkBookTitleConflict(title, altTitles);
+			const result = await service.checkBookTitleConflict(
+				title,
+				altTitles,
+			);
 
-			expect(mockBookCreationService.checkBookTitleConflict).toHaveBeenCalledWith(title, altTitles);
+			expect(
+				mockBookCreationService.checkBookTitleConflict,
+			).toHaveBeenCalledWith(title, altTitles);
 			expect(result).toEqual(mockResult);
 		});
 
 		it('should use empty array as default for alternativeTitles', async () => {
 			const title = 'Test Book';
-			mockBookCreationService.checkBookTitleConflict.mockResolvedValue({ conflict: false });
+			mockBookCreationService.checkBookTitleConflict.mockResolvedValue({
+				conflict: false,
+			});
 
 			await service.checkBookTitleConflict(title);
 
-			expect(mockBookCreationService.checkBookTitleConflict).toHaveBeenCalledWith(title, []);
+			expect(
+				mockBookCreationService.checkBookTitleConflict,
+			).toHaveBeenCalledWith(title, []);
 		});
 	});
 
@@ -173,7 +186,10 @@ describe('BooksService', () => {
 
 			const result = await service.updateBook(id, dto);
 
-			expect(mockBookUpdateService.updateBook).toHaveBeenCalledWith(id, dto);
+			expect(mockBookUpdateService.updateBook).toHaveBeenCalledWith(
+				id,
+				dto,
+			);
 			expect(result).toEqual(mockResult);
 		});
 	});
@@ -190,21 +206,24 @@ describe('BooksService', () => {
 			expect(mockBookQueryService.getAllBooks).toHaveBeenCalledWith(
 				options,
 				maxWeight,
-				expect.any(Array)
+				expect.any(Array),
 			);
 			expect(result).toEqual(mockResult);
 		});
 
 		it('should use 0 as default maxWeightSensitiveContent', async () => {
 			const options = { page: 1, take: 10 } as any;
-			mockBookQueryService.getAllBooks.mockResolvedValue({ data: [], meta: {} });
+			mockBookQueryService.getAllBooks.mockResolvedValue({
+				data: [],
+				meta: {},
+			});
 
 			await service.getAllBooks(options);
 
 			expect(mockBookQueryService.getAllBooks).toHaveBeenCalledWith(
 				options,
 				0,
-				expect.any(Array)
+				expect.any(Array),
 			);
 		});
 	});
@@ -218,7 +237,10 @@ describe('BooksService', () => {
 
 			const result = await service.getOne(id, maxWeight);
 
-			expect(mockBookQueryService.getOne).toHaveBeenCalledWith(id, maxWeight);
+			expect(mockBookQueryService.getOne).toHaveBeenCalledWith(
+				id,
+				maxWeight,
+			);
 			expect(result).toEqual(mockBook);
 		});
 	});

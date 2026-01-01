@@ -1,23 +1,16 @@
 import { CreateBookDto } from './create-book.dto';
 import { OmitType, PartialType } from '@nestjs/mapped-types';
 import {
-	IsNumber,
-	IsObject,
 	IsOptional,
-	IsPositive,
 	IsString,
 	ValidateNested,
 	IsEnum,
 	IsUrl,
-	Min,
-	Max,
 } from 'class-validator';
-import { Transform, Type } from 'class-transformer';
-import { CoverBookDto } from './cover-book.dto';
+import { Type } from 'class-transformer';
 import { BookType } from '../enum/book-type.enum';
 import { CreateAuthorDto } from './create-author.dto';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { transformCoverBookLegacyFormat } from './transformers/cover-book.transformer';
 
 export class UpdateBookDto extends PartialType(
 	OmitType(CreateBookDto, ['chapters', 'validator'] as const),

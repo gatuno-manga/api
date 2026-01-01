@@ -10,11 +10,11 @@ import { RolesEnum } from '../users/enum/roles.enum';
 @UseGuards(JwtAuthGuard)
 @Roles(RolesEnum.ADMIN)
 export class DashboardController {
-  constructor(private readonly dashboardService: DashboardService) {}
+	constructor(private readonly dashboardService: DashboardService) {}
 
-  @Get('overview')
-  @ApiOperation({ summary: 'Obter visão geral do dashboard' })
-  async getOverview() {
-    return this.dashboardService.getOverview();
-  }
+	@Get('overview')
+	@ApiOperation({ summary: 'Obter visão geral do dashboard' })
+	async getOverview() {
+		return this.dashboardService.getOverview();
+	}
 }

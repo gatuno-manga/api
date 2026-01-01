@@ -11,7 +11,8 @@ export class SignUpAuthDto {
 	email: string;
 
 	@ApiProperty({
-		description: 'User password (minimum 8 characters, at least 1 number, 1 symbol, and 1 uppercase letter)',
+		description:
+			'User password (minimum 8 characters, at least 1 number, 1 symbol, and 1 uppercase letter)',
 		example: 'MyP@ssw0rd',
 		minLength: 8,
 		format: 'password',

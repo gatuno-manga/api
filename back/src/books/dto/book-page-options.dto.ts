@@ -1,7 +1,14 @@
 import { PageOptionsDto } from 'src/pages/page-options.dto';
 import { BookType } from '../enum/book-type.enum';
 import { ToArray } from 'src/pages/decorator/to-array.decorator';
-import { IsIn, IsNumber, IsOptional, IsPositive, IsString, IsUUID } from 'class-validator';
+import {
+	IsIn,
+	IsNumber,
+	IsOptional,
+	IsPositive,
+	IsString,
+	IsUUID,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 

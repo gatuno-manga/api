@@ -13,24 +13,44 @@ import { ReadingProgressService } from './reading-progress.service';
 import { ReadingProgressController } from './reading-progress.controller';
 import { ReadingProgressGateway } from './gateway/reading-progress.gateway';
 import {
-  CollectionsBooksController,
-  CollectionsBooksService,
-  CollectionBook
+	CollectionsBooksController,
+	CollectionsBooksService,
+	CollectionBook,
 } from './collections-books';
 import {
-  SavedPagesController,
-  SavedPagesService,
-  SavedPage
+	SavedPagesController,
+	SavedPagesService,
+	SavedPage,
 } from './saved-pages';
 import { AppConfigModule } from 'src/app-config/app-config.module';
 
 @Module({
-  imports: [
-    AuthModule,
-    AppConfigModule,
-    TypeOrmModule.forFeature([User, Role, CollectionBook, Book, ReadingProgress, SavedPage, Chapter, Page])
-  ],
-  controllers: [UsersController, CollectionsBooksController, ReadingProgressController, SavedPagesController],
-  providers: [UsersService, CollectionsBooksService, ReadingProgressService, ReadingProgressGateway, SavedPagesService],
+	imports: [
+		AuthModule,
+		AppConfigModule,
+		TypeOrmModule.forFeature([
+			User,
+			Role,
+			CollectionBook,
+			Book,
+			ReadingProgress,
+			SavedPage,
+			Chapter,
+			Page,
+		]),
+	],
+	controllers: [
+		UsersController,
+		CollectionsBooksController,
+		ReadingProgressController,
+		SavedPagesController,
+	],
+	providers: [
+		UsersService,
+		CollectionsBooksService,
+		ReadingProgressService,
+		ReadingProgressGateway,
+		SavedPagesService,
+	],
 })
 export class UsersModule {}

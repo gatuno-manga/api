@@ -5,8 +5,6 @@ import { config as primaryDatabaseConfig } from './primary-database.config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CacheModule } from '@nestjs/cache-manager';
 import { config as redisCacheConfig } from './redis-cache.config';
-import { CacheableMemory, Keyv } from 'cacheable';
-import { createKeyv } from '@keyv/redis';
 @Global()
 @Module({
 	imports: [

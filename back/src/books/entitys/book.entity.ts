@@ -4,7 +4,6 @@ import {
 	Entity,
 	JoinTable,
 	ManyToMany,
-	ManyToOne,
 	OneToMany,
 	PrimaryGeneratedColumn,
 	Relation,
@@ -27,7 +26,9 @@ import { Cover } from './cover.entity';
 @Index(['scrapingStatus'])
 @Index(['createdAt'])
 @Index(['deletedAt'])
-@Check(`"publication" IS NULL OR ("publication" >= 1980 AND "publication" <= ${new Date().getFullYear() + 2})`)
+@Check(
+	`"publication" IS NULL OR ("publication" >= 1980 AND "publication" <= ${new Date().getFullYear() + 2})`,
+)
 export class Book {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;

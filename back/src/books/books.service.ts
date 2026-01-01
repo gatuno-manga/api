@@ -66,8 +66,14 @@ export class BooksService {
 		return this.bookCreationService.createBook(dto);
 	}
 
-	async checkBookTitleConflict(title: string, alternativeTitles: string[] = []) {
-		return this.bookCreationService.checkBookTitleConflict(title, alternativeTitles);
+	async checkBookTitleConflict(
+		title: string,
+		alternativeTitles: string[] = [],
+	) {
+		return this.bookCreationService.checkBookTitleConflict(
+			title,
+			alternativeTitles,
+		);
 	}
 
 	// ==================== ATUALIZAÇÃO ====================
@@ -80,26 +86,52 @@ export class BooksService {
 		return this.bookUpdateService.selectCover(idBook, idCover);
 	}
 
-	async updateCover(idBook: string, idCover: string, dto: { title?: string }) {
+	async updateCover(
+		idBook: string,
+		idCover: string,
+		dto: { title?: string },
+	) {
 		return this.bookUpdateService.updateCover(idBook, idCover, dto);
 	}
 
 	// ==================== CONSULTA ====================
 
-	async getAllBooks(options: BookPageOptionsDto, maxWeightSensitiveContent: number = 0): Promise<PageDto<any>> {
-		return this.bookQueryService.getAllBooks(options, maxWeightSensitiveContent, this.filterStrategies);
+	async getAllBooks(
+		options: BookPageOptionsDto,
+		maxWeightSensitiveContent: number = 0,
+	): Promise<PageDto<any>> {
+		return this.bookQueryService.getAllBooks(
+			options,
+			maxWeightSensitiveContent,
+			this.filterStrategies,
+		);
 	}
 
-	async getRandomBook(options: BookPageOptionsDto, maxWeightSensitiveContent: number = 0): Promise<{ id: string }> {
-		return this.bookQueryService.getRandomBook(options, maxWeightSensitiveContent, this.filterStrategies);
+	async getRandomBook(
+		options: BookPageOptionsDto,
+		maxWeightSensitiveContent: number = 0,
+	): Promise<{ id: string }> {
+		return this.bookQueryService.getRandomBook(
+			options,
+			maxWeightSensitiveContent,
+			this.filterStrategies,
+		);
 	}
 
 	async getOne(id: string, maxWeightSensitiveContent: number = 0) {
 		return this.bookQueryService.getOne(id, maxWeightSensitiveContent);
 	}
 
-	async getChapters(id: string, userid?: string, maxWeightSensitiveContent: number = 0) {
-		return this.bookQueryService.getChapters(id, userid, maxWeightSensitiveContent);
+	async getChapters(
+		id: string,
+		userid?: string,
+		maxWeightSensitiveContent: number = 0,
+	) {
+		return this.bookQueryService.getChapters(
+			id,
+			userid,
+			maxWeightSensitiveContent,
+		);
 	}
 
 	async getCovers(id: string, maxWeightSensitiveContent: number = 0) {
@@ -143,6 +175,8 @@ export class BooksService {
 	// ==================== RELACIONAMENTOS ====================
 
 	async findOrCreateSensitiveContent(sensitiveContentNames: string[]) {
-		return this.bookRelationshipService.findOrCreateSensitiveContent(sensitiveContentNames);
+		return this.bookRelationshipService.findOrCreateSensitiveContent(
+			sensitiveContentNames,
+		);
 	}
 }

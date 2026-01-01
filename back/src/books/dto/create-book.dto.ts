@@ -1,6 +1,5 @@
 import {
 	IsNumber,
-	IsObject,
 	IsOptional,
 	IsPositive,
 	IsString,
@@ -75,12 +74,14 @@ export class CreateBookDto {
 
 	@ApiPropertyOptional({
 		description: 'Book description or synopsis',
-		example: 'A story about a young pirate who dreams of becoming the Pirate King',
+		example:
+			'A story about a young pirate who dreams of becoming the Pirate King',
 		maxLength: 5000,
 	})
 	@ApiPropertyOptional({
 		description: 'Book description or synopsis',
-		example: 'A story about a young pirate who dreams of becoming the Pirate King',
+		example:
+			'A story about a young pirate who dreams of becoming the Pirate King',
 		maxLength: 5000,
 	})
 	@IsOptional()
@@ -141,7 +142,8 @@ export class CreateBookDto {
 	chapters?: CreateChapterDto[] = [];
 
 	@ApiPropertyOptional({
-		description: 'Validates if the book can be created even if there is a title conflict. ' +
+		description:
+			'Validates if the book can be created even if there is a title conflict. ' +
 			'If false (default), the book will not be created if another book with the same title or alternative title exists. ' +
 			'If true, allows creating the book even with a title conflict.',
 		example: false,

@@ -5,7 +5,7 @@ import { HealthController } from './health.controller';
 import { AppConfigModule } from '../app-config/app-config.module';
 
 @Module({
-    imports: [TerminusModule, HttpModule, AppConfigModule],
-    controllers: [HealthController],
+	imports: [TerminusModule, HttpModule, AppConfigModule],
+	controllers: [HealthController],
 })
 export class HealthModule {}

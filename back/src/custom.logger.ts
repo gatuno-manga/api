@@ -324,7 +324,6 @@ export class CustomLogger implements LoggerService {
 		);
 	}
 
-
 	private logInternal(
 		level: LogLevel,
 		message: string,
@@ -364,13 +363,17 @@ export class CustomLogger implements LoggerService {
 				const parsedRule = this.parseRule(rule.trim());
 
 				if (!parsedRule) {
-					this.logger.warn({ rule }, `Invalid log level rule: ${rule}`);
+					this.logger.warn(
+						{ rule },
+						`Invalid log level rule: ${rule}`,
+					);
 					continue;
 				}
 
 				const { contexts, level } = parsedRule;
 				const numericLevel =
-					this.LOG_LEVEL_MAP[level] ?? this.LOG_LEVEL_MAP[this.DEFAULT_LEVEL];
+					this.LOG_LEVEL_MAP[level] ??
+					this.LOG_LEVEL_MAP[this.DEFAULT_LEVEL];
 
 				for (const context of contexts) {
 					CustomLogger.contextRules.set(context.trim(), numericLevel);
@@ -424,8 +427,9 @@ export class CustomLogger implements LoggerService {
 				.filter(Boolean);
 
 			return {
-				contexts: contexts.length > 0 ? contexts : [this.DEFAULT_CONTEXT],
-				level: levelPart as LogLevel,
+				contexts:
+					contexts.length > 0 ? contexts : [this.DEFAULT_CONTEXT],
+				level: levelPart,
 			};
 		} catch {
 			return null;

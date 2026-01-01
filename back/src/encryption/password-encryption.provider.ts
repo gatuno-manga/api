@@ -32,7 +32,9 @@ export class PasswordEncryption {
 	constructor(
 		@Inject('PASSWORD_HASHER') private readonly hasher: PasswordHasher,
 	) {
-		this.logger.log(`Usando algoritmo de hashing: ${this.hasher.algorithm}`);
+		this.logger.log(
+			`Usando algoritmo de hashing: ${this.hasher.algorithm}`,
+		);
 	}
 
 	/**

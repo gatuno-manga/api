@@ -38,7 +38,9 @@ function configPipe(app: INestApplication) {
 
 function configureCors(app: INestApplication) {
 	app.enableCors({
-		origin: process.env.ALLOWED_URL?.split(',') || ['http://localhost:4200'],
+		origin: process.env.ALLOWED_URL?.split(',') || [
+			'http://localhost:4200',
+		],
 		credentials: true,
 	});
 }
@@ -59,7 +61,10 @@ function configureSwagger(app: INestApplication) {
 			},
 			'JWT-auth',
 		)
-		.addTag('Authentication', 'User authentication and authorization endpoints')
+		.addTag(
+			'Authentication',
+			'User authentication and authorization endpoints',
+		)
 		.addTag('Users', 'User profile management')
 		.addTag('Collections', 'User book collections management')
 		.addTag('Books', 'Public book browsing and reading')
@@ -71,7 +76,8 @@ function configureSwagger(app: INestApplication) {
 		.addTag('Website Scraping', 'Website scraping configuration')
 		.build();
 	const document = SwaggerModule.createDocument(app, config, {
-		operationIdFactory: (controllerKey: string, methodKey: string) => methodKey,
+		operationIdFactory: (controllerKey: string, methodKey: string) =>
+			methodKey,
 	});
 	SwaggerModule.setup('docs', app, document, {
 		swaggerOptions: {

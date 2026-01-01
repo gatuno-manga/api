@@ -1,5 +1,13 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, Relation, DeleteDateColumn, Index } from "typeorm";
-import { Book } from "./book.entity";
+import {
+	Column,
+	Entity,
+	ManyToOne,
+	PrimaryGeneratedColumn,
+	Relation,
+	DeleteDateColumn,
+	Index,
+} from 'typeorm';
+import { Book } from './book.entity';
 
 @Entity('covers')
 export class Cover {

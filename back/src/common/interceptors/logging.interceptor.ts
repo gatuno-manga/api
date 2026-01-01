@@ -1,8 +1,8 @@
 import {
-    Injectable,
-    NestInterceptor,
-    ExecutionContext,
-    CallHandler,
+	Injectable,
+	NestInterceptor,
+	ExecutionContext,
+	CallHandler,
 } from '@nestjs/common';
 import { Observable, throwError } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
@@ -10,79 +10,80 @@ import { CustomLogger } from '../../custom.logger';
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
-    constructor(private readonly logger: CustomLogger) {
-        this.logger.setContext('HttpRequest');
-    }
+	constructor(private readonly logger: CustomLogger) {
+		this.logger.setContext('HttpRequest');
+	}
 
-    intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-        const httpContext = context.switchToHttp();
-        const request = httpContext.getRequest();
-        const response = httpContext.getResponse();
+	intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+		const httpContext = context.switchToHttp();
+		const request = httpContext.getRequest();
+		const response = httpContext.getResponse();
 
-        const { method, url, query, params, ip, headers } = request;
-        const userAgent = headers['user-agent'] || '';
-        const userId = request.user?.id;
-        const startTime = Date.now();
+		const { method, url, query, params, ip, headers } = request;
+		const userAgent = headers['user-agent'] || '';
+		const userId = request.user?.id;
+		const startTime = Date.now();
 
-        // Log da requisição entrante (apenas em debug)
-        this.logger.debug(
-            `Incoming request: ${method} ${url}`,
-            'HttpRequest',
-        );
+		// Log da requisição entrante (apenas em debug)
+		this.logger.debug(`Incoming request: ${method} ${url}`, 'HttpRequest');
 
-        return next.handle().pipe(
-            tap((data) => {
-                const { statusCode } = response;
-                const duration = Date.now() - startTime;
+		return next.handle().pipe(
+			tap((data) => {
+				const { statusCode } = response;
+				const duration = Date.now() - startTime;
 
-                // Log de sucesso
-                this.logger.logHttpRequest({
-                    method,
-                    url,
-                    statusCode,
-                    duration,
-                    userId,
-                    ip,
-                    userAgent,
-                    metadata: {
-                        queryParams: Object.keys(query).length > 0 ? query : undefined,
-                        routeParams: Object.keys(params).length > 0 ? params : undefined,
-                        responseSize: data ? JSON.stringify(data).length : 0,
-                    },
-                });
+				// Log de sucesso
+				this.logger.logHttpRequest({
+					method,
+					url,
+					statusCode,
+					duration,
+					userId,
+					ip,
+					userAgent,
+					metadata: {
+						queryParams:
+							Object.keys(query).length > 0 ? query : undefined,
+						routeParams:
+							Object.keys(params).length > 0 ? params : undefined,
+						responseSize: data ? JSON.stringify(data).length : 0,
+					},
+				});
 
-                // Alerta para requisições lentas
-                if (duration > 3000) {
-                    this.logger.warn(
-                        `Slow request detected: ${method} ${url} took ${duration}ms`,
-                        'Performance',
-                    );
-                }
-            }),
-            catchError((error) => {
-                const duration = Date.now() - startTime;
-                const statusCode = error.status || 500;
+				// Alerta para requisições lentas
+				if (duration > 3000) {
+					this.logger.warn(
+						`Slow request detected: ${method} ${url} took ${duration}ms`,
+						'Performance',
+					);
+				}
+			}),
+			catchError((error) => {
+				const duration = Date.now() - startTime;
+				const statusCode = error.status || 500;
 
-                // Log de erro estruturado
-                this.logger.logHttpRequest({
-                    method,
-                    url,
-                    statusCode,
-                    duration,
-                    userId,
-                    ip,
-                    userAgent,
-                    metadata: {
-                        errorMessage: error.message,
-                        errorName: error.name,
-                        errorStack: error.stack,
-                        queryParams: Object.keys(query).length > 0 ? query : undefined,
-                        routeParams: Object.keys(params).length > 0 ? params : undefined,
-                    },
-                });
+				// Log de erro estruturado
+				this.logger.logHttpRequest({
+					method,
+					url,
+					statusCode,
+					duration,
+					userId,
+					ip,
+					userAgent,
+					metadata: {
+						errorMessage: error.message,
+						errorName: error.name,
+						errorStack: error.stack,
+						queryParams:
+							Object.keys(query).length > 0 ? query : undefined,
+						routeParams:
+							Object.keys(params).length > 0 ? params : undefined,
+					},
+				});
 
-                return throwError(() => error);
-            }),
-        );
-    }
+				return throwError(() => error);
+			}),
+		);
+	}
 }

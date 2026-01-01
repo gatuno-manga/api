@@ -65,7 +65,10 @@ describe('BooksController', () => {
 
 			const result = await controller.getAllBooks(pageOptions);
 
-			expect(booksService.getAllBooks).toHaveBeenCalledWith(pageOptions, undefined);
+			expect(booksService.getAllBooks).toHaveBeenCalledWith(
+				pageOptions,
+				undefined,
+			);
 			expect(result).toEqual(mockResult);
 		});
 
@@ -77,7 +80,10 @@ describe('BooksController', () => {
 
 			await controller.getAllBooks(pageOptions, user);
 
-			expect(booksService.getAllBooks).toHaveBeenCalledWith(pageOptions, 5);
+			expect(booksService.getAllBooks).toHaveBeenCalledWith(
+				pageOptions,
+				5,
+			);
 		});
 	});
 
@@ -89,7 +95,10 @@ describe('BooksController', () => {
 
 			const result = await controller.getRandomBook(options);
 
-			expect(booksService.getRandomBook).toHaveBeenCalledWith(options, undefined);
+			expect(booksService.getRandomBook).toHaveBeenCalledWith(
+				options,
+				undefined,
+			);
 			expect(result).toEqual(mockBook);
 		});
 	});
@@ -98,24 +107,31 @@ describe('BooksController', () => {
 		it('should call booksService.checkBookTitleConflict with title', async () => {
 			const title = 'Test Book';
 			const mockResult = { conflict: false };
-			mockBooksService.checkBookTitleConflict.mockResolvedValue(mockResult);
+			mockBooksService.checkBookTitleConflict.mockResolvedValue(
+				mockResult,
+			);
 
 			const result = await controller.checkBookTitle(title);
 
-			expect(booksService.checkBookTitleConflict).toHaveBeenCalledWith(title, undefined);
+			expect(booksService.checkBookTitleConflict).toHaveBeenCalledWith(
+				title,
+				undefined,
+			);
 			expect(result).toEqual(mockResult);
 		});
 
 		it('should parse alternativeTitles when provided', async () => {
 			const title = 'Test Book';
 			const alternativeTitles = 'Alt1,Alt2,Alt3';
-			mockBooksService.checkBookTitleConflict.mockResolvedValue({ conflict: false });
+			mockBooksService.checkBookTitleConflict.mockResolvedValue({
+				conflict: false,
+			});
 
 			await controller.checkBookTitle(title, alternativeTitles);
 
 			expect(booksService.checkBookTitleConflict).toHaveBeenCalledWith(
 				title,
-				['Alt1', 'Alt2', 'Alt3']
+				['Alt1', 'Alt2', 'Alt3'],
 			);
 		});
 	});
@@ -151,18 +167,29 @@ describe('BooksController', () => {
 
 			const result = await controller.getBookChapters(id);
 
-			expect(booksService.getChapters).toHaveBeenCalledWith(id, undefined, undefined);
+			expect(booksService.getChapters).toHaveBeenCalledWith(
+				id,
+				undefined,
+				undefined,
+			);
 			expect(result).toEqual(mockChapters);
 		});
 
 		it('should pass userId and maxWeight when user is provided', async () => {
 			const id = 'test-id';
-			const user = { userId: 'user-1', maxWeightSensitiveContent: 5 } as any;
+			const user = {
+				userId: 'user-1',
+				maxWeightSensitiveContent: 5,
+			} as any;
 			mockBooksService.getChapters.mockResolvedValue([]);
 
 			await controller.getBookChapters(id, user);
 
-			expect(booksService.getChapters).toHaveBeenCalledWith(id, 'user-1', 5);
+			expect(booksService.getChapters).toHaveBeenCalledWith(
+				id,
+				'user-1',
+				5,
+			);
 		});
 	});
 

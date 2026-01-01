@@ -1,7 +1,7 @@
-import { UrlImageDto } from "./url-image.dto";
+import { UrlImageDto } from './url-image.dto';
 
 export class QueueCoverProcessorDto {
-    bookId: string;
-    urlOrigin: string;
-    covers: UrlImageDto[];
+	bookId: string;
+	urlOrigin: string;
+	covers: UrlImageDto[];
 }

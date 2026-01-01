@@ -20,12 +20,6 @@ interface BookUpdateJobData {
     bookId: string;
 }
 
-interface ScrapedChapter {
-    title: string;
-    url: string;
-    index: number;
-}
-
 interface ScrapedCover {
     url: string;
     title?: string;
@@ -57,7 +51,8 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
 
     async onModuleInit() {
         // Usa concorrência baixa para não sobrecarregar
-        this.worker.concurrency = this.configService.queueConcurrency?.bookUpdate ?? 2;
+        this.worker.concurrency =
+            this.configService.queueConcurrency?.bookUpdate ?? 2;
 
         // Recalcula hashes de capas existentes que não têm hash
         await this.recalculateMissingCoverHashes();
@@ -78,7 +73,9 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
             return;
         }
 
-        this.logger.log(`Found ${coversWithoutHash.length} covers without hash. Recalculating...`);
+        this.logger.log(
+            `Found ${coversWithoutHash.length} covers without hash. Recalculating...`,
+        );
 
         let successCount = 0;
         let errorCount = 0;
@@ -87,17 +84,24 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
             try {
                 // Use first original URL as referer if available
                 const refererUrl = cover.book?.originalUrl?.[0];
-                const imageHash = await this.calculateImageHash(cover.url, refererUrl);
+                const imageHash = await this.calculateImageHash(
+                    cover.url,
+                    refererUrl,
+                );
                 cover.imageHash = imageHash;
                 await this.coverRepository.save(cover);
                 successCount++;
             } catch (error) {
-                this.logger.warn(`Failed to calculate hash for cover ${cover.id} (${cover.url}): ${error.message}`);
+                this.logger.warn(
+                    `Failed to calculate hash for cover ${cover.id} (${cover.url}): ${error.message}`,
+                );
                 errorCount++;
             }
         }
 
-        this.logger.log(`Cover hash recalculation complete: ${successCount} success, ${errorCount} errors`);
+        this.logger.log(
+            `Cover hash recalculation complete: ${successCount} success, ${errorCount} errors`,
+        );
     }
 
     async process(job: Job<BookUpdateJobData>): Promise<BookUpdateResult> {
@@ -129,10 +133,15 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
                 this.logger.debug(`Scraping book info from: ${bookUrl}`);
 
                 // Faz scraping das informações do livro (capas e capítulos)
-                const bookInfo = await this.scrapingService.scrapeBookInfo(bookUrl);
+                const bookInfo =
+                    await this.scrapingService.scrapeBookInfo(bookUrl);
 
                 // Processa novas capas (com deduplicação por hash)
-                const newCovers = await this.processNewCovers(book, bookInfo.covers || [], bookUrl);
+                const newCovers = await this.processNewCovers(
+                    book,
+                    bookInfo.covers || [],
+                    bookUrl,
+                );
                 totalNewCovers += newCovers;
 
                 if (bookInfo.chapters.length === 0) {
@@ -142,23 +151,28 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
 
                 // Encontra capítulos novos comparando URLs (considera capítulos já existentes + criados nesta iteração)
                 const existingUrls = new Set([
-                    ...book.chapters.map(ch => ch.originalUrl),
-                    ...allCreatedChapters.map(ch => ch.originalUrl),
+                    ...book.chapters.map((ch) => ch.originalUrl),
+                    ...allCreatedChapters.map((ch) => ch.originalUrl),
                 ]);
-                const newChapters = bookInfo.chapters.filter(ch => !existingUrls.has(ch.url));
+                const newChapters = bookInfo.chapters.filter(
+                    (ch) => !existingUrls.has(ch.url),
+                );
 
                 if (newChapters.length === 0) {
                     this.logger.debug(`No new chapters from URL: ${bookUrl}`);
                     continue;
                 }
 
-                this.logger.log(`Found ${newChapters.length} new chapters from URL: ${bookUrl}`);
+                this.logger.log(
+                    `Found ${newChapters.length} new chapters from URL: ${bookUrl}`,
+                );
 
                 // Calcula o próximo índice baseado nos capítulos existentes + criados
                 const allChapters = [...book.chapters, ...allCreatedChapters];
-                const maxExistingIndex = allChapters.length > 0
-                    ? Math.max(...allChapters.map(ch => ch.index))
-                    : 0;
+                const maxExistingIndex =
+                    allChapters.length > 0
+                        ? Math.max(...allChapters.map((ch) => ch.index))
+                        : 0;
 
                 // Cria os novos capítulos
                 for (let i = 0; i < newChapters.length; i++) {
@@ -166,7 +180,7 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
                     const chapter = this.chapterRepository.create({
                         title: scraped.title,
                         originalUrl: scraped.url,
-                        index: scraped.index || (maxExistingIndex + i + 1),
+                        index: scraped.index || maxExistingIndex + i + 1,
                         isFinal: scraped.isFinal || false,
                         book: book,
                         scrapingStatus: ScrapingStatus.PROCESS,
@@ -177,7 +191,9 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
 
                 totalNewChapters += newChapters.length;
             } catch (error) {
-                this.logger.warn(`Error scraping from URL ${bookUrl}: ${error.message}`);
+                this.logger.warn(
+                    `Error scraping from URL ${bookUrl}: ${error.message}`,
+                );
                 // Continua para a próxima URL em caso de erro
             }
         }
@@ -191,7 +207,7 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
             this.eventEmitter.emit('book.new-chapters', {
                 bookId: book.id,
                 newChaptersCount: allCreatedChapters.length,
-                chapters: allCreatedChapters.map(ch => ({
+                chapters: allCreatedChapters.map((ch) => ({
                     id: ch.id,
                     title: ch.title,
                     index: ch.index,
@@ -200,7 +216,9 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
                 newCoversCount: totalNewCovers,
             });
 
-            this.logger.log(`Added ${allCreatedChapters.length} new chapters to book: ${book.title}`);
+            this.logger.log(
+                `Added ${allCreatedChapters.length} new chapters to book: ${book.title}`,
+            );
         }
 
         return { newChapters: totalNewChapters, newCovers: totalNewCovers };
@@ -213,15 +231,17 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
      * @param refererUrl URL de origem para usar como referer no download
      * @returns Número de novas capas adicionadas
      */
-    private async processNewCovers(book: Book, scrapedCovers: ScrapedCover[], refererUrl: string): Promise<number> {
+    private async processNewCovers(
+        book: Book,
+        scrapedCovers: ScrapedCover[],
+        refererUrl: string,
+    ): Promise<number> {
         if (scrapedCovers.length === 0) {
             return 0;
         }
 
         const existingHashes = new Set(
-            book.covers
-                .filter(c => c.imageHash)
-                .map(c => c.imageHash)
+            book.covers.filter((c) => c.imageHash).map((c) => c.imageHash),
         );
 
         let newCoversCount = 0;
@@ -229,11 +249,16 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
         for (const scrapedCover of scrapedCovers) {
             try {
                 // Baixa a imagem e calcula o hash
-                const imageHash = await this.calculateImageHash(scrapedCover.url, refererUrl);
+                const imageHash = await this.calculateImageHash(
+                    scrapedCover.url,
+                    refererUrl,
+                );
 
                 // Verifica se já existe uma capa com esse hash
                 if (existingHashes.has(imageHash)) {
-                    this.logger.debug(`Cover already exists (hash match): ${scrapedCover.url}`);
+                    this.logger.debug(
+                        `Cover already exists (hash match): ${scrapedCover.url}`,
+                    );
                     continue;
                 }
 
@@ -241,7 +266,9 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
                 const cover = this.coverRepository.create({
                     url: scrapedCover.url, // Será atualizada depois pelo CoverImageProcessor
                     originalUrl: scrapedCover.url,
-                    title: scrapedCover.title || `Capa ${book.covers.length + newCoversCount + 1}`,
+                    title:
+                        scrapedCover.title ||
+                        `Capa ${book.covers.length + newCoversCount + 1}`,
                     imageHash: imageHash,
                     selected: book.covers.length === 0 && newCoversCount === 0, // Primeira capa é selecionada
                     book: book,
@@ -258,14 +285,20 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
                     [{ url: scrapedCover.url, title: savedCover.title }],
                 );
 
-                this.logger.debug(`Added new cover for book ${book.title}: ${scrapedCover.title || scrapedCover.url}`);
+                this.logger.debug(
+                    `Added new cover for book ${book.title}: ${scrapedCover.title || scrapedCover.url}`,
+                );
             } catch (error) {
-                this.logger.warn(`Failed to process cover ${scrapedCover.url}: ${error.message}`);
+                this.logger.warn(
+                    `Failed to process cover ${scrapedCover.url}: ${error.message}`,
+                );
             }
         }
 
         if (newCoversCount > 0) {
-            this.logger.log(`Added ${newCoversCount} new covers to book: ${book.title}`);
+            this.logger.log(
+                `Added ${newCoversCount} new covers to book: ${book.title}`,
+            );
         }
 
         return newCoversCount;
@@ -278,20 +311,32 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
      * @param refererUrl URL de origem para usar como referer (opcional)
      * @returns Hash da imagem em hexadecimal
      */
-    private async calculateImageHash(imageSource: string, refererUrl?: string): Promise<string> {
+    private async calculateImageHash(
+        imageSource: string,
+        refererUrl?: string,
+    ): Promise<string> {
         let buffer: Buffer;
 
         // Verifica se é uma URL ou um caminho local
-        if (imageSource.startsWith('http://') || imageSource.startsWith('https://')) {
+        if (
+            imageSource.startsWith('http://') ||
+            imageSource.startsWith('https://')
+        ) {
             // Se refererUrl não for fornecido, usa a origem da imagem como contexto
             // Isso garante que usamos o browser (Playwright) em vez de fetch direto,
             // evitando bloqueios 403 e problemas de fingerprint
             const pageUrl = refererUrl || new URL(imageSource).origin;
 
             try {
-                buffer = await this.scrapingService.fetchImageBuffer(pageUrl, imageSource);
+                buffer = await this.scrapingService.fetchImageBuffer(
+                    pageUrl,
+                    imageSource,
+                );
             } catch (error) {
-                this.logger.error(`Failed to download image for hash calculation: ${imageSource} (referer: ${pageUrl})`, error);
+                this.logger.error(
+                    `Failed to download image for hash calculation: ${imageSource} (referer: ${pageUrl})`,
+                    error,
+                );
                 throw error;
             }
         } else {

@@ -3,7 +3,11 @@ import { APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
-import { EventEmitter2, EventEmitterModule, EventEmitterReadinessWatcher } from '@nestjs/event-emitter';
+import {
+	EventEmitter2,
+	EventEmitterModule,
+	EventEmitterReadinessWatcher,
+} from '@nestjs/event-emitter';
 import { AppConfigModule } from './app-config/app-config.module';
 import { AppConfigService } from './app-config/app-config.service';
 import { ScrapingModule } from './scraping/scraping.module';
@@ -38,17 +42,17 @@ import { DashboardModule } from './dashboard/dashboard.module';
 		ThrottlerModule.forRoot([
 			{
 				name: 'short',
-				ttl: 1000,     // 1 segundo
+				ttl: 1000, // 1 segundo
 				limit: 3,
 			},
 			{
 				name: 'medium',
-				ttl: 10000,    // 10 segundos
+				ttl: 10000, // 10 segundos
 				limit: 20,
 			},
 			{
 				name: 'long',
-				ttl: 60000,    // 1 minuto
+				ttl: 60000, // 1 minuto
 				limit: 100,
 			},
 		]),
@@ -68,7 +72,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 					backoff: {
 						type: 'exponential',
 						delay: 5000,
-					}
+					},
 				},
 				connection: {
 					host: configService.redis.host,

@@ -1,14 +1,13 @@
-import { Transform } from "class-transformer";
-import { IsString, IsUrl } from "class-validator";
+import { Transform } from 'class-transformer';
+import { IsString, IsUrl } from 'class-validator';
 
 export class UrlImageDto {
+	@Transform(({ value }) => {
+		return value;
+	})
+	@IsUrl()
+	url: string;
 
-    @Transform(({ value, obj }) => {
-        return value;
-    })
-    @IsUrl()
-    url: string;
-
-    @IsString()
-    title: string;
+	@IsString()
+	title: string;
 }

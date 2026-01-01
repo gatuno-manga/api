@@ -18,32 +18,32 @@ import { CreateAdminEvent } from './events/create-admin.event';
 import { Role } from 'src/users/entitys/role.entity';
 
 @Module({
-  imports: [
-    EncryptionModule,
-    AppConfigModule,
-    PassportModule,
-    TypeOrmModule.forFeature([User, Role]),
-    JwtModule.registerAsync({
-      imports: [AppConfigModule],
-      inject: [AppConfigService],
-      useFactory: async (appConfigService: AppConfigService) => ({
-        secret: appConfigService.jwtAccessSecret,
-        signOptions: {
-          expiresIn: appConfigService.jwtAccessExpiration,
-        },
-      }),
-    }),
-  ],
-  controllers: [AuthController, PasswordMigrationController],
-  providers: [
-    CreateAdminEvent,
-    AuthService,
-    DataEncryptionProvider,
-    JwtStrategy,
-    JwtAuthGuard,
-    WsJwtGuard,
-    JwtRefreshStrategy
-  ],
-  exports: [JwtModule, JwtStrategy, JwtAuthGuard, WsJwtGuard],
+	imports: [
+		EncryptionModule,
+		AppConfigModule,
+		PassportModule,
+		TypeOrmModule.forFeature([User, Role]),
+		JwtModule.registerAsync({
+			imports: [AppConfigModule],
+			inject: [AppConfigService],
+			useFactory: async (appConfigService: AppConfigService) => ({
+				secret: appConfigService.jwtAccessSecret,
+				signOptions: {
+					expiresIn: appConfigService.jwtAccessExpiration,
+				},
+			}),
+		}),
+	],
+	controllers: [AuthController, PasswordMigrationController],
+	providers: [
+		CreateAdminEvent,
+		AuthService,
+		DataEncryptionProvider,
+		JwtStrategy,
+		JwtAuthGuard,
+		WsJwtGuard,
+		JwtRefreshStrategy,
+	],
+	exports: [JwtModule, JwtStrategy, JwtAuthGuard, WsJwtGuard],
 })
 export class AuthModule {}

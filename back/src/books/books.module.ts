@@ -63,7 +63,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 			Author,
 			ChapterRead,
 			SensitiveContent,
-			Cover
+			Cover,
 		]),
 		AuthModule,
 		BullModule.registerQueue(
@@ -117,7 +117,13 @@ import { ScheduleModule } from '@nestjs/schedule';
 			},
 		),
 	],
-	controllers: [BooksController, ChapterController, SensitiveContentController, TagsController, AdminBooksController],
+	controllers: [
+		BooksController,
+		ChapterController,
+		SensitiveContentController,
+		TagsController,
+		AdminBooksController,
+	],
 	providers: [
 		BooksService,
 		BookScrapingEvents,

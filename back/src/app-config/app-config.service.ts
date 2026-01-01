@@ -31,7 +31,10 @@ export class AppConfigService {
 	}
 
 	get jwtRefreshSecret(): string {
-		return this.config.get<string>('JWT_REFRESH_SECRET') || 'default_refresh_secret';
+		return (
+			this.config.get<string>('JWT_REFRESH_SECRET') ||
+			'default_refresh_secret'
+		);
 	}
 
 	get jwtRefreshExpiration(): string {
@@ -50,7 +53,7 @@ export class AppConfigService {
 		return {
 			email: this.config.get<string>('USERADMIN_EMAIL') || '',
 			password: this.config.get<string>('USERADMIN_PASSWORD') || '',
-		}
+		};
 	}
 
 	get database() {
@@ -63,7 +66,7 @@ export class AppConfigService {
 			password: this.config.get<string>('DB_PASS'),
 			slaveHosts: (this.config.get<string>('DB_SLAVE_HOSTS') || '')
 				.split(',')
-				.map(h => h.trim())
+				.map((h) => h.trim())
 				.filter(Boolean),
 		};
 	}
@@ -78,7 +81,8 @@ export class AppConfigService {
 
 	get queueConcurrency() {
 		return {
-			chapterScraping: this.config.get<number>('CHAPTER_SCRAPING_CONCURRENCY') || 6,
+			chapterScraping:
+				this.config.get<number>('CHAPTER_SCRAPING_CONCURRENCY') || 6,
 			coverImage: this.config.get<number>('COVER_IMAGE_CONCURRENCY') || 3,
 			fixChapter: this.config.get<number>('FIX_CHAPTER_CONCURRENCY') || 2,
 			bookUpdate: this.config.get<number>('BOOK_UPDATE_CONCURRENCY') || 2,
@@ -120,7 +124,8 @@ export class AppConfigService {
 	}
 
 	get healthReadinessHeapLimitBytes(): number {
-		const mb = this.config.get<number>('HEALTH_READINESS_HEAP_LIMIT_MB') || 400;
+		const mb =
+			this.config.get<number>('HEALTH_READINESS_HEAP_LIMIT_MB') || 400;
 		return mb * 1024 * 1024;
 	}
 
@@ -138,11 +143,16 @@ export class AppConfigService {
 		const unit = match[2];
 
 		switch (unit) {
-			case 's': return value * 1000;
-			case 'm': return value * 60 * 1000;
-			case 'h': return value * 60 * 60 * 1000;
-			case 'd': return value * 24 * 60 * 60 * 1000;
-			default: return SEVEN_DAYS_IN_SECONDS * 1000;
+			case 's':
+				return value * 1000;
+			case 'm':
+				return value * 60 * 1000;
+			case 'h':
+				return value * 60 * 60 * 1000;
+			case 'd':
+				return value * 24 * 60 * 60 * 1000;
+			default:
+				return SEVEN_DAYS_IN_SECONDS * 1000;
 		}
 	}
 
@@ -162,7 +172,8 @@ export class AppConfigService {
 	get bookUpdate() {
 		return {
 			enabled: this.config.get<boolean>('BOOK_UPDATE_ENABLED') ?? true,
-			cronExpression: this.config.get<string>('BOOK_UPDATE_CRON') || '0 */6 * * *', // Every 6 hours
+			cronExpression:
+				this.config.get<string>('BOOK_UPDATE_CRON') || '0 */6 * * *', // Every 6 hours
 		};
 	}
 }

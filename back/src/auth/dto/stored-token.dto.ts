@@ -1,4 +1,4 @@
 export class StoredTokenDto {
-    hash: string;
-    expiresAt: number;
+	hash: string;
+	expiresAt: number;
 }
