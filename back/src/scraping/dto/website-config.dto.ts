@@ -1,26 +1,26 @@
 import { CookieConfig } from '../helpers/storage-injector';
 
 export class WebsiteConfigDto {
-    selector: string;
-    preScript: string;
-    posScript: string;
-    concurrencyLimit?: number | null;
-    blacklistTerms: string[];
-    whitelistTerms: string[];
-    useNetworkInterception: boolean;
-    useScreenshotMode: boolean;
-    chapterListSelector?: string;
-    bookInfoExtractScript?: string;
-    /** Cookies to inject before navigation */
-    cookies?: CookieConfig[];
-    /** localStorage items to inject after page load */
-    localStorage?: Record<string, string>;
-    /** sessionStorage items to inject after page load */
-    sessionStorage?: Record<string, string>;
-    /** Whether to reload the page after injecting storage */
-    reloadAfterStorageInjection?: boolean;
-    /** Enable adaptive timeouts based on page size */
-    enableAdaptiveTimeouts?: boolean;
-    /** Custom timeout multipliers by page size */
-    timeoutMultipliers?: Record<string, number>;
+	selector: string;
+	preScript: string;
+	posScript: string;
+	concurrencyLimit?: number | null;
+	blacklistTerms: string[];
+	whitelistTerms: string[];
+	useNetworkInterception: boolean;
+	useScreenshotMode: boolean;
+	chapterListSelector?: string;
+	bookInfoExtractScript?: string;
+	/** Cookies to inject before navigation */
+	cookies?: CookieConfig[];
+	/** localStorage items to inject after page load */
+	localStorage?: Record<string, string>;
+	/** sessionStorage items to inject after page load */
+	sessionStorage?: Record<string, string>;
+	/** Whether to reload the page after injecting storage */
+	reloadAfterStorageInjection?: boolean;
+	/** Enable adaptive timeouts based on page size */
+	enableAdaptiveTimeouts?: boolean;
+	/** Custom timeout multipliers by page size */
+	timeoutMultipliers?: Record<string, number>;
 }

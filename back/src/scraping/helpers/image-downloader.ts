@@ -222,7 +222,9 @@ export class ImageDownloader {
         await this.page.waitForFunction(
             (sel: string) => {
                 const images = document.querySelectorAll(sel);
-                return Array.from(images).every((img) => img.complete);
+                return Array.from(images).every(
+                    (img) => (img as HTMLImageElement).complete,
+                );
             },
             selector,
             { timeout },

@@ -277,9 +277,9 @@ export class ScrapingService implements OnApplicationShutdown {
 
 			const savedPath = isPreCompressed
 				? await this.filesService.savePreCompressedFile(
-						bufferData,
-						extension,
-					)
+					bufferData,
+					extension,
+				)
 				: await this.filesService.saveBufferFile(bufferData, extension);
 
 			results.push(savedPath);
@@ -367,23 +367,23 @@ export class ScrapingService implements OnApplicationShutdown {
 			const pageComplexity = await detectPageComplexity(page, selector);
 			this.logger.log(
 				`📊 Página: ${pageComplexity.scrollHeight}px (${pageComplexity.scrollRatio.toFixed(1)}x viewport), ` +
-					`${pageComplexity.elementCount} elementos, tamanho: ${pageComplexity.pageSize}`,
+				`${pageComplexity.elementCount} elementos, tamanho: ${pageComplexity.pageSize}`,
 			);
 
 			const multipliers = config.enableAdaptiveTimeouts
 				? getComplexityMultipliers(
-						pageComplexity,
-						config.timeoutMultipliers as any,
-					)
+					pageComplexity,
+					config.timeoutMultipliers as any,
+				)
 				: {
-						delayMultiplier: 1,
-						stabilityMultiplier: 1,
-						timeoutMultiplier: 1,
-						scrollStep: 1200,
-					};
+					delayMultiplier: 1,
+					stabilityMultiplier: 1,
+					timeoutMultiplier: 1,
+					scrollStep: 1200,
+				};
 			this.logger.log(
 				`⚙️ Multiplicadores: delay=${multipliers.delayMultiplier}x, ` +
-					`stability=${multipliers.stabilityMultiplier}x, scrollStep=${multipliers.scrollStep}px`,
+				`stability=${multipliers.stabilityMultiplier}x, scrollStep=${multipliers.scrollStep}px`,
 			);
 
 			let scrollResult = {
@@ -398,7 +398,7 @@ export class ScrapingService implements OnApplicationShutdown {
 				);
 				this.logger.debug(
 					`Config adaptativo: scrollPause=${adaptiveConfig.scrollPauseMs}ms, ` +
-						`stability=${adaptiveConfig.stabilityChecks}, scrollStep=${adaptiveConfig.scrollStep}px`,
+					`stability=${adaptiveConfig.stabilityChecks}, scrollStep=${adaptiveConfig.scrollStep}px`,
 				);
 				const scroller = new PageScroller(page, adaptiveConfig);
 				scrollResult = await scroller.scrollAndWait();
@@ -473,7 +473,7 @@ export class ScrapingService implements OnApplicationShutdown {
 		page: Page,
 		selector: string,
 		minPages: number,
-		pageComplexity?: { scrollPauseMs: number; scrollWaitMs: number },
+		pageComplexity?: { scrollPauseMs: number; scrollWaitMs: number; },
 	): Promise<(string | null)[]> {
 		const scrollPauseMs = pageComplexity?.scrollPauseMs ?? 1000;
 		const scrollWaitMs = pageComplexity?.scrollWaitMs ?? 300;
@@ -839,13 +839,13 @@ export class ScrapingService implements OnApplicationShutdown {
 
 					const saved = isPreCompressed
 						? await this.filesService.savePreCompressedFile(
-								bufferData,
-								extension,
-							)
+							bufferData,
+							extension,
+						)
 						: await this.filesService.saveBufferFile(
-								bufferData,
-								extension,
-							);
+							bufferData,
+							extension,
+						);
 					results.push(saved);
 				} catch (err) {
 					this.logger.warn(`Error processing image ${imageUrl}`, err);
@@ -862,7 +862,7 @@ export class ScrapingService implements OnApplicationShutdown {
 	}
 
 	async scrapeBookInfo(bookUrl: string): Promise<{
-		covers?: { url: string; title?: string }[];
+		covers?: { url: string; title?: string; }[];
 		chapters: {
 			title: string;
 			url: string;
@@ -959,7 +959,7 @@ export class ScrapingService implements OnApplicationShutdown {
 			await this.executeCustomScript(page, preScript);
 
 			let result: {
-				covers?: { url: string; title?: string }[];
+				covers?: { url: string; title?: string; }[];
 				chapters: {
 					title: string;
 					url: string;
@@ -977,10 +977,22 @@ export class ScrapingService implements OnApplicationShutdown {
 						throw new Error('Script must return an object');
 					}
 
-					let normalizedCovers: { url: string; title?: string }[] =
+					const typedResult = rawResult as {
+						covers?: Array<
+							string | { url: string; title?: string; }
+						>;
+						cover?: string | { url: string; title?: string; };
+						chapters?: Array<{
+							title: string;
+							url: string;
+							index: number;
+						}>;
+					};
+
+					let normalizedCovers: { url: string; title?: string; }[] =
 						[];
-					if (Array.isArray(rawResult.covers)) {
-						normalizedCovers = rawResult.covers
+					if (Array.isArray(typedResult.covers)) {
+						normalizedCovers = typedResult.covers
 							.map((c, i) => {
 								if (typeof c === 'string') {
 									return { url: c, title: `Capa ${i + 1}` };
@@ -991,20 +1003,20 @@ export class ScrapingService implements OnApplicationShutdown {
 								};
 							})
 							.filter((c) => c.url);
-					} else if (rawResult.cover) {
-						if (typeof rawResult.cover === 'string') {
+					} else if (typedResult.cover) {
+						if (typeof typedResult.cover === 'string') {
 							normalizedCovers = [
 								{
-									url: rawResult.cover,
+									url: typedResult.cover,
 									title: 'Capa Principal',
 								},
 							];
 						} else {
 							normalizedCovers = [
 								{
-									url: rawResult.cover.url,
+									url: typedResult.cover.url,
 									title:
-										rawResult.cover.title ||
+										typedResult.cover.title ||
 										'Capa Principal',
 								},
 							];
@@ -1013,13 +1025,13 @@ export class ScrapingService implements OnApplicationShutdown {
 
 					result = {
 						covers: normalizedCovers,
-						chapters: Array.isArray(rawResult.chapters)
-							? (rawResult.chapters as {
-									title: string;
-									url: string;
-									index: number;
-									isFinal?: boolean;
-								}[])
+						chapters: Array.isArray(typedResult.chapters)
+							? (typedResult.chapters as {
+								title: string;
+								url: string;
+								index: number;
+								isFinal?: boolean;
+							}[])
 							: [],
 					};
 				} catch (error) {
@@ -1067,7 +1079,7 @@ export class ScrapingService implements OnApplicationShutdown {
 
 	async scrapeChapterList(
 		bookUrl: string,
-	): Promise<{ title: string; url: string; index: number }[]> {
+	): Promise<{ title: string; url: string; index: number; }[]> {
 		const result = await this.scrapeBookInfo(bookUrl);
 		return result.chapters;
 	}
