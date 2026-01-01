@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import type { Page } from 'playwright';
+import { ComplexityMultipliers } from './page-complexity-detector';
 
 /**
  * Configuration for page scrolling behavior.
@@ -48,15 +49,42 @@ export interface ScrollConfig {
     useIncrementalScroll?: boolean;
 }
 
-const DEFAULT_SCROLL_CONFIG: Required<ScrollConfig> = {
-    scrollPauseMs: 300,
-    stabilityChecks: 2,
+export const DEFAULT_SCROLL_CONFIG: Required<ScrollConfig> = {
+    scrollPauseMs: 800, // Aumentado de 300ms para 800ms para lazy-loading
+    stabilityChecks: 5, // Aumentado de 2 para 5 para páginas longas
     maxImageRetries: 1,
     retryDelayMs: 500,
     imageSelector: 'img',
-    scrollStep: 3000, // Scroll grande para velocidade (estilo Python)
+    scrollStep: 1200, // Reduzido de 3000px para 1200px para não pular conteúdo
     useIncrementalScroll: true,
 };
+
+/**
+ * Aplica multiplicadores adaptativos à configuração de scroll baseado na complexidade da página
+ *
+ * @param baseConfig - Configuração base de scroll
+ * @param multipliers - Multiplicadores de complexidade
+ * @returns Configuração de scroll adaptada
+ */
+export function getAdaptiveScrollConfig(
+    baseConfig: Required<ScrollConfig>,
+    multipliers: ComplexityMultipliers,
+): Required<ScrollConfig> {
+    return {
+        ...baseConfig,
+        scrollPauseMs: Math.ceil(
+            baseConfig.scrollPauseMs * multipliers.delayMultiplier,
+        ),
+        stabilityChecks: Math.ceil(
+            baseConfig.stabilityChecks * multipliers.stabilityMultiplier,
+        ),
+        retryDelayMs: Math.ceil(
+            baseConfig.retryDelayMs * multipliers.delayMultiplier,
+        ),
+        // Usa scrollStep adaptativo calculado baseado no tamanho da página
+        scrollStep: multipliers.scrollStep,
+    };
+}
 
 /**
  * Result from scroll operation.
@@ -99,12 +127,16 @@ export class PageScroller {
                     img: HTMLImageElement,
                     resolve: () => void,
                 ): void {
-                    const retryCount = parseInt(img.dataset.retryCount || '0', 10);
+                    const retryCount = parseInt(
+                        img.dataset.retryCount || '0',
+                        10,
+                    );
                     if (retryCount < config.maxImageRetries) {
                         img.dataset.retryCount = String(retryCount + 1);
                         setTimeout(() => {
                             const originalSrc =
-                                img.dataset.originalSrc || img.src.split('?')[0];
+                                img.dataset.originalSrc ||
+                                img.src.split('?')[0];
                             img.src = `${originalSrc}?retry=${Date.now()}`;
                         }, config.retryDelayMs * retryCount);
                     } else {
@@ -132,7 +164,8 @@ export class PageScroller {
                                 }
                             } else {
                                 img.onload = () => resolve();
-                                img.onerror = () => attemptImageReload(img, resolve);
+                                img.onerror = () =>
+                                    attemptImageReload(img, resolve);
                             }
                         };
                         checkImage();
@@ -148,12 +181,16 @@ export class PageScroller {
                                 if (node.nodeType === 1) {
                                     const element = node as Element;
                                     if (element.matches(config.imageSelector)) {
-                                        processNewImageNode(element as HTMLImageElement);
+                                        processNewImageNode(
+                                            element as HTMLImageElement,
+                                        );
                                     }
                                     element
                                         .querySelectorAll(config.imageSelector)
                                         .forEach((img) =>
-                                            processNewImageNode(img as HTMLImageElement),
+                                            processNewImageNode(
+                                                img as HTMLImageElement,
+                                            ),
                                         );
                                 }
                             }
@@ -179,7 +216,9 @@ export class PageScroller {
                 // Process existing images
                 document
                     .querySelectorAll(config.imageSelector)
-                    .forEach((img) => processNewImageNode(img as HTMLImageElement));
+                    .forEach((img) =>
+                        processNewImageNode(img as HTMLImageElement),
+                    );
 
                 // First, scroll to top to ensure cover/header images load
                 window.scrollTo(0, 0);
@@ -187,21 +226,22 @@ export class PageScroller {
 
                 // Calculate scroll step
                 const viewportHeight = window.innerHeight;
-                const scrollStep = config.scrollStep > 0
-                    ? config.scrollStep
-                    : Math.floor(viewportHeight * 0.7);
+                const scrollStep =
+                    config.scrollStep > 0
+                        ? config.scrollStep
+                        : Math.floor(viewportHeight * 0.7);
 
                 if (config.useIncrementalScroll) {
-                    // Scroll agressivo estilo Python - muito mais rápido
+                    // Scroll incremental adaptativo
                     let lastHeight = document.body.scrollHeight;
                     let retries = 0;
 
                     while (retries < config.stabilityChecks) {
-                        // Scroll grande para baixo
+                        // Scroll para baixo
                         window.scrollBy(0, scrollStep);
 
                         await new Promise((resolve) =>
-                            setTimeout(resolve, config.scrollPauseMs)
+                            setTimeout(resolve, config.scrollPauseMs),
                         );
 
                         const newHeight = document.body.scrollHeight;
@@ -214,8 +254,56 @@ export class PageScroller {
                             // Pequeno scroll reverso para destravar lazy loads
                             window.scrollBy(0, -200);
                             await new Promise((resolve) =>
-                                setTimeout(resolve, 100)
+                                setTimeout(resolve, 100),
                             );
+                        }
+                    }
+
+                    // Over-scroll: tentar ir além do final por ~2s para detectar infinite scroll
+                    // Útil para sites que carregam mais conteúdo quando você tenta scrollar além do fim
+                    const overScrollAttempts = 4; // 4 tentativas × 500ms = 2 segundos
+                    let overScrollCount = 0;
+
+                    while (overScrollCount < overScrollAttempts) {
+                        const heightBeforeOverScroll =
+                            document.body.scrollHeight;
+
+                        // Força scroll além do final (mesmo que já esteja no bottom)
+                        window.scrollTo(0, document.body.scrollHeight + 1000);
+                        await new Promise((resolve) =>
+                            setTimeout(resolve, 500),
+                        );
+
+                        const heightAfterOverScroll =
+                            document.body.scrollHeight;
+
+                        if (heightAfterOverScroll > heightBeforeOverScroll) {
+                            // Nova página carregou! Resetar contadores e continuar scrolling normal
+                            lastHeight = heightAfterOverScroll;
+                            retries = 0;
+                            overScrollCount = 0;
+
+                            // Continuar scroll incremental na nova seção
+                            let newContentRetries = 0;
+                            while (newContentRetries < config.stabilityChecks) {
+                                window.scrollBy(0, scrollStep);
+                                await new Promise((resolve) =>
+                                    setTimeout(resolve, config.scrollPauseMs),
+                                );
+
+                                const currentHeight =
+                                    document.body.scrollHeight;
+                                if (currentHeight > lastHeight) {
+                                    lastHeight = currentHeight;
+                                    newContentRetries = 0;
+                                } else {
+                                    newContentRetries++;
+                                }
+                            }
+                            // Depois de processar novo conteúdo, tentar over-scroll novamente
+                        } else {
+                            // Nada novo carregou, incrementar contador
+                            overScrollCount++;
                         }
                     }
                 } else {
@@ -244,6 +332,9 @@ export class PageScroller {
 
                 // Wait for all images to finish processing
                 await Promise.all(imageProcessingPromises);
+
+                // Delay adicional antes de disconnect para evitar race condition com lazy-loads tardios
+                await new Promise((resolve) => setTimeout(resolve, 2000));
                 observer.disconnect();
 
                 // Collect failed images
@@ -251,7 +342,10 @@ export class PageScroller {
                     document.querySelectorAll(
                         `${config.imageSelector}[data-failed="true"]`,
                     ),
-                ).map((img) => (img as HTMLImageElement).dataset.originalSrc || '');
+                ).map(
+                    (img) =>
+                        (img as HTMLImageElement).dataset.originalSrc || '',
+                );
 
                 return {
                     processedImageCount,

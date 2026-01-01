@@ -19,4 +19,8 @@ export class WebsiteConfigDto {
     sessionStorage?: Record<string, string>;
     /** Whether to reload the page after injecting storage */
     reloadAfterStorageInjection?: boolean;
+    /** Enable adaptive timeouts based on page size */
+    enableAdaptiveTimeouts?: boolean;
+    /** Custom timeout multipliers by page size */
+    timeoutMultipliers?: Record<string, number>;
 }

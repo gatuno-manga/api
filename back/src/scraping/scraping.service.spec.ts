@@ -45,7 +45,10 @@ describe('ScrapingService', () => {
 	};
 
 	const mockCompressorFactory = {
-		compress: jest.fn().mockResolvedValue({ buffer: Buffer.from('compressed'), extension: '.webp' }),
+		compress: jest.fn().mockResolvedValue({
+			buffer: Buffer.from('compressed'),
+			extension: '.webp',
+		}),
 		getCompressor: jest.fn().mockReturnValue({
 			getOutputExtension: jest.fn().mockReturnValue('.webp'),
 		}),
@@ -54,7 +57,9 @@ describe('ScrapingService', () => {
 
 	const mockFilesService = {
 		saveBufferFile: jest.fn().mockResolvedValue('/path/to/saved/file.jpg'),
-		savePreCompressedFile: jest.fn().mockResolvedValue('/path/to/saved/file.webp'),
+		savePreCompressedFile: jest
+			.fn()
+			.mockResolvedValue('/path/to/saved/file.webp'),
 		saveBase64File: jest.fn().mockResolvedValue('/path/to/saved/file.jpg'),
 		getCompressorFactory: jest.fn().mockReturnValue(mockCompressorFactory),
 		getPublicPath: jest.fn(),
@@ -100,7 +105,9 @@ describe('ScrapingService', () => {
 
 	it('should have browser factory initialized', () => {
 		expect(service['browserFactory']).toBeDefined();
-		expect(service['browserFactory']).toBeInstanceOf(PlaywrightBrowserFactory);
+		expect(service['browserFactory']).toBeInstanceOf(
+			PlaywrightBrowserFactory,
+		);
 	});
 
 	it('should have concurrency manager initialized', () => {
@@ -121,7 +128,9 @@ describe('ScrapingService', () => {
 
 	describe('setBrowserFactory', () => {
 		it('should replace the browser factory', () => {
-			const mockFactory = new PlaywrightBrowserFactory({ headless: true });
+			const mockFactory = new PlaywrightBrowserFactory({
+				headless: true,
+			});
 
 			service.setBrowserFactory(mockFactory);
 			expect(service['browserFactory']).toBe(mockFactory);
@@ -132,7 +141,9 @@ describe('ScrapingService', () => {
 		it('should return default config when website not found', async () => {
 			mockWebsiteService.getByUrl.mockResolvedValue(null);
 
-			const config = await service['getWebsiteConfig']('https://example.com');
+			const config = await service['getWebsiteConfig'](
+				'https://example.com',
+			);
 
 			expect(config).toEqual({
 				selector: 'img',
@@ -164,7 +175,9 @@ describe('ScrapingService', () => {
 				useScreenshotMode: false,
 			});
 
-			const config = await service['getWebsiteConfig']('https://example.com');
+			const config = await service['getWebsiteConfig'](
+				'https://example.com',
+			);
 
 			expect(config).toEqual({
 				selector: '.custom-img',
@@ -192,7 +205,9 @@ describe('ScrapingService', () => {
 				whitelistTerms: null,
 			});
 
-			const config = await service['getWebsiteConfig']('https://example.com');
+			const config = await service['getWebsiteConfig'](
+				'https://example.com',
+			);
 
 			expect(config.useNetworkInterception).toBe(false);
 			expect(config.blacklistTerms).toEqual([]);
@@ -205,7 +220,9 @@ describe('ScrapingService', () => {
 				useScreenshotMode: true,
 			});
 
-			const config = await service['getWebsiteConfig']('https://example.com');
+			const config = await service['getWebsiteConfig'](
+				'https://example.com',
+			);
 
 			expect(config.useScreenshotMode).toBe(true);
 			expect(config.selector).toBe('canvas.page');
@@ -219,7 +236,8 @@ describe('ScrapingService', () => {
 				close: jest.fn().mockResolvedValue(undefined),
 				isConnected: jest.fn().mockReturnValue(true),
 			};
-			service['browser'] = mockBrowser as unknown as typeof service['browser'];
+			service['browser'] =
+				mockBrowser as unknown as (typeof service)['browser'];
 
 			await service.onApplicationShutdown();
 
@@ -230,7 +248,9 @@ describe('ScrapingService', () => {
 		it('should handle null browser gracefully', async () => {
 			service['browser'] = null;
 
-			await expect(service.onApplicationShutdown()).resolves.not.toThrow();
+			await expect(
+				service.onApplicationShutdown(),
+			).resolves.not.toThrow();
 		});
 	});
 });

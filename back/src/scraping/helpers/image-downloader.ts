@@ -2,12 +2,62 @@ import { Logger } from '@nestjs/common';
 import type { Page } from 'playwright';
 
 /**
+ * Configuração de filtro de URLs para ImageDownloader
+ */
+export interface UrlFilterConfig {
+    blacklistTerms: string[];
+    whitelistTerms: string[];
+}
+
+/**
  * Helper for downloading images from a page using Playwright.
  */
 export class ImageDownloader {
     private readonly logger = new Logger(ImageDownloader.name);
+    private readonly filterConfig: UrlFilterConfig;
 
-    constructor(private readonly page: Page) {}
+    constructor(
+        private readonly page: Page,
+        filterConfig?: Partial<UrlFilterConfig>,
+    ) {
+        this.filterConfig = {
+            blacklistTerms: filterConfig?.blacklistTerms || [],
+            whitelistTerms: filterConfig?.whitelistTerms || [],
+        };
+    }
+
+    /**
+     * Verifica se uma URL deve ser aceita baseado nos filtros de blacklist/whitelist.
+     */
+    private shouldAcceptUrl(url: string): boolean {
+        const lowerUrl = url.toLowerCase();
+
+        // Verifica blacklist primeiro
+        if (this.filterConfig.blacklistTerms.length > 0) {
+            for (const term of this.filterConfig.blacklistTerms) {
+                if (lowerUrl.includes(term.toLowerCase())) {
+                    return false;
+                }
+            }
+        }
+
+        // Verifica whitelist (se configurada)
+        if (this.filterConfig.whitelistTerms.length > 0) {
+            for (const term of this.filterConfig.whitelistTerms) {
+                if (lowerUrl.includes(term.toLowerCase())) {
+                    return true;
+                }
+            }
+            // Whitelist configurada mas URL não corresponde a nenhum termo
+            this.logger.log(
+                `🚫 Whitelist rejeitou: ${url} (nenhum termo correspondeu)`,
+            );
+            return false;
+        }
+
+        // Sem whitelist configurada, aceita todas URLs não-blacklisted
+        return true;
+    }
 
     /**
      * Fetch an image as Buffer using Playwright's request context.
@@ -26,7 +76,10 @@ export class ImageDownloader {
 
             return await response.body();
         } catch (error) {
-            this.logger.error(`Failed to fetch image as buffer: ${imageUrl}`, error);
+            this.logger.error(
+                `Failed to fetch image as buffer: ${imageUrl}`,
+                error,
+            );
             return null;
         }
     }
@@ -62,13 +115,18 @@ export class ImageDownloader {
             }, imageUrl);
 
             if (!base64) {
-                this.logger.warn(`Failed to fetch via page context: ${imageUrl}`);
+                this.logger.warn(
+                    `Failed to fetch via page context: ${imageUrl}`,
+                );
                 return null;
             }
 
             return Buffer.from(base64, 'base64');
         } catch (error) {
-            this.logger.error(`Failed to fetch image via page context: ${imageUrl}`, error);
+            this.logger.error(
+                `Failed to fetch image via page context: ${imageUrl}`,
+                error,
+            );
             return null;
         }
     }
@@ -109,9 +167,10 @@ export class ImageDownloader {
 
     /**
      * Get all image URLs from the page matching the selector.
+     * Aplica filtros de blacklist/whitelist se configurados.
      */
     async getImageUrls(selector = 'img'): Promise<string[]> {
-        return await this.page.$$eval(selector, (imgs) =>
+        const allUrls = await this.page.$$eval(selector, (imgs) =>
             (imgs as HTMLImageElement[])
                 .map((img) => img.src)
                 .filter(
@@ -122,6 +181,24 @@ export class ImageDownloader {
                             src.startsWith('blob:')),
                 ),
         );
+
+        // Aplica filtros de blacklist/whitelist
+        this.logger.log(`🔍 Processando ${allUrls.length} URLs encontradas...`);
+        const filteredUrls = allUrls.filter((url) => this.shouldAcceptUrl(url));
+
+        const rejected = allUrls.length - filteredUrls.length;
+        this.logger.log(
+            `📊 Resultado do filtro: ${filteredUrls.length} aceitas, ${rejected} rejeitadas (total: ${allUrls.length})`,
+        );
+
+        if (rejected === 0 && this.filterConfig.blacklistTerms.length > 0) {
+            this.logger.warn(
+                `⚠️ ATENÇÃO: Nenhuma URL foi rejeitada pela blacklist! ` +
+                `Verifique se os termos estão corretos: ${JSON.stringify(this.filterConfig.blacklistTerms)}`,
+            );
+        }
+
+        return filteredUrls;
     }
 
     /**
@@ -144,7 +221,7 @@ export class ImageDownloader {
     ): Promise<void> {
         await this.page.waitForFunction(
             (sel: string) => {
-                const images = document.querySelectorAll(sel) as NodeListOf<HTMLImageElement>;
+                const images = document.querySelectorAll(sel);
                 return Array.from(images).every((img) => img.complete);
             },
             selector,

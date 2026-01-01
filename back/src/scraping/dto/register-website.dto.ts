@@ -1,10 +1,16 @@
-import { IsOptional, IsString, IsUrl, IsInt, IsBoolean, IsArray, ValidateNested, IsObject } from 'class-validator';
+import {
+	IsOptional,
+	IsString,
+	IsUrl,
+	IsInt,
+	IsBoolean,
+	IsArray,
+	ValidateNested,
+	IsObject,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
-/**
- * Cookie configuration for injection into browser context.
- */
 export class CookieConfigDto {
 	@ApiProperty({ description: 'Cookie name', example: 'lang' })
 	@IsString()
@@ -148,7 +154,8 @@ Example output:
 	bookInfoExtractScript?: string;
 
 	@ApiPropertyOptional({
-		description: 'Optional concurrency limit for simultaneous scrapes of this site. Null or omitted = unlimited',
+		description:
+			'Optional concurrency limit for simultaneous scrapes of this site. Null or omitted = unlimited',
 		example: 3,
 	})
 	@IsOptional()
@@ -156,7 +163,8 @@ Example output:
 	concurrencyLimit?: number;
 
 	@ApiPropertyOptional({
-		description: 'Blacklist terms: URLs containing these terms will be ignored',
+		description:
+			'Blacklist terms: URLs containing these terms will be ignored',
 		example: ['logo', 'icon', 'avatar', 'ads', 'banner', 'sprite', '.gif'],
 		type: [String],
 		isArray: true,
@@ -167,7 +175,8 @@ Example output:
 	blacklistTerms?: string[];
 
 	@ApiPropertyOptional({
-		description: 'Whitelist terms: If filled, only URLs containing these terms will be accepted',
+		description:
+			'Whitelist terms: If filled, only URLs containing these terms will be accepted',
 		example: ['cdn.site.com', 'uploads/chapters'],
 		type: [String],
 		isArray: true,
@@ -178,7 +187,8 @@ Example output:
 	whitelistTerms?: string[];
 
 	@ApiPropertyOptional({
-		description: 'Enable network traffic interception for image caching (more efficient)',
+		description:
+			'Enable network traffic interception for image caching (more efficient)',
 		example: true,
 		default: true,
 	})
@@ -187,7 +197,8 @@ Example output:
 	useNetworkInterception?: boolean;
 
 	@ApiPropertyOptional({
-		description: 'Use screenshot/print mode to capture images instead of downloading. Captures in PNG (lossless) for maximum quality. Useful for canvas-rendered images or sites with download protection.',
+		description:
+			'Use screenshot/print mode to capture images instead of downloading. Captures in PNG (lossless) for maximum quality. Useful for canvas-rendered images or sites with download protection.',
 		example: false,
 		default: false,
 	})
@@ -196,7 +207,8 @@ Example output:
 	useScreenshotMode?: boolean;
 
 	@ApiPropertyOptional({
-		description: 'Cookies to inject before navigation. Useful for language settings, consent bypassing, etc.',
+		description:
+			'Cookies to inject before navigation. Useful for language settings, consent bypassing, etc.',
 		type: [CookieConfigDto],
 		example: [
 			{ name: 'lang', value: 'en' },
@@ -211,7 +223,8 @@ Example output:
 	cookies?: CookieConfigDto[];
 
 	@ApiPropertyOptional({
-		description: 'localStorage items to inject after page load. Keys and values as strings.',
+		description:
+			'localStorage items to inject after page load. Keys and values as strings.',
 		example: {
 			reader_mode: 'vertical',
 			image_fit: 'width',
@@ -223,7 +236,8 @@ Example output:
 	localStorage?: Record<string, string>;
 
 	@ApiPropertyOptional({
-		description: 'sessionStorage items to inject after page load. Keys and values as strings.',
+		description:
+			'sessionStorage items to inject after page load. Keys and values as strings.',
 		example: {
 			verified_age: 'true',
 			session_quality: 'high',
@@ -234,11 +248,36 @@ Example output:
 	sessionStorage?: Record<string, string>;
 
 	@ApiPropertyOptional({
-		description: 'Whether to reload the page after injecting localStorage/sessionStorage. Some sites read configs only on initial load.',
+		description:
+			'Whether to reload the page after injecting localStorage/sessionStorage. Some sites read configs only on initial load.',
 		example: false,
 		default: false,
 	})
 	@IsOptional()
 	@IsBoolean()
 	reloadAfterStorageInjection?: boolean;
+
+	@ApiPropertyOptional({
+		description:
+			'Enable adaptive timeouts based on page size. Longer pages automatically get larger timeouts.',
+		example: true,
+		default: true,
+	})
+	@IsOptional()
+	@IsBoolean()
+	enableAdaptiveTimeouts?: boolean;
+
+	@ApiPropertyOptional({
+		description:
+			'Custom timeout multipliers by page size. If not specified, uses defaults: small=1.0, medium=1.5, large=2.0, huge=3.0',
+		example: {
+			small: 1.0,
+			medium: 2.0,
+			large: 3.0,
+			huge: 4.0,
+		},
+	})
+	@IsOptional()
+	@IsObject()
+	timeoutMultipliers?: Record<string, number>;
 }

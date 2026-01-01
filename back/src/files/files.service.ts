@@ -9,9 +9,7 @@ export class FilesService {
 	private downloadDir = path.resolve('/usr/src/app/data');
 	private readonly logger = new Logger(FilesService.name);
 
-	constructor(
-		private readonly compressorFactory: FileCompressorFactory,
-	) {}
+	constructor(private readonly compressorFactory: FileCompressorFactory) {}
 
 	private getPublicPath(fileName: string): string {
 		return `/data/${fileName}`;
@@ -54,16 +52,16 @@ export class FilesService {
 	 * @param extension Extensão do arquivo (ex: '.jpg', '.png')
 	 * @returns Caminho público do arquivo salvo
 	 */
-	async saveBufferFile(
-		buffer: Buffer,
-		extension: string,
-	): Promise<string> {
+	async saveBufferFile(buffer: Buffer, extension: string): Promise<string> {
 		let fileBuffer: Buffer;
 		let finalExtension = extension;
 
 		if (this.compressorFactory.hasCompressor(extension)) {
 			try {
-				const result = await this.compressorFactory.compress(buffer, extension);
+				const result = await this.compressorFactory.compress(
+					buffer,
+					extension,
+				);
 				fileBuffer = result.buffer;
 				finalExtension = result.extension;
 				this.logger.log(

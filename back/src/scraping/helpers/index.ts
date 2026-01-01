@@ -15,3 +15,11 @@ export {
     StorageConfig,
     CookieConfig,
 } from './storage-injector';
+export {
+    detectPageComplexity,
+    getComplexityMultipliers,
+    getAdaptiveScrollStep,
+    PageComplexity,
+    PageSize,
+    ComplexityMultipliers,
+} from './page-complexity-detector';

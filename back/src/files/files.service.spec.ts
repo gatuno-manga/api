@@ -77,8 +77,13 @@ describe('FilesService', () => {
 
 			const result = await service.saveBufferFile(buffer, extension);
 
-			expect(mockCompressorFactory.hasCompressor).toHaveBeenCalledWith(extension);
-			expect(mockCompressorFactory.compress).toHaveBeenCalledWith(buffer, extension);
+			expect(mockCompressorFactory.hasCompressor).toHaveBeenCalledWith(
+				extension,
+			);
+			expect(mockCompressorFactory.compress).toHaveBeenCalledWith(
+				buffer,
+				extension,
+			);
 			expect(fs.writeFile).toHaveBeenCalled();
 			expect(result).toMatch(/^\/data\/.+\.webp$/);
 		});
@@ -90,7 +95,9 @@ describe('FilesService', () => {
 
 			const result = await service.saveBufferFile(buffer, extension);
 
-			expect(mockCompressorFactory.hasCompressor).toHaveBeenCalledWith(extension);
+			expect(mockCompressorFactory.hasCompressor).toHaveBeenCalledWith(
+				extension,
+			);
 			expect(mockCompressorFactory.compress).not.toHaveBeenCalled();
 			expect(fs.writeFile).toHaveBeenCalled();
 			expect(result).toMatch(/^\/data\/.+\.txt$/);
@@ -100,15 +107,19 @@ describe('FilesService', () => {
 			const buffer = Buffer.from('test image');
 			const extension = '.jpg';
 			mockCompressorFactory.hasCompressor.mockReturnValue(true);
-			mockCompressorFactory.compress.mockRejectedValue(new Error('Compression failed'));
+			mockCompressorFactory.compress.mockRejectedValue(
+				new Error('Compression failed'),
+			);
 
 			const result = await service.saveBufferFile(buffer, extension);
 
-			expect(mockCompressorFactory.hasCompressor).toHaveBeenCalledWith(extension);
+			expect(mockCompressorFactory.hasCompressor).toHaveBeenCalledWith(
+				extension,
+			);
 			expect(mockCompressorFactory.compress).toHaveBeenCalled();
 			expect(fs.writeFile).toHaveBeenCalledWith(
 				expect.any(String),
-				buffer
+				buffer,
 			);
 			expect(result).toMatch(/^\/data\/.+\.jpg$/);
 		});
@@ -139,10 +150,12 @@ describe('FilesService', () => {
 
 			const result = await service.saveBase64File(base64Data, extension);
 
-			expect(mockCompressorFactory.hasCompressor).toHaveBeenCalledWith(extension);
+			expect(mockCompressorFactory.hasCompressor).toHaveBeenCalledWith(
+				extension,
+			);
 			expect(mockCompressorFactory.compress).toHaveBeenCalledWith(
 				Buffer.from(base64Data, 'base64'),
-				extension
+				extension,
 			);
 			expect(fs.writeFile).toHaveBeenCalled();
 			expect(result).toMatch(/^\/data\/.+\.webp$/);
@@ -155,7 +168,9 @@ describe('FilesService', () => {
 
 			const result = await service.saveBase64File(base64Data, extension);
 
-			expect(mockCompressorFactory.hasCompressor).toHaveBeenCalledWith(extension);
+			expect(mockCompressorFactory.hasCompressor).toHaveBeenCalledWith(
+				extension,
+			);
 			expect(mockCompressorFactory.compress).not.toHaveBeenCalled();
 			expect(fs.writeFile).toHaveBeenCalled();
 			expect(result).toMatch(/^\/data\/.+\.txt$/);
@@ -172,7 +187,7 @@ describe('FilesService', () => {
 			// Verifica que o arquivo foi escrito com o conteúdo correto
 			expect(fs.writeFile).toHaveBeenCalledWith(
 				expect.any(String),
-				Buffer.from(testData)
+				Buffer.from(testData),
 			);
 			expect(result).toMatch(/^\/data\/.+\.jpg$/);
 		});

@@ -142,6 +142,27 @@ export class Website {
 	})
 	reloadAfterStorageInjection: boolean;
 
+	/**
+	 * Habilita timeouts adaptativos baseados no tamanho da página.
+	 * Páginas mais longas recebem automaticamente timeouts maiores.
+	 */
+	@Column({
+		type: 'boolean',
+		default: true,
+	})
+	enableAdaptiveTimeouts: boolean;
+
+	/**
+	 * Multiplicadores customizados para timeouts por tamanho de página.
+	 * Se não especificado, usa valores padrão: small=1.0, medium=1.5, large=2.0, huge=3.0
+	 * Ex: { "small": 1.0, "medium": 2.0, "large": 3.0, "huge": 4.0 }
+	 */
+	@Column({
+		type: 'json',
+		nullable: true,
+	})
+	timeoutMultipliers: Record<string, number>;
+
 	@CreateDateColumn()
 	createdAt: Date;
 

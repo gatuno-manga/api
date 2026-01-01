@@ -82,7 +82,7 @@ export interface BrowserConfig {
  */
 export const DEFAULT_BROWSER_CONFIG: Required<BrowserConfig> = {
     headless: true,
-    navigationTimeout: 60000,
+    navigationTimeout: 150000, // Aumentado de 60s para 150s para páginas longas
     actionTimeout: 30000,
     userAgent:
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
