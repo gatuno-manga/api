@@ -46,6 +46,7 @@ import { FilesModule } from 'src/files/files.module';
 import { LoggingModule } from 'src/logging/logging.module';
 import { MetricsModule } from 'src/metrics/metrics.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { DownloadModule } from './download/download.module';
 
 @Module({
 	imports: [
@@ -55,6 +56,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 		LoggingModule,
 		MetricsModule,
 		ScheduleModule.forRoot(),
+		DownloadModule,
 		TypeOrmModule.forFeature([
 			Book,
 			Page,

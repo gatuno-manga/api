@@ -6,6 +6,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ChapterRead } from '../entitys/chapter-read.entity';
 import { Chapter } from '../entitys/chapter.entity';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
+import { ChapterUpdatedEvent } from './events/chapter-updated.event';
 
 @Injectable()
 export class ChapterService {
@@ -87,6 +88,7 @@ export class ChapterService {
 	async resetChapter(idChapter: string) {
 		const chapter = await this.chapterRepository.findOne({
 			where: { id: idChapter },
+			relations: ['book'],
 		});
 		if (!chapter) {
 			throw new NotFoundException(
@@ -96,6 +98,10 @@ export class ChapterService {
 		chapter.scrapingStatus = ScrapingStatus.PROCESS;
 		await this.chapterRepository.save(chapter);
 		this.eventEmitter.emit('chapters.updated', chapter);
+		this.eventEmitter.emit(
+			'chapter.updated',
+			new ChapterUpdatedEvent(chapter.id, chapter.book.id),
+		);
 		return chapter;
 	}
 
@@ -137,12 +143,19 @@ export class ChapterService {
 	async resetAllChapters(ids: string[]) {
 		const chapters = await this.chapterRepository.find({
 			where: { id: In(ids) },
+			relations: ['book'],
 		});
 		for (const chapter of chapters) {
 			chapter.scrapingStatus = ScrapingStatus.PROCESS;
 		}
 		await this.chapterRepository.save(chapters);
 		this.eventEmitter.emit('chapters.updated', chapters);
+		for (const chapter of chapters) {
+			this.eventEmitter.emit(
+				'chapter.updated',
+				new ChapterUpdatedEvent(chapter.id, chapter.book.id),
+			);
+		}
 		return chapters;
 	}
 }
