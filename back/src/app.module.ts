@@ -60,6 +60,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 		BooksModule,
 		ServeStaticModule.forRoot({
 			rootPath: join(__dirname, '..', 'data'),
+			exclude: ['/api*'],
 		}),
 		BullModule.forRootAsync({
 			imports: [AppConfigModule],
