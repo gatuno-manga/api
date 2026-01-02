@@ -11,6 +11,7 @@ import { Book } from '../entitys/book.entity';
 import { DownloadCacheService } from './download-cache.service';
 import { ZipStrategy } from './strategies/zip.strategy';
 import { PdfStrategy } from './strategies/pdf.strategy';
+import { PdfsZipStrategy } from './strategies/pdfs-zip.strategy';
 import {
     ChapterDownloadFormat,
     DownloadChapterQueryDto,
@@ -33,6 +34,7 @@ export class DownloadService {
         private readonly cacheService: DownloadCacheService,
         private readonly zipStrategy: ZipStrategy,
         private readonly pdfStrategy: PdfStrategy,
+        private readonly pdfsZipStrategy: PdfsZipStrategy,
     ) {}
 
     /**
@@ -189,20 +191,14 @@ export class DownloadService {
         }
 
         // Determinar estratégia baseada no formato
-        let strategy: ZipStrategy;
+        let strategy: ZipStrategy | PdfsZipStrategy;
         let formatKey: string;
 
         if (dto.format === BookDownloadFormat.PDFS_ZIP) {
             // ZIP de PDFs: gerar PDF para cada capítulo e empacotar
             formatKey = 'pdfs_zip';
-            strategy = this.zipStrategy;
-
-            // Para esta estratégia, precisamos gerar PDFs individuais
-            // Por simplicidade, vamos usar a estratégia ZIP com as imagens
-            // Uma implementação completa geraria PDFs por capítulo
-            this.logger.warn(
-                'PDFS_ZIP format not fully implemented, using images instead',
-            );
+            strategy = this.pdfsZipStrategy;
+            this.logger.log('Using PDFs ZIP strategy');
         } else {
             // ZIP de imagens
             formatKey = 'images_zip';
