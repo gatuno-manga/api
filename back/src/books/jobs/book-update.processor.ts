@@ -150,13 +150,13 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
 					continue;
 				}
 
-				// Encontra capítulos novos comparando URLs (considera capítulos já existentes + criados nesta iteração)
+				// Encontra capítulos novos comparando URLs normalizadas (considera capítulos já existentes + criados nesta iteração)
 				const existingUrls = new Set([
-					...book.chapters.map((ch) => ch.originalUrl),
-					...allCreatedChapters.map((ch) => ch.originalUrl),
+					...book.chapters.map((ch) => normalizeUrl(ch.originalUrl)),
+					...allCreatedChapters.map((ch) => normalizeUrl(ch.originalUrl)),
 				]);
 				const newChapters = bookInfo.chapters.filter(
-					(ch) => !existingUrls.has(ch.url),
+					(ch) => !existingUrls.has(normalizeUrl(ch.url)),
 				);
 
 				if (newChapters.length === 0) {
@@ -168,21 +168,36 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
 					`Found ${newChapters.length} new chapters from URL: ${bookUrl}`,
 				);
 
-				// Calcula o próximo índice baseado nos capítulos existentes + criados
-				const allChapters = [...book.chapters, ...allCreatedChapters];
-				const maxExistingIndex =
-					allChapters.length > 0
-						? Math.max(...allChapters.map((ch) => ch.index))
-						: 0;
+				// Calcula o próximo índice baseado em TODOS os capítulos (incluindo soft-deleted)
+				// para evitar conflito de constraint unique
+				const maxIndexResult = await this.chapterRepository
+					.createQueryBuilder('chapter')
+					.withDeleted() // Inclui soft-deleted para evitar conflito de constraint
+					.select('MAX(chapter.index)', 'maxIndex')
+					.where('chapter.bookId = :bookId', { bookId: book.id })
+					.getRawOne();
+				const dbMaxIndex = parseFloat(maxIndexResult?.maxIndex) || 0;
+
+				// Considera também capítulos criados nesta iteração
+				const createdIndexes = allCreatedChapters
+					.map((ch) => ch.index)
+					.filter((idx) => typeof idx === 'number' && !isNaN(idx));
+				const maxCreatedIndex =
+					createdIndexes.length > 0 ? Math.max(...createdIndexes) : 0;
+				const maxExistingIndex = Math.max(dbMaxIndex, maxCreatedIndex);
 
 				// Cria os novos capítulos
 				for (let i = 0; i < newChapters.length; i++) {
 					const scraped = newChapters[i];
+					const scrapedIndex =
+						typeof scraped.index === 'number' && !isNaN(scraped.index)
+							? scraped.index
+							: null;
 					const chapter = this.chapterRepository.create({
 						title: scraped.title,
 						originalUrl: normalizeUrl(scraped.url),
-						index: scraped.index || maxExistingIndex + i + 1,
-						isFinal: scraped.isFinal || false,
+						index: scrapedIndex ?? maxExistingIndex + i + 1,
+						isFinal: scraped.isFinal ?? false,
 						book: book,
 						scrapingStatus: ScrapingStatus.PROCESS,
 					});

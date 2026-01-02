@@ -35,6 +35,17 @@ export const validationSchema = Joi.object({
 	CHAPTER_SCRAPING_CONCURRENCY: Joi.number().min(1).default(6),
 	COVER_IMAGE_CONCURRENCY: Joi.number().min(1).default(3),
 	FIX_CHAPTER_CONCURRENCY: Joi.number().min(1).default(2),
+	BOOK_UPDATE_CONCURRENCY: Joi.number()
+		.min(1)
+		.default(2)
+		.description('Concurrency for book update queue'),
+	// Book Auto-Update Settings
+	BOOK_UPDATE_ENABLED: Joi.boolean()
+		.default(true)
+		.description('Enable automatic book update checks'),
+	BOOK_UPDATE_CRON: Joi.string()
+		.default('0 */6 * * *')
+		.description('Cron expression for book update schedule (default: every 6 hours)'),
 	// Monitoring / Metrics
 	METRICS_ENABLED: Joi.boolean()
 		.default(true)

@@ -1,17 +1,20 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { SchedulerRegistry } from '@nestjs/schedule';
+import { CronJob } from 'cron';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { Book } from '../entitys/book.entity';
 import { BookUpdateJobService } from './book-update.service';
 import { AppConfigService } from 'src/app-config/app-config.service';
 
+const CRON_JOB_NAME = 'book-update-cron';
+
 /**
  * Job agendado para verificar atualizações de livros periodicamente.
- * Executa a cada 6 horas por padrão.
+ * Usa a variável de ambiente BOOK_UPDATE_CRON para configurar o intervalo.
  */
 @Injectable()
-export class BookUpdateScheduler {
+export class BookUpdateScheduler implements OnModuleInit {
 	private readonly logger = new Logger(BookUpdateScheduler.name);
 
 	constructor(
@@ -19,13 +22,34 @@ export class BookUpdateScheduler {
 		private readonly bookRepository: Repository<Book>,
 		private readonly bookUpdateJobService: BookUpdateJobService,
 		private readonly configService: AppConfigService,
+		private readonly schedulerRegistry: SchedulerRegistry,
 	) {}
 
+	onModuleInit() {
+		if (!this.configService.bookUpdate?.enabled) {
+			this.logger.log('Book auto-update is disabled');
+			return;
+		}
+
+		const cronExpression = this.configService.bookUpdate.cronExpression;
+		this.logger.log(
+			`Registering book update cron job with expression: ${cronExpression}`,
+		);
+
+		const job = new CronJob(cronExpression, () => {
+			this.handleScheduledUpdate();
+		});
+
+		this.schedulerRegistry.addCronJob(CRON_JOB_NAME, job);
+		job.start();
+
+		this.logger.log('Book update cron job registered and started');
+	}
+
 	/**
-	 * Executa a verificação de atualizações a cada 6 horas.
+	 * Executa a verificação de atualizações.
 	 * Apenas livros com URLs originais são verificados.
 	 */
-	@Cron(CronExpression.EVERY_6_HOURS)
 	async handleScheduledUpdate(): Promise<void> {
 		if (!this.configService.bookUpdate?.enabled) {
 			this.logger.debug('Book auto-update is disabled');
