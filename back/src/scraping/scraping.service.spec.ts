@@ -4,6 +4,7 @@ import { AppConfigService } from '../app-config/app-config.service';
 import { FilesService } from '../files/files.service';
 import { WebsiteService } from './website.service';
 import { PlaywrightBrowserFactory } from './browser';
+import { REDIS_CLIENT } from '../redis/redis.constants';
 
 // Mock playwright
 jest.mock('playwright-extra', () => ({
@@ -69,6 +70,22 @@ describe('ScrapingService', () => {
 		getByUrl: jest.fn().mockResolvedValue(null),
 	};
 
+	const mockRedisClient = {
+		get: jest.fn(),
+		set: jest.fn(),
+		del: jest.fn(),
+		incr: jest.fn().mockResolvedValue(1),
+		decr: jest.fn().mockResolvedValue(0),
+		expire: jest.fn(),
+		ttl: jest.fn(),
+		exists: jest.fn(),
+		pipeline: jest.fn().mockReturnValue({
+			incr: jest.fn().mockReturnThis(),
+			expire: jest.fn().mockReturnThis(),
+			exec: jest.fn().mockResolvedValue([[null, 1]]),
+		}),
+	};
+
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -84,6 +101,10 @@ describe('ScrapingService', () => {
 				{
 					provide: WebsiteService,
 					useValue: mockWebsiteService,
+				},
+				{
+					provide: REDIS_CLIENT,
+					useValue: mockRedisClient,
 				},
 			],
 		}).compile();
@@ -160,6 +181,8 @@ describe('ScrapingService', () => {
 				localStorage: undefined,
 				sessionStorage: undefined,
 				reloadAfterStorageInjection: undefined,
+				enableAdaptiveTimeouts: true,
+				timeoutMultipliers: undefined,
 			});
 		});
 
@@ -194,6 +217,8 @@ describe('ScrapingService', () => {
 				localStorage: undefined,
 				sessionStorage: undefined,
 				reloadAfterStorageInjection: false,
+				enableAdaptiveTimeouts: true,
+				timeoutMultipliers: undefined,
 			});
 		});
 

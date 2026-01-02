@@ -13,7 +13,7 @@ import { WebsiteService } from './website.service';
 import { WebsiteConfigDto } from './dto/website-config.dto';
 import { PlaywrightBrowserFactory } from './browser';
 import { IConcurrencyManager, RedisConcurrencyManager } from './concurrency';
-import { REDIS_CLIENT } from 'src/redis';
+import { REDIS_CLIENT } from 'src/redis/redis.constants';
 import {
 	ImageDownloader,
 	PageScroller,

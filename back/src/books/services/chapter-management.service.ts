@@ -15,6 +15,7 @@ import { OrderChaptersDto } from '../dto/order-chapters.dto';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { normalizeUrl } from 'src/common/utils/url.utils';
+import { ChapterUpdatedEvent } from '../chapters/events/chapter-updated.event';
 
 /**
  * Service responsável por gerenciar capítulos de livros
@@ -85,6 +86,10 @@ export class ChapterManagementService {
 		);
 
 		this.eventEmitter.emit('chapter.created', savedChapter);
+		this.eventEmitter.emit(
+			'chapter.updated',
+			new ChapterUpdatedEvent(savedChapter.id, bookId),
+		);
 
 		return savedChapter;
 	}
@@ -248,6 +253,12 @@ export class ChapterManagementService {
 
 		savedBook.chapters.forEach((ch) => (ch.book = savedBook));
 		this.eventEmitter.emit('chapters.updated', savedBook.chapters);
+		for (const chapter of updatedChapters) {
+			this.eventEmitter.emit(
+				'chapter.updated',
+				new ChapterUpdatedEvent(chapter.id, idBook),
+			);
+		}
 
 		return savedBook.chapters;
 	}
@@ -318,6 +329,12 @@ export class ChapterManagementService {
 
 		// Emit event for reordering
 		savedBook.chapters.forEach((ch) => (ch.book = savedBook));
+		for (const chapter of orderedChapters) {
+			this.eventEmitter.emit(
+				'chapter.updated',
+				new ChapterUpdatedEvent(chapter.id, idBook),
+			);
+		}
 		this.eventEmitter.emit('chapters.updated', savedBook.chapters);
 
 		return savedBook;

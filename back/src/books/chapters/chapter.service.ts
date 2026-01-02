@@ -6,6 +6,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ChapterRead } from '../entitys/chapter-read.entity';
 import { Chapter } from '../entitys/chapter.entity';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
+import { ChapterUpdatedEvent } from './events/chapter-updated.event';
 
 @Injectable()
 export class ChapterService {
@@ -87,6 +88,7 @@ export class ChapterService {
 	async resetChapter(idChapter: string) {
 		const chapter = await this.chapterRepository.findOne({
 			where: { id: idChapter },
+			relations: ['book'],
 		});
 		if (!chapter) {
 			throw new NotFoundException(
@@ -96,6 +98,10 @@ export class ChapterService {
 		chapter.scrapingStatus = ScrapingStatus.PROCESS;
 		await this.chapterRepository.save(chapter);
 		this.eventEmitter.emit('chapters.updated', chapter);
+		this.eventEmitter.emit(
+			'chapter.updated',
+			new ChapterUpdatedEvent(chapter.id, chapter.book.id),
+		);
 		return chapter;
 	}
 
@@ -108,6 +114,22 @@ export class ChapterService {
 				`Chapter with id ${chapterId} not found`,
 			);
 		}
+
+		// Verificar se já está marcado como lido
+		const existing = await this.chapterReadRepository.findOne({
+			where: {
+				chapter: { id: chapterId },
+				user: { id: userId },
+			},
+		});
+
+		if (existing) {
+			this.logger.log(
+				`Chapter ${chapterId} already marked as read by user ${userId}`,
+			);
+			return existing;
+		}
+
 		const chapterRead = this.chapterReadRepository.create({
 			chapter,
 			user: { id: userId },
@@ -117,6 +139,57 @@ export class ChapterService {
 			`Chapter ${chapterId} marked as read by user ${userId}`,
 		);
 		return chapterRead;
+	}
+
+	async markChapterAsUnread(chapterId: string, userId: string) {
+		const chapter = await this.chapterRepository.findOne({
+			where: { id: chapterId },
+		});
+		if (!chapter) {
+			throw new NotFoundException(
+				`Chapter with id ${chapterId} not found`,
+			);
+		}
+		const result = await this.chapterReadRepository.delete({
+			chapter: { id: chapterId },
+			user: { id: userId },
+		});
+		this.logger.log(
+			`Chapter ${chapterId} marked as unread by user ${userId}`,
+		);
+		return result;
+	}
+
+	async markChaptersAsRead(chapterIds: string[], userId: string) {
+		const results: { chapterId: string; success: boolean; result?: any; error?: string; }[] = [];
+		for (const chapterId of chapterIds) {
+			try {
+				const result = await this.markChapterAsRead(chapterId, userId);
+				results.push({ chapterId, success: true, result });
+			} catch (error) {
+				results.push({ chapterId, success: false, error: error.message });
+			}
+		}
+		this.logger.log(
+			`Marked ${results.filter(r => r.success).length}/${chapterIds.length} chapters as read for user ${userId}`,
+		);
+		return results;
+	}
+
+	async markChaptersAsUnread(chapterIds: string[], userId: string) {
+		const results: { chapterId: string; success: boolean; result?: any; error?: string; }[] = [];
+		for (const chapterId of chapterIds) {
+			try {
+				const result = await this.markChapterAsUnread(chapterId, userId);
+				results.push({ chapterId, success: true, result });
+			} catch (error) {
+				results.push({ chapterId, success: false, error: error.message });
+			}
+		}
+		this.logger.log(
+			`Marked ${results.filter(r => r.success).length}/${chapterIds.length} chapters as unread for user ${userId}`,
+		);
+		return results;
 	}
 
 	async listLessPages(pages: number) {
@@ -137,12 +210,19 @@ export class ChapterService {
 	async resetAllChapters(ids: string[]) {
 		const chapters = await this.chapterRepository.find({
 			where: { id: In(ids) },
+			relations: ['book'],
 		});
 		for (const chapter of chapters) {
 			chapter.scrapingStatus = ScrapingStatus.PROCESS;
 		}
 		await this.chapterRepository.save(chapters);
 		this.eventEmitter.emit('chapters.updated', chapters);
+		for (const chapter of chapters) {
+			this.eventEmitter.emit(
+				'chapter.updated',
+				new ChapterUpdatedEvent(chapter.id, chapter.book.id),
+			);
+		}
 		return chapters;
 	}
 }
