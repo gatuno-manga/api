@@ -2,7 +2,7 @@ import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { createHash } from 'crypto';
 import { readFile } from 'fs/promises';
@@ -65,7 +65,7 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
 	 */
 	private async recalculateMissingCoverHashes(): Promise<void> {
 		const coversWithoutHash = await this.coverRepository.find({
-			where: { imageHash: null as any },
+			where: { imageHash: IsNull() },
 			relations: ['book'],
 		});
 

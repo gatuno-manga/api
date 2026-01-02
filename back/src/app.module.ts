@@ -12,8 +12,6 @@ import { AppConfigModule } from './app-config/app-config.module';
 import { AppConfigService } from './app-config/app-config.service';
 import { ScrapingModule } from './scraping/scraping.module';
 import { BooksModule } from './books/books.module';
-import { ServeStaticModule } from '@nestjs/serve-static';
-import { join } from 'path';
 import { FilesModule } from './files/files.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
@@ -58,10 +56,6 @@ import { DashboardModule } from './dashboard/dashboard.module';
 		]),
 		ScrapingModule,
 		BooksModule,
-		ServeStaticModule.forRoot({
-			rootPath: join(__dirname, '..', 'data'),
-			exclude: ['/api*'],
-		}),
 		BullModule.forRootAsync({
 			imports: [AppConfigModule],
 			inject: [AppConfigService],
