@@ -1,9 +1,11 @@
 import {
 	Body,
 	Controller,
+	Delete,
 	Get,
 	Param,
 	Patch,
+	Post,
 	UseGuards,
 	UseInterceptors,
 } from '@nestjs/common';
@@ -105,6 +107,64 @@ export class ChapterController {
 		@CurrentUser() user: CurrentUserDto,
 	) {
 		return this.chapterService.markChapterAsRead(idChapter, user.userId);
+	}
+
+	@Delete('/:idChapter/read/')
+	@Throttle({ medium: { limit: 50, ttl: 60000 } })
+	@ApiOperation({
+		summary: 'Mark chapter as unread',
+		description: 'Mark a chapter as unread for the current user',
+	})
+	@ApiParam({
+		name: 'idChapter',
+		description: 'Chapter unique identifier',
+		example: '550e8400-e29b-41d4-a716-446655440000',
+	})
+	@ApiResponse({ status: 200, description: 'Chapter marked as unread' })
+	@ApiResponse({ status: 404, description: 'Chapter not found' })
+	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiResponse({ status: 429, description: 'Too many requests' })
+	@ApiBearerAuth('JWT-auth')
+	@UseGuards(JwtAuthGuard)
+	markChapterAsUnread(
+		@Param('idChapter') idChapter: string,
+		@CurrentUser() user: CurrentUserDto,
+	) {
+		return this.chapterService.markChapterAsUnread(idChapter, user.userId);
+	}
+
+	@Post('batch/read')
+	@Throttle({ medium: { limit: 20, ttl: 60000 } })
+	@ApiOperation({
+		summary: 'Mark multiple chapters as read',
+		description: 'Mark multiple chapters as read for the current user',
+	})
+	@ApiResponse({ status: 200, description: 'Chapters marked as read' })
+	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiBearerAuth('JWT-auth')
+	@UseGuards(JwtAuthGuard)
+	markChaptersAsRead(
+		@Body() chapterIds: string[],
+		@CurrentUser() user: CurrentUserDto,
+	) {
+		return this.chapterService.markChaptersAsRead(chapterIds, user.userId);
+	}
+
+	@Post('batch/unread')
+	@Throttle({ medium: { limit: 20, ttl: 60000 } })
+	@ApiOperation({
+		summary: 'Mark multiple chapters as unread',
+		description: 'Mark multiple chapters as unread for the current user',
+	})
+	@ApiResponse({ status: 200, description: 'Chapters marked as unread' })
+	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiBearerAuth('JWT-auth')
+	@UseGuards(JwtAuthGuard)
+	markChaptersAsUnread(
+		@Body() chapterIds: string[],
+		@CurrentUser() user: CurrentUserDto,
+	) {
+		return this.chapterService.markChaptersAsUnread(chapterIds, user.userId);
 	}
 
 	@Get('less-pages/:pages')
