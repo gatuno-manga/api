@@ -6,6 +6,7 @@ import {
 	IsUrl,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { NormalizeUrl } from '../../common/decorators/normalize-url.decorator';
 
 export class CreateChapterDto {
 	@ApiPropertyOptional({
@@ -22,6 +23,7 @@ export class CreateChapterDto {
 		example: 'https://example.com/book/chapter-1',
 		format: 'url',
 	})
+	@NormalizeUrl()
 	@IsUrl()
 	@IsOptional()
 	url?: string;

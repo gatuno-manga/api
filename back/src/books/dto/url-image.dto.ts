@@ -1,10 +1,8 @@
-import { Transform } from 'class-transformer';
 import { IsString, IsUrl } from 'class-validator';
+import { NormalizeUrl } from '../../common/decorators/normalize-url.decorator';
 
 export class UrlImageDto {
-	@Transform(({ value }) => {
-		return value;
-	})
+	@NormalizeUrl()
 	@IsUrl()
 	url: string;
 

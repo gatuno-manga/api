@@ -14,10 +14,11 @@ import { UpdateChapterDto } from '../dto/update-chapter.dto';
 import { OrderChaptersDto } from '../dto/order-chapters.dto';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { normalizeUrl } from 'src/common/utils/url.utils';
 
 /**
  * Service responsável por gerenciar capítulos de livros
- */
+	*/;
 @Injectable()
 export class ChapterManagementService {
 	private readonly logger = new Logger(ChapterManagementService.name);
@@ -120,7 +121,7 @@ export class ChapterManagementService {
 		const chapters = chaptersDto.map((chapterDto) =>
 			manager.create({
 				title: chapterDto.title,
-				originalUrl: chapterDto.url || '', // URL opcional agora
+				originalUrl: chapterDto.url ? normalizeUrl(chapterDto.url) : '', // URL opcional agora
 				index: allHaveIndex ? chapterDto.index : count++,
 				book,
 			}),

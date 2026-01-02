@@ -13,6 +13,7 @@ import { ScrapingService } from 'src/scraping/scraping.service';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { CoverImageService } from './cover-image.service';
+import { normalizeUrl } from 'src/common/utils/url.utils';
 
 const QUEUE_NAME = 'book-update-queue';
 
@@ -179,7 +180,7 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
 					const scraped = newChapters[i];
 					const chapter = this.chapterRepository.create({
 						title: scraped.title,
-						originalUrl: scraped.url,
+						originalUrl: normalizeUrl(scraped.url),
 						index: scraped.index || maxExistingIndex + i + 1,
 						isFinal: scraped.isFinal || false,
 						book: book,
@@ -264,8 +265,8 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
 
 				// Cria a nova capa
 				const cover = this.coverRepository.create({
-					url: scrapedCover.url, // Será atualizada depois pelo CoverImageProcessor
-					originalUrl: scrapedCover.url,
+					url: normalizeUrl(scrapedCover.url), // Será atualizada depois pelo CoverImageProcessor
+					originalUrl: normalizeUrl(scrapedCover.url),
 					title:
 						scrapedCover.title ||
 						`Capa ${book.covers.length + newCoversCount + 1}`,

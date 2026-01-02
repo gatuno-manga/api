@@ -11,6 +11,7 @@ import { Type } from 'class-transformer';
 import { BookType } from '../enum/book-type.enum';
 import { CreateAuthorDto } from './create-author.dto';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { NormalizeUrl } from '../../common/decorators/normalize-url.decorator';
 
 export class UpdateBookDto extends PartialType(
 	OmitType(CreateBookDto, ['chapters', 'validator'] as const),
@@ -52,6 +53,7 @@ export class UpdateBookDto extends PartialType(
 		format: 'url',
 	})
 	@IsOptional()
+	@NormalizeUrl()
 	@IsUrl({}, { each: true })
 	originalUrl?: string[];
 

@@ -10,6 +10,7 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { NormalizeUrl } from '../../common/decorators/normalize-url.decorator';
 
 export class CookieConfigDto {
 	@ApiProperty({ description: 'Cookie name', example: 'lang' })
@@ -77,6 +78,7 @@ export class RegisterWebSiteDto {
 		example: 'https://example.com/manga',
 		format: 'url',
 	})
+	@NormalizeUrl()
 	@IsUrl()
 	url: string;
 

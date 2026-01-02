@@ -16,6 +16,7 @@ import { BookType } from '../enum/book-type.enum';
 import { CreateAuthorDto } from './create-author.dto';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { transformCoverBookLegacyFormat } from './transformers/cover-book.transformer';
+import { NormalizeUrl } from '../../common/decorators/normalize-url.decorator';
 
 export class CreateBookDto {
 	@ApiProperty({
@@ -69,6 +70,7 @@ export class CreateBookDto {
 		format: 'url',
 	})
 	@IsOptional()
+	@NormalizeUrl()
 	@IsUrl({}, { each: true })
 	originalUrl?: string[] = [];
 
