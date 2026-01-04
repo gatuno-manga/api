@@ -2,7 +2,7 @@ import { Injectable, StreamableFile, Logger } from '@nestjs/common';
 import { DownloadStrategy } from './download.strategy';
 import { Chapter } from 'src/books/entitys/chapter.entity';
 import PDFDocument from 'pdfkit';
-import { Readable } from 'stream';
+import { PassThrough } from 'stream';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import sharp from 'sharp';
@@ -30,32 +30,47 @@ export class PdfStrategy implements DownloadStrategy {
             `Generating PDF for ${chapters.length} chapters: ${fileName}`,
         );
 
+        // Stream de passagem para enviar dados enquanto gera
+        const outputStream = new PassThrough();
+
         // Criar documento PDF
         const doc = new PDFDocument({
             autoFirstPage: false,
-            bufferPages: true,
+            bufferPages: false, // Desabilitar buffer de páginas para streaming
         });
 
-        const buffers: any[] = [];
+        // Pipe do PDFKit para o output stream
+        doc.pipe(outputStream);
 
-        // Coletar dados do stream em buffers
-        doc.on('data', (chunk) => buffers.push(chunk));
-
-        // Criar promessa que resolve quando o documento terminar (ANTES de adicionar conteúdo)
-        const pdfPromise = new Promise<void>((resolve, reject) => {
-            doc.on('end', () => {
-                this.logger.debug('PDF stream ended');
-                resolve();
-            });
-            doc.on('error', (err: Error) => {
-                this.logger.error(`PDF error: ${err.message}`);
-                reject(err);
-            });
+        // Error handling
+        doc.on('error', (err: Error) => {
+            this.logger.error(`PDF error: ${err.message}`);
+            outputStream.destroy(err);
         });
 
+        // Gerar PDF em background
+        this.generatePdfAsync(doc, chapters)
+            .then(() => {
+                this.logger.debug('PDF generation complete');
+            })
+            .catch((err) => {
+                this.logger.error(`PDF generation failed: ${err.message}`);
+                outputStream.destroy(err);
+            });
+
+        // Retornar imediatamente o stream
+        return new StreamableFile(outputStream);
+    }
+
+    /**
+     * Gera o conteúdo do PDF de forma assíncrona
+     */
+    private async generatePdfAsync(
+        doc: PDFKit.PDFDocument,
+        chapters: Chapter[],
+    ): Promise<void> {
         let totalPagesAdded = 0;
 
-        // Adicionar páginas ao PDF
         for (const chapter of chapters) {
             if (!chapter.pages || chapter.pages.length === 0) {
                 this.logger.warn(
@@ -80,16 +95,11 @@ export class PdfStrategy implements DownloadStrategy {
             )) {
                 try {
                     // O path no banco é /data/filename.ext (caminho público)
-                    // Mas o volume está montado em /usr/src/app/data
                     const cleanPath = page.path.startsWith('/data/')
                         ? page.path.substring(6)
                         : page.path;
 
                     const filePath = join(DATA_BASE_PATH, cleanPath);
-
-                    this.logger.debug(
-                        `Processing page ${page.id}: ${filePath}`,
-                    );
 
                     // Ler o arquivo da imagem
                     const rawImageBuffer = await fs.readFile(filePath);
@@ -122,37 +132,21 @@ export class PdfStrategy implements DownloadStrategy {
                     );
 
                     totalPagesAdded++;
-                    this.logger.debug(
-                        `Added page ${page.index} to PDF (${width}x${height})`,
-                    );
                 } catch (error) {
                     const errorMessage =
                         error instanceof Error
                             ? error.message
                             : 'Unknown error';
                     this.logger.error(
-                        `Failed to process page ${page.id} from chapter ${chapter.id}: ${errorMessage}`,
+                        `Failed to process page ${page.id}: ${errorMessage}`,
                     );
-                    // Continuar com as outras páginas
                 }
             }
         }
 
+        this.logger.log(`Finalizing PDF with ${totalPagesAdded} pages`);
+
         // Finalizar o documento
         doc.end();
-
-        // Aguardar a conclusão do stream (usando a promessa criada anteriormente)
-        await pdfPromise;
-
-        // Combinar todos os buffers
-        const finalBuffer = Buffer.concat(buffers);
-
-        this.logger.log(
-            `PDF generated successfully: ${finalBuffer.length} bytes, ${totalPagesAdded} pages`,
-        );
-
-        // Retornar como StreamableFile
-        const stream = Readable.from(finalBuffer);
-        return new StreamableFile(stream);
     }
 }

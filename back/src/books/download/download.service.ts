@@ -44,7 +44,7 @@ export class DownloadService {
         private readonly configService: AppConfigService,
     ) {
         // Converter MB para bytes
-        const thresholdMB = this.configService.get<number>('DOWNLOAD_CACHE_THRESHOLD_MB') || 100;
+        const thresholdMB = this.configService.downloadCacheThresholdMB;
         this.CACHE_THRESHOLD_BYTES = thresholdMB * 1024 * 1024;
         this.logger.log(`Download cache threshold: ${thresholdMB}MB`);
     }

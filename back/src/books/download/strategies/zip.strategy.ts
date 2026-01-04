@@ -2,12 +2,24 @@ import { Injectable, StreamableFile, Logger } from '@nestjs/common';
 import { DownloadStrategy } from './download.strategy';
 import { Chapter } from 'src/books/entitys/chapter.entity';
 import archiver from 'archiver';
-import { Readable } from 'stream';
+import { PassThrough } from 'stream';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 
 // Caminho base onde o volume de dados está montado no container
 const DATA_BASE_PATH = '/usr/src/app/data';
+
+// Configuração de paralelismo
+const PARALLEL_CHAPTERS = 4; // Capítulos processados em paralelo
+const PARALLEL_PAGES = 8;    // Páginas por capítulo em paralelo
+
+interface PageData {
+    chapterIndex: number;
+    chapterFolder: string;
+    pageIndex: number;
+    fileName: string;
+    buffer: Buffer;
+}
 
 @Injectable()
 export class ZipStrategy implements DownloadStrategy {
@@ -26,117 +38,155 @@ export class ZipStrategy implements DownloadStrategy {
         fileName: string,
     ): Promise<StreamableFile> {
         this.logger.log(
-            `Generating ZIP for ${chapters.length} chapters: ${fileName}`,
+            `Generating ZIP for ${chapters.length} chapters: ${fileName} (parallel: ${PARALLEL_CHAPTERS} chapters, ${PARALLEL_PAGES} pages)`,
         );
 
-        // Criar um stream de passagem para o archiver
+        // Stream de passagem para enviar dados enquanto gera
+        const outputStream = new PassThrough();
+
+        // Criar archiver com streaming
         const archive = archiver('zip', {
-            zlib: { level: 6 }, // Nível de compressão (0-9)
+            zlib: { level: 6 },
         });
 
-        const buffers: any[] = [];
+        // Pipe do archiver para o output stream
+        archive.pipe(outputStream);
 
-        // Coletar dados do stream em buffers
-        archive.on('data', (chunk) => buffers.push(chunk));
-
-        // Criar promessa que resolve quando o archive terminar
-        const archivePromise = new Promise<void>((resolve, reject) => {
-            archive.on('end', () => {
-                this.logger.debug('Archive stream ended');
-                resolve();
-            });
-            archive.on('error', (err) => {
-                this.logger.error(`Archive error: ${err.message}`);
-                reject(err);
-            });
+        // Error handling
+        archive.on('error', (err: Error) => {
+            this.logger.error(`Archive error: ${err.message}`);
+            outputStream.destroy(err);
         });
 
+        archive.on('warning', (err: Error) => {
+            this.logger.warn(`Archive warning: ${err.message}`);
+        });
+
+        // Gerar ZIP em background com paralelismo
+        this.generateZipParallel(archive, chapters)
+            .then(() => {
+                this.logger.debug('All files added, archive finalized');
+            })
+            .catch((err) => {
+                this.logger.error(`ZIP generation failed: ${err.message}`);
+                outputStream.destroy(err);
+            });
+
+        // Retornar imediatamente o stream
+        return new StreamableFile(outputStream);
+    }
+
+    /**
+     * Gera ZIP com processamento paralelo de capítulos
+     */
+    private async generateZipParallel(
+        archive: archiver.Archiver,
+        chapters: Chapter[],
+    ): Promise<void> {
+        const startTime = Date.now();
         let totalPagesAdded = 0;
 
-        // Adicionar páginas ao ZIP
-        for (const chapter of chapters) {
-            if (!chapter.pages || chapter.pages.length === 0) {
-                this.logger.warn(
-                    `Chapter ${chapter.id} (${chapter.title}) has no pages`,
-                );
-                continue;
-            }
+        // Processar capítulos em lotes paralelos
+        for (let i = 0; i < chapters.length; i += PARALLEL_CHAPTERS) {
+            const batch = chapters.slice(i, i + PARALLEL_CHAPTERS);
 
-            // Criar pasta para o capítulo
-            const chapterFolder = this.sanitizeFileName(
-                `Capitulo ${chapter.index} - ${chapter.title}`,
+            this.logger.debug(
+                `Processing chapter batch ${Math.floor(i / PARALLEL_CHAPTERS) + 1}/${Math.ceil(chapters.length / PARALLEL_CHAPTERS)}`,
             );
 
-            for (const page of chapter.pages.sort(
-                (a, b) => a.index - b.index,
-            )) {
-                try {
-                    this.logger.debug(
-                        `Processing page ${page.id}: original path="${page.path}"`,
-                    );
+            // Processar lote em paralelo
+            const batchResults = await Promise.all(
+                batch.map((chapter) => this.processChapterParallel(chapter)),
+            );
 
-                    // O path no banco é /data/filename.ext (caminho público)
-                    // Mas o volume está montado em /usr/src/app/data
-                    // Remover /data/ e usar o caminho base correto
-                    const cleanPath = page.path.startsWith('/data/')
-                        ? page.path.substring(6)
-                        : page.path;
-                    const filePath = join(DATA_BASE_PATH, cleanPath);
-
-                    this.logger.debug(`Attempting to read file: "${filePath}"`);
-
-                    // Verificar se o arquivo existe
-                    await fs.access(filePath);
-
-                    // Ler o arquivo da imagem
-                    const imageBuffer = await fs.readFile(filePath);
-
-                    // Extrair extensão do arquivo
-                    const ext = cleanPath.split('.').pop() || 'webp';
-                    const pageFileName = `${String(page.index).padStart(3, '0')}.${ext}`;
-
-                    // Adicionar ao ZIP
-                    archive.append(imageBuffer, {
-                        name: `${chapterFolder}/${pageFileName}`,
+            // Adicionar ao archive na ordem correta (já ordenado por chapterIndex e pageIndex)
+            for (const chapterPages of batchResults) {
+                for (const pageData of chapterPages) {
+                    archive.append(pageData.buffer, {
+                        name: `${pageData.chapterFolder}/${pageData.fileName}`,
                     });
-
-                    this.logger.debug(
-                        `Successfully added page ${page.index} to ZIP: ${pageFileName}`,
-                    );
                     totalPagesAdded++;
-                } catch (error) {
-                    const errorMessage =
-                        error instanceof Error
-                            ? error.message
-                            : 'Unknown error';
-                    this.logger.error(
-                        `Failed to read page ${page.id} (path: "${page.path}") from chapter ${chapter.id}: ${errorMessage}`,
-                    );
-                    // Continuar com as outras páginas
                 }
             }
         }
 
-        // Finalizar o arquivo
-        await archive.finalize();
-
-        // Aguardar a conclusão do stream (usando a promessa criada anteriormente)
-        await archivePromise;
-
-        // Combinar todos os buffers
-        const finalBuffer = Buffer.concat(buffers);
-
+        const duration = ((Date.now() - startTime) / 1000).toFixed(1);
         this.logger.log(
-            `ZIP generated successfully: ${finalBuffer.length} bytes, ${totalPagesAdded} pages added`,
+            `Finalizing archive with ${totalPagesAdded} pages (processed in ${duration}s)`,
         );
 
-        // Retornar como StreamableFile
-        const stream = Readable.from(finalBuffer);
-        return new StreamableFile(stream);
+        // Finalizar o arquivo
+        await archive.finalize();
+    }
+
+    /**
+     * Processa um capítulo com páginas em paralelo
+     */
+    private async processChapterParallel(chapter: Chapter): Promise<PageData[]> {
+        if (!chapter.pages || chapter.pages.length === 0) {
+            this.logger.warn(
+                `Chapter ${chapter.id} (${chapter.title}) has no pages`,
+            );
+            return [];
+        }
+
+        const chapterFolder = this.sanitizeFileName(
+            `Capitulo ${chapter.index} - ${chapter.title}`,
+        );
+
+        const sortedPages = chapter.pages.sort((a, b) => a.index - b.index);
+        const results: PageData[] = [];
+
+        // Processar páginas em lotes paralelos
+        for (let i = 0; i < sortedPages.length; i += PARALLEL_PAGES) {
+            const pageBatch = sortedPages.slice(i, i + PARALLEL_PAGES);
+
+            const batchResults = await Promise.all(
+                pageBatch.map(async (page) => {
+                    try {
+                        const cleanPath = page.path.startsWith('/data/')
+                            ? page.path.substring(6)
+                            : page.path;
+                        const filePath = join(DATA_BASE_PATH, cleanPath);
+
+                        // Ler arquivo
+                        const buffer = await fs.readFile(filePath);
+
+                        // Extrair extensão
+                        const ext = cleanPath.split('.').pop() || 'webp';
+                        const fileName = `${String(page.index).padStart(3, '0')}.${ext}`;
+
+                        return {
+                            chapterIndex: chapter.index,
+                            chapterFolder,
+                            pageIndex: page.index,
+                            fileName,
+                            buffer,
+                        } as PageData;
+                    } catch (error) {
+                        const errorMessage =
+                            error instanceof Error
+                                ? error.message
+                                : 'Unknown error';
+                        this.logger.error(
+                            `Failed to read page ${page.id}: ${errorMessage}`,
+                        );
+                        return null;
+                    }
+                }),
+            );
+
+            // Filtrar nulls e adicionar resultados
+            results.push(
+                ...batchResults.filter((r): r is PageData => r !== null),
+            );
+        }
+
+        // Ordenar por índice da página (garantir ordem)
+        return results.sort((a, b) => a.pageIndex - b.pageIndex);
     }
 
     private sanitizeFileName(name: string): string {
-        // Remover caracteres inválidos para nomes de arquivo
         // eslint-disable-next-line no-control-regex
         return name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').trim();
     }

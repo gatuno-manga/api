@@ -176,4 +176,8 @@ export class AppConfigService {
 				this.config.get<string>('BOOK_UPDATE_CRON') || '0 */6 * * *', // Every 6 hours
 		};
 	}
+
+	get downloadCacheThresholdMB(): number {
+		return this.config.get<number>('DOWNLOAD_CACHE_THRESHOLD_MB') || 100;
+	}
 }

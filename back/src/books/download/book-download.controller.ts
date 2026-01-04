@@ -72,17 +72,19 @@ export class BookDownloadController {
             `Download request for book ${idBook} with ${chapterCount} chapters`,
         );
 
-        const { file, fileName } = await this.downloadService.downloadBook(
+        const { file, fileName, contentType } = await this.downloadService.downloadBook(
             idBook,
             body,
         );
 
-        // Definir header Content-Disposition para download com nome correto
+        // Definir headers para download
         res.set({
+            'Content-Type': contentType,
             'Content-Disposition': `attachment; filename="${encodeURIComponent(fileName)}"`,
+            'Cache-Control': 'no-cache',
         });
 
-        this.logger.log(`Sending file: ${fileName}`);
+        this.logger.log(`Sending file: ${fileName} (${contentType})`);
         return file;
     }
 }
