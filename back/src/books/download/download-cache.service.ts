@@ -49,6 +49,52 @@ export class DownloadCacheService implements OnModuleInit {
     }
 
     /**
+     * Retorna um stream do arquivo em cache (mais eficiente que buffer)
+     */
+    async getStream(
+        chapterIds: string[],
+        format: string,
+        extension: string,
+    ): Promise<NodeJS.ReadableStream | null> {
+        const cacheKey = this.generateCacheKey(chapterIds, format);
+        const redisKey = `${this.REDIS_PREFIX}${cacheKey}`;
+
+        try {
+            // Verificar se a chave existe no Redis
+            const cachedPath = await this.redis.get(redisKey);
+            if (!cachedPath) {
+                this.logger.debug(`Cache miss for key: ${cacheKey}`);
+                return null;
+            }
+
+            // Verificar se o arquivo existe
+            const filePath = this.getCacheFilePath(cacheKey, extension);
+            const fileExists = await fs
+                .access(filePath)
+                .then(() => true)
+                .catch(() => false);
+
+            if (!fileExists) {
+                this.logger.warn(
+                    `Cache file not found, removing Redis key: ${filePath}`,
+                );
+                await this.redis.del(redisKey);
+                return null;
+            }
+
+            // Retornar stream do arquivo
+            this.logger.log(`Cache stream hit for key: ${cacheKey}`);
+            const { createReadStream } = await import('fs');
+            return createReadStream(filePath);
+        } catch (error) {
+            const errorMessage =
+                error instanceof Error ? error.message : 'Unknown error';
+            this.logger.error(`Failed to get cache stream: ${errorMessage}`);
+            return null;
+        }
+    }
+
+    /**
      * Verifica se existe um arquivo em cache válido
      */
     async get(
@@ -94,7 +140,7 @@ export class DownloadCacheService implements OnModuleInit {
     }
 
     /**
-     * Armazena um arquivo no cache
+     * Armazena um arquivo no cache (com proteção contra corrupção)
      */
     async set(
         chapterIds: string[],
@@ -105,10 +151,14 @@ export class DownloadCacheService implements OnModuleInit {
         const cacheKey = this.generateCacheKey(chapterIds, format);
         const redisKey = `${this.REDIS_PREFIX}${cacheKey}`;
         const filePath = this.getCacheFilePath(cacheKey, extension);
+        const tempPath = `${filePath}.tmp`;
 
         try {
-            // Salvar arquivo
-            await fs.writeFile(filePath, data);
+            // Salvar em arquivo temporário primeiro
+            await fs.writeFile(tempPath, data);
+
+            // Renomear para arquivo final (operação atômica)
+            await fs.rename(tempPath, filePath);
 
             // Salvar referência no Redis com TTL
             await this.redis.set(redisKey, filePath, 'EX', this.TTL_SECONDS);
@@ -120,6 +170,8 @@ export class DownloadCacheService implements OnModuleInit {
             const errorMessage =
                 error instanceof Error ? error.message : 'Unknown error';
             this.logger.error(`Failed to set cache: ${errorMessage}`);
+            // Limpar arquivo temporário se existir
+            await fs.unlink(tempPath).catch(() => {});
         }
     }
 

@@ -11,12 +11,14 @@ import { Chapter } from '../entitys/chapter.entity';
 import { Book } from '../entitys/book.entity';
 import { RedisModule } from 'src/redis/redis.module';
 import { AuthModule } from 'src/auth/auth.module';
+import { AppConfigModule } from 'src/app-config/app-config.module';
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([Chapter, Book]),
         RedisModule,
         AuthModule,
+        AppConfigModule,
     ],
     controllers: [ChapterDownloadController, BookDownloadController],
     providers: [

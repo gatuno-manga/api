@@ -95,4 +95,9 @@ export const validationSchema = Joi.object({
 		.optional()
 		.allow('')
 		.description('WebSocket endpoint for remote browser connection'),
+	// Download Cache Settings
+	DOWNLOAD_CACHE_THRESHOLD_MB: Joi.number()
+		.min(1)
+		.default(100)
+		.description('Size threshold in MB for switching from buffer to streaming mode in downloads'),
 });

@@ -20,11 +20,17 @@ import {
     BookDownloadFormat,
     DownloadBookBodyDto,
 } from './dto/download-book-body.dto';
-import { Readable } from 'stream';
+import { Readable, PassThrough, pipeline } from 'stream';
+import { promisify } from 'util';
+import { promises as fs } from 'fs';
+import { AppConfigService } from 'src/app-config/app-config.service';
+
+const pipelineAsync = promisify(pipeline);
 
 @Injectable()
 export class DownloadService {
     private readonly logger = new Logger(DownloadService.name);
+    private readonly CACHE_THRESHOLD_BYTES: number;
 
     constructor(
         @InjectRepository(Chapter)
@@ -35,7 +41,13 @@ export class DownloadService {
         private readonly zipStrategy: ZipStrategy,
         private readonly pdfStrategy: PdfStrategy,
         private readonly pdfsZipStrategy: PdfsZipStrategy,
-    ) {}
+        private readonly configService: AppConfigService,
+    ) {
+        // Converter MB para bytes
+        const thresholdMB = this.configService.get<number>('DOWNLOAD_CACHE_THRESHOLD_MB') || 100;
+        this.CACHE_THRESHOLD_BYTES = thresholdMB * 1024 * 1024;
+        this.logger.log(`Download cache threshold: ${thresholdMB}MB`);
+    }
 
     /**
      * Download de um capítulo individual
@@ -74,22 +86,22 @@ export class DownloadService {
                 ? this.pdfStrategy
                 : this.zipStrategy;
 
-        // Verificar cache
-        const cachedFile = await this.cacheService.get(
+        const fileName = this.generateFileName(
+            [chapter],
+            strategy.getExtension(),
+        );
+
+        // Verificar cache usando stream
+        const cachedStream = await this.cacheService.getStream(
             [chapterId],
             query.format,
             strategy.getExtension(),
         );
 
-        if (cachedFile) {
+        if (cachedStream) {
             this.logger.log(`Returning cached file for chapter ${chapterId}`);
-            const stream = Readable.from(cachedFile);
-            const fileName = this.generateFileName(
-                [chapter],
-                strategy.getExtension(),
-            );
             return {
-                file: new StreamableFile(stream, {
+                file: new StreamableFile(cachedStream, {
                     type: strategy.getContentType(),
                     disposition: `attachment; filename="${fileName}"`,
                 }),
@@ -98,32 +110,30 @@ export class DownloadService {
             };
         }
 
-        // Gerar arquivo
-        const file = await strategy.generate([chapter], chapter.title);
-        const fileName = this.generateFileName(
-            [chapter],
-            strategy.getExtension(),
+        // Estimar tamanho
+        const estimatedSize = this.estimateSize([chapter]);
+        this.logger.log(
+            `Estimated size: ${(estimatedSize / 1024 / 1024).toFixed(2)}MB`,
         );
 
-        // Cachear para futuras requisições
-        const buffer = await this.streamToBuffer(file.getStream());
-        await this.cacheService.set(
-            [chapterId],
-            query.format,
-            strategy.getExtension(),
-            buffer,
-        );
-
-        // Retornar arquivo gerado
-        const stream = Readable.from(buffer);
-        return {
-            file: new StreamableFile(stream, {
-                type: strategy.getContentType(),
-                disposition: `attachment; filename="${fileName}"`,
-            }),
-            fileName,
-            contentType: strategy.getContentType(),
-        };
+        // Decidir estratégia: buffer (pequeno) ou streaming (grande)
+        if (estimatedSize < this.CACHE_THRESHOLD_BYTES) {
+            return this.downloadWithBufferCache(
+                [chapter],
+                strategy,
+                [chapterId],
+                query.format,
+                fileName,
+            );
+        } else {
+            return this.downloadWithStreamCache(
+                [chapter],
+                strategy,
+                [chapterId],
+                query.format,
+                fileName,
+            );
+        }
     }
 
     /**
@@ -208,23 +218,23 @@ export class DownloadService {
         // Obter IDs dos capítulos para cache
         const chapterIdsForCache = chapters.map((ch) => ch.id);
 
-        // Verificar cache
-        const cachedFile = await this.cacheService.get(
+        const fileName = this.generateFileName(
+            chapters,
+            strategy.getExtension(),
+            book.title,
+        );
+
+        // Verificar cache usando stream
+        const cachedStream = await this.cacheService.getStream(
             chapterIdsForCache,
             formatKey,
             strategy.getExtension(),
         );
 
-        if (cachedFile) {
+        if (cachedStream) {
             this.logger.log(`Returning cached file for book ${bookId}`);
-            const stream = Readable.from(cachedFile);
-            const fileName = this.generateFileName(
-                chapters,
-                strategy.getExtension(),
-                book.title,
-            );
             return {
-                file: new StreamableFile(stream, {
+                file: new StreamableFile(cachedStream, {
                     type: strategy.getContentType(),
                     disposition: `attachment; filename="${fileName}"`,
                 }),
@@ -233,33 +243,30 @@ export class DownloadService {
             };
         }
 
-        // Gerar arquivo
-        const file = await strategy.generate(chapters, book.title);
-        const fileName = this.generateFileName(
-            chapters,
-            strategy.getExtension(),
-            book.title,
+        // Estimar tamanho
+        const estimatedSize = this.estimateSize(chapters);
+        this.logger.log(
+            `Estimated size: ${(estimatedSize / 1024 / 1024).toFixed(2)}MB for ${chapters.length} chapters`,
         );
 
-        // Cachear para futuras requisições
-        const buffer = await this.streamToBuffer(file.getStream());
-        await this.cacheService.set(
-            chapterIdsForCache,
-            formatKey,
-            strategy.getExtension(),
-            buffer,
-        );
-
-        // Retornar arquivo gerado
-        const stream = Readable.from(buffer);
-        return {
-            file: new StreamableFile(stream, {
-                type: strategy.getContentType(),
-                disposition: `attachment; filename="${fileName}"`,
-            }),
-            fileName,
-            contentType: strategy.getContentType(),
-        };
+        // Decidir estratégia: buffer (pequeno) ou streaming (grande)
+        if (estimatedSize < this.CACHE_THRESHOLD_BYTES) {
+            return this.downloadWithBufferCache(
+                chapters,
+                strategy,
+                chapterIdsForCache,
+                formatKey,
+                fileName,
+            );
+        } else {
+            return this.downloadWithStreamCache(
+                chapters,
+                strategy,
+                chapterIdsForCache,
+                formatKey,
+                fileName,
+            );
+        }
     }
 
     /**
@@ -299,5 +306,153 @@ export class DownloadService {
             chunks.push(Buffer.from(chunk));
         }
         return Buffer.concat(chunks);
+    }
+
+    /**
+     * Estima o tamanho do arquivo baseado nas páginas
+     */
+    private estimateSize(chapters: Chapter[]): number {
+        const totalPages = chapters.reduce(
+            (sum, ch) => sum + (ch.pages?.length || 0),
+            0,
+        );
+        const avgPageSize = 2 * 1024 * 1024; // 2MB por página (estimativa conservadora)
+        return totalPages * avgPageSize;
+    }
+
+    /**
+     * Download com estratégia de buffer (arquivos pequenos)
+     */
+    private async downloadWithBufferCache(
+        chapters: Chapter[],
+        strategy: any,
+        cacheKey: string[],
+        formatKey: string,
+        fileName: string,
+    ): Promise<{
+        file: StreamableFile;
+        fileName: string;
+        contentType: string;
+    }> {
+        this.logger.log('Using buffer cache strategy');
+
+        // Gerar arquivo
+        const bookTitle = chapters[0]?.book?.title || 'Livro';
+        const file = await strategy.generate(chapters, bookTitle);
+
+        // Converter para buffer
+        const buffer = await this.streamToBuffer(file.getStream());
+
+        // Cachear (fire-and-forget)
+        this.cacheService
+            .set(cacheKey, formatKey, strategy.getExtension(), buffer)
+            .catch((err) =>
+                this.logger.error(`Cache save failed: ${err.message}`),
+            );
+
+        // Retornar buffer
+        const stream = Readable.from(buffer);
+        return {
+            file: new StreamableFile(stream, {
+                type: strategy.getContentType(),
+                disposition: `attachment; filename="${fileName}"`,
+            }),
+            fileName,
+            contentType: strategy.getContentType(),
+        };
+    }
+
+    /**
+     * Download com estratégia de streaming (arquivos grandes)
+     */
+    private async downloadWithStreamCache(
+        chapters: Chapter[],
+        strategy: any,
+        cacheKey: string[],
+        formatKey: string,
+        fileName: string,
+    ): Promise<{
+        file: StreamableFile;
+        fileName: string;
+        contentType: string;
+    }> {
+        this.logger.log('Using streaming cache strategy');
+
+        // Gerar stream do arquivo
+        const bookTitle = chapters[0]?.book?.title || 'Livro';
+        const file = await strategy.generate(chapters, bookTitle);
+        const sourceStream = file.getStream();
+
+        // Criar streams duplicados: um para cliente, outro para cache
+        const toClient = new PassThrough();
+        const toCache = new PassThrough();
+
+        // Configurar error handling
+        sourceStream.on('error', (err) => {
+            this.logger.error(`Stream generation failed: ${err.message}`);
+            toClient.destroy(err);
+            toCache.destroy(err);
+        });
+
+        // Duplicar stream
+        sourceStream.pipe(toClient);
+        sourceStream.pipe(toCache);
+
+        // Salvar no cache em background
+        this.saveToCacheAsync(cacheKey, formatKey, strategy.getExtension(), toCache)
+            .catch((err) =>
+                this.logger.error(`Async cache save failed: ${err.message}`),
+            );
+
+        // Retornar stream para cliente
+        return {
+            file: new StreamableFile(toClient, {
+                type: strategy.getContentType(),
+                disposition: `attachment; filename="${fileName}"`,
+            }),
+            fileName,
+            contentType: strategy.getContentType(),
+        };
+    }
+
+    /**
+     * Salva stream no cache de forma assíncrona
+     */
+    private async saveToCacheAsync(
+        cacheKey: string[],
+        format: string,
+        extension: string,
+        stream: Readable,
+    ): Promise<void> {
+        const key = this.cacheService['generateCacheKey'](cacheKey, format);
+        const filePath = this.cacheService['getCacheFilePath'](key, extension);
+        const tempPath = `${filePath}.tmp`;
+
+        try {
+            // Criar write stream para arquivo temporário
+            const fileStream = (await import('fs')).createWriteStream(tempPath);
+
+            // Pipeline: stream -> arquivo temporário
+            await pipelineAsync(stream, fileStream);
+
+            // Renomear para arquivo final (atômico)
+            await fs.rename(tempPath, filePath);
+
+            // Registrar no Redis
+            const redisKey = `${this.cacheService['REDIS_PREFIX']}${key}`;
+            const ttl = this.cacheService['TTL_SECONDS'];
+            await this.cacheService['redis'].set(
+                redisKey,
+                filePath,
+                'EX',
+                ttl,
+            );
+
+            this.logger.log(`Async cache saved: ${key}`);
+        } catch (error) {
+            // Limpar arquivo temporário se falhou
+            await fs.unlink(tempPath).catch(() => {});
+            throw error;
+        }
     }
 }
