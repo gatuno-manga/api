@@ -18,6 +18,7 @@ export class BookBuilder {
 		this.book = {
 			type: BookType.BOOK,
 			scrapingStatus: ScrapingStatus.READY,
+			autoUpdate: false,
 			chapters: [],
 			tags: [],
 			authors: [],
@@ -82,6 +83,14 @@ export class BookBuilder {
 			);
 		}
 		this.book.publication = year;
+		return this;
+	}
+
+	/**
+	 * Define se o livro deve ser atualizado automaticamente
+	 */
+	withAutoUpdate(enabled: boolean): this {
+		this.book.autoUpdate = enabled;
 		return this;
 	}
 
@@ -235,6 +244,7 @@ export class BookBuilder {
 		this.book = {
 			type: BookType.BOOK,
 			scrapingStatus: ScrapingStatus.READY,
+			autoUpdate: false,
 			chapters: [],
 			tags: [],
 			authors: [],
