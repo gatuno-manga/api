@@ -105,6 +105,68 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
 		);
 	}
 
+	@OnWorkerEvent('active')
+	async onActive(job: Job<BookUpdateJobData>) {
+		const book = await this.bookRepository.findOne({
+			where: { id: job.data.bookId },
+			select: ['id', 'title'],
+		});
+
+		if (book) {
+			this.eventEmitter.emit('book.update.started', {
+				bookId: book.id,
+				bookTitle: book.title,
+				jobId: job.id,
+				timestamp: Date.now(),
+			});
+			this.logger.debug(`Update started for book: ${book.title}`);
+		}
+	}
+
+	@OnWorkerEvent('completed')
+	async onCompleted(
+		job: Job<BookUpdateJobData>,
+		result: BookUpdateResult,
+	) {
+		const book = await this.bookRepository.findOne({
+			where: { id: job.data.bookId },
+			select: ['id', 'title'],
+		});
+
+		if (book) {
+			this.eventEmitter.emit('book.update.completed', {
+				bookId: book.id,
+				bookTitle: book.title,
+				jobId: job.id,
+				newChapters: result.newChapters,
+				newCovers: result.newCovers,
+				timestamp: Date.now(),
+			});
+			this.logger.debug(
+				`Update completed for book: ${book.title} (${result.newChapters} new chapters, ${result.newCovers} new covers)`,
+			);
+		}
+	}
+
+	@OnWorkerEvent('failed')
+	async onFailed(job: Job<BookUpdateJobData>, error: Error) {
+		const book = await this.bookRepository.findOne({
+			where: { id: job.data.bookId },
+			select: ['id', 'title'],
+		});
+
+		if (book) {
+			this.eventEmitter.emit('book.update.failed', {
+				bookId: book.id,
+				bookTitle: book.title,
+				jobId: job.id,
+				error: error.message,
+				timestamp: Date.now(),
+			});
+			this.logger.error(`Update failed for book: ${book.title}`, error.stack);
+		}
+	}
+
 	async process(job: Job<BookUpdateJobData>): Promise<BookUpdateResult> {
 		const { bookId } = job.data;
 		this.logger.debug(`Processing book update for: ${bookId}`);
@@ -366,22 +428,5 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
 		}
 
 		return createHash('sha256').update(buffer).digest('hex');
-	}
-
-	@OnWorkerEvent('failed')
-	async onFailed(job: Job<BookUpdateJobData>): Promise<void> {
-		this.logger.error(
-			`Book update job ${job.id} failed for book ${job.data.bookId}: ${job.failedReason}`,
-		);
-	}
-
-	@OnWorkerEvent('completed')
-	async onCompleted(job: Job<BookUpdateJobData>): Promise<void> {
-		const result = job.returnvalue as BookUpdateResult;
-		if (result?.newChapters > 0 || result?.newCovers > 0) {
-			this.logger.log(
-				`Book update job ${job.id} completed. Added ${result.newChapters} new chapters and ${result.newCovers} new covers to book ${job.data.bookId}`,
-			);
-		}
 	}
 }

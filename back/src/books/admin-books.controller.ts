@@ -31,6 +31,7 @@ import { UpdateCoverDto } from './dto/update-cover.dto';
 import { OrderChaptersDto } from './dto/order-chapters.dto';
 import { CreateChapterManualDto } from './dto/create-chapter-manual.dto';
 import { UploadCoverDto } from './dto/upload-cover.dto';
+import { ToggleAutoUpdateDto } from './dto/toggle-auto-update.dto';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { Roles } from 'src/auth/decorator/roles.decorator';
 import { RolesEnum } from 'src/users/enum/roles.enum';
@@ -157,6 +158,52 @@ export class AdminBooksController {
 		return { message: 'Update check scheduled for all books' };
 	}
 
+	@Patch(':idBook/auto-update')
+	@ApiOperation({
+		summary: 'Toggle automatic updates',
+		description:
+			'Enable or disable automatic update checks for a book (Admin only)',
+	})
+	@ApiParam({
+		name: 'idBook',
+		description: 'Book unique identifier',
+		example: '550e8400-e29b-41d4-a716-446655440000',
+	})
+	@ApiBody({
+		type: ToggleAutoUpdateDto,
+		description: 'Auto-update toggle settings',
+		examples: {
+			enable: {
+				summary: 'Enable auto-update',
+				value: { enabled: true },
+			},
+			disable: {
+				summary: 'Disable auto-update',
+				value: { enabled: false },
+			},
+		},
+	})
+	@ApiResponse({
+		status: 200,
+		description: 'Auto-update setting changed successfully',
+		schema: {
+			type: 'object',
+			properties: {
+				id: { type: 'string' },
+				title: { type: 'string' },
+				autoUpdate: { type: 'boolean' },
+			},
+		},
+	})
+	@ApiResponse({ status: 404, description: 'Book not found' })
+	@ApiBearerAuth('JWT-auth')
+	async toggleAutoUpdate(
+		@Param('idBook') idBook: string,
+		@Body() dto: ToggleAutoUpdateDto,
+	) {
+		return this.booksService.toggleAutoUpdate(idBook, dto.enabled);
+	}
+
 	@Patch(':idBook')
 	@ApiOperation({
 		summary: 'Update book',
@@ -248,6 +295,59 @@ export class AdminBooksController {
 	@ApiBearerAuth('JWT-auth')
 	processBookDashboard() {
 		return this.booksService.getProcessBook();
+	}
+
+	@Get('dashboard/queue-stats')
+	@ApiOperation({
+		summary: 'Get update queue statistics',
+		description:
+			'Retrieve statistics about the book update queue (Admin only)',
+	})
+	@ApiResponse({
+		status: 200,
+		description: 'Queue statistics retrieved successfully',
+		schema: {
+			type: 'object',
+			properties: {
+				counts: {
+					type: 'object',
+					properties: {
+						waiting: { type: 'number' },
+						active: { type: 'number' },
+						completed: { type: 'number' },
+						failed: { type: 'number' },
+						delayed: { type: 'number' },
+					},
+				},
+				activeJobs: {
+					type: 'array',
+					items: {
+						type: 'object',
+						properties: {
+							id: { type: 'string' },
+							bookId: { type: 'string' },
+							bookTitle: { type: 'string' },
+							timestamp: { type: 'number' },
+						},
+					},
+				},
+				waitingJobs: {
+					type: 'array',
+					items: {
+						type: 'object',
+						properties: {
+							id: { type: 'string' },
+							bookId: { type: 'string' },
+							bookTitle: { type: 'string' },
+						},
+					},
+				},
+			},
+		},
+	})
+	@ApiBearerAuth('JWT-auth')
+	async getQueueStats() {
+		return this.booksService.getQueueStats();
 	}
 
 	@Patch(':idBook/covers/:idCover/selected')

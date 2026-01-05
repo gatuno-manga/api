@@ -48,7 +48,7 @@ export class BookUpdateScheduler implements OnModuleInit {
 
 	/**
 	 * Executa a verificação de atualizações.
-	 * Apenas livros com URLs originais são verificados.
+	 * Apenas livros com URLs originais e autoUpdate habilitado são verificados.
 	 */
 	async handleScheduledUpdate(): Promise<void> {
 		if (!this.configService.bookUpdate?.enabled) {
@@ -59,12 +59,13 @@ export class BookUpdateScheduler implements OnModuleInit {
 		this.logger.log('Starting scheduled book update check...');
 
 		try {
-			// Busca livros que possuem URL original e não foram deletados
+			// Busca livros que possuem URL original, autoUpdate habilitado e não foram deletados
 			const books = await this.bookRepository.find({
 				where: {
 					deletedAt: IsNull(),
+					autoUpdate: true,
 				},
-				select: ['id', 'title', 'originalUrl'],
+				select: ['id', 'title', 'originalUrl', 'autoUpdate'],
 			});
 
 			// Filtra apenas livros com URL original válida
@@ -73,12 +74,12 @@ export class BookUpdateScheduler implements OnModuleInit {
 			);
 
 			if (booksWithUrls.length === 0) {
-				this.logger.debug('No books with original URLs to update');
+				this.logger.debug('No books with autoUpdate enabled to check');
 				return;
 			}
 
 			this.logger.log(
-				`Scheduling update check for ${booksWithUrls.length} books`,
+				`Scheduling update check for ${booksWithUrls.length} books with autoUpdate enabled`,
 			);
 
 			// Adiciona todos os livros à fila de atualização

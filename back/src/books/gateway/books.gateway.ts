@@ -40,8 +40,7 @@ import { RolesEnum } from '../../users/enum/roles.enum';
 	transports: ['websocket', 'polling'], // Adiciona polling como fallback
 })
 export class BooksGateway
-	implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
-{
+	implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
 	@WebSocketServer()
 	server: Server;
 
@@ -782,6 +781,78 @@ export class BooksGateway
 		} catch (error) {
 			this.logger.error(
 				`Failed to broadcast book.new-chapters: ${error.message}`,
+			);
+		}
+	}
+
+	/**
+	 * Notifica quando uma atualização de livro é iniciada
+	 * Apenas para admins
+	 */
+	@OnEvent('book.update.started')
+	handleBookUpdateStarted(data: {
+		bookId: string;
+		bookTitle: string;
+		jobId: string;
+		timestamp: number;
+	}) {
+		try {
+			this.logger.debug(
+				`Broadcasting book.update.started for book ${data.bookId}`,
+			);
+			this.server.to('admin').emit('book.update.started', data);
+		} catch (error) {
+			this.logger.error(
+				`Failed to broadcast book.update.started: ${error.message}`,
+			);
+		}
+	}
+
+	/**
+	 * Notifica quando uma atualização de livro é concluída
+	 * Apenas para admins
+	 */
+	@OnEvent('book.update.completed')
+	handleBookUpdateCompleted(data: {
+		bookId: string;
+		bookTitle: string;
+		jobId: string;
+		newChapters: number;
+		newCovers: number;
+		timestamp: number;
+	}) {
+		try {
+			this.logger.debug(
+				`Broadcasting book.update.completed for book ${data.bookId}`,
+			);
+			this.server.to('admin').emit('book.update.completed', data);
+		} catch (error) {
+			this.logger.error(
+				`Failed to broadcast book.update.completed: ${error.message}`,
+			);
+		}
+	}
+
+	/**
+	 * Notifica quando uma atualização de livro falha
+	 * Apenas para admins
+	 */
+	@OnEvent('book.update.failed')
+	handleBookUpdateFailed(data: {
+		bookId: string;
+		bookTitle: string;
+		jobId: string;
+		error: string;
+		timestamp: number;
+	}) {
+		try {
+			this.logger.debug(
+				`Broadcasting book.update.failed for book ${data.bookId}`,
+			);
+			this.server.to('admin').emit('book.update.failed', data);
+		} catch (error) {
+			this.logger.error(
+				`Failed to broadcast book.update.failed: ${error.message}`,
 			);
 		}
 	}

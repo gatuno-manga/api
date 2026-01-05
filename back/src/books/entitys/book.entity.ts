@@ -80,6 +80,12 @@ export class Book {
 	})
 	scrapingStatus: ScrapingStatus;
 
+	@Column({
+		type: 'boolean',
+		default: false,
+	})
+	autoUpdate: boolean;
+
 	@OneToMany(() => Chapter, (chapter) => chapter.book, {
 		cascade: true,
 	})

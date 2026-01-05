@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { Book } from './entitys/book.entity';
 import { Tag } from './entitys/tags.entity';
 import { Author } from './entitys/author.entity';
@@ -44,6 +46,8 @@ export class BooksService {
 		private readonly authorRepository: Repository<Author>,
 		@InjectRepository(SensitiveContent)
 		private readonly sensitiveContentRepository: Repository<SensitiveContent>,
+		@InjectQueue('book-update-queue')
+		private readonly bookUpdateQueue: Queue<{ bookId: string }>,
 		private readonly bookCreationService: BookCreationService,
 		private readonly bookUpdateService: BookUpdateService,
 		private readonly bookQueryService: BookQueryService,
@@ -170,6 +174,71 @@ export class BooksService {
 
 	async resetBook(idBook: string) {
 		return this.chapterManagementService.resetBookChapters(idBook);
+	}
+
+	async toggleAutoUpdate(idBook: string, enabled: boolean) {
+		const book = await this.bookRepository.findOne({
+			where: { id: idBook },
+		});
+
+		if (!book) {
+			throw new Error('Book not found');
+		}
+
+		book.autoUpdate = enabled;
+		await this.bookRepository.save(book);
+
+		this.logger.log(
+			`Auto-update ${enabled ? 'enabled' : 'disabled'} for book: ${book.title}`,
+		);
+
+		return {
+			id: book.id,
+			title: book.title,
+			autoUpdate: book.autoUpdate,
+		};
+	}
+
+	async getQueueStats() {
+		const counts = await this.bookUpdateQueue.getJobCounts();
+		const activeJobs = await this.bookUpdateQueue.getActive();
+		const waitingJobs = await this.bookUpdateQueue.getWaiting();
+
+		// Buscar informações dos livros para os jobs ativos e em espera
+		const activeJobsWithBookInfo = await Promise.all(
+			activeJobs.map(async (job) => {
+				const book = await this.bookRepository.findOne({
+					where: { id: job.data.bookId },
+					select: ['id', 'title'],
+				});
+				return {
+					id: job.id,
+					bookId: job.data.bookId,
+					bookTitle: book?.title || 'Unknown',
+					timestamp: job.timestamp,
+				};
+			}),
+		);
+
+		const waitingJobsWithBookInfo = await Promise.all(
+			waitingJobs.slice(0, 10).map(async (job) => {
+				const book = await this.bookRepository.findOne({
+					where: { id: job.data.bookId },
+					select: ['id', 'title'],
+				});
+				return {
+					id: job.id,
+					bookId: job.data.bookId,
+					bookTitle: book?.title || 'Unknown',
+				};
+			}),
+		);
+
+		return {
+			counts,
+			activeJobs: activeJobsWithBookInfo,
+			waitingJobs: waitingJobsWithBookInfo,
+		};
 	}
 
 	// ==================== RELACIONAMENTOS ====================

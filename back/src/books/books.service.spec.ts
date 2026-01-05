@@ -90,6 +90,15 @@ describe('BooksService', () => {
 					useValue: mockSensitiveContentRepository,
 				},
 				{
+					provide: 'BullQueue_book-update-queue',
+					useValue: {
+						add: jest.fn(),
+						getJobCounts: jest.fn().mockResolvedValue({ waiting: 0, active: 0, completed: 0, failed: 0 }),
+						getActive: jest.fn().mockResolvedValue([]),
+						getWaiting: jest.fn().mockResolvedValue([]),
+					},
+				},
+				{
 					provide: BookCreationService,
 					useValue: mockBookCreationService,
 				},
