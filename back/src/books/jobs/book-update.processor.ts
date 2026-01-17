@@ -346,13 +346,15 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
 					originalUrl: normalizeUrl(scrapedCover.url),
 					title:
 						scrapedCover.title ||
-						`Capa ${book.covers.length + newCoversCount + 1}`,
+						`Capa ${book.covers.length + 1}`,
+					index: book.covers.length,
 					imageHash: imageHash,
-					selected: book.covers.length === 0 && newCoversCount === 0, // Primeira capa é selecionada
+					selected: book.covers.length === 0, // Primeira capa é selecionada
 					book: book,
 				});
 
 				const savedCover = await this.coverRepository.save(cover);
+				book.covers.push(savedCover);
 				existingHashes.add(imageHash);
 				newCoversCount++;
 

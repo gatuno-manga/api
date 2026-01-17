@@ -20,17 +20,13 @@ export class Cover {
 	@Column()
 	title: string;
 
-	/**
-	 * Hash da imagem para deduplicação.
-	 * Calculado a partir do conteúdo da imagem (ex: SHA-256 ou perceptual hash).
-	 */
+	@Column({ default: 0 })
+	index: number;
+
 	@Column({ nullable: true })
 	@Index()
 	imageHash: string;
 
-	/**
-	 * URL original de onde a capa foi baixada (antes de ser salva localmente)
-	 */
 	@Column({ nullable: true })
 	originalUrl: string;
 

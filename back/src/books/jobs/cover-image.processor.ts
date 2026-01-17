@@ -112,11 +112,12 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 								url: saved,
 								originalUrl: original.url,
 								book: book,
-								selected:
-									book.covers.length === 0 ? true : false,
+								index: book.covers.length,
+								selected: book.covers.length === 0,
 							});
 							savedCover =
 								await this.coverRepository.save(coverBook);
+							book.covers.push(savedCover); // Update in-memory list for subsequent iterations
 							this.logger.log(
 								`Capa salva para o livro: ${book.title}`,
 							);

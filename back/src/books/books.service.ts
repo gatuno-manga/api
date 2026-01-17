@@ -13,6 +13,7 @@ import { BookPageOptionsDto } from './dto/book-page-options.dto';
 import { PageDto } from 'src/pages/page.dto';
 import { UpdateChapterDto } from './dto/update-chapter.dto';
 import { OrderChaptersDto } from './dto/order-chapters.dto';
+import { OrderCoversDto } from './dto/order-covers.dto';
 import {
 	FilterStrategy,
 	TypeFilterStrategy,
@@ -96,6 +97,10 @@ export class BooksService {
 		dto: { title?: string },
 	) {
 		return this.bookUpdateService.updateCover(idBook, idCover, dto);
+	}
+
+	async orderCovers(idBook: string, covers: OrderCoversDto[]) {
+		return this.bookUpdateService.orderCovers(idBook, covers);
 	}
 
 	// ==================== CONSULTA ====================
