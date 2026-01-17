@@ -324,13 +324,14 @@ export class BookQueryService {
 			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
 			.leftJoinAndSelect('book.covers', 'covers')
 			.where('book.id = :id', { id })
-			.orderBy('covers.title', 'ASC')
+			.orderBy('covers.index', 'ASC')
 			.select([
 				'book.id',
 				'sensitiveContent.weight',
 				'covers.id',
 				'covers.url',
 				'covers.title',
+				'covers.index',
 				'covers.selected',
 			])
 			.getOne();

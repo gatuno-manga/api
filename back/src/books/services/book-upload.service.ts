@@ -96,6 +96,7 @@ export class BookUploadService {
 				title: title || file.originalname,
 				url: savedPath,
 				book: book,
+				index: book.covers.length,
 				selected: book.covers.length === 0,
 			});
 
@@ -316,6 +317,7 @@ export class BookUploadService {
 						title: file.originalname,
 						url: savedPath,
 						book: book,
+						index: book.covers.length + index,
 						selected: book.covers.length === 0 && index === 0,
 					});
 				}),

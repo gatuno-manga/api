@@ -5,6 +5,7 @@ import { Book } from '../entitys/book.entity';
 import { Cover } from '../entitys/cover.entity';
 import { UpdateBookDto } from '../dto/update-book.dto';
 import { UpdateCoverDto } from '../dto/update-cover.dto';
+import { OrderCoversDto } from '../dto/order-covers.dto';
 import { CoverImageService } from '../jobs/cover-image.service';
 import { BookRelationshipService } from './book-relationship.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -148,5 +149,37 @@ export class BookUpdateService {
 		});
 
 		return updatedCover;
+	}
+
+	/**
+	 * Reordena as capas de um livro
+	 */
+	async orderCovers(
+		idBook: string,
+		coversDto: OrderCoversDto[],
+	): Promise<void> {
+		const book = await this.bookRepository.findOne({
+			where: { id: idBook },
+			relations: ['covers'],
+		});
+
+		if (!book) {
+			this.logger.warn(`Book with id ${idBook} not found`);
+			throw new NotFoundException(`Book with id ${idBook} not found`);
+		}
+
+		for (const dto of coversDto) {
+			const cover = book.covers.find((c) => c.id === dto.id);
+			if (cover) {
+				cover.index = dto.index;
+			}
+		}
+
+		await this.coverRepository.save(book.covers);
+
+		this.eventEmitter.emit('covers.reordered', {
+			bookId: idBook,
+			covers: coversDto,
+		});
 	}
 }

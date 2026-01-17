@@ -29,6 +29,7 @@ import { UpdateChapterDto } from './dto/update-chapter.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
 import { UpdateCoverDto } from './dto/update-cover.dto';
 import { OrderChaptersDto } from './dto/order-chapters.dto';
+import { OrderCoversDto } from './dto/order-covers.dto';
 import { CreateChapterManualDto } from './dto/create-chapter-manual.dto';
 import { UploadCoverDto } from './dto/upload-cover.dto';
 import { ToggleAutoUpdateDto } from './dto/toggle-auto-update.dto';
@@ -400,6 +401,30 @@ export class AdminBooksController {
 		@Body() dto: UpdateCoverDto,
 	) {
 		return this.booksService.updateCover(idBook, idCover, dto);
+	}
+
+	@Patch(':idBook/covers/order')
+	@ApiOperation({
+		summary: 'Reorder book covers',
+		description: 'Change the order of book covers (Admin only)',
+	})
+	@ApiParam({
+		name: 'idBook',
+		description: 'Book unique identifier',
+		example: '550e8400-e29b-41d4-a716-446655440000',
+	})
+	@ApiResponse({
+		status: 200,
+		description: 'Covers reordered successfully',
+	})
+	@ApiResponse({ status: 404, description: 'Book not found' })
+	@ApiResponse({ status: 400, description: 'Invalid input data' })
+	@ApiBearerAuth('JWT-auth')
+	orderCovers(
+		@Param('idBook') idBook: string,
+		@Body() dto: OrderCoversDto[],
+	) {
+		return this.booksService.orderCovers(idBook, dto);
 	}
 
 	@Patch(':idBook/covers/:idCover/image')
