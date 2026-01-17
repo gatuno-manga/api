@@ -377,6 +377,30 @@ export class AdminBooksController {
 		return this.booksService.selectCover(idBook, idCover);
 	}
 
+	@Patch(':idBook/covers/order')
+	@ApiOperation({
+		summary: 'Reorder book covers',
+		description: 'Change the order of book covers (Admin only)',
+	})
+	@ApiParam({
+		name: 'idBook',
+		description: 'Book unique identifier',
+		example: '550e8400-e29b-41d4-a716-446655440000',
+	})
+	@ApiResponse({
+		status: 200,
+		description: 'Covers reordered successfully',
+	})
+	@ApiResponse({ status: 404, description: 'Book not found' })
+	@ApiResponse({ status: 400, description: 'Invalid input data' })
+	@ApiBearerAuth('JWT-auth')
+	orderCovers(
+		@Param('idBook') idBook: string,
+		@Body() dto: OrderCoversDto[],
+	) {
+		return this.booksService.orderCovers(idBook, dto);
+	}
+
 	@Patch(':idBook/covers/:idCover')
 	@ApiOperation({
 		summary: 'Update book cover',
@@ -401,30 +425,6 @@ export class AdminBooksController {
 		@Body() dto: UpdateCoverDto,
 	) {
 		return this.booksService.updateCover(idBook, idCover, dto);
-	}
-
-	@Patch(':idBook/covers/order')
-	@ApiOperation({
-		summary: 'Reorder book covers',
-		description: 'Change the order of book covers (Admin only)',
-	})
-	@ApiParam({
-		name: 'idBook',
-		description: 'Book unique identifier',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Covers reordered successfully',
-	})
-	@ApiResponse({ status: 404, description: 'Book not found' })
-	@ApiResponse({ status: 400, description: 'Invalid input data' })
-	@ApiBearerAuth('JWT-auth')
-	orderCovers(
-		@Param('idBook') idBook: string,
-		@Body() dto: OrderCoversDto[],
-	) {
-		return this.booksService.orderCovers(idBook, dto);
 	}
 
 	@Patch(':idBook/covers/:idCover/image')
