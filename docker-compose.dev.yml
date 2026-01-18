@@ -44,26 +44,6 @@ services:
     volumes:
       - ./front/public:/usr/src/app/public
 
-  phpmyadmin:
-    image: phpmyadmin:5.2
-    ports:
-      - "${PHPMYADMIN_PORT}:80"
-    environment:
-      PMA_USER: ${DB_USER}
-      PMA_PASSWORD: ${DB_PASS}
-      PMA_HOSTS: database-master,database-slave-1,database-slave-2
-    networks:
-      - gatuno-net
-
-  redis-commander:
-    image: ghcr.io/joeferner/redis-commander:0.8.1
-    environment:
-      - REDIS_HOSTS=local:redis:6379:0:${REDIS_PASSWORD}
-    ports:
-      - "${REDISCOMMANDER_PORT}:8081"
-    networks:
-      - gatuno-net
-
   playwright-debug:
     image: browserless/chrome:latest
     ports:

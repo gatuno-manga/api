@@ -3,7 +3,6 @@ services:
   api:
     image: gatuno-api
     container_name: gatuno-api
-    # Playwright precisa de mais memória compartilhada
     shm_size: 2g
     environment:
       - NODE_ENV=${NODE_ENV}
@@ -20,7 +19,6 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
-      # Playwright config
       - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
     volumes:
       - api-data:/usr/src/app/data
