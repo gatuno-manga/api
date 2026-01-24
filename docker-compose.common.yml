@@ -16,7 +16,7 @@ services:
       - DB_USER=${DB_USER}
       - DB_PASS=${DB_PASS}
       - DB_NAME=${DB_NAME}
-      - REDIS_HOST=redis
+      - REDIS_HOST=gatuno-redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
