@@ -8,7 +8,7 @@ import { PasswordEncryption } from '../encryption/password-encryption.provider';
 import { PasswordMigrationService } from '../encryption/password-migration.service';
 import { DataEncryptionProvider } from '../encryption/data-encryption.provider';
 import { AppConfigService } from '../app-config/app-config.service';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { TokenStoreService } from './services/token-store.service';
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 
 describe('AuthService', () => {
@@ -20,7 +20,7 @@ describe('AuthService', () => {
 	let passwordMigration: any;
 	let dataEncryption: any;
 	let appConfigService: any;
-	let cacheManager: any;
+	let tokenStore: any;
 
 	beforeEach(async () => {
 		const mockUserRepository = {
@@ -70,10 +70,11 @@ describe('AuthService', () => {
 			passwordKeyLength: 64,
 		};
 
-		const mockCacheManager = {
-			get: jest.fn(),
-			set: jest.fn(),
-			del: jest.fn(),
+		const mockTokenStore = {
+			getValidTokens: jest.fn(),
+			saveTokens: jest.fn(),
+			addToken: jest.fn(),
+			removeAllTokens: jest.fn(),
 		};
 
 		const module: TestingModule = await Test.createTestingModule({
@@ -108,8 +109,8 @@ describe('AuthService', () => {
 					useValue: mockAppConfigService,
 				},
 				{
-					provide: CACHE_MANAGER,
-					useValue: mockCacheManager,
+					provide: TokenStoreService,
+					useValue: mockTokenStore,
 				},
 			],
 		}).compile();
@@ -126,7 +127,7 @@ describe('AuthService', () => {
 			DataEncryptionProvider,
 		);
 		appConfigService = module.get<AppConfigService>(AppConfigService);
-		cacheManager = module.get(CACHE_MANAGER);
+		tokenStore = module.get<TokenStoreService>(TokenStoreService);
 	});
 
 	it('should be defined', () => {
@@ -241,8 +242,7 @@ describe('AuthService', () => {
 				.mockResolvedValueOnce('access_token')
 				.mockResolvedValueOnce('refresh_token');
 			dataEncryption.encrypt.mockResolvedValue('encrypted_token');
-			cacheManager.get.mockResolvedValue([]);
-			cacheManager.set.mockResolvedValue(undefined);
+			tokenStore.addToken.mockResolvedValue(undefined);
 
 			const result = await service.signIn(email, password);
 
@@ -257,6 +257,7 @@ describe('AuthService', () => {
 			);
 			expect(result).toHaveProperty('accessToken');
 			expect(result).toHaveProperty('refreshToken');
+			expect(tokenStore.addToken).toHaveBeenCalled();
 		});
 
 		it('should throw UnauthorizedException if user not found', async () => {
@@ -301,7 +302,6 @@ describe('AuthService', () => {
 			passwordMigration.migratePasswordOnLogin.mockResolvedValue(true);
 			jwtService.signAsync.mockResolvedValue('token');
 			dataEncryption.encrypt.mockResolvedValue('encrypted');
-			cacheManager.get.mockResolvedValue([]);
 
 			await service.signIn(user.email, 'password');
 
@@ -319,15 +319,13 @@ describe('AuthService', () => {
 				{ hash: 'hashed_token', expiresAt: Date.now() + 100000 },
 			];
 
-			cacheManager.get.mockResolvedValue(storedTokens);
+			tokenStore.getValidTokens.mockResolvedValue(storedTokens);
 			dataEncryption.compare.mockResolvedValue(true);
-			cacheManager.del.mockResolvedValue(undefined);
+			tokenStore.saveTokens.mockResolvedValue(undefined);
 
 			const result = await service.logout(userId, refreshToken);
 
-			expect(cacheManager.get).toHaveBeenCalledWith(
-				`user-tokens:${userId}`,
-			);
+			expect(tokenStore.getValidTokens).toHaveBeenCalledWith(userId);
 			expect(result).toEqual({ message: 'Logged out successfully' });
 		});
 
@@ -341,7 +339,7 @@ describe('AuthService', () => {
 		});
 
 		it('should throw UnauthorizedException if no active sessions', async () => {
-			cacheManager.get.mockResolvedValue([]);
+			tokenStore.getValidTokens.mockResolvedValue([]);
 
 			await expect(service.logout('user123', 'token')).rejects.toThrow(
 				UnauthorizedException,
@@ -355,7 +353,7 @@ describe('AuthService', () => {
 			const storedTokens = [
 				{ hash: 'different_hash', expiresAt: Date.now() + 100000 },
 			];
-			cacheManager.get.mockResolvedValue(storedTokens);
+			tokenStore.getValidTokens.mockResolvedValue(storedTokens);
 			dataEncryption.compare.mockResolvedValue(false);
 
 			await expect(
@@ -373,15 +371,15 @@ describe('AuthService', () => {
 				{ hash: 'token2', expiresAt: Date.now() + 200000 },
 			];
 
-			cacheManager.get.mockResolvedValue(storedTokens);
+			tokenStore.getValidTokens.mockResolvedValue(storedTokens);
 			dataEncryption.compare.mockResolvedValueOnce(true);
-			cacheManager.set.mockResolvedValue(undefined);
+			tokenStore.saveTokens.mockResolvedValue(undefined);
 
 			await service.logout(userId, 'refresh_token');
 
-			expect(cacheManager.set).toHaveBeenCalled();
-			const setCalls = cacheManager.set.mock.calls;
-			expect(setCalls[0][1]).toHaveLength(1);
+			expect(tokenStore.saveTokens).toHaveBeenCalled();
+			const calls = tokenStore.saveTokens.mock.calls;
+			expect(calls[0][1]).toHaveLength(1);
 		});
 	});
 
@@ -393,37 +391,23 @@ describe('AuthService', () => {
 				{ hash: 'token2', expiresAt: Date.now() + 200000 },
 			];
 
-			cacheManager.get.mockResolvedValue(storedTokens);
-			cacheManager.del.mockResolvedValue(undefined);
+			tokenStore.getValidTokens.mockResolvedValue(storedTokens);
+			tokenStore.removeAllTokens.mockResolvedValue(undefined);
 
 			const result = await service.logoutAll(userId);
 
-			expect(cacheManager.del).toHaveBeenCalledWith(
-				`user-tokens:${userId}`,
-			);
+			expect(tokenStore.removeAllTokens).toHaveBeenCalledWith(userId);
 			expect(result).toEqual({
 				message: 'All sessions logged out successfully',
 			});
 		});
 
 		it('should throw UnauthorizedException if no active sessions', async () => {
-			cacheManager.get.mockResolvedValue([]);
+			tokenStore.getValidTokens.mockResolvedValue([]);
 
 			await expect(service.logoutAll('user123')).rejects.toThrow(
 				UnauthorizedException,
 			);
-			await expect(service.logoutAll('user123')).rejects.toThrow(
-				'No active sessions found',
-			);
-		});
-
-		it('should filter expired tokens before checking', async () => {
-			const expiredTokens = [
-				{ hash: 'token1', expiresAt: Date.now() - 1000 },
-			];
-
-			cacheManager.get.mockResolvedValue(expiredTokens);
-
 			await expect(service.logoutAll('user123')).rejects.toThrow(
 				'No active sessions found',
 			);
@@ -443,20 +427,20 @@ describe('AuthService', () => {
 				{ hash: 'hashed_token', expiresAt: Date.now() + 100000 },
 			];
 
-			cacheManager.get.mockResolvedValue(storedTokens);
+			tokenStore.getValidTokens.mockResolvedValue(storedTokens);
 			dataEncryption.compare.mockResolvedValue(true);
 			userRepository.findOne.mockResolvedValue(user);
 			jwtService.signAsync
 				.mockResolvedValueOnce('new_access')
 				.mockResolvedValueOnce('new_refresh');
 			dataEncryption.encrypt.mockResolvedValue('new_hashed_token');
-			cacheManager.set.mockResolvedValue(undefined);
+			tokenStore.saveTokens.mockResolvedValue(undefined);
 
 			const result = await service.refreshTokens(userId, oldRefreshToken);
 
 			expect(result).toHaveProperty('accessToken');
 			expect(result).toHaveProperty('refreshToken');
-			expect(cacheManager.set).toHaveBeenCalled();
+			expect(tokenStore.saveTokens).toHaveBeenCalled();
 		});
 
 		it('should throw UnauthorizedException if no refresh token provided', async () => {
@@ -469,7 +453,7 @@ describe('AuthService', () => {
 		});
 
 		it('should throw UnauthorizedException if no valid session found', async () => {
-			cacheManager.get.mockResolvedValue([]);
+			tokenStore.getValidTokens.mockResolvedValue([]);
 
 			await expect(
 				service.refreshTokens('user123', 'token'),
@@ -483,7 +467,7 @@ describe('AuthService', () => {
 			const storedTokens = [
 				{ hash: 'hashed', expiresAt: Date.now() + 100000 },
 			];
-			cacheManager.get.mockResolvedValue(storedTokens);
+			tokenStore.getValidTokens.mockResolvedValue(storedTokens);
 			dataEncryption.compare.mockResolvedValue(false);
 
 			await expect(
@@ -498,7 +482,9 @@ describe('AuthService', () => {
 			const storedTokens = [
 				{ hash: 'hashed', expiresAt: Date.now() + 100000 },
 			];
-			cacheManager.get.mockResolvedValue(storedTokens);
+			tokenStore.getValidTokens.mockImplementation(() =>
+				Promise.resolve([...storedTokens]),
+			);
 			dataEncryption.compare.mockResolvedValue(true);
 			userRepository.findOne.mockResolvedValue(null);
 
@@ -522,7 +508,7 @@ describe('AuthService', () => {
 				roles: [{ id: '1', name: 'user' }],
 			};
 
-			cacheManager.get.mockResolvedValue(storedTokens);
+			tokenStore.getValidTokens.mockResolvedValue(storedTokens);
 			dataEncryption.compare.mockResolvedValueOnce(true);
 			userRepository.findOne.mockResolvedValue(user);
 			jwtService.signAsync.mockResolvedValue('token');
@@ -530,8 +516,8 @@ describe('AuthService', () => {
 
 			await service.refreshTokens(userId, 'old_refresh');
 
-			const setCalls = cacheManager.set.mock.calls;
-			expect(setCalls[0][1]).toHaveLength(2); // Removed 1, added 1
+			const calls = tokenStore.saveTokens.mock.calls;
+			expect(calls[0][1]).toHaveLength(2); // Removed 1, added 1
 		});
 	});
 });

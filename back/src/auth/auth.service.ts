@@ -1,7 +1,5 @@
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
 	BadRequestException,
-	Inject,
 	Injectable,
 	Logger,
 	UnauthorizedException,
@@ -13,11 +11,10 @@ import { PasswordEncryption } from 'src/encryption/password-encryption.provider'
 import { PasswordMigrationService } from 'src/encryption/password-migration.service';
 import { User } from 'src/users/entitys/user.entity';
 import { Repository } from 'typeorm';
-import { Cache } from 'cache-manager';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { Role } from 'src/users/entitys/role.entity';
-import { StoredTokenDto } from './dto/stored-token.dto';
 import { JwtPayloadBuilder } from './builders/jwt-payload.builder';
+import { TokenStoreService } from './services/token-store.service';
 
 @Injectable()
 export class AuthService {
@@ -32,44 +29,10 @@ export class AuthService {
 		private readonly DataEncryption: DataEncryptionProvider,
 		private readonly jwtService: JwtService,
 		private readonly configService: AppConfigService,
-		@Inject(CACHE_MANAGER) private cacheManager: Cache,
+		private readonly tokenStore: TokenStoreService,
 	) {
 		this.logger.log(
 			`🔐 Algoritmo de hashing ativo: ${this.passwordEncryption.getAlgorithm()}`,
-		);
-	}
-
-	private getRedisKey(userId: string): string {
-		return `user-tokens:${userId}`;
-	}
-
-	private async storeRefreshToken(
-		userId: string,
-		token: string,
-	): Promise<void> {
-		const key = this.getRedisKey(userId);
-		const hashedToken = await this.DataEncryption.encrypt(token);
-		const ttl = this.configService.refreshTokenTtl;
-		const expiresAt = Date.now() + ttl;
-
-		const storedTokens: StoredTokenDto[] =
-			(await this.cacheManager.get(key)) || [];
-
-		const validTokens = storedTokens.filter(
-			(t) => t.expiresAt > Date.now(),
-		);
-
-		validTokens.push({ hash: hashedToken, expiresAt });
-
-		const nextExpiration =
-			validTokens.length > 0
-				? Math.min(...validTokens.map((t) => t.expiresAt))
-				: expiresAt;
-		const cacheTtl = Math.max(nextExpiration - Date.now(), 0);
-
-		await this.cacheManager.set(key, validTokens, cacheTtl);
-		this.logger.log(
-			`Stored refresh token for user ${userId}. Total tokens: ${validTokens.length}`,
 		);
 	}
 
@@ -162,7 +125,10 @@ export class AuthService {
 		}
 
 		const tokens = await this.getTokens(user);
-		await this.storeRefreshToken(user.id, tokens.refreshToken);
+		const hashedToken = await this.DataEncryption.encrypt(
+			tokens.refreshToken,
+		);
+		await this.tokenStore.addToken(user.id, hashedToken);
 		return tokens;
 	}
 
@@ -171,20 +137,14 @@ export class AuthService {
 			throw new UnauthorizedException('Refresh token is required');
 		}
 
-		const key = this.getRedisKey(userId);
-		const storedTokens: StoredTokenDto[] =
-			(await this.cacheManager.get(key)) || [];
-
-		const validTokens = storedTokens.filter(
-			(t) => t.expiresAt > Date.now(),
-		);
+		const validTokens = await this.tokenStore.getValidTokens(userId);
 
 		if (validTokens.length === 0) {
-			this.logger.warn('No tokens found in cache for user', { userId });
+			this.logger.warn('No active sessions found for user', { userId });
 			throw new UnauthorizedException('No active sessions found');
 		}
 
-		let index = -1;
+		let indexToRemove = -1;
 		for (let i = 0; i < validTokens.length; i++) {
 			if (
 				await this.DataEncryption.compare(
@@ -192,51 +152,35 @@ export class AuthService {
 					refreshToken,
 				)
 			) {
-				index = i;
+				indexToRemove = i;
 				break;
 			}
 		}
 
-		if (index === -1) {
+		if (indexToRemove === -1) {
 			this.logger.error('Token not found in cache', { userId });
 			throw new UnauthorizedException('Invalid token');
 		}
 
-		validTokens.splice(index, 1);
+		validTokens.splice(indexToRemove, 1);
+		await this.tokenStore.saveTokens(userId, validTokens);
 
-		if (validTokens.length === 0) {
-			await this.cacheManager.del(key);
-			this.logger.log(`All tokens removed for user ${userId}`);
-		} else {
-			const nextExpiration =
-				validTokens.length > 0
-					? Math.min(...validTokens.map((t) => t.expiresAt))
-					: Date.now();
-			const cacheTtl = Math.max(nextExpiration - Date.now(), 0);
-			await this.cacheManager.set(key, validTokens, cacheTtl);
-			this.logger.log(
-				`Token removed for user ${userId}. Remaining tokens: ${validTokens.length}`,
-			);
-		}
+		this.logger.log(
+			`Token removed for user ${userId}. Remaining tokens: ${validTokens.length}`,
+		);
 
 		return { message: 'Logged out successfully' };
 	}
 
 	async logoutAll(userId: string) {
-		const key = this.getRedisKey(userId);
-		const storedTokens: StoredTokenDto[] =
-			(await this.cacheManager.get(key)) || [];
-
-		const validTokens = storedTokens.filter(
-			(t) => t.expiresAt > Date.now(),
-		);
+		const validTokens = await this.tokenStore.getValidTokens(userId);
 
 		if (validTokens.length === 0) {
 			this.logger.warn('No active sessions found for user', { userId });
 			throw new UnauthorizedException('No active sessions found');
 		}
 
-		await this.cacheManager.del(key);
+		await this.tokenStore.removeAllTokens(userId);
 		this.logger.log(
 			`All sessions (${validTokens.length}) logged out for user ${userId}`,
 		);
@@ -248,20 +192,13 @@ export class AuthService {
 			throw new UnauthorizedException('Refresh token is required');
 		}
 
-		const key = this.getRedisKey(userId);
-		const storedTokens: StoredTokenDto[] =
-			(await this.cacheManager.get(key)) || [];
-
-		const validTokens = storedTokens.filter(
-			(t) => t.expiresAt > Date.now(),
-		);
+		const validTokens = await this.tokenStore.getValidTokens(userId);
 
 		if (validTokens.length === 0) {
 			this.logger.warn('No valid session found for user', { userId });
 			throw new UnauthorizedException('No valid session found');
 		}
 
-		let match = false;
 		let indexToRemove = -1;
 		for (let i = 0; i < validTokens.length; i++) {
 			if (
@@ -270,20 +207,17 @@ export class AuthService {
 					oldRefreshToken,
 				)
 			) {
-				match = true;
 				indexToRemove = i;
 				break;
 			}
 		}
 
-		if (!match) {
+		if (indexToRemove === -1) {
 			this.logger.error('Invalid refresh token for user', { userId });
 			throw new UnauthorizedException('Invalid refresh token');
 		}
 
-		if (indexToRemove > -1) {
-			validTokens.splice(indexToRemove, 1);
-		}
+		validTokens.splice(indexToRemove, 1);
 
 		const user = await this.userRepository.findOne({
 			where: { id: userId },
@@ -302,17 +236,12 @@ export class AuthService {
 		const hashedToken = await this.DataEncryption.encrypt(
 			tokens.refreshToken,
 		);
+
 		const ttl = this.configService.refreshTokenTtl;
 		const expiresAt = Date.now() + ttl;
 
 		validTokens.push({ hash: hashedToken, expiresAt });
-
-		const nextExpiration =
-			validTokens.length > 0
-				? Math.min(...validTokens.map((t) => t.expiresAt))
-				: expiresAt;
-		const cacheTtl = Math.max(nextExpiration - Date.now(), 0);
-		await this.cacheManager.set(key, validTokens, cacheTtl);
+		await this.tokenStore.saveTokens(userId, validTokens);
 
 		this.logger.log(
 			`Tokens refreshed for user ${userId}. Total tokens: ${validTokens.length}`,
