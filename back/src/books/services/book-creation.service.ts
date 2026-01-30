@@ -8,6 +8,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CoverImageService } from '../jobs/cover-image.service';
 import { BookRelationshipService } from './book-relationship.service';
 import { ChapterManagementService } from './chapter-management.service';
+import { BookEvents } from '../constants/events.constant';
 
 /**
  * Service responsável pela criação de livros
@@ -103,7 +104,7 @@ export class BookCreationService {
 				}
 
 				const savedBook = await manager.save(book);
-				this.eventEmitter.emit('book.created', savedBook);
+				this.eventEmitter.emit(BookEvents.CREATED, savedBook);
 
 				return savedBook;
 			},

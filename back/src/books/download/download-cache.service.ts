@@ -8,6 +8,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { OnEvent } from '@nestjs/event-emitter';
 import { ChapterUpdatedEvent } from 'src/books/chapters/events/chapter-updated.event';
 import { Readable } from 'stream';
+import { BookEvents } from 'src/books/constants/events.constant';
 
 @Injectable()
 export class DownloadCacheService implements OnModuleInit {
@@ -179,7 +180,7 @@ export class DownloadCacheService implements OnModuleInit {
     /**
      * Invalida cache de um capítulo específico
      */
-    @OnEvent('chapter.updated')
+    @OnEvent(BookEvents.CHAPTER_UPDATED)
     async invalidateChapter(event: ChapterUpdatedEvent): Promise<void> {
         this.logger.log(
             `Invalidating cache for chapter ${event.chapterId} (book ${event.bookId})`,

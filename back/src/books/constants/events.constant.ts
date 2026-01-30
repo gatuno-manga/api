@@ -32,6 +32,7 @@ export const BookEvents = {
 	COVER_PROCESSED: 'cover.processed',
 	COVER_SELECTED: 'cover.selected',
 	COVER_UPDATED: 'cover.updated',
+	COVERS_REORDERED: 'covers.reordered',
 	COVER_UPLOADED: 'cover.uploaded', // Single upload
 	COVERS_UPLOADED: 'covers.uploaded', // Multiple upload
 	COVER_DELETED: 'cover.deleted',
