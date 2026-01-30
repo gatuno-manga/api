@@ -4,6 +4,9 @@ import {
 	OnGatewayInit,
 	OnGatewayConnection,
 	OnGatewayDisconnect,
+	SubscribeMessage,
+	MessageBody,
+	ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger, UseGuards } from '@nestjs/common';
@@ -12,20 +15,11 @@ import { Book } from '../entitys/book.entity';
 import { Chapter } from '../entitys/chapter.entity';
 import { WsJwtGuard } from '../../auth/guard/ws-jwt.guard';
 import { RolesEnum } from '../../users/enum/roles.enum';
+import { BookEvents } from '../constants/events.constant';
 
 /**
  * Gateway WebSocket para comunicação em tempo real de eventos de livros
  * Implementa o padrão Observer para notificar clientes sobre mudanças
- *
- * Segurança:
- * - Autenticação via JWT
- * - Eventos gerais (broadcast) apenas para ADMIN
- * - Usuários comuns recebem apenas eventos de livros/capítulos inscritos
- *
- * Rooms disponíveis:
- * - book:{bookId} - Eventos de um livro específico
- * - chapter:{chapterId} - Eventos de um capítulo específico
- * - admin - Eventos globais (apenas admins)
  */
 @UseGuards(WsJwtGuard)
 @WebSocketGateway({
@@ -37,7 +31,7 @@ import { RolesEnum } from '../../users/enum/roles.enum';
 		credentials: true,
 	},
 	namespace: '/books',
-	transports: ['websocket', 'polling'], // Adiciona polling como fallback
+	transports: ['websocket', 'polling'],
 })
 export class BooksGateway
 	implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
@@ -78,146 +72,6 @@ export class BooksGateway
 				client.join('admin');
 				this.logger.debug(`Admin ${client.id} joined admin room`);
 			}
-
-			// ==================== EVENTOS DE INSCRIÇÃO ====================
-
-			/**
-			 * Cliente se inscreve em um livro específico
-			 */
-			client.on('subscribe:book', (bookId: string) => {
-				try {
-					if (!bookId || typeof bookId !== 'string') {
-						client.emit('error', { message: 'Invalid bookId' });
-						return;
-					}
-
-					client.join(`book:${bookId}`);
-					this.connectedClients.get(client.id)?.bookIds.add(bookId);
-
-					this.logger.debug(
-						`Client ${client.id} subscribed to book:${bookId}`,
-					);
-					client.emit('subscribed', {
-						type: 'book',
-						id: bookId,
-						success: true,
-					});
-				} catch (error) {
-					this.logger.error(
-						`Failed to subscribe client ${client.id} to book ${bookId}: ${error.message}`,
-					);
-					client.emit('subscribed', {
-						type: 'book',
-						id: bookId,
-						success: false,
-						error: error.message,
-					});
-				}
-			});
-
-			/**
-			 * Cliente se inscreve em um capítulo específico
-			 */
-			client.on('subscribe:chapter', (chapterId: string) => {
-				try {
-					if (!chapterId || typeof chapterId !== 'string') {
-						client.emit('error', { message: 'Invalid chapterId' });
-						return;
-					}
-
-					client.join(`chapter:${chapterId}`);
-					this.connectedClients
-						.get(client.id)
-						?.chapterIds.add(chapterId);
-
-					this.logger.debug(
-						`Client ${client.id} subscribed to chapter:${chapterId}`,
-					);
-					client.emit('subscribed', {
-						type: 'chapter',
-						id: chapterId,
-						success: true,
-					});
-				} catch (error) {
-					this.logger.error(
-						`Failed to subscribe client ${client.id} to chapter ${chapterId}: ${error.message}`,
-					);
-					client.emit('subscribed', {
-						type: 'chapter',
-						id: chapterId,
-						success: false,
-						error: error.message,
-					});
-				}
-			});
-
-			/**
-			 * Cliente cancela inscrição em um livro
-			 */
-			client.on('unsubscribe:book', (bookId: string) => {
-				try {
-					client.leave(`book:${bookId}`);
-					this.connectedClients
-						.get(client.id)
-						?.bookIds.delete(bookId);
-
-					this.logger.debug(
-						`Client ${client.id} unsubscribed from book:${bookId}`,
-					);
-					client.emit('unsubscribed', {
-						type: 'book',
-						id: bookId,
-						success: true,
-					});
-				} catch (error) {
-					this.logger.error(
-						`Failed to unsubscribe client ${client.id} from book ${bookId}: ${error.message}`,
-					);
-				}
-			});
-
-			/**
-			 * Cliente cancela inscrição em um capítulo
-			 */
-			client.on('unsubscribe:chapter', (chapterId: string) => {
-				try {
-					client.leave(`chapter:${chapterId}`);
-					this.connectedClients
-						.get(client.id)
-						?.chapterIds.delete(chapterId);
-
-					this.logger.debug(
-						`Client ${client.id} unsubscribed from chapter:${chapterId}`,
-					);
-					client.emit('unsubscribed', {
-						type: 'chapter',
-						id: chapterId,
-						success: true,
-					});
-				} catch (error) {
-					this.logger.error(
-						`Failed to unsubscribe client ${client.id} from chapter ${chapterId}: ${error.message}`,
-					);
-				}
-			});
-
-			/**
-			 * Cliente solicita suas inscrições atuais
-			 */
-			client.on('list:subscriptions', () => {
-				try {
-					const clientData = this.connectedClients.get(client.id);
-					client.emit('subscriptions', {
-						books: Array.from(clientData?.bookIds || []),
-						chapters: Array.from(clientData?.chapterIds || []),
-						isAdmin: clientData?.isAdmin || false,
-					});
-				} catch (error) {
-					this.logger.error(
-						`Failed to list subscriptions for client ${client.id}: ${error.message}`,
-					);
-				}
-			});
 		} catch (error) {
 			this.logger.error(`Error in handleConnection: ${error.message}`);
 			client.disconnect();
@@ -236,583 +90,442 @@ export class BooksGateway
 		}
 	}
 
-	// ==================== EVENTOS DE LIVROS ====================
-
 	/**
-	 * Notifica quando um livro é criado
-	 * Apenas admins recebem broadcast global
+	 * Helper para broadcasting seguro de eventos
 	 */
-	@OnEvent('book.created')
-	handleBookCreated(book: Book) {
+	private broadcast(rooms: string | string[], event: string, payload: any) {
 		try {
+			const roomList = Array.isArray(rooms) ? rooms : [rooms];
 			this.logger.debug(
-				`Broadcasting book.created event for book ${book.id}`,
+				`Broadcasting ${event} to rooms: ${roomList.join(', ')}`,
 			);
-			// Apenas admins recebem eventos de criação
-			this.server.to('admin').emit('book.created', {
-				id: book.id,
-				title: book.title,
-				type: book.type,
-				createdAt: book.createdAt,
+			
+			const emitter = this.server;
+			roomList.forEach(room => emitter.to(room));
+			emitter.emit(event, payload);
+
+			// Note: Socket.io chaining .to().to().emit() sends to all combined.
+			// Iterating and emitting might duplicate if not careful, but server.to(r1).to(r2).emit() works.
+			// Let's use the chain correctly.
+			let broadcastOperator: any = this.server;
+			for (const room of roomList) {
+				broadcastOperator = broadcastOperator.to(room);
+			}
+			broadcastOperator.emit(event, payload);
+
+		} catch (error) {
+			this.logger.error(`Failed to broadcast ${event}: ${error.message}`);
+		}
+	}
+
+	// ==================== EVENTOS DE INSCRIÇÃO ====================
+
+	@SubscribeMessage(BookEvents.SUBSCRIBE_BOOK)
+	handleSubscribeBook(
+		@ConnectedSocket() client: Socket,
+		@MessageBody() bookId: string,
+	) {
+		try {
+			if (!bookId || typeof bookId !== 'string') {
+				client.emit('error', { message: 'Invalid bookId' });
+				return;
+			}
+
+			client.join(`book:${bookId}`);
+			this.connectedClients.get(client.id)?.bookIds.add(bookId);
+
+			this.logger.debug(
+				`Client ${client.id} subscribed to book:${bookId}`,
+			);
+			client.emit('subscribed', {
+				type: 'book',
+				id: bookId,
+				success: true,
 			});
 		} catch (error) {
 			this.logger.error(
-				`Failed to broadcast book.created for book ${book.id}: ${error.message}`,
+				`Failed to subscribe client ${client.id} to book ${bookId}: ${error.message}`,
+			);
+			client.emit('subscribed', {
+				type: 'book',
+				id: bookId,
+				success: false,
+				error: error.message,
+			});
+		}
+	}
+
+	@SubscribeMessage(BookEvents.SUBSCRIBE_CHAPTER)
+	handleSubscribeChapter(
+		@ConnectedSocket() client: Socket,
+		@MessageBody() chapterId: string,
+	) {
+		try {
+			if (!chapterId || typeof chapterId !== 'string') {
+				client.emit('error', { message: 'Invalid chapterId' });
+				return;
+			}
+
+			client.join(`chapter:${chapterId}`);
+			this.connectedClients.get(client.id)?.chapterIds.add(chapterId);
+
+			this.logger.debug(
+				`Client ${client.id} subscribed to chapter:${chapterId}`,
+			);
+			client.emit('subscribed', {
+				type: 'chapter',
+				id: chapterId,
+				success: true,
+			});
+		} catch (error) {
+			this.logger.error(
+				`Failed to subscribe client ${client.id} to chapter ${chapterId}: ${error.message}`,
+			);
+			client.emit('subscribed', {
+				type: 'chapter',
+				id: chapterId,
+				success: false,
+				error: error.message,
+			});
+		}
+	}
+
+	@SubscribeMessage(BookEvents.UNSUBSCRIBE_BOOK)
+	handleUnsubscribeBook(
+		@ConnectedSocket() client: Socket,
+		@MessageBody() bookId: string,
+	) {
+		try {
+			client.leave(`book:${bookId}`);
+			this.connectedClients.get(client.id)?.bookIds.delete(bookId);
+
+			this.logger.debug(
+				`Client ${client.id} unsubscribed from book:${bookId}`,
+			);
+			client.emit('unsubscribed', {
+				type: 'book',
+				id: bookId,
+				success: true,
+			});
+		} catch (error) {
+			this.logger.error(
+				`Failed to unsubscribe client ${client.id} from book ${bookId}: ${error.message}`,
 			);
 		}
 	}
 
-	/**
-	 * Notifica quando um livro é atualizado
-	 * Envia apenas para clientes inscritos no livro
-	 */
-	@OnEvent('book.updated')
-	handleBookUpdated(book: Book) {
+	@SubscribeMessage(BookEvents.UNSUBSCRIBE_CHAPTER)
+	handleUnsubscribeChapter(
+		@ConnectedSocket() client: Socket,
+		@MessageBody() chapterId: string,
+	) {
 		try {
+			client.leave(`chapter:${chapterId}`);
+			this.connectedClients.get(client.id)?.chapterIds.delete(chapterId);
+
 			this.logger.debug(
-				`Broadcasting book.updated event for book ${book.id}`,
+				`Client ${client.id} unsubscribed from chapter:${chapterId}`,
 			);
-			// Envia para room específica do livro
-			this.server.to(`book:${book.id}`).emit('book.updated', {
-				id: book.id,
-				title: book.title,
-				updatedAt: book.updatedAt,
+			client.emit('unsubscribed', {
+				type: 'chapter',
+				id: chapterId,
+				success: true,
 			});
 		} catch (error) {
 			this.logger.error(
-				`Failed to broadcast book.updated for book ${book.id}: ${error.message}`,
+				`Failed to unsubscribe client ${client.id} from chapter ${chapterId}: ${error.message}`,
 			);
 		}
+	}
+
+	@SubscribeMessage(BookEvents.LIST_SUBSCRIPTIONS)
+	handleListSubscriptions(@ConnectedSocket() client: Socket) {
+		try {
+			const clientData = this.connectedClients.get(client.id);
+			client.emit('subscriptions', {
+				books: Array.from(clientData?.bookIds || []),
+				chapters: Array.from(clientData?.chapterIds || []),
+				isAdmin: clientData?.isAdmin || false,
+			});
+		} catch (error) {
+			this.logger.error(
+				`Failed to list subscriptions for client ${client.id}: ${error.message}`,
+			);
+		}
+	}
+
+	// ==================== EVENTOS DE LIVROS ====================
+
+	@OnEvent(BookEvents.CREATED)
+	handleBookCreated(book: Book) {
+		// Apenas admins recebem eventos de criação
+		this.broadcast('admin', BookEvents.CREATED, {
+			id: book.id,
+			title: book.title,
+			type: book.type,
+			createdAt: book.createdAt,
+		});
+	}
+
+	@OnEvent(BookEvents.UPDATED)
+	handleBookUpdated(book: Book) {
+		// Envia para room específica do livro
+		this.broadcast(`book:${book.id}`, BookEvents.UPDATED, {
+			id: book.id,
+			title: book.title,
+			updatedAt: book.updatedAt,
+		});
 	}
 
 	// ==================== EVENTOS DE CAPÍTULOS ====================
 
-	/**
-	 * Notifica quando capítulos são atualizados
-	 * Envia para room do livro e rooms específicas de cada capítulo
-	 */
-	@OnEvent('chapters.updated')
+	@OnEvent(BookEvents.CHAPTERS_UPDATED)
 	handleChaptersUpdated(payload: Chapter | Chapter[]) {
-		try {
-			// Normaliza para sempre trabalhar com array
-			const chapters = Array.isArray(payload) ? payload : [payload];
+		// Normaliza para sempre trabalhar com array
+		const chapters = Array.isArray(payload) ? payload : [payload];
 
-			if (!chapters || chapters.length === 0) return;
+		if (!chapters || chapters.length === 0) return;
 
-			const bookId = chapters[0]?.book?.id;
-			this.logger.debug(
-				`Broadcasting chapters.updated event for ${chapters.length} chapters`,
-			);
+		const bookId = chapters[0]?.book?.id;
+		
+		const chapterData = chapters.map((ch) => ({
+			id: ch.id,
+			title: ch.title,
+			index: ch.index,
+			scrapingStatus: ch.scrapingStatus,
+		}));
 
-			const chapterData = chapters.map((ch) => ({
-				id: ch.id,
-				title: ch.title,
-				index: ch.index,
-				scrapingStatus: ch.scrapingStatus,
-			}));
+		// Envia para room do livro e admins
+		this.broadcast([`book:${bookId}`, 'admin'], BookEvents.CHAPTERS_UPDATED, {
+			bookId,
+			chapters: chapterData,
+		});
 
-			// Envia para room do livro
-			this.server.to(`book:${bookId}`).emit('chapters.updated', {
+		// Envia para rooms específicas de cada capítulo
+		chapters.forEach((chapter) => {
+			this.broadcast(`chapter:${chapter.id}`, BookEvents.CHAPTER_UPDATED, {
 				bookId,
-				chapters: chapterData,
+				chapter: {
+					id: chapter.id,
+					title: chapter.title,
+					index: chapter.index,
+					scrapingStatus: chapter.scrapingStatus,
+				},
 			});
-
-			// Também envia para admins
-			this.server.to('admin').emit('chapters.updated', {
-				bookId,
-				chapters: chapterData,
-			});
-
-			// Envia para rooms específicas de cada capítulo
-			chapters.forEach((chapter) => {
-				this.server
-					.to(`chapter:${chapter.id}`)
-					.emit('chapter.updated', {
-						bookId,
-						chapter: {
-							id: chapter.id,
-							title: chapter.title,
-							index: chapter.index,
-							scrapingStatus: chapter.scrapingStatus,
-						},
-					});
-			});
-		} catch (error) {
-			this.logger.error(
-				`Failed to broadcast chapters.updated: ${error.message}`,
-			);
-		}
+		});
 	}
 
-	/**
-	 * Notifica quando capítulos precisam ser corrigidos
-	 * Apenas admins recebem este evento
-	 */
-	@OnEvent('chapters.fix')
+	@OnEvent(BookEvents.CHAPTERS_FIX)
 	handleChaptersFix(chapters: Chapter[]) {
-		try {
-			if (!chapters || chapters.length === 0) return;
+		if (!chapters || chapters.length === 0) return;
 
-			const bookId = chapters[0]?.book?.id;
-			this.logger.debug(
-				`Broadcasting chapters.fix event for ${chapters.length} chapters`,
-			);
-
-			// Apenas admins recebem eventos de correção
-			this.server.to('admin').emit('chapters.fix', {
-				bookId,
-				chapterIds: chapters.map((ch) => ch.id),
-			});
-		} catch (error) {
-			this.logger.error(
-				`Failed to broadcast chapters.fix: ${error.message}`,
-			);
-		}
+		const bookId = chapters[0]?.book?.id;
+		
+		// Apenas admins recebem eventos de correção
+		this.broadcast('admin', BookEvents.CHAPTERS_FIX, {
+			bookId,
+			chapterIds: chapters.map((ch) => ch.id),
+		});
 	}
 
 	// ==================== EVENTOS DE SCRAPING ====================
 
-	/**
-	 * Notifica quando um capítulo inicia scraping
-	 */
-	@OnEvent('chapter.scraping.started')
+	@OnEvent(BookEvents.SCRAPING_STARTED)
 	handleChapterScrapingStarted(data: { chapterId: string; bookId: string }) {
-		try {
-			this.logger.debug(
-				`Broadcasting chapter.scraping.started for chapter ${data.chapterId}`,
-			);
-			// Envia para room do livro e do capítulo
-			this.server
-				.to(`book:${data.bookId}`)
-				.emit('chapter.scraping.started', data);
-			this.server
-				.to(`chapter:${data.chapterId}`)
-				.emit('chapter.scraping.started', data);
-			// Também envia para admins
-			this.server.to('admin').emit('chapter.scraping.started', data);
-		} catch (error) {
-			this.logger.error(
-				`Failed to broadcast chapter.scraping.started: ${error.message}`,
-			);
-		}
+		this.broadcast(
+			[`book:${data.bookId}`, `chapter:${data.chapterId}`, 'admin'],
+			BookEvents.SCRAPING_STARTED,
+			data
+		);
 	}
 
-	/**
-	 * Notifica quando um capítulo completa scraping
-	 */
-	@OnEvent('chapter.scraping.completed')
+	@OnEvent(BookEvents.SCRAPING_COMPLETED)
 	handleChapterScrapingCompleted(data: {
 		chapterId: string;
 		bookId: string;
 		pagesCount: number;
 	}) {
-		try {
-			this.logger.debug(
-				`Broadcasting chapter.scraping.completed for chapter ${data.chapterId}`,
-			);
-			// Envia para room do livro e do capítulo
-			this.server
-				.to(`book:${data.bookId}`)
-				.emit('chapter.scraping.completed', data);
-			this.server
-				.to(`chapter:${data.chapterId}`)
-				.emit('chapter.scraping.completed', data);
-			// Também envia para admins
-			this.server.to('admin').emit('chapter.scraping.completed', data);
-		} catch (error) {
-			this.logger.error(
-				`Failed to broadcast chapter.scraping.completed: ${error.message}`,
-			);
-		}
+		this.broadcast(
+			[`book:${data.bookId}`, `chapter:${data.chapterId}`, 'admin'],
+			BookEvents.SCRAPING_COMPLETED,
+			data
+		);
 	}
 
-	/**
-	 * Notifica quando um capítulo falha no scraping
-	 */
-	@OnEvent('chapter.scraping.failed')
+	@OnEvent(BookEvents.SCRAPING_FAILED)
 	handleChapterScrapingFailed(data: {
 		chapterId: string;
 		bookId: string;
 		error: string;
 	}) {
-		try {
-			this.logger.debug(
-				`Broadcasting chapter.scraping.failed for chapter ${data.chapterId}`,
-			);
-			// Envia para room do livro e do capítulo
-			this.server
-				.to(`book:${data.bookId}`)
-				.emit('chapter.scraping.failed', data);
-			this.server
-				.to(`chapter:${data.chapterId}`)
-				.emit('chapter.scraping.failed', data);
-			// Também envia para admins
-			this.server.to('admin').emit('chapter.scraping.failed', data);
-		} catch (error) {
-			this.logger.error(
-				`Failed to broadcast chapter.scraping.failed: ${error.message}`,
-			);
-		}
+		this.broadcast(
+			[`book:${data.bookId}`, `chapter:${data.chapterId}`, 'admin'],
+			BookEvents.SCRAPING_FAILED,
+			data
+		);
 	}
 
 	// ==================== EVENTOS DE CAPA ====================
 
-	/**
-	 * Notifica quando uma capa é processada
-	 * Apenas admins recebem broadcast global
-	 */
-	@OnEvent('cover.processed')
+	@OnEvent(BookEvents.COVER_PROCESSED)
 	handleCoverProcessed(data: {
 		bookId: string;
 		coverId: string;
 		url: string;
 	}) {
-		try {
-			this.logger.debug(
-				`Broadcasting cover.processed for book ${data.bookId}`,
-			);
-			// Envia para admins
-			this.server.to('admin').emit('cover.processed', data);
-		} catch (error) {
-			this.logger.error(
-				`Failed to broadcast cover.processed: ${error.message}`,
-			);
-		}
+		this.broadcast('admin', BookEvents.COVER_PROCESSED, data);
 	}
 
-	/**
-	 * Notifica quando uma capa é selecionada
-	 * Envia para room do livro e admins
-	 */
-	@OnEvent('cover.selected')
+	@OnEvent(BookEvents.COVER_SELECTED)
 	handleCoverSelected(data: { bookId: string; coverId: string }) {
-		try {
-			this.logger.debug(
-				`Broadcasting cover.selected for book ${data.bookId}`,
-			);
-			// Envia para room do livro e admins
-			this.server.to(`book:${data.bookId}`).emit('cover.selected', data);
-			this.server.to('admin').emit('cover.selected', data);
-		} catch (error) {
-			this.logger.error(
-				`Failed to broadcast cover.selected: ${error.message}`,
-			);
-		}
+		this.broadcast([`book:${data.bookId}`, 'admin'], BookEvents.COVER_SELECTED, data);
 	}
 
-	/**
-	 * Notifica quando uma capa é atualizada
-	 * Envia para room do livro e admins
-	 */
-	@OnEvent('cover.updated')
+	@OnEvent(BookEvents.COVER_UPDATED)
 	handleCoverUpdated(data: { bookId: string; coverId: string }) {
-		try {
-			this.logger.debug(
-				`Broadcasting cover.updated for book ${data.bookId}`,
-			);
-			this.server.to(`book:${data.bookId}`).emit('cover.updated', data);
-			this.server.to('admin').emit('cover.updated', data);
-		} catch (error) {
-			this.logger.error(
-				`Failed to broadcast cover.updated: ${error.message}`,
-			);
-		}
+		this.broadcast([`book:${data.bookId}`, 'admin'], BookEvents.COVER_UPDATED, data);
 	}
 
-	/**
-	 * Notifica quando uma capa é uploadada manualmente
-	 * Envia para room do livro e admins
-	 */
-	@OnEvent('cover.uploaded')
+	@OnEvent(BookEvents.COVER_UPLOADED)
 	handleCoverUploaded(data: {
 		bookId: string;
 		coverId: string;
 		url: string;
 	}) {
-		try {
-			this.logger.debug(
-				`Broadcasting cover.uploaded for book ${data.bookId}`,
-			);
-			this.server.to(`book:${data.bookId}`).emit('cover.uploaded', data);
-			this.server.to('admin').emit('cover.uploaded', data);
-		} catch (error) {
-			this.logger.error(
-				`Failed to broadcast cover.uploaded: ${error.message}`,
-			);
-		}
+		this.broadcast([`book:${data.bookId}`, 'admin'], BookEvents.COVER_UPLOADED, data);
 	}
 
-	/**
-	 * Notifica quando múltiplas capas são uploadadas
-	 * Apenas admins recebem
-	 */
-	@OnEvent('covers.uploaded')
+	@OnEvent(BookEvents.COVERS_UPLOADED)
 	handleCoversUploaded(data: {
 		bookId: string;
 		coverIds: string[];
 		count: number;
 	}) {
-		try {
-			this.logger.debug(
-				`Broadcasting covers.uploaded for book ${data.bookId} (${data.count} covers)`,
-			);
-			this.server.to(`book:${data.bookId}`).emit('covers.uploaded', data);
-			this.server.to('admin').emit('covers.uploaded', data);
-		} catch (error) {
-			this.logger.error(
-				`Failed to broadcast covers.uploaded: ${error.message}`,
-			);
-		}
+		this.broadcast([`book:${data.bookId}`, 'admin'], BookEvents.COVERS_UPLOADED, data);
 	}
 
 	// ==================== EVENTOS DE CAPÍTULOS CRIADOS/UPLOAD ====================
 
-	/**
-	 * Notifica quando um capítulo é criado
-	 * Envia para room do livro e admins
-	 */
-	@OnEvent('chapter.created')
+	@OnEvent(BookEvents.CHAPTER_CREATED)
 	handleChapterCreated(chapter: Chapter) {
-		try {
-			const bookId = chapter.book?.id;
-			this.logger.debug(
-				`Broadcasting chapter.created for chapter ${chapter.id}`,
-			);
+		const bookId = chapter.book?.id;
+		
+		const chapterData = {
+			id: chapter.id,
+			title: chapter.title,
+			index: chapter.index,
+			scrapingStatus: chapter.scrapingStatus,
+			bookId,
+		};
 
-			const chapterData = {
-				id: chapter.id,
-				title: chapter.title,
-				index: chapter.index,
-				scrapingStatus: chapter.scrapingStatus,
-				bookId,
-			};
-
-			this.server
-				.to(`book:${bookId}`)
-				.emit('chapter.created', chapterData);
-			this.server.to('admin').emit('chapter.created', chapterData);
-		} catch (error) {
-			this.logger.error(
-				`Failed to broadcast chapter.created: ${error.message}`,
-			);
-		}
+		this.broadcast([`book:${bookId}`, 'admin'], BookEvents.CHAPTER_CREATED, chapterData);
 	}
 
-	/**
-	 * Notifica quando páginas de um capítulo são uploadadas
-	 * Envia para room do livro e do capítulo
-	 */
-	@OnEvent('chapter.pages.uploaded')
+	@OnEvent(BookEvents.PAGES_UPLOADED)
 	handleChapterPagesUploaded(data: {
 		bookId: string;
 		chapterId: string;
 		count: number;
 	}) {
-		try {
-			this.logger.debug(
-				`Broadcasting chapter.pages.uploaded for chapter ${data.chapterId}`,
-			);
-			this.server
-				.to(`book:${data.bookId}`)
-				.emit('chapter.pages.uploaded', data);
-			this.server
-				.to(`chapter:${data.chapterId}`)
-				.emit('chapter.pages.uploaded', data);
-			this.server.to('admin').emit('chapter.pages.uploaded', data);
-		} catch (error) {
-			this.logger.error(
-				`Failed to broadcast chapter.pages.uploaded: ${error.message}`,
-			);
-		}
+		this.broadcast(
+			[`book:${data.bookId}`, `chapter:${data.chapterId}`, 'admin'],
+			BookEvents.PAGES_UPLOADED,
+			data
+		);
 	}
 
 	// ==================== EVENTOS DE DELEÇÃO ====================
 
-	/**
-	 * Notifica quando um livro é deletado
-	 * Apenas admins recebem
-	 */
-	@OnEvent('book.deleted')
+	@OnEvent(BookEvents.DELETED)
 	handleBookDeleted(data: {
 		bookId: string;
 		bookTitle: string;
 		covers: string[];
 		pages: string[];
 	}) {
-		try {
-			this.logger.debug(
-				`Broadcasting book.deleted for book ${data.bookId}`,
-			);
-			const eventData = {
-				bookId: data.bookId,
-				title: data.bookTitle,
-				filesCount: data.covers.length + data.pages.length,
-			};
-			this.server.to('admin').emit('book.deleted', eventData);
-			// Também notifica quem estava inscrito no livro
-			this.server
-				.to(`book:${data.bookId}`)
-				.emit('book.deleted', eventData);
-		} catch (error) {
-			this.logger.error(
-				`Failed to broadcast book.deleted: ${error.message}`,
-			);
-		}
+		const eventData = {
+			bookId: data.bookId,
+			title: data.bookTitle,
+			filesCount: data.covers.length + data.pages.length,
+		};
+		this.broadcast(['admin', `book:${data.bookId}`], BookEvents.DELETED, eventData);
 	}
 
-	/**
-	 * Notifica quando um capítulo é deletado
-	 * Envia para room do livro e admins
-	 */
-	@OnEvent('chapter.deleted')
+	@OnEvent(BookEvents.CHAPTER_DELETED)
 	handleChapterDeleted(data: {
 		chapterId: string;
 		bookId?: string;
 		pages: string[];
 	}) {
-		try {
-			this.logger.debug(
-				`Broadcasting chapter.deleted for chapter ${data.chapterId}`,
-			);
-			const eventData = {
-				chapterId: data.chapterId,
-				bookId: data.bookId,
-				pagesCount: data.pages.length,
-			};
-			if (data.bookId) {
-				this.server
-					.to(`book:${data.bookId}`)
-					.emit('chapter.deleted', eventData);
-			}
-			this.server
-				.to(`chapter:${data.chapterId}`)
-				.emit('chapter.deleted', eventData);
-			this.server.to('admin').emit('chapter.deleted', eventData);
-		} catch (error) {
-			this.logger.error(
-				`Failed to broadcast chapter.deleted: ${error.message}`,
-			);
+		const eventData = {
+			chapterId: data.chapterId,
+			bookId: data.bookId,
+			pagesCount: data.pages.length,
+		};
+		
+		const rooms = ['admin', `chapter:${data.chapterId}`];
+		if (data.bookId) {
+			rooms.push(`book:${data.bookId}`);
 		}
+
+		this.broadcast(rooms, BookEvents.CHAPTER_DELETED, eventData);
 	}
 
-	/**
-	 * Notifica quando uma capa é deletada
-	 * Envia para room do livro e admins
-	 */
-	@OnEvent('cover.deleted')
+	@OnEvent(BookEvents.COVER_DELETED)
 	handleCoverDeleted(data: {
 		coverId: string;
 		url: string;
 		bookId?: string;
 	}) {
-		try {
-			this.logger.debug(
-				`Broadcasting cover.deleted for cover ${data.coverId}`,
-			);
-			const eventData = {
-				coverId: data.coverId,
-				bookId: data.bookId,
-			};
-			if (data.bookId) {
-				this.server
-					.to(`book:${data.bookId}`)
-					.emit('cover.deleted', eventData);
-			}
-			this.server.to('admin').emit('cover.deleted', eventData);
-		} catch (error) {
-			this.logger.error(
-				`Failed to broadcast cover.deleted: ${error.message}`,
-			);
+		const eventData = {
+			coverId: data.coverId,
+			bookId: data.bookId,
+		};
+		const rooms = ['admin'];
+		if (data.bookId) {
+			rooms.push(`book:${data.bookId}`);
 		}
+		this.broadcast(rooms, BookEvents.COVER_DELETED, eventData);
 	}
 
-	/**
-	 * Notifica quando uma página é deletada
-	 * Envia para room do capítulo e admins
-	 */
-	@OnEvent('page.deleted')
+	@OnEvent(BookEvents.PAGE_DELETED)
 	handlePageDeleted(data: {
 		pageId: string;
 		chapterId: string;
 		path: string;
 	}) {
-		try {
-			this.logger.debug(
-				`Broadcasting page.deleted for page ${data.pageId}`,
-			);
-			const eventData = {
-				pageId: data.pageId,
-				chapterId: data.chapterId,
-			};
-			this.server
-				.to(`chapter:${data.chapterId}`)
-				.emit('page.deleted', eventData);
-			this.server.to('admin').emit('page.deleted', eventData);
-		} catch (error) {
-			this.logger.error(
-				`Failed to broadcast page.deleted: ${error.message}`,
-			);
-		}
+		const eventData = {
+			pageId: data.pageId,
+			chapterId: data.chapterId,
+		};
+		this.broadcast([`chapter:${data.chapterId}`, 'admin'], BookEvents.PAGE_DELETED, eventData);
 	}
 
-	/**
-	 * Notifica quando novos capítulos são encontrados durante atualização automática
-	 * Envia para room do livro e admins
-	 */
-	@OnEvent('book.new-chapters')
+	@OnEvent(BookEvents.NEW_CHAPTERS)
 	handleBookNewChapters(data: {
 		bookId: string;
 		newChaptersCount: number;
 		chapters: Array<{ id: string; title: string; index: number }>;
 	}) {
-		try {
-			this.logger.debug(
-				`Broadcasting book.new-chapters for book ${data.bookId} with ${data.newChaptersCount} new chapters`,
-			);
-			const eventData = {
-				bookId: data.bookId,
-				newChaptersCount: data.newChaptersCount,
-				chapters: data.chapters,
-			};
-			this.server
-				.to(`book:${data.bookId}`)
-				.emit('book.new-chapters', eventData);
-			this.server.to('admin').emit('book.new-chapters', eventData);
-		} catch (error) {
-			this.logger.error(
-				`Failed to broadcast book.new-chapters: ${error.message}`,
-			);
-		}
+		const eventData = {
+			bookId: data.bookId,
+			newChaptersCount: data.newChaptersCount,
+			chapters: data.chapters,
+		};
+		this.broadcast([`book:${data.bookId}`, 'admin'], BookEvents.NEW_CHAPTERS, eventData);
 	}
 
-	/**
-	 * Notifica quando uma atualização de livro é iniciada
-	 * Apenas para admins
-	 */
-	@OnEvent('book.update.started')
+	@OnEvent(BookEvents.UPDATE_STARTED)
 	handleBookUpdateStarted(data: {
 		bookId: string;
 		bookTitle: string;
 		jobId: string;
 		timestamp: number;
 	}) {
-		try {
-			this.logger.debug(
-				`Broadcasting book.update.started for book ${data.bookId}`,
-			);
-			this.server.to('admin').emit('book.update.started', data);
-		} catch (error) {
-			this.logger.error(
-				`Failed to broadcast book.update.started: ${error.message}`,
-			);
-		}
+		this.broadcast('admin', BookEvents.UPDATE_STARTED, data);
 	}
 
-	/**
-	 * Notifica quando uma atualização de livro é concluída
-	 * Apenas para admins
-	 */
-	@OnEvent('book.update.completed')
+	@OnEvent(BookEvents.UPDATE_COMPLETED)
 	handleBookUpdateCompleted(data: {
 		bookId: string;
 		bookTitle: string;
@@ -821,23 +534,10 @@ export class BooksGateway
 		newCovers: number;
 		timestamp: number;
 	}) {
-		try {
-			this.logger.debug(
-				`Broadcasting book.update.completed for book ${data.bookId}`,
-			);
-			this.server.to('admin').emit('book.update.completed', data);
-		} catch (error) {
-			this.logger.error(
-				`Failed to broadcast book.update.completed: ${error.message}`,
-			);
-		}
+		this.broadcast('admin', BookEvents.UPDATE_COMPLETED, data);
 	}
 
-	/**
-	 * Notifica quando uma atualização de livro falha
-	 * Apenas para admins
-	 */
-	@OnEvent('book.update.failed')
+	@OnEvent(BookEvents.UPDATE_FAILED)
 	handleBookUpdateFailed(data: {
 		bookId: string;
 		bookTitle: string;
@@ -845,15 +545,6 @@ export class BooksGateway
 		error: string;
 		timestamp: number;
 	}) {
-		try {
-			this.logger.debug(
-				`Broadcasting book.update.failed for book ${data.bookId}`,
-			);
-			this.server.to('admin').emit('book.update.failed', data);
-		} catch (error) {
-			this.logger.error(
-				`Failed to broadcast book.update.failed: ${error.message}`,
-			);
-		}
+		this.broadcast('admin', BookEvents.UPDATE_FAILED, data);
 	}
 }

@@ -32,6 +32,8 @@ import { BookUpdateJobService } from './jobs/book-update.service';
 import { BookUpdateProcessor } from './jobs/book-update.processor';
 import { BookUpdateScheduler } from './jobs/book-update.scheduler';
 import { AdminBooksController } from './admin-books.controller';
+import { AdminBooksUploadController } from './admin-books-upload.controller';
+import { AdminBooksDashboardController } from './admin-books-dashboard.controller';
 import { Cover } from './entitys/cover.entity';
 import { BookCreationService } from './services/book-creation.service';
 import { BookUpdateService } from './services/book-update.service';
@@ -125,6 +127,8 @@ import { DownloadModule } from './download/download.module';
 		SensitiveContentController,
 		TagsController,
 		AdminBooksController,
+		AdminBooksUploadController,
+		AdminBooksDashboardController,
 	],
 	providers: [
 		BooksService,
