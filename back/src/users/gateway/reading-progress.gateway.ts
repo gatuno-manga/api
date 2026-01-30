@@ -17,6 +17,7 @@ import {
 	SaveReadingProgressDto,
 	ReadingProgressResponseDto,
 } from '../dto/reading-progress.dto';
+import { ReadingEvents } from '../constants/events.constant';
 
 interface ProgressUpdatePayload {
 	userId: string;
@@ -262,7 +263,7 @@ export class ReadingProgressGateway
 	/**
 	 * Propaga atualização de progresso para todos os dispositivos do usuário
 	 */
-	@OnEvent('reading.progress.updated')
+	@OnEvent(ReadingEvents.UPDATED)
 	handleProgressUpdatedEvent(payload: ProgressUpdatePayload) {
 		try {
 			this.server
@@ -278,7 +279,7 @@ export class ReadingProgressGateway
 	/**
 	 * Propaga deleção de progresso para todos os dispositivos do usuário
 	 */
-	@OnEvent('reading.progress.deleted')
+	@OnEvent(ReadingEvents.DELETED)
 	handleProgressDeletedEvent(payload: ProgressDeletePayload) {
 		try {
 			this.server
@@ -294,7 +295,7 @@ export class ReadingProgressGateway
 	/**
 	 * Propaga deleção de progresso de um livro para todos os dispositivos
 	 */
-	@OnEvent('reading.progress.book.deleted')
+	@OnEvent(ReadingEvents.BOOK_DELETED)
 	handleBookProgressDeletedEvent(payload: BookProgressDeletePayload) {
 		try {
 			this.server

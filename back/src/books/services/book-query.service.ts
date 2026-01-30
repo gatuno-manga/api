@@ -20,6 +20,8 @@ import { AppConfigService } from 'src/app-config/app-config.service';
 import { SensitiveContentService } from '../sensitive-content/sensitive-content.service';
 import { FilterStrategy } from '../strategies';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
 /**
  * Service responsável por consultas e buscas de livros
@@ -43,6 +45,8 @@ export class BookQueryService {
 		private readonly sensitiveContentRepository: Repository<SensitiveContent>,
 		private readonly sensitiveContentService: SensitiveContentService,
 		private readonly appConfig: AppConfigService,
+		@InjectQueue('book-update-queue')
+		private readonly bookUpdateQueue: Queue<{ bookId: string }>,
 	) {}
 
 	/**
@@ -548,5 +552,50 @@ export class BookQueryService {
 	private urlImage(url: string): string {
 		const appUrl = this.appConfig.apiUrl;
 		return `${appUrl}${url}`;
+	}
+
+	/**
+	 * Busca estatísticas da fila de atualização
+	 */
+	async getQueueStats() {
+		const counts = await this.bookUpdateQueue.getJobCounts();
+		const activeJobs = await this.bookUpdateQueue.getActive();
+		const waitingJobs = await this.bookUpdateQueue.getWaiting();
+
+		// Buscar informações dos livros para os jobs ativos e em espera
+		const activeJobsWithBookInfo = await Promise.all(
+			activeJobs.map(async (job) => {
+				const book = await this.bookRepository.findOne({
+					where: { id: job.data.bookId },
+					select: ['id', 'title'],
+				});
+				return {
+					id: job.id,
+					bookId: job.data.bookId,
+					bookTitle: book?.title || 'Unknown',
+					timestamp: job.timestamp,
+				};
+			}),
+		);
+
+		const waitingJobsWithBookInfo = await Promise.all(
+			waitingJobs.slice(0, 10).map(async (job) => {
+				const book = await this.bookRepository.findOne({
+					where: { id: job.data.bookId },
+					select: ['id', 'title'],
+				});
+				return {
+					id: job.id,
+					bookId: job.data.bookId,
+					bookTitle: book?.title || 'Unknown',
+				};
+			}),
+		);
+
+		return {
+			counts,
+			activeJobs: activeJobsWithBookInfo,
+			waitingJobs: waitingJobsWithBookInfo,
+		};
 	}
 }

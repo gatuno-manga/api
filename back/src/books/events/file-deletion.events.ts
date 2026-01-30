@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { FileCleanupService } from '../../files/file-cleanup.service';
+import { BookEvents } from '../constants/events.constant';
 
 @Injectable()
 export class FileDeletionEvents {
@@ -8,7 +9,7 @@ export class FileDeletionEvents {
 
 	constructor(private readonly fileCleanupService: FileCleanupService) {}
 
-	@OnEvent('book.deleted')
+	@OnEvent(BookEvents.DELETED)
 	async handleBookDeleted(event: {
 		bookId: string;
 		bookTitle: string;
@@ -53,7 +54,7 @@ export class FileDeletionEvents {
 		);
 	}
 
-	@OnEvent('chapter.deleted')
+	@OnEvent(BookEvents.CHAPTER_DELETED)
 	async handleChapterDeleted(event: {
 		chapterId: string;
 		bookId?: string;
@@ -85,7 +86,7 @@ export class FileDeletionEvents {
 		);
 	}
 
-	@OnEvent('cover.deleted')
+	@OnEvent(BookEvents.COVER_DELETED)
 	async handleCoverDeleted(event: { coverId: string; url: string }) {
 		this.logger.log(`Processing deletion of cover file: ${event.coverId}`);
 
@@ -100,7 +101,7 @@ export class FileDeletionEvents {
 		}
 	}
 
-	@OnEvent('page.deleted')
+	@OnEvent(BookEvents.PAGE_DELETED)
 	async handlePageDeleted(event: {
 		pageId: number;
 		chapterId: string;

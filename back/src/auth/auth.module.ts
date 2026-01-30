@@ -16,6 +16,7 @@ import { DataEncryptionProvider } from 'src/encryption/data-encryption.provider'
 import { JwtRefreshStrategy } from './strategy/jwt-refresh.strategy';
 import { CreateAdminEvent } from './events/create-admin.event';
 import { Role } from 'src/users/entitys/role.entity';
+import { TokenStoreService } from './services/token-store.service';
 
 @Module({
 	imports: [
@@ -38,6 +39,7 @@ import { Role } from 'src/users/entitys/role.entity';
 	providers: [
 		CreateAdminEvent,
 		AuthService,
+		TokenStoreService,
 		DataEncryptionProvider,
 		JwtStrategy,
 		JwtAuthGuard,

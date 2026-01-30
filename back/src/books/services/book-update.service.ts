@@ -182,4 +182,30 @@ export class BookUpdateService {
 			covers: coversDto,
 		});
 	}
+
+	/**
+	 * Habilita ou desabilita atualizações automáticas para um livro
+	 */
+	async toggleAutoUpdate(idBook: string, enabled: boolean) {
+		const book = await this.bookRepository.findOne({
+			where: { id: idBook },
+		});
+
+		if (!book) {
+			throw new NotFoundException('Book not found');
+		}
+
+		book.autoUpdate = enabled;
+		await this.bookRepository.save(book);
+
+		this.logger.log(
+			`Auto-update ${enabled ? 'enabled' : 'disabled'} for book: ${book.title}`,
+		);
+
+		return {
+			id: book.id,
+			title: book.title,
+			autoUpdate: book.autoUpdate,
+		};
+	}
 }

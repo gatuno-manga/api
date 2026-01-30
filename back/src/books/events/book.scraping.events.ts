@@ -7,6 +7,7 @@ import { Logger } from '@nestjs/common';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { ChapterScrapingService } from '../jobs/chapter-scraping.service';
 import { FixChapterService } from '../jobs/fix-chapter.service';
+import { BookEvents } from '../constants/events.constant';
 
 export class BookScrapingEvents {
 	private logger = new Logger(BookScrapingEvents.name);
@@ -18,7 +19,7 @@ export class BookScrapingEvents {
 		private readonly fixChapterService: FixChapterService,
 	) {}
 
-	@OnEvent('book.created')
+	@OnEvent(BookEvents.CREATED)
 	async handleProcessChapters(book: Book) {
 		const chapters = book.chapters
 			.filter(
@@ -43,7 +44,7 @@ export class BookScrapingEvents {
 		);
 	}
 
-	@OnEvent('chapters.updated')
+	@OnEvent(BookEvents.CHAPTERS_UPDATED)
 	async processChaptersList(chapters: Chapter[] | Chapter) {
 		if (!Array.isArray(chapters)) chapters = [chapters];
 		const chaptersToProcess = chapters
@@ -68,7 +69,7 @@ export class BookScrapingEvents {
 		);
 	}
 
-	@OnEvent('chapters.fix')
+	@OnEvent(BookEvents.CHAPTERS_FIX)
 	async handleFixBook(chapters: Chapter[] | Chapter) {
 		if (!Array.isArray(chapters)) chapters = [chapters];
 		if (chapters.length === 0) {
