@@ -5,6 +5,7 @@ import { Chapter } from '../entitys/chapter.entity';
 import { Not, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
+import { ContentType } from '../enum/content-type.enum';
 
 const QUEUE_NAME = 'chapter-scraping';
 const JOB_NAME = 'process-chapter';
@@ -71,8 +72,13 @@ export class ChapterScrapingService {
 			'Buscando todos os capítulos pendentes para enfileirar...',
 		);
 
+		// Apenas capítulos do tipo IMAGE precisam de scraping
+		// Capítulos TEXT e DOCUMENT têm conteúdo enviado manualmente
 		const pendingChapters = await this.chapterRepository.find({
-			where: { scrapingStatus: Not(ScrapingStatus.READY) },
+			where: {
+				scrapingStatus: Not(ScrapingStatus.READY),
+				contentType: ContentType.IMAGE,
+			},
 			select: ['id'],
 		});
 

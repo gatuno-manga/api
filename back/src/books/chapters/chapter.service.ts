@@ -7,6 +7,7 @@ import { ChapterRead } from '../entitys/chapter-read.entity';
 import { Chapter } from '../entitys/chapter.entity';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { ChapterUpdatedEvent } from './events/chapter-updated.event';
+import { ContentType } from '../enum/content-type.enum';
 
 @Injectable()
 export class ChapterService {
@@ -30,7 +31,7 @@ export class ChapterService {
 	async getChapter(idChapter: string, userId?: string) {
 		const chapter = await this.chapterRepository.findOne({
 			where: { id: idChapter },
-			relations: ['pages', 'book'],
+			relations: ['book'],
 		});
 		if (!chapter) {
 			this.logger.warn(`Chapter with id ${idChapter} not found`);
@@ -38,6 +39,18 @@ export class ChapterService {
 				`Chapter with id ${idChapter} not found`,
 			);
 		}
+
+		// Carrega páginas apenas para capítulos do tipo IMAGE
+		if (chapter.contentType === ContentType.IMAGE) {
+			const chapterWithPages = await this.chapterRepository.findOne({
+				where: { id: idChapter },
+				relations: ['pages'],
+			});
+			if (chapterWithPages?.pages) {
+				chapter.pages = chapterWithPages.pages;
+			}
+		}
+
 		const previousChapter = await this.chapterRepository
 			.createQueryBuilder('chapter')
 			.where('chapter.bookId = :bookId', { bookId: chapter.book.id })
@@ -65,17 +78,9 @@ export class ChapterService {
 			? Number(maxIndexChapter.max)
 			: 0;
 		const { book, ...chapterWithoutBook } = chapter;
-		if (chapterWithoutBook.pages) {
-			for (const page of chapterWithoutBook.pages) {
-				page.path = this.urlImage(page.path);
-			}
-		}
-		if (userId) {
-			this.markChapterAsRead(idChapter, userId).catch((err) =>
-				this.logger.error(err),
-			);
-		}
-		return {
+
+		// Monta resposta baseada no tipo de conteúdo
+		const baseResponse = {
 			...chapterWithoutBook,
 			previous: previousChapter?.id,
 			next: nextChapter?.id,
@@ -83,6 +88,30 @@ export class ChapterService {
 			bookTitle: book.title,
 			totalChapters,
 		};
+
+		// Para IMAGE: retorna pages com URLs completas
+		if (chapter.contentType === ContentType.IMAGE) {
+			if (chapterWithoutBook.pages) {
+				for (const page of chapterWithoutBook.pages) {
+					page.path = this.urlImage(page.path);
+				}
+			}
+		}
+
+		// Para DOCUMENT: converte documentPath para URL completa
+		if (chapter.contentType === ContentType.DOCUMENT && chapter.documentPath) {
+			baseResponse.documentPath = this.urlImage(chapter.documentPath);
+		}
+
+		// Para TEXT: content já está no objeto, não precisa modificar
+
+		if (userId) {
+			this.markChapterAsRead(idChapter, userId).catch((err) =>
+				this.logger.error(err),
+			);
+		}
+
+		return baseResponse;
 	}
 
 	async resetChapter(idChapter: string) {

@@ -19,6 +19,7 @@ import { BookType } from '../enum/book-type.enum';
 import { Author } from './author.entity';
 import { SensitiveContent } from './sensitive-content.entity';
 import { Cover } from './cover.entity';
+import { ExportFormat } from '../enum/export-format.enum';
 
 @Entity('books')
 @Index(['title'])
@@ -85,6 +86,18 @@ export class Book {
 		default: false,
 	})
 	autoUpdate: boolean;
+
+	/**
+	 * Formatos de exportação disponíveis para este livro
+	 * Atualizado automaticamente quando capítulos são adicionados
+	 * Ex: ['pdf', 'zip'] para mangás, ['markdown', 'pdf'] para novels
+	 */
+	@Column({
+		type: 'simple-array',
+		nullable: true,
+		default: null,
+	})
+	availableFormats: ExportFormat[];
 
 	@OneToMany(() => Chapter, (chapter) => chapter.book, {
 		cascade: true,

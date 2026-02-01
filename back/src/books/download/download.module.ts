@@ -7,6 +7,8 @@ import { DownloadCacheService } from './download-cache.service';
 import { ZipStrategy } from './strategies/zip.strategy';
 import { PdfStrategy } from './strategies/pdf.strategy';
 import { PdfsZipStrategy } from './strategies/pdfs-zip.strategy';
+import { DocumentDownloadStrategy } from './strategies/document-download.strategy';
+import { MarkdownDownloadStrategy } from './strategies/markdown-download.strategy';
 import { Chapter } from '../entitys/chapter.entity';
 import { Book } from '../entitys/book.entity';
 import { RedisModule } from 'src/redis/redis.module';
@@ -27,6 +29,8 @@ import { AppConfigModule } from 'src/app-config/app-config.module';
         ZipStrategy,
         PdfStrategy,
         PdfsZipStrategy,
+        DocumentDownloadStrategy,
+        MarkdownDownloadStrategy,
     ],
     exports: [DownloadService],
 })

@@ -15,6 +15,17 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CustomLogger } from 'src/custom.logger';
 import { InjectMetric } from '@willsoto/nestjs-prometheus';
 import { Counter, Histogram } from 'prom-client';
+import { ContentType } from '../enum/content-type.enum';
+import { ContentFormat } from '../enum/content-format.enum';
+import { DocumentFormat } from '../enum/document-format.enum';
+import { ExportFormat } from '../enum/export-format.enum';
+import {
+	UploadTextContentDto,
+} from '../dto/upload-text-content.dto';
+import {
+	MIMETYPE_TO_FORMAT,
+	FORMAT_TO_EXTENSION,
+} from '../dto/upload-document.dto';
 
 /**
  * Service responsável por upload de capas e páginas de capítulos
@@ -482,6 +493,269 @@ export class BookUploadService {
 				filesCount: files.length,
 			});
 			throw error;
+		}
+	}
+
+	// ==================== UPLOAD DE DOCUMENTOS (PDF/EPUB) ====================
+
+	/**
+	 * Upload de um documento (PDF/EPUB) para um capítulo
+	 * O documento é salvo sem compressão (já são formatos comprimidos)
+	 */
+	async uploadChapterDocument(
+		chapterId: string,
+		file: Express.Multer.File,
+		title?: string,
+	): Promise<Chapter> {
+		const startTime = Date.now();
+
+		this.logger.logChapterProcessing({
+			chapterId,
+			message: `Starting document upload: ${file.originalname}`,
+			metadata: {
+				fileSize: file.size,
+				mimeType: file.mimetype,
+			},
+		});
+
+		this.uploadSize.observe({ type: 'document' }, file.size);
+
+		const chapter = await this.chapterRepository.findOne({
+			where: { id: chapterId },
+			relations: ['book'],
+		});
+
+		if (!chapter) {
+			this.logger.warn(
+				`Chapter with id ${chapterId} not found`,
+				'BookUploadService',
+			);
+			this.uploadCounter.inc({ type: 'document', status: 'error' });
+			throw new NotFoundException(
+				`Chapter with id ${chapterId} not found`,
+			);
+		}
+
+		// Detecta formato baseado no mimetype
+		const documentFormat = MIMETYPE_TO_FORMAT[file.mimetype];
+		if (!documentFormat) {
+			this.uploadCounter.inc({ type: 'document', status: 'error' });
+			throw new BadRequestException(
+				`Tipo de arquivo não suportado: ${file.mimetype}. Use PDF ou EPUB.`,
+			);
+		}
+
+		try {
+			// Deleta documento anterior se existir
+			if (chapter.documentPath) {
+				try {
+					await this.filesService.deleteFile(chapter.documentPath);
+				} catch (deleteError) {
+					this.logger.warn(
+						`Falha ao deletar documento anterior: ${chapter.documentPath}`,
+						'BookUploadService',
+					);
+				}
+			}
+
+			// Salva o documento (sem compressão - PDF/EPUB já são comprimidos)
+			const extension = FORMAT_TO_EXTENSION[documentFormat];
+			const savedPath = await this.filesService.saveBufferFile(
+				file.buffer,
+				extension,
+			);
+
+			// Atualiza o capítulo
+			chapter.contentType = ContentType.DOCUMENT;
+			chapter.documentPath = savedPath;
+			chapter.documentFormat = documentFormat;
+			chapter.scrapingStatus = null; // Documentos não precisam de scraping
+
+			// Limpa campos não utilizados
+			chapter.content = null;
+			chapter.contentFormat = null;
+
+			// Atualiza título se fornecido
+			if (title) {
+				chapter.title = title;
+			}
+
+			const savedChapter = await this.chapterRepository.save(chapter);
+
+			// Atualiza formatos disponíveis no livro
+			await this.updateBookAvailableFormats(chapter.book.id, documentFormat);
+
+			const duration = Date.now() - startTime;
+
+			this.uploadCounter.inc({ type: 'document', status: 'success' });
+			this.uploadDuration.observe({ type: 'document' }, duration / 1000);
+
+			this.logger.logChapterProcessing({
+				chapterId,
+				message: 'Document uploaded successfully',
+				metadata: {
+					documentFormat,
+					duration,
+					bookId: chapter.book?.id,
+					fileSize: file.size,
+				},
+			});
+
+			this.eventEmitter.emit('chapter.document.uploaded', {
+				chapterId: chapter.id,
+				bookId: chapter.book?.id,
+				format: documentFormat,
+			});
+
+			return savedChapter;
+		} catch (error) {
+			const duration = Date.now() - startTime;
+			this.uploadCounter.inc({ type: 'document', status: 'error' });
+			this.uploadDuration.observe({ type: 'document' }, duration / 1000);
+
+			this.logger.error(error, 'BookUploadService', {
+				chapterId,
+				fileName: file.originalname,
+			});
+			throw error;
+		}
+	}
+
+	// ==================== UPLOAD DE CONTEÚDO TEXTUAL ====================
+
+	/**
+	 * Upload de conteúdo textual (Markdown/HTML/Plain) para um capítulo
+	 * Usado para Light Novels e conteúdo de texto
+	 */
+	async uploadChapterTextContent(
+		chapterId: string,
+		dto: UploadTextContentDto,
+	): Promise<Chapter> {
+		const startTime = Date.now();
+
+		this.logger.logChapterProcessing({
+			chapterId,
+			message: `Starting text content upload`,
+			metadata: {
+				format: dto.format,
+				contentLength: dto.content.length,
+			},
+		});
+
+		const chapter = await this.chapterRepository.findOne({
+			where: { id: chapterId },
+			relations: ['book'],
+		});
+
+		if (!chapter) {
+			this.logger.warn(
+				`Chapter with id ${chapterId} not found`,
+				'BookUploadService',
+			);
+			throw new NotFoundException(
+				`Chapter with id ${chapterId} not found`,
+			);
+		}
+
+		try {
+			// Deleta documento anterior se existir (mudando de DOCUMENT para TEXT)
+			if (chapter.documentPath) {
+				try {
+					await this.filesService.deleteFile(chapter.documentPath);
+				} catch (deleteError) {
+					this.logger.warn(
+						`Falha ao deletar documento anterior: ${chapter.documentPath}`,
+						'BookUploadService',
+					);
+				}
+			}
+
+			// Atualiza o capítulo com conteúdo textual
+			chapter.contentType = ContentType.TEXT;
+			chapter.content = dto.content;
+			chapter.contentFormat = dto.format;
+			chapter.scrapingStatus = null; // Texto não precisa de scraping
+
+			// Limpa campos não utilizados
+			chapter.documentPath = null;
+			chapter.documentFormat = null;
+
+			const savedChapter = await this.chapterRepository.save(chapter);
+
+			// Atualiza formatos disponíveis no livro
+			const exportFormat = this.contentFormatToExportFormat(dto.format);
+			await this.updateBookAvailableFormats(chapter.book.id, exportFormat);
+
+			const duration = Date.now() - startTime;
+
+			this.logger.logChapterProcessing({
+				chapterId,
+				message: 'Text content uploaded successfully',
+				metadata: {
+					contentFormat: dto.format,
+					duration,
+					bookId: chapter.book?.id,
+					contentLength: dto.content.length,
+				},
+			});
+
+			this.eventEmitter.emit('chapter.content.uploaded', {
+				chapterId: chapter.id,
+				bookId: chapter.book?.id,
+				format: dto.format,
+			});
+
+			return savedChapter;
+		} catch (error) {
+			this.logger.error(error, 'BookUploadService', {
+				chapterId,
+				contentFormat: dto.format,
+			});
+			throw error;
+		}
+	}
+
+	// ==================== HELPERS ====================
+
+	/**
+	 * Atualiza a lista de formatos disponíveis para um livro
+	 */
+	private async updateBookAvailableFormats(
+		bookId: string,
+		newFormat: ExportFormat | DocumentFormat | string,
+	): Promise<void> {
+		const book = await this.bookRepository.findOne({
+			where: { id: bookId },
+		});
+
+		if (!book) return;
+
+		const currentFormats = book.availableFormats || [];
+		const formatString = newFormat as ExportFormat;
+
+		if (!currentFormats.includes(formatString)) {
+			book.availableFormats = [...currentFormats, formatString];
+			await this.bookRepository.save(book);
+
+			this.logger.debug(
+				`Updated book ${bookId} availableFormats: ${book.availableFormats.join(', ')}`,
+			);
+		}
+	}
+
+	/**
+	 * Converte ContentFormat para ExportFormat
+	 */
+	private contentFormatToExportFormat(format: ContentFormat): ExportFormat {
+		switch (format) {
+			case ContentFormat.MARKDOWN:
+				return ExportFormat.MARKDOWN;
+			case ContentFormat.HTML:
+			case ContentFormat.PLAIN:
+				// HTML e PLAIN podem ser exportados como PDF
+				return ExportFormat.PDF;
+			default:
+				return ExportFormat.PDF;
 		}
 	}
 }
