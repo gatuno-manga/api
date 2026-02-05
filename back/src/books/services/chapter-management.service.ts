@@ -126,9 +126,12 @@ export class ChapterManagementService {
 		const chapters = chaptersDto.map((chapterDto) =>
 			manager.create({
 				title: chapterDto.title,
-				originalUrl: chapterDto.url ? normalizeUrl(chapterDto.url) : '', // URL opcional agora
+				originalUrl: chapterDto.url ? normalizeUrl(chapterDto.url) : '',
 				index: allHaveIndex ? chapterDto.index : count++,
 				book,
+				scrapingStatus: chapterDto.url
+					? ScrapingStatus.PROCESS
+					: ScrapingStatus.READY,
 			}),
 		);
 

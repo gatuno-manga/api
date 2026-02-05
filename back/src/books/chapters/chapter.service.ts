@@ -7,6 +7,7 @@ import { ChapterRead } from '../entitys/chapter-read.entity';
 import { Chapter } from '../entitys/chapter.entity';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { ChapterUpdatedEvent } from './events/chapter-updated.event';
+import { ContentType } from '../enum/content-type.enum';
 
 @Injectable()
 export class ChapterService {
@@ -28,16 +29,20 @@ export class ChapterService {
 	}
 
 	async getChapter(idChapter: string, userId?: string) {
-		const chapter = await this.chapterRepository.findOne({
-			where: { id: idChapter },
-			relations: ['pages', 'book'],
-		});
+		const chapter = await this.chapterRepository
+			.createQueryBuilder('chapter')
+			.leftJoinAndSelect('chapter.book', 'book')
+			.leftJoinAndSelect('chapter.pages', 'pages')
+			.where('chapter.id = :id', { id: idChapter })
+			.getOne();
+
 		if (!chapter) {
 			this.logger.warn(`Chapter with id ${idChapter} not found`);
 			throw new NotFoundException(
 				`Chapter with id ${idChapter} not found`,
 			);
 		}
+
 		const previousChapter = await this.chapterRepository
 			.createQueryBuilder('chapter')
 			.where('chapter.bookId = :bookId', { bookId: chapter.book.id })
@@ -65,17 +70,16 @@ export class ChapterService {
 			? Number(maxIndexChapter.max)
 			: 0;
 		const { book, ...chapterWithoutBook } = chapter;
-		if (chapterWithoutBook.pages) {
-			for (const page of chapterWithoutBook.pages) {
-				page.path = this.urlImage(page.path);
-			}
-		}
-		if (userId) {
-			this.markChapterAsRead(idChapter, userId).catch((err) =>
-				this.logger.error(err),
-			);
-		}
-		return {
+
+		// Monta resposta baseada no tipo de conteúdo
+		const baseResponse: Omit<Chapter, 'book'> & {
+            previous?: string;
+            next?: string;
+            bookId: string;
+            bookTitle: string;
+            totalChapters: number;
+            documentPath?: string | null;
+        } = {
 			...chapterWithoutBook,
 			previous: previousChapter?.id,
 			next: nextChapter?.id,
@@ -83,6 +87,33 @@ export class ChapterService {
 			bookTitle: book.title,
 			totalChapters,
 		};
+
+		// Para IMAGE: retorna pages com URLs completas
+		if (chapter.contentType === ContentType.IMAGE) {
+			if (chapterWithoutBook.pages) {
+				for (const page of chapterWithoutBook.pages) {
+					page.path = this.urlImage(page.path);
+				}
+			}
+		} else {
+			// Remove pages para outros tipos para economizar banda
+			delete (baseResponse as Partial<Chapter>).pages;
+		}
+
+		// Para DOCUMENT: converte documentPath para URL completa
+		if (chapter.contentType === ContentType.DOCUMENT && chapter.documentPath) {
+			baseResponse.documentPath = this.urlImage(chapter.documentPath);
+		}
+
+		// Para TEXT: content já está no objeto, não precisa modificar
+
+		if (userId) {
+			this.markChapterAsRead(idChapter, userId).catch((err) =>
+				this.logger.error(err),
+			);
+		}
+
+		return baseResponse;
 	}
 
 	async resetChapter(idChapter: string) {
@@ -161,13 +192,13 @@ export class ChapterService {
 	}
 
 	async markChaptersAsRead(chapterIds: string[], userId: string) {
-		const results: { chapterId: string; success: boolean; result?: any; error?: string; }[] = [];
+		const results: { chapterId: string; success: boolean; result?: ChapterRead; error?: string; }[] = [];
 		for (const chapterId of chapterIds) {
 			try {
 				const result = await this.markChapterAsRead(chapterId, userId);
 				results.push({ chapterId, success: true, result });
 			} catch (error) {
-				results.push({ chapterId, success: false, error: error.message });
+				results.push({ chapterId, success: false, error: error instanceof Error ? error.message : 'Unknown error' });
 			}
 		}
 		this.logger.log(
@@ -177,13 +208,13 @@ export class ChapterService {
 	}
 
 	async markChaptersAsUnread(chapterIds: string[], userId: string) {
-		const results: { chapterId: string; success: boolean; result?: any; error?: string; }[] = [];
+		const results: { chapterId: string; success: boolean; result?: import('typeorm').DeleteResult; error?: string; }[] = [];
 		for (const chapterId of chapterIds) {
 			try {
 				const result = await this.markChapterAsUnread(chapterId, userId);
 				results.push({ chapterId, success: true, result });
 			} catch (error) {
-				results.push({ chapterId, success: false, error: error.message });
+				results.push({ chapterId, success: false, error: error instanceof Error ? error.message : 'Unknown error' });
 			}
 		}
 		this.logger.log(
@@ -199,11 +230,11 @@ export class ChapterService {
 			.loadRelationCountAndMap('chapter.pageCount', 'chapter.pages')
 			.getMany();
 
-		return chapters
-			.filter((chapter) => (chapter as any).pageCount < pages)
+		return (chapters as Array<Chapter & { pageCount: number }>)
+			.filter((chapter) => chapter.pageCount < pages)
 			.map((chapter) => {
 				const { pages, ...rest } = chapter;
-				return { ...rest, pageCount: (chapter as any).pageCount };
+				return { ...rest, pageCount: chapter.pageCount };
 			});
 	}
 
