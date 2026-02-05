@@ -11,6 +11,7 @@ import {
 	BadRequestException,
 	Param,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import {
 	ApiTags,
@@ -25,15 +26,16 @@ import { Throttle } from '@nestjs/throttler';
 import { UploadCoverDto } from './dto/upload-cover.dto';
 import { UploadTextContentDto } from './dto/upload-text-content.dto';
 import {
-	ALLOWED_DOCUMENT_MIMETYPES,
-	MAX_DOCUMENT_SIZE,
-} from './dto/upload-document.dto';
+    ALLOWED_DOCUMENT_MIMETYPES,
+    MAX_DOCUMENT_SIZE,
+} from './constants/content-types.constants';
+import { UploadDocumentDto } from './dto/upload-document.dto';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { Roles } from 'src/auth/decorator/roles.decorator';
 import { RolesEnum } from 'src/users/enum/roles.enum';
 import { BookUploadService } from './services/book-upload.service';
 
-const IMAGE_FILE_FILTER = (req: any, file: Express.Multer.File, callback: (error: Error | null, acceptFile: boolean) => void) => {
+const IMAGE_FILE_FILTER = (req: Request, file: Express.Multer.File, callback: (error: Error | null, acceptFile: boolean) => void) => {
 	if (!file.mimetype.match(/^image\//)) {
 		return callback(
 			new BadRequestException('Only image files are allowed'),
