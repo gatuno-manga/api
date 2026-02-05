@@ -25,7 +25,7 @@ import {
 import {
 	MIMETYPE_TO_FORMAT,
 	FORMAT_TO_EXTENSION,
-} from '../dto/upload-document.dto';
+} from '../constants/content-types.constants';
 
 /**
  * Service responsável por upload de capas e páginas de capítulos
