@@ -78,7 +78,7 @@ export class ChapterService {
             bookId: string;
             bookTitle: string;
             totalChapters: number;
-            documentPath?: string;
+            documentPath?: string | null;
         } = {
 			...chapterWithoutBook,
 			previous: previousChapter?.id,

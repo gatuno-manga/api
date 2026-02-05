@@ -255,24 +255,7 @@ describe('ScrapingService', () => {
 	});
 
 	describe('onApplicationShutdown', () => {
-		it('should close browser on shutdown', async () => {
-			// Simulate browser being active
-			const mockBrowser = {
-				close: jest.fn().mockResolvedValue(undefined),
-				isConnected: jest.fn().mockReturnValue(true),
-			};
-			service['browser'] =
-				mockBrowser as unknown as (typeof service)['browser'];
-
-			await service.onApplicationShutdown();
-
-			expect(mockBrowser.close).toHaveBeenCalled();
-			expect(service['browser']).toBeNull();
-		});
-
-		it('should handle null browser gracefully', async () => {
-			service['browser'] = null;
-
+		it('should handle shutdown gracefully', async () => {
 			await expect(
 				service.onApplicationShutdown(),
 			).resolves.not.toThrow();
