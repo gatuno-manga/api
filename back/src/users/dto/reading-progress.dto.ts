@@ -1,4 +1,5 @@
-import { IsUUID, IsInt, IsOptional, IsBoolean, Min } from 'class-validator';
+import { IsUUID, IsInt, IsOptional, IsBoolean, Min, IsArray, ValidateNested, IsDate } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class SaveReadingProgressDto {
 	@IsUUID()
@@ -32,16 +33,31 @@ export class ReadingProgressResponseDto {
 }
 
 export class SyncReadingProgressDto {
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => SaveReadingProgressDto)
 	progress: SaveReadingProgressDto[];
+
+	@IsOptional()
+	@IsDate()
+	@Type(() => Date)
 	lastSyncAt?: Date;
 }
 
 export class SyncResponseDto {
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => ReadingProgressResponseDto)
 	synced: ReadingProgressResponseDto[];
+
+	@IsArray()
 	conflicts: Array<{
 		local: SaveReadingProgressDto;
 		remote: ReadingProgressResponseDto;
 	}>;
+
+	@IsDate()
+	@Type(() => Date)
 	lastSyncAt: Date;
 }
 

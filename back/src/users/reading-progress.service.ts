@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In, Not } from 'typeorm';
 import { ReadingProgress } from './entitys/reading-progress.entity';
 import {
 	SaveReadingProgressDto,
@@ -123,19 +123,35 @@ export class ReadingProgressService {
 		const conflicts: SyncResponseDto['conflicts'] = [];
 		const lastSyncAt = new Date();
 
+		if (dto.progress.length === 0) {
+			const allRemote = await this.getAllProgress(userId);
+			return { synced: allRemote, conflicts: [], lastSyncAt };
+		}
+
+		// Busca todos os registros existentes de uma vez para otimizar
+		const chapterIds = dto.progress.map((p) => p.chapterId);
+		const existingRemoteProgress = await this.progressRepository.find({
+			where: { userId, chapterId: In(chapterIds) },
+		});
+
+		const remoteMap = new Map(
+			existingRemoteProgress.map((p) => [p.chapterId, p]),
+		);
+
 		for (const localProgress of dto.progress) {
-			const remoteProgress = await this.progressRepository.findOne({
-				where: { userId, chapterId: localProgress.chapterId },
-			});
+			const remoteProgress = remoteMap.get(localProgress.chapterId);
 
 			if (!remoteProgress) {
-				// Não existe no servidor, salva diretamente
+				// Não existe no servidor, salva
 				const saved = await this.saveProgress(userId, localProgress);
 				synced.push(saved);
 			} else if (dto.lastSyncAt) {
 				// Verifica conflito baseado na data de última sincronização
-				if (remoteProgress.updatedAt > dto.lastSyncAt) {
-					// Servidor foi atualizado após última sincronização
+				const remoteUpdatedAt = new Date(remoteProgress.updatedAt);
+				const lastSyncDate = new Date(dto.lastSyncAt);
+
+				if (remoteUpdatedAt > lastSyncDate) {
+					// Servidor foi atualizado após última sincronização do cliente
 					if (localProgress.pageIndex !== remoteProgress.pageIndex) {
 						conflicts.push({
 							local: localProgress,
@@ -145,7 +161,7 @@ export class ReadingProgressService {
 						synced.push(this.toResponseDto(remoteProgress));
 					}
 				} else {
-					// Cliente é mais recente
+					// Cliente é mais recente ou igual
 					const saved = await this.saveProgress(
 						userId,
 						localProgress,
@@ -167,21 +183,14 @@ export class ReadingProgressService {
 		}
 
 		// Busca progresso remoto que não foi enviado pelo cliente
-		const sentChapterIds = dto.progress.map((p) => p.chapterId);
 		const remoteOnly = await this.progressRepository.find({
 			where: {
 				userId,
-				...(sentChapterIds.length > 0 && {
-					chapterId: In(sentChapterIds),
-				}),
+				chapterId: Not(In(chapterIds)),
 			},
 		});
 
-		// Adiciona progresso que só existe no servidor
-		const remoteOnlyFiltered = remoteOnly.filter(
-			(r) => !sentChapterIds.includes(r.chapterId),
-		);
-		synced.push(...remoteOnlyFiltered.map((r) => this.toResponseDto(r)));
+		synced.push(...remoteOnly.map((r) => this.toResponseDto(r)));
 
 		this.logger.log(
 			`Sincronização concluída: user=${userId}, synced=${synced.length}, conflicts=${conflicts.length}`,
