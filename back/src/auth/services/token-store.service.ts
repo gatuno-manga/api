@@ -21,32 +21,47 @@ export class TokenStoreService {
 		const key = this.getRedisKey(userId);
 		const storedTokens: StoredTokenDto[] =
 			(await this.cacheManager.get(key)) || [];
-		
+
 		return storedTokens.filter((t) => t.expiresAt > Date.now());
 	}
 
 	async saveTokens(userId: string, tokens: StoredTokenDto[]): Promise<void> {
 		const key = this.getRedisKey(userId);
-		
-		if (tokens.length === 0) {
+		const validTokens = tokens.filter((t) => t.expiresAt > Date.now());
+
+		if (validTokens.length === 0) {
 			await this.cacheManager.del(key);
 			return;
 		}
 
-		const nextExpiration = Math.min(...tokens.map((t) => t.expiresAt));
-		const cacheTtl = Math.max(nextExpiration - Date.now(), 0);
+		const latestExpiration = Math.max(...validTokens.map((t) => t.expiresAt));
+		const cacheTtl = Math.max(latestExpiration - Date.now(), 0);
 
-		await this.cacheManager.set(key, tokens, cacheTtl);
+		await this.cacheManager.set(key, validTokens, cacheTtl);
 	}
 
-	async addToken(userId: string, hashedToken: string): Promise<void> {
-		const tokens = await this.getValidTokens(userId);
+	async addToken(
+		userId: string,
+		hashedToken: string,
+		existingTokens?: StoredTokenDto[],
+	): Promise<void> {
+		const tokens = existingTokens ?? (await this.getValidTokens(userId));
 		const ttl = this.configService.refreshTokenTtl;
 		const expiresAt = Date.now() + ttl;
 
 		tokens.push({ hash: hashedToken, expiresAt });
+
+		const maxSessions = this.configService.maxSessionsPerUser;
+		if (maxSessions > 0 && tokens.length > maxSessions) {
+			tokens.sort((a, b) => a.expiresAt - b.expiresAt);
+			const removed = tokens.splice(0, tokens.length - maxSessions);
+			this.logger.warn(
+				`Session limit (${maxSessions}) reached for user ${userId}. Evicted ${removed.length} oldest session(s).`,
+			);
+		}
+
 		await this.saveTokens(userId, tokens);
-		
+
 		this.logger.log(
 			`Stored refresh token for user ${userId}. Total tokens: ${tokens.length}`,
 		);

@@ -21,9 +21,19 @@ export const validationSchema = Joi.object({
 	APP_URL: Joi.string().required(),
 	ALLOWED_URL: Joi.string().required(),
 	JWT_ACCESS_SECRET: Joi.string().default('default_secret'),
-	JWT_ACCESS_EXPIRATION: Joi.string().default('15m'),
+	JWT_ACCESS_EXPIRATION: Joi.string()
+		.pattern(/^\d+\s*(s|m|h|d|w|y)$/)
+		.default('15m')
+		.description('Access token expiration (e.g. 15m, 1h, 7d)'),
 	JWT_REFRESH_SECRET: Joi.string().default('default_refresh_secret'),
-	JWT_REFRESH_EXPIRATION: Joi.string().default('60m'),
+	JWT_REFRESH_EXPIRATION: Joi.string()
+		.pattern(/^\d+\s*(s|m|h|d|w|y)$/)
+		.default('7d')
+		.description('Refresh token expiration (e.g. 60m, 7d, 30d)'),
+	MAX_SESSIONS_PER_USER: Joi.number()
+		.min(0)
+		.default(0)
+		.description('Max simultaneous sessions per user. 0 = unlimited'),
 	SALT_LENGTH: Joi.number().min(1).default(16),
 	PASSWORD_KEY_LENGTH: Joi.number().min(1).default(64),
 	REDIS_HOST: Joi.string().required(),

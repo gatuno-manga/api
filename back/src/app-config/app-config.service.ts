@@ -1,9 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import ms from 'ms';
 
-const SEVEN_DAYS_IN_SECONDS = 604800; // Default: 7 dias
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
 @Injectable()
 export class AppConfigService {
+	private readonly logger = new Logger(AppConfigService.name);
 	constructor(private readonly config: ConfigService) {}
 
 	get nodeEnv(): string {
@@ -27,7 +30,7 @@ export class AppConfigService {
 	}
 
 	get jwtAccessExpiration(): string {
-		return this.config.get<string>('JWT_ACCESS_EXPIRATION') || '15m';
+		return this.config.get<string>('JWT_ACCESS_EXPIRATION')!;
 	}
 
 	get jwtRefreshSecret(): string {
@@ -38,7 +41,7 @@ export class AppConfigService {
 	}
 
 	get jwtRefreshExpiration(): string {
-		return this.config.get<string>('JWT_REFRESH_EXPIRATION') || '60m';
+		return this.config.get<string>('JWT_REFRESH_EXPIRATION')!;
 	}
 
 	get saltLength(): number {
@@ -134,31 +137,31 @@ export class AppConfigService {
 	}
 
 	private parseDurationToMilliseconds(duration: string): number {
-		const match = duration.match(/^(\d+)([smhd])$/);
-		if (!match) {
-			return SEVEN_DAYS_IN_SECONDS * 1000;
-		}
-
-		const value = parseInt(match[1], 10);
-		const unit = match[2];
-
-		switch (unit) {
-			case 's':
-				return value * 1000;
-			case 'm':
-				return value * 60 * 1000;
-			case 'h':
-				return value * 60 * 60 * 1000;
-			case 'd':
-				return value * 24 * 60 * 60 * 1000;
-			default:
-				return SEVEN_DAYS_IN_SECONDS * 1000;
+		try {
+			const result = ms(duration as ms.StringValue);
+			if (result === undefined || result <= 0) {
+				this.logger.warn(
+					`Invalid duration format "${duration}". Falling back to 7 days.`,
+				);
+				return SEVEN_DAYS_MS;
+			}
+			return result;
+		} catch {
+			this.logger.warn(
+				`Failed to parse duration "${duration}". Falling back to 7 days.`,
+			);
+			return SEVEN_DAYS_MS;
 		}
 	}
 
 	get refreshTokenTtl(): number {
 		const duration = this.jwtRefreshExpiration;
 		return this.parseDurationToMilliseconds(duration);
+	}
+
+	/** 0 = unlimited sessions */
+	get maxSessionsPerUser(): number {
+		return this.config.get<number>('MAX_SESSIONS_PER_USER') ?? 0;
 	}
 
 	get playwright() {

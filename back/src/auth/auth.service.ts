@@ -237,11 +237,7 @@ export class AuthService {
 			tokens.refreshToken,
 		);
 
-		const ttl = this.configService.refreshTokenTtl;
-		const expiresAt = Date.now() + ttl;
-
-		validTokens.push({ hash: hashedToken, expiresAt });
-		await this.tokenStore.saveTokens(userId, validTokens);
+		await this.tokenStore.addToken(userId, hashedToken, validTokens);
 
 		this.logger.log(
 			`Tokens refreshed for user ${userId}. Total tokens: ${validTokens.length}`,
