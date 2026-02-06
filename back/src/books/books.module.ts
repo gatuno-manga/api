@@ -40,6 +40,7 @@ import { BookUpdateService } from './services/book-update.service';
 import { BookQueryService } from './services/book-query.service';
 import { ChapterManagementService } from './services/chapter-management.service';
 import { BookRelationshipService } from './services/book-relationship.service';
+import { BookContentUpdateService } from './services/book-content-update.service';
 import { BooksGateway } from './gateway/books.gateway';
 import { BookUploadService } from './services/book-upload.service';
 import { BookDeletionService } from './services/book-deletion.service';
@@ -151,6 +152,7 @@ import { DownloadModule } from './download/download.module';
 		// serviços especializados
 		BookCreationService,
 		BookUpdateService,
+		BookContentUpdateService,
 		BookQueryService,
 		ChapterManagementService,
 		BookRelationshipService,

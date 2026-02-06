@@ -32,43 +32,31 @@ export class PlaywrightBrowserFactory implements IBrowserFactory {
 	}
 
 	async launch(): Promise<Browser> {
-		this.logger.debug('Launching browser...');
+		const isDebug = this.config.debugMode;
+		const wsEndpoint = this.config.wsEndpoint;
+		
+		this.logger.log(`🚀 Preparando navegador (Debug: ${isDebug}, Remote: ${!!wsEndpoint})`);
 
-		// Se wsEndpoint estiver configurado, tenta conectar a um browser remoto via CDP
-		if (this.config.wsEndpoint) {
+		// Se estamos em modo debug ou temos um endpoint, tentamos conexão remota primeiro
+		if (wsEndpoint) {
 			try {
-				this.logger.debug(
-					`Attempting to connect to remote browser via CDP at ${this.config.wsEndpoint}`,
-				);
+				this.logger.log(`Connecting to remote browser at ${wsEndpoint}...`);
 				const { chromium } = await import('playwright');
-				const browser = await chromium.connectOverCDP(
-					this.config.wsEndpoint,
-					{
-						timeout: 5000, // 5 segundos de timeout para conexão
-					},
-				);
-				this.logger.debug('Connected to remote browser via CDP');
-				return browser;
+				return await chromium.connectOverCDP(wsEndpoint, { timeout: 15000 });
 			} catch (error) {
-				const errorMessage =
-					error instanceof Error ? error.message : String(error);
-				this.logger.warn(
-					`Failed to connect to remote browser at ${this.config.wsEndpoint}, falling back to local browser: ${errorMessage}`,
-				);
-				// Fallback para browser local
+				this.logger.error(`❌ Failed to connect to remote browser: ${error.message}`);
+				if (isDebug) {
+					this.logger.warn('⚠️  DEBUG MODE REQUIRES REMOTE BROWSER IN DOCKER!');
+				}
 			}
 		}
 
-		// Configuração para modo debug (browser visível)
-		const isDebug = this.config.debugMode;
+		// Fallback para local (apenas se não houver endpoint ou se falhar)
+		this.logger.warn('Falling back to local browser instance...');
 		const headless = isDebug ? false : this.config.headless;
 		const slowMo = isDebug ? this.config.slowMo || 100 : this.config.slowMo;
 
-		if (isDebug) {
-			this.logger.log('🔍 Debug mode enabled - browser will be visible');
-		}
-
-		const browser = await playwrightChromium.launch({
+		return await playwrightChromium.launch({
 			headless,
 			slowMo,
 			args: [
@@ -84,9 +72,6 @@ export class PlaywrightBrowserFactory implements IBrowserFactory {
 				'--window-size=1920,1080',
 			],
 		});
-
-		this.logger.debug('Browser launched successfully');
-		return browser;
 	}
 
 	async createContext(browser: Browser): Promise<BrowserContext> {
