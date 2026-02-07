@@ -5,6 +5,7 @@ import {
 	Logger,
 	Post,
 	Req,
+	Res,
 	UseGuards,
 	UnauthorizedException,
 } from '@nestjs/common';
@@ -15,7 +16,9 @@ import {
 	ApiBearerAuth,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { Response } from 'express';
 import { AuthService } from './auth.service';
+import { AppConfigService } from 'src/app-config/app-config.service';
 import { SignUpAuthDto } from './dto/signup-auth.dto';
 import { SignInAuthDto } from './dto/signin-auth.dto';
 import { RefreshTokenGuard } from './guard/jwt-refresh.guard';
@@ -27,7 +30,36 @@ import { CurrentUser } from './decorator/current-user.decorator';
 @Controller('auth')
 export class AuthController {
 	private readonly logger = new Logger(AuthController.name);
-	constructor(private readonly authService: AuthService) {}
+	constructor(
+		private readonly authService: AuthService,
+		private readonly configService: AppConfigService,
+	) {}
+
+	/**
+	 * Sets the refresh token as an httpOnly cookie on the response.
+	 * This ensures the cookie is set on the API domain, so the browser
+	 * sends it automatically on cross-origin requests with withCredentials.
+	 */
+	private setRefreshTokenCookie(res: Response, refreshToken: string): void {
+		const isSecure = this.configService.apiUrl.startsWith('https');
+		res.cookie('refreshToken', refreshToken, {
+			httpOnly: true,
+			secure: isSecure,
+			sameSite: 'lax',
+			path: '/api/auth',
+			maxAge: this.configService.refreshTokenTtl,
+		});
+	}
+
+	private clearRefreshTokenCookie(res: Response): void {
+		const isSecure = this.configService.apiUrl.startsWith('https');
+		res.clearCookie('refreshToken', {
+			httpOnly: true,
+			secure: isSecure,
+			sameSite: 'lax',
+			path: '/api/auth',
+		});
+	}
 
 	@Post('signup')
 	@Throttle({ short: { limit: 3, ttl: 60000 } })
@@ -65,9 +97,13 @@ export class AuthController {
 	@ApiResponse({ status: 200, description: 'Successfully authenticated' })
 	@ApiResponse({ status: 401, description: 'Invalid credentials' })
 	@ApiResponse({ status: 429, description: 'Too many requests' })
-	async signIn(@Body() body: SignInAuthDto) {
+	async signIn(
+		@Body() body: SignInAuthDto,
+		@Res({ passthrough: true }) res: Response,
+	) {
 		const { email, password } = body;
 		const tokens = await this.authService.signIn(email, password);
+		this.setRefreshTokenCookie(res, tokens.refreshToken);
 		return tokens;
 	}
 
@@ -85,14 +121,23 @@ export class AuthController {
 	@ApiResponse({ status: 429, description: 'Too many requests' })
 	@ApiBearerAuth('JWT-auth')
 	@UseGuards(RefreshTokenGuard)
-	async refreshTokens(@CurrentUser() user: CurrentUserDto, @Req() req) {
+	async refreshTokens(
+		@CurrentUser() user: CurrentUserDto,
+		@Req() req,
+		@Res({ passthrough: true }) res: Response,
+	) {
 		const refreshToken = req.cookies?.refreshToken;
 		if (!refreshToken) {
 			throw new UnauthorizedException(
 				'Refresh token not found in cookies',
 			);
 		}
-		return this.authService.refreshTokens(user.userId, refreshToken);
+		const tokens = await this.authService.refreshTokens(
+			user.userId,
+			refreshToken,
+		);
+		this.setRefreshTokenCookie(res, tokens.refreshToken);
+		return tokens;
 	}
 
 	@Get('logout')
@@ -107,10 +152,15 @@ export class AuthController {
 	@ApiBearerAuth('JWT-auth')
 	@UseGuards(RefreshTokenGuard)
 	@UseGuards(JwtAuthGuard)
-	async logout(@CurrentUser() user: CurrentUserDto, @Req() req) {
+	async logout(
+		@CurrentUser() user: CurrentUserDto,
+		@Req() req,
+		@Res({ passthrough: true }) res: Response,
+	) {
 		this.logger.log(`User ${user.userId} is logging out`);
 		const refreshToken = req.cookies?.refreshToken;
 		await this.authService.logout(user.userId, refreshToken);
+		this.clearRefreshTokenCookie(res);
 		return { message: 'Logged out successfully' };
 	}
 
@@ -128,7 +178,12 @@ export class AuthController {
 	@ApiResponse({ status: 429, description: 'Too many requests' })
 	@ApiBearerAuth('JWT-auth')
 	@UseGuards(JwtAuthGuard)
-	async logoutAll(@CurrentUser() user: CurrentUserDto) {
-		return await this.authService.logoutAll(user.userId);
+	async logoutAll(
+		@CurrentUser() user: CurrentUserDto,
+		@Res({ passthrough: true }) res: Response,
+	) {
+		const result = await this.authService.logoutAll(user.userId);
+		this.clearRefreshTokenCookie(res);
+		return result;
 	}
 }
