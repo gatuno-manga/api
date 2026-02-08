@@ -1,7 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { TokenStoreService } from './token-store.service';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { AppConfigService } from 'src/app-config/app-config.service';
+import { TokenStoreService } from './token-store.service';
 
 describe('TokenStoreService', () => {
 	let service: TokenStoreService;
@@ -78,7 +78,9 @@ describe('TokenStoreService', () => {
 			];
 
 			await service.saveTokens('user123', tokens);
-			expect(cacheManager.del).toHaveBeenCalledWith('user-tokens:user123');
+			expect(cacheManager.del).toHaveBeenCalledWith(
+				'user-tokens:user123',
+			);
 			expect(cacheManager.set).not.toHaveBeenCalled();
 		});
 
@@ -128,7 +130,9 @@ describe('TokenStoreService', () => {
 
 		it('should use provided existingTokens instead of fetching from cache', async () => {
 			const now = Date.now();
-			const existing = [{ hash: 'existing_hash', expiresAt: now + 50000 }];
+			const existing = [
+				{ hash: 'existing_hash', expiresAt: now + 50000 },
+			];
 
 			await service.addToken('user123', 'new_hash', existing);
 
@@ -200,7 +204,9 @@ describe('TokenStoreService', () => {
 	describe('removeAllTokens', () => {
 		it('should delete key from cache', async () => {
 			await service.removeAllTokens('user123');
-			expect(cacheManager.del).toHaveBeenCalledWith('user-tokens:user123');
+			expect(cacheManager.del).toHaveBeenCalledWith(
+				'user-tokens:user123',
+			);
 		});
 	});
 });

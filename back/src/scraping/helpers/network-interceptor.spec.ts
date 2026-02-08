@@ -1,4 +1,7 @@
-import { NetworkInterceptor, UrlFilterConfig } from './network-interceptor';
+import {
+	NetworkInterceptor,
+	type UrlFilterConfig,
+} from './network-interceptor';
 
 describe('NetworkInterceptor', () => {
 	let mockPage: any;
@@ -13,7 +16,7 @@ describe('NetworkInterceptor', () => {
 	describe('URL Filtering', () => {
 		it('should accept URL when no filters configured', () => {
 			const interceptor = new NetworkInterceptor(mockPage);
-			const result = interceptor['shouldAcceptUrl'](
+			const result = interceptor.shouldAcceptUrl(
 				'https://example.com/image.jpg',
 			);
 			expect(result).toBe(true);
@@ -27,15 +30,15 @@ describe('NetworkInterceptor', () => {
 			const interceptor = new NetworkInterceptor(mockPage, config);
 
 			expect(
-				interceptor['shouldAcceptUrl']('https://example.com/logo.png'),
+				interceptor.shouldAcceptUrl('https://example.com/logo.png'),
 			).toBe(false);
 			expect(
-				interceptor['shouldAcceptUrl'](
+				interceptor.shouldAcceptUrl(
 					'https://example.com/icon-small.svg',
 				),
 			).toBe(false);
 			expect(
-				interceptor['shouldAcceptUrl'](
+				interceptor.shouldAcceptUrl(
 					'https://ads.example.com/banner.jpg',
 				),
 			).toBe(false);
@@ -49,7 +52,7 @@ describe('NetworkInterceptor', () => {
 			const interceptor = new NetworkInterceptor(mockPage, config);
 
 			expect(
-				interceptor['shouldAcceptUrl'](
+				interceptor.shouldAcceptUrl(
 					'https://cdn.example.com/chapter1/page1.jpg',
 				),
 			).toBe(true);
@@ -63,12 +66,12 @@ describe('NetworkInterceptor', () => {
 			const interceptor = new NetworkInterceptor(mockPage, config);
 
 			expect(
-				interceptor['shouldAcceptUrl'](
+				interceptor.shouldAcceptUrl(
 					'https://cdn.example.com/image.jpg',
 				),
 			).toBe(true);
 			expect(
-				interceptor['shouldAcceptUrl'](
+				interceptor.shouldAcceptUrl(
 					'https://example.com/uploads/chapters/page1.jpg',
 				),
 			).toBe(true);
@@ -82,7 +85,7 @@ describe('NetworkInterceptor', () => {
 			const interceptor = new NetworkInterceptor(mockPage, config);
 
 			expect(
-				interceptor['shouldAcceptUrl']('https://other.com/image.jpg'),
+				interceptor.shouldAcceptUrl('https://other.com/image.jpg'),
 			).toBe(false);
 		});
 
@@ -95,9 +98,7 @@ describe('NetworkInterceptor', () => {
 
 			// Even though it matches whitelist, blacklist should reject it
 			expect(
-				interceptor['shouldAcceptUrl'](
-					'https://cdn.example.com/logo.png',
-				),
+				interceptor.shouldAcceptUrl('https://cdn.example.com/logo.png'),
 			).toBe(false);
 		});
 
@@ -109,10 +110,10 @@ describe('NetworkInterceptor', () => {
 			const interceptor = new NetworkInterceptor(mockPage, config);
 
 			expect(
-				interceptor['shouldAcceptUrl']('https://example.com/logo.png'),
+				interceptor.shouldAcceptUrl('https://example.com/logo.png'),
 			).toBe(false);
 			expect(
-				interceptor['shouldAcceptUrl']('https://example.com/ICON.svg'),
+				interceptor.shouldAcceptUrl('https://example.com/ICON.svg'),
 			).toBe(false);
 		});
 	});
@@ -196,7 +197,7 @@ describe('NetworkInterceptor', () => {
 		it('should stop interception', () => {
 			const interceptor = new NetworkInterceptor(mockPage);
 			interceptor.stopInterception();
-			expect(interceptor['isIntercepting']).toBe(false);
+			expect(interceptor.isIntercepting).toBe(false);
 		});
 	});
 
@@ -223,7 +224,7 @@ describe('NetworkInterceptor', () => {
 	describe('Compression', () => {
 		it('should initialize without compressor', () => {
 			const interceptor = new NetworkInterceptor(mockPage);
-			expect(interceptor['compressor']).toBeUndefined();
+			expect(interceptor.compressor).toBeUndefined();
 		});
 
 		it('should initialize with compressor', () => {
@@ -236,7 +237,7 @@ describe('NetworkInterceptor', () => {
 				{ blacklistTerms: [], whitelistTerms: [] },
 				mockCompressor,
 			);
-			expect(interceptor['compressor']).toBe(mockCompressor);
+			expect(interceptor.compressor).toBe(mockCompressor);
 		});
 
 		it('should report compressed count in stats', () => {

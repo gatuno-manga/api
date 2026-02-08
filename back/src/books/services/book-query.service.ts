@@ -1,3 +1,4 @@
+import { InjectQueue } from '@nestjs/bullmq';
 import {
 	ForbiddenException,
 	Injectable,
@@ -5,23 +6,22 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, SelectQueryBuilder } from 'typeorm';
-import { Book } from '../entitys/book.entity';
-import { Chapter } from '../entitys/chapter.entity';
-import { ChapterRead } from '../entitys/chapter-read.entity';
-import { Page } from '../entitys/page.entity';
-import { Tag } from '../entitys/tags.entity';
-import { Author } from '../entitys/author.entity';
-import { SensitiveContent } from '../entitys/sensitive-content.entity';
-import { BookPageOptionsDto } from '../dto/book-page-options.dto';
-import { PageDto } from 'src/pages/page.dto';
-import { MetadataPageDto } from 'src/pages/metadata-page.dto';
+import { Queue } from 'bullmq';
 import { AppConfigService } from 'src/app-config/app-config.service';
+import { MetadataPageDto } from 'src/pages/metadata-page.dto';
+import { PageDto } from 'src/pages/page.dto';
+import { Repository, SelectQueryBuilder } from 'typeorm';
+import { BookPageOptionsDto } from '../dto/book-page-options.dto';
+import { Author } from '../entitys/author.entity';
+import { Book } from '../entitys/book.entity';
+import { ChapterRead } from '../entitys/chapter-read.entity';
+import { Chapter } from '../entitys/chapter.entity';
+import { Page } from '../entitys/page.entity';
+import { SensitiveContent } from '../entitys/sensitive-content.entity';
+import { Tag } from '../entitys/tags.entity';
+import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { SensitiveContentService } from '../sensitive-content/sensitive-content.service';
 import { FilterStrategy } from '../strategies';
-import { ScrapingStatus } from '../enum/scrapingStatus.enum';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
 
 /**
  * Service responsável por consultas e buscas de livros
@@ -78,7 +78,7 @@ export class BookQueryService {
 		options: BookPageOptionsDto,
 		maxWeightSensitiveContent: number,
 		filterStrategies: FilterStrategy[],
-	): Promise<PageDto<any>> {
+	): Promise<PageDto<Omit<Book, 'covers'> & { cover: string | null }>> {
 		const queryBuilder = this.bookRepository
 			.createQueryBuilder('book')
 			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
@@ -126,7 +126,6 @@ export class BookQueryService {
 			case 'updatedAt':
 				queryBuilder.orderBy('book.updatedAt', orderDirection);
 				break;
-			case 'createdAt':
 			default:
 				queryBuilder.orderBy('book.createdAt', orderDirection);
 				break;
@@ -192,7 +191,7 @@ export class BookQueryService {
 	/**
 	 * Busca um livro por ID
 	 */
-	async getOne(id: string, maxWeightSensitiveContent: number = 0) {
+	async getOne(id: string, maxWeightSensitiveContent = 0) {
 		const book = await this.bookRepository
 			.createQueryBuilder('book')
 			.leftJoinAndSelect('book.tags', 'tags')
@@ -256,7 +255,7 @@ export class BookQueryService {
 	async getChapters(
 		id: string,
 		userid?: string,
-		maxWeightSensitiveContent: number = 0,
+		maxWeightSensitiveContent = 0,
 	) {
 		const book = await this.bookRepository
 			.createQueryBuilder('book')
@@ -322,7 +321,7 @@ export class BookQueryService {
 	/**
 	 * Busca capas de um livro
 	 */
-	async getCovers(id: string, maxWeightSensitiveContent: number = 0) {
+	async getCovers(id: string, maxWeightSensitiveContent = 0) {
 		const book = await this.bookRepository
 			.createQueryBuilder('book')
 			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
@@ -365,7 +364,7 @@ export class BookQueryService {
 	/**
 	 * Busca informações detalhadas de um livro
 	 */
-	async getInfos(id: string, maxWeightSensitiveContent: number = 0) {
+	async getInfos(id: string, maxWeightSensitiveContent = 0) {
 		const book = await this.bookRepository
 			.createQueryBuilder('book')
 			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')

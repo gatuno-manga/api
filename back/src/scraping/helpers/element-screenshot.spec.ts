@@ -1,5 +1,5 @@
+import type { Locator, Page } from 'playwright';
 import { ElementScreenshot } from './element-screenshot';
-import { Page, Locator } from 'playwright';
 
 describe('ElementScreenshot', () => {
 	let mockPage: jest.Mocked<Page>;

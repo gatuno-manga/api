@@ -1,5 +1,6 @@
 import {
 	Column,
+	DeleteDateColumn,
 	Entity,
 	JoinColumn,
 	ManyToOne,
@@ -7,14 +8,13 @@ import {
 	PrimaryGeneratedColumn,
 	Relation,
 	Unique,
-	DeleteDateColumn,
 } from 'typeorm';
+import { ContentFormat } from '../enum/content-format.enum';
+import { ContentType } from '../enum/content-type.enum';
+import { DocumentFormat } from '../enum/document-format.enum';
+import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { Book } from './book.entity';
 import { Page } from './page.entity';
-import { ScrapingStatus } from '../enum/scrapingStatus.enum';
-import { ContentType } from '../enum/content-type.enum';
-import { ContentFormat } from '../enum/content-format.enum';
-import { DocumentFormat } from '../enum/document-format.enum';
 
 @Entity('chapters')
 @Unique(['index', 'book'])
@@ -106,7 +106,11 @@ export class Chapter {
 	@JoinColumn({ name: 'bookId' })
 	book: Relation<Book>;
 
-	@OneToMany(() => Page, (page) => page.chapter, { cascade: true })
+	@OneToMany(
+		() => Page,
+		(page) => page.chapter,
+		{ cascade: true },
+	)
 	pages: Relation<Page[]>;
 
 	@Column({

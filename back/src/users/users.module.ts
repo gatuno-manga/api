@@ -1,28 +1,28 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AppConfigModule } from 'src/app-config/app-config.module';
 import { AuthModule } from 'src/auth/auth.module';
 import { Book } from 'src/books/entitys/book.entity';
 import { Chapter } from 'src/books/entitys/chapter.entity';
 import { Page } from 'src/books/entitys/page.entity';
-import { UsersService } from './users.service';
-import { UsersController } from './users.controller';
-import { User } from './entitys/user.entity';
-import { Role } from './entitys/role.entity';
-import { ReadingProgress } from './entitys/reading-progress.entity';
-import { ReadingProgressService } from './reading-progress.service';
-import { ReadingProgressController } from './reading-progress.controller';
-import { ReadingProgressGateway } from './gateway/reading-progress.gateway';
 import {
+	CollectionBook,
 	CollectionsBooksController,
 	CollectionsBooksService,
-	CollectionBook,
 } from './collections-books';
+import { ReadingProgress } from './entitys/reading-progress.entity';
+import { Role } from './entitys/role.entity';
+import { User } from './entitys/user.entity';
+import { ReadingProgressGateway } from './gateway/reading-progress.gateway';
+import { ReadingProgressController } from './reading-progress.controller';
+import { ReadingProgressService } from './reading-progress.service';
 import {
+	SavedPage,
 	SavedPagesController,
 	SavedPagesService,
-	SavedPage,
 } from './saved-pages';
-import { AppConfigModule } from 'src/app-config/app-config.module';
+import { UsersController } from './users.controller';
+import { UsersService } from './users.service';
 
 @Module({
 	imports: [

@@ -1,10 +1,10 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Tag } from '../entitys/tags.entity';
-import { Repository, In } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Book } from '../entitys/book.entity';
-import { TagsOptions } from './dto/tags-options.dto';
+import { Tag } from '../entitys/tags.entity';
 import { SensitiveContentService } from '../sensitive-content/sensitive-content.service';
+import { TagsOptions } from './dto/tags-options.dto';
 
 @Injectable()
 export class TagsService {
@@ -19,7 +19,7 @@ export class TagsService {
 
 	async get(
 		options: TagsOptions,
-		maxWeightSensitiveContent: number = 99,
+		maxWeightSensitiveContent = 99,
 	): Promise<Tag[]> {
 		const queryBuilder = this.bookRepository
 			.createQueryBuilder('book')

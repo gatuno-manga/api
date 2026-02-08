@@ -1,10 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Page } from '../entitys/page.entity';
-import { Chapter } from '../entitys/chapter.entity';
+import { InjectRepository } from '@nestjs/typeorm';
 import { ScrapingService } from 'src/scraping/scraping.service';
+import { Repository } from 'typeorm';
+import { Chapter } from '../entitys/chapter.entity';
+import { Page } from '../entitys/page.entity';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 
 /**

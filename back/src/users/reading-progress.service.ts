@@ -1,15 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, Not } from 'typeorm';
-import { ReadingProgress } from './entitys/reading-progress.entity';
+import { In, Not, Repository } from 'typeorm';
 import {
-	SaveReadingProgressDto,
+	BulkReadingProgressDto,
 	ReadingProgressResponseDto,
+	SaveReadingProgressDto,
 	SyncReadingProgressDto,
 	SyncResponseDto,
-	BulkReadingProgressDto,
 } from './dto/reading-progress.dto';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ReadingProgress } from './entitys/reading-progress.entity';
 
 @Injectable()
 export class ReadingProgressService {

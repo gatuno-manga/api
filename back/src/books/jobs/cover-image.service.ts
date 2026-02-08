@@ -1,14 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { InjectQueue } from '@nestjs/bullmq';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Queue } from 'bullmq';
-import { Repository, IsNull } from 'typeorm';
-import { createHash } from 'crypto';
-import { readFile } from 'fs/promises';
-import { UrlImageDto } from '../dto/url-image.dto';
-import { QueueCoverProcessorDto } from '../dto/queue-cover-processor.dto';
-import { Cover } from '../entitys/cover.entity';
 import { ScrapingService } from 'src/scraping/scraping.service';
+import { IsNull, Repository } from 'typeorm';
+import { QueueCoverProcessorDto } from '../dto/queue-cover-processor.dto';
+import { UrlImageDto } from '../dto/url-image.dto';
+import { Cover } from '../entitys/cover.entity';
 
 const QUEUE_NAME = 'cover-image-queue';
 const JOB_NAME = 'process-cover';

@@ -1,6 +1,6 @@
 import { SelectQueryBuilder } from 'typeorm';
-import { Book } from '../entitys/book.entity';
 import { BookPageOptionsDto } from '../dto/book-page-options.dto';
+import { Book } from '../entitys/book.entity';
 import { FilterStrategy } from './filter-strategy.interface';
 
 /**
@@ -36,7 +36,7 @@ export abstract class BaseManyToManyFilterStrategy implements FilterStrategy {
 		queryBuilder: SelectQueryBuilder<Book>,
 		ids: string[],
 		logic: 'and' | 'or',
-		exclude: boolean = false,
+		exclude = false,
 	): void {
 		if (logic === 'or') {
 			// Lógica OR: livros que possuem QUALQUER um dos IDs fornecidos

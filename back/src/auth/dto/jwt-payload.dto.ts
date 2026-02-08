@@ -61,5 +61,5 @@ export class JwtPayloadDto {
 	/**
 	 * Dados customizados adicionais (opcional)
 	 */
-	customClaims?: Record<string, any>;
+	customClaims?: Record<string, unknown>;
 }

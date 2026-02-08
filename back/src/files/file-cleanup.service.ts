@@ -1,13 +1,13 @@
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import * as fs from 'fs/promises';
-import * as path from 'path';
+import { InjectRepository } from '@nestjs/typeorm';
+import { LessThan, Repository } from 'typeorm';
 import { Book } from '../books/entitys/book.entity';
 import { Chapter } from '../books/entitys/chapter.entity';
-import { Page } from '../books/entitys/page.entity';
 import { Cover } from '../books/entitys/cover.entity';
+import { Page } from '../books/entitys/page.entity';
 
 export interface OrphanFile {
 	filename: string;
@@ -151,7 +151,7 @@ export class FileCleanupService {
 		}
 	}
 
-	async cleanupOrphanFiles(dryRun: boolean = true): Promise<CleanupReport> {
+	async cleanupOrphanFiles(dryRun = true): Promise<CleanupReport> {
 		this.logger.log(`Starting orphan cleanup (dryRun: ${dryRun})...`);
 
 		const orphanFiles = await this.findOrphanFiles();
@@ -349,7 +349,16 @@ export class FileCleanupService {
 		return report;
 	}
 
-	async getStorageStatistics(): Promise<any> {
+	async getStorageStatistics(): Promise<{
+		totalFiles: number;
+		totalSize: number;
+		totalSizeMB: string;
+		referencedPages: number;
+		referencedCovers: number;
+		deletedPages: number;
+		deletedCovers: number;
+		retentionDays: number;
+	}> {
 		this.logger.log('Calculating storage statistics...');
 
 		const files = await fs.readdir(this.downloadDir);

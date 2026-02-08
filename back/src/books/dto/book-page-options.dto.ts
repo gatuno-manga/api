@@ -1,6 +1,5 @@
-import { PageOptionsDto } from 'src/pages/page-options.dto';
-import { BookType } from '../enum/book-type.enum';
-import { ToArray } from 'src/pages/decorator/to-array.decorator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
 	IsIn,
 	IsNumber,
@@ -9,8 +8,9 @@ import {
 	IsString,
 	IsUUID,
 } from 'class-validator';
-import { Type } from 'class-transformer';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ToArray } from 'src/pages/decorator/to-array.decorator';
+import { PageOptionsDto } from 'src/pages/page-options.dto';
+import { BookType } from '../enum/book-type.enum';
 
 export class BookPageOptionsDto extends PageOptionsDto {
 	@ApiPropertyOptional({

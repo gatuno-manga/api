@@ -1,11 +1,11 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
-import { CronJob } from 'cron';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { CronJob } from 'cron';
+import { AppConfigService } from 'src/app-config/app-config.service';
+import { IsNull, Repository } from 'typeorm';
 import { Book } from '../entitys/book.entity';
 import { BookUpdateJobService } from './book-update.service';
-import { AppConfigService } from 'src/app-config/app-config.service';
 
 const CRON_JOB_NAME = 'book-update-cron';
 

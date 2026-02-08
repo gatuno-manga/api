@@ -55,7 +55,7 @@ export interface ComplexityMultipliers {
  */
 export async function detectPageComplexity(
 	page: Page,
-	imageSelector: string = 'img',
+	imageSelector = 'img',
 ): Promise<PageComplexity> {
 	const metrics = await page.evaluate((selector) => {
 		const scrollHeight = document.body.scrollHeight;

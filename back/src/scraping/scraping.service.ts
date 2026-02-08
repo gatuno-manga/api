@@ -1,39 +1,40 @@
+import * as path from 'node:path';
 import {
+	Inject,
 	Injectable,
 	Logger,
 	OnApplicationShutdown,
-	Inject,
 } from '@nestjs/common';
-import type { Browser, BrowserContext, Page } from 'playwright';
-import * as path from 'path';
-import type { Redis } from 'ioredis';
+import { Redis } from 'ioredis';
+import { Browser, BrowserContext, Page } from 'playwright';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { FilesService } from 'src/files/files.service';
-import { WebsiteService } from './website.service';
-import { WebsiteConfigDto } from './dto/website-config.dto';
+import { REDIS_CLIENT } from 'src/redis/redis.constants';
 import { PlaywrightBrowserFactory } from './browser';
 import { IConcurrencyManager, RedisConcurrencyManager } from './concurrency';
-import { REDIS_CLIENT } from 'src/redis/redis.constants';
+import { WebsiteConfigDto } from './dto/website-config.dto';
 import {
-	ImageDownloader,
-	PageScroller,
-	NetworkInterceptor,
+	CookieConfig,
 	ElementScreenshot,
 	ImageCompressor,
-	StorageInjector,
+	ImageDownloader,
+	NetworkInterceptor,
+	PageScroller,
 	StorageConfig,
-	CookieConfig,
+	StorageInjector,
 } from './helpers';
 import {
 	detectPageComplexity,
 	getComplexityMultipliers,
+	PageSize,
 } from './helpers/page-complexity-detector';
 import {
 	DEFAULT_SCROLL_CONFIG,
 	getAdaptiveScrollConfig,
 } from './helpers/page-scroller';
-import { ScrapingSessionRunner } from './runner/scraping-session.runner';
 import { ScrapingContext } from './runner/scraping-context.interface';
+import { ScrapingSessionRunner } from './runner/scraping-session.runner';
+import { WebsiteService } from './website.service';
 
 @Injectable()
 export class ScrapingService implements OnApplicationShutdown {
@@ -55,7 +56,7 @@ export class ScrapingService implements OnApplicationShutdown {
 		this.runner = new ScrapingSessionRunner(
 			this.browserFactory,
 			this.concurrencyManager,
-			this.imageCompressor
+			this.imageCompressor,
 		);
 	}
 
@@ -111,7 +112,7 @@ export class ScrapingService implements OnApplicationShutdown {
 		this.runner = new ScrapingSessionRunner(
 			this.browserFactory,
 			this.concurrencyManager,
-			this.imageCompressor
+			this.imageCompressor,
 		);
 		this.logger.debug('Concurrency manager replaced');
 	}
@@ -121,7 +122,7 @@ export class ScrapingService implements OnApplicationShutdown {
 		this.runner = new ScrapingSessionRunner(
 			this.browserFactory,
 			this.concurrencyManager,
-			this.imageCompressor
+			this.imageCompressor,
 		);
 		this.logger.debug('Browser factory replaced');
 	}
@@ -217,7 +218,7 @@ export class ScrapingService implements OnApplicationShutdown {
 			}
 
 			let bufferData: Buffer | null = null;
-			let extension: string = '.jpg';
+			let extension = '.jpg';
 			let isPreCompressed = false;
 
 			if (networkInterceptor) {
@@ -256,9 +257,9 @@ export class ScrapingService implements OnApplicationShutdown {
 
 			const savedPath = isPreCompressed
 				? await this.filesService.savePreCompressedFile(
-					bufferData,
-					extension,
-				)
+						bufferData,
+						extension,
+					)
 				: await this.filesService.saveBufferFile(bufferData, extension);
 
 			results.push(savedPath);
@@ -278,78 +279,117 @@ export class ScrapingService implements OnApplicationShutdown {
 			useScreenshotMode,
 		} = config;
 
-		return this.runner.run(url, config, async ({ page, networkInterceptor }) => {
-			if (selector && selector !== 'img') {
-				this.logger.debug(`Waiting for selector: ${selector}`);
-				await page.waitForSelector(selector, { timeout: 15000 }).catch(() => {
-					this.logger.debug(`Selector "${selector}" not found within timeout, proceeding anyway`);
-				});
-			}
+		return this.runner.run(
+			url,
+			config,
+			async ({ page, networkInterceptor }) => {
+				if (selector && selector !== 'img') {
+					this.logger.debug(`Waiting for selector: ${selector}`);
+					await page
+						.waitForSelector(selector, { timeout: 15000 })
+						.catch(() => {
+							this.logger.debug(
+								`Selector "${selector}" not found within timeout, proceeding anyway`,
+							);
+						});
+				}
 
-			await this.executeCustomScript(page, preScript);
+				await this.executeCustomScript(page, preScript);
 
-			const pageComplexity = await detectPageComplexity(page, selector);
-			this.logger.log(
-				`📊 Página: ${pageComplexity.scrollHeight}px (${pageComplexity.scrollRatio.toFixed(1)}x viewport), ` +
-				`${pageComplexity.elementCount} elementos, tamanho: ${pageComplexity.pageSize}`,
-			);
-
-			const multipliers = config.enableAdaptiveTimeouts
-				? getComplexityMultipliers(pageComplexity, config.timeoutMultipliers as any)
-				: { delayMultiplier: 1, stabilityMultiplier: 1, timeoutMultiplier: 1, scrollStep: 1200 };
-
-			let scrollResult = { failedImages: [] as string[] };
-
-			if (!useScreenshotMode) {
-				const adaptiveConfig = getAdaptiveScrollConfig(
-					{ ...DEFAULT_SCROLL_CONFIG, imageSelector: selector },
-					multipliers,
+				const pageComplexity = await detectPageComplexity(
+					page,
+					selector,
 				);
-				const scroller = new PageScroller(page, adaptiveConfig);
-				scrollResult = await scroller.scrollAndWait();
-			}
+				this.logger.log(
+					`📊 Página: ${pageComplexity.scrollHeight}px (${pageComplexity.scrollRatio.toFixed(1)}x viewport), ` +
+						`${pageComplexity.elementCount} elementos, tamanho: ${pageComplexity.pageSize}`,
+				);
 
-			await this.executeCustomScript(page, posScript);
+				const multipliers = config.enableAdaptiveTimeouts
+					? getComplexityMultipliers(
+							pageComplexity,
+							config.timeoutMultipliers as
+								| Record<PageSize, number>
+								| undefined,
+						)
+					: {
+							delayMultiplier: 1,
+							stabilityMultiplier: 1,
+							timeoutMultiplier: 1,
+							scrollStep: 1200,
+						};
 
-			if (networkInterceptor) {
-				networkInterceptor.stopInterception();
-				await networkInterceptor.waitForCompressions();
-			}
+				let scrollResult = { failedImages: [] as string[] };
 
-			if (useScreenshotMode) {
-				this.logger.log('📸 Using screenshot mode for image capture (PNG, lossless)');
-				const adaptiveParams = {
-					scrollPauseMs: Math.ceil(1000 * multipliers.delayMultiplier),
-					scrollWaitMs: Math.ceil(300 * multipliers.delayMultiplier),
-				};
-				return (await this.captureElementsAsScreenshots(page, selector, pages, adaptiveParams));
-			}
+				if (!useScreenshotMode) {
+					const adaptiveConfig = getAdaptiveScrollConfig(
+						{ ...DEFAULT_SCROLL_CONFIG, imageSelector: selector },
+						multipliers,
+					);
+					const scroller = new PageScroller(page, adaptiveConfig);
+					scrollResult = await scroller.scrollAndWait();
+				}
 
-			const imageDownloader = new ImageDownloader(page, { blacklistTerms, whitelistTerms });
-			const imageUrls = await imageDownloader.getImageUrls(selector);
+				await this.executeCustomScript(page, posScript);
 
-			if (imageUrls.length <= pages) {
-				return null;
-			}
+				if (networkInterceptor) {
+					networkInterceptor.stopInterception();
+					await networkInterceptor.waitForCompressions();
+				}
 
-			this.logger.log(`Found ${imageUrls.length} valid image URLs. Starting downloads.`);
+				if (useScreenshotMode) {
+					this.logger.log(
+						'📸 Using screenshot mode for image capture (PNG, lossless)',
+					);
+					const adaptiveParams = {
+						scrollPauseMs: Math.ceil(
+							1000 * multipliers.delayMultiplier,
+						),
+						scrollWaitMs: Math.ceil(
+							300 * multipliers.delayMultiplier,
+						),
+					};
+					return await this.captureElementsAsScreenshots(
+						page,
+						selector,
+						pages,
+						adaptiveParams,
+					);
+				}
 
-			const successfulPaths = await this.downloadAndSaveImages(
-				imageDownloader,
-				imageUrls,
-				scrollResult.failedImages,
-				networkInterceptor,
-			);
+				const imageDownloader = new ImageDownloader(page, {
+					blacklistTerms,
+					whitelistTerms,
+				});
+				const imageUrls = await imageDownloader.getImageUrls(selector);
 
-			return successfulPaths.filter((path): path is string => path !== null);
-		});
+				if (imageUrls.length <= pages) {
+					return null;
+				}
+
+				this.logger.log(
+					`Found ${imageUrls.length} valid image URLs. Starting downloads.`,
+				);
+
+				const successfulPaths = await this.downloadAndSaveImages(
+					imageDownloader,
+					imageUrls,
+					scrollResult.failedImages,
+					networkInterceptor,
+				);
+
+				return successfulPaths.filter(
+					(path): path is string => path !== null,
+				);
+			},
+		);
 	}
 
 	private async captureElementsAsScreenshots(
 		page: Page,
 		selector: string,
 		minPages: number,
-		pageComplexity?: { scrollPauseMs: number; scrollWaitMs: number; },
+		pageComplexity?: { scrollPauseMs: number; scrollWaitMs: number },
 	): Promise<string[]> {
 		const scrollPauseMs = pageComplexity?.scrollPauseMs ?? 1000;
 		const scrollWaitMs = pageComplexity?.scrollWaitMs ?? 300;
@@ -388,7 +428,9 @@ export class ScrapingService implements OnApplicationShutdown {
 			}
 		}
 
-		const successfulScreenshots = results.filter((path): path is string => path !== null);
+		const successfulScreenshots = results.filter(
+			(path): path is string => path !== null,
+		);
 
 		this.logger.log(
 			`Captured ${successfulScreenshots.length}/${count} screenshots`,
@@ -399,102 +441,117 @@ export class ScrapingService implements OnApplicationShutdown {
 	async scrapeSingleImage(url: string, imageUrl: string): Promise<string> {
 		const config = await this.getWebsiteConfig(url);
 
-		return this.runner.run(url, config, async ({ page, networkInterceptor }) => {
-			await networkInterceptor?.waitForCompressions();
+		return this.runner.run(
+			url,
+			config,
+			async ({ page, networkInterceptor }) => {
+				await networkInterceptor?.waitForCompressions();
 
-			let bufferData: Buffer | null = null;
-			let extension: string = '.jpg';
-			let isPreCompressed = false;
+				let bufferData: Buffer | null = null;
+				let extension = '.jpg';
+				let isPreCompressed = false;
 
-			if (networkInterceptor) {
-				if (networkInterceptor.hasImage(imageUrl)) {
-					bufferData =
-						networkInterceptor.getCachedImageAsBuffer(imageUrl);
-					extension = networkInterceptor.getExtension(imageUrl);
-					isPreCompressed = networkInterceptor.isCompressed(imageUrl);
+				if (networkInterceptor) {
+					if (networkInterceptor.hasImage(imageUrl)) {
+						bufferData =
+							networkInterceptor.getCachedImageAsBuffer(imageUrl);
+						extension = networkInterceptor.getExtension(imageUrl);
+						isPreCompressed =
+							networkInterceptor.isCompressed(imageUrl);
+					} else {
+						this.logger.warn(
+							`Image not found in network cache: ${imageUrl}`,
+						);
+					}
 				} else {
-					this.logger.warn(
-						`Image not found in network cache: ${imageUrl}`,
-					);
+					const imageDownloader = new ImageDownloader(page);
+					bufferData =
+						await imageDownloader.fetchImageAsBuffer(imageUrl);
+
+					if (!bufferData) {
+						this.logger.debug(
+							`Retrying with page context fetch: ${imageUrl}`,
+						);
+						bufferData =
+							await imageDownloader.fetchImageViaPageContext(
+								imageUrl,
+							);
+					}
+					extension =
+						path.extname(new URL(imageUrl).pathname) || '.jpg';
 				}
-			} else {
-				const imageDownloader = new ImageDownloader(page);
-				bufferData = await imageDownloader.fetchImageAsBuffer(imageUrl);
 
 				if (!bufferData) {
-					this.logger.debug(
-						`Retrying with page context fetch: ${imageUrl}`,
-					);
-					bufferData =
-						await imageDownloader.fetchImageViaPageContext(
-							imageUrl,
-						);
+					throw new Error(`Failed to download image: ${imageUrl}`);
 				}
-				extension = path.extname(new URL(imageUrl).pathname) || '.jpg';
-			}
 
-			if (!bufferData) {
-				throw new Error(`Failed to download image: ${imageUrl}`);
-			}
-
-			return isPreCompressed
-				? this.filesService.savePreCompressedFile(bufferData, extension)
-				: this.filesService.saveBufferFile(bufferData, extension);
-		});
+				return isPreCompressed
+					? this.filesService.savePreCompressedFile(
+							bufferData,
+							extension,
+						)
+					: this.filesService.saveBufferFile(bufferData, extension);
+			},
+		);
 	}
 
 	async fetchImageBuffer(pageUrl: string, imageUrl: string): Promise<Buffer> {
 		const config = await this.getWebsiteConfig(pageUrl);
 
-		return this.runner.run(pageUrl, config, async ({ page, networkInterceptor }) => {
-			await networkInterceptor?.waitForCompressions();
+		return this.runner.run(
+			pageUrl,
+			config,
+			async ({ page, networkInterceptor }) => {
+				await networkInterceptor?.waitForCompressions();
 
-			let bufferData: Buffer | null = null;
+				let bufferData: Buffer | null = null;
 
-			if (networkInterceptor) {
-				if (!networkInterceptor.hasImage(imageUrl)) {
-					this.logger.debug(
-						`Image not in cache, forcing load via DOM: ${imageUrl}`,
-					);
-					try {
-						await this.forceLoadImage(page, imageUrl);
-						await networkInterceptor.waitForCompressions();
-					} catch (e) {
-						this.logger.warn(
-							`Failed to force load image via DOM: ${e.message}`,
+				if (networkInterceptor) {
+					if (!networkInterceptor.hasImage(imageUrl)) {
+						this.logger.debug(
+							`Image not in cache, forcing load via DOM: ${imageUrl}`,
 						);
+						try {
+							await this.forceLoadImage(page, imageUrl);
+							await networkInterceptor.waitForCompressions();
+						} catch (e) {
+							this.logger.warn(
+								`Failed to force load image via DOM: ${e.message}`,
+							);
+						}
+					}
+
+					if (networkInterceptor.hasImage(imageUrl)) {
+						bufferData =
+							networkInterceptor.getCachedImageAsBuffer(imageUrl);
+					} else {
+						this.logger.warn(
+							`Image not found in network cache even after force load: ${imageUrl}`,
+						);
+					}
+				} else {
+					const imageDownloader = new ImageDownloader(page);
+					bufferData =
+						await imageDownloader.fetchImageAsBuffer(imageUrl);
+
+					if (!bufferData) {
+						this.logger.debug(
+							`Retrying with page context fetch: ${imageUrl}`,
+						);
+						bufferData =
+							await imageDownloader.fetchImageViaPageContext(
+								imageUrl,
+							);
 					}
 				}
 
-				if (networkInterceptor.hasImage(imageUrl)) {
-					bufferData =
-						networkInterceptor.getCachedImageAsBuffer(imageUrl);
-				} else {
-					this.logger.warn(
-						`Image not found in network cache even after force load: ${imageUrl}`,
-					);
-				}
-			} else {
-				const imageDownloader = new ImageDownloader(page);
-				bufferData = await imageDownloader.fetchImageAsBuffer(imageUrl);
-
 				if (!bufferData) {
-					this.logger.debug(
-						`Retrying with page context fetch: ${imageUrl}`,
-					);
-					bufferData =
-						await imageDownloader.fetchImageViaPageContext(
-							imageUrl,
-						);
+					throw new Error(`Failed to download image: ${imageUrl}`);
 				}
-			}
 
-			if (!bufferData) {
-				throw new Error(`Failed to download image: ${imageUrl}`);
-			}
-
-			return bufferData;
-		});
+				return bufferData;
+			},
+		);
 	}
 
 	private async forceLoadImage(page: Page, imageUrl: string): Promise<void> {
@@ -517,96 +574,106 @@ export class ScrapingService implements OnApplicationShutdown {
 	): Promise<(string | null)[]> {
 		const config = await this.getWebsiteConfig(url);
 
-		return this.runner.run(url, config, async ({ page, networkInterceptor }) => {
-			await networkInterceptor?.waitForCompressions();
+		return this.runner.run(
+			url,
+			config,
+			async ({ page, networkInterceptor }) => {
+				await networkInterceptor?.waitForCompressions();
 
-			const imageDownloader = new ImageDownloader(page);
-			const results: (string | null)[] = [];
+				const imageDownloader = new ImageDownloader(page);
+				const results: (string | null)[] = [];
 
-			for (const imageUrl of imageUrls) {
-				try {
-					let bufferData: Buffer | null = null;
-					let extension: string = '.jpg';
-					let isPreCompressed = false;
+				for (const imageUrl of imageUrls) {
+					try {
+						let bufferData: Buffer | null = null;
+						let extension = '.jpg';
+						let isPreCompressed = false;
 
-					if (networkInterceptor) {
-						if (!networkInterceptor.hasImage(imageUrl)) {
-							this.logger.debug(
-								`Image not in cache, forcing load via DOM: ${imageUrl}`,
-							);
-							try {
-								await this.forceLoadImage(page, imageUrl);
-								await networkInterceptor.waitForCompressions();
-							} catch (e) {
+						if (networkInterceptor) {
+							if (!networkInterceptor.hasImage(imageUrl)) {
+								this.logger.debug(
+									`Image not in cache, forcing load via DOM: ${imageUrl}`,
+								);
+								try {
+									await this.forceLoadImage(page, imageUrl);
+									await networkInterceptor.waitForCompressions();
+								} catch (e) {
+									this.logger.warn(
+										`Failed to force load image via DOM: ${e.message}`,
+									);
+								}
+							}
+
+							if (networkInterceptor.hasImage(imageUrl)) {
+								bufferData =
+									networkInterceptor.getCachedImageAsBuffer(
+										imageUrl,
+									);
+								extension =
+									networkInterceptor.getExtension(imageUrl);
+								isPreCompressed =
+									networkInterceptor.isCompressed(imageUrl);
+							} else {
 								this.logger.warn(
-									`Failed to force load image via DOM: ${e.message}`,
+									`Image not found in network cache even after force load: ${imageUrl}`,
 								);
 							}
 						}
 
-						if (networkInterceptor.hasImage(imageUrl)) {
+						if (!bufferData) {
 							bufferData =
-								networkInterceptor.getCachedImageAsBuffer(
+								await imageDownloader.fetchImageAsBuffer(
 									imageUrl,
 								);
-							extension =
-								networkInterceptor.getExtension(imageUrl);
-							isPreCompressed =
-								networkInterceptor.isCompressed(imageUrl);
-						} else {
-							this.logger.warn(
-								`Image not found in network cache even after force load: ${imageUrl}`,
-							);
-						}
-					}
 
-					if (!bufferData) {
-						bufferData =
-							await imageDownloader.fetchImageAsBuffer(imageUrl);
+							if (!bufferData) {
+								this.logger.debug(
+									`Retrying with page context fetch: ${imageUrl}`,
+								);
+								bufferData =
+									await imageDownloader.fetchImageViaPageContext(
+										imageUrl,
+									);
+							}
+							extension =
+								path.extname(new URL(imageUrl).pathname) ||
+								'.jpg';
+						}
 
 						if (!bufferData) {
-							this.logger.debug(
-								`Retrying with page context fetch: ${imageUrl}`,
+							this.logger.warn(
+								`Failed to download image: ${imageUrl}`,
 							);
-							bufferData =
-								await imageDownloader.fetchImageViaPageContext(
-									imageUrl,
-								);
+							results.push(null);
+							continue;
 						}
-						extension =
-							path.extname(new URL(imageUrl).pathname) || '.jpg';
-					}
 
-					if (!bufferData) {
+						const saved = isPreCompressed
+							? await this.filesService.savePreCompressedFile(
+									bufferData,
+									extension,
+								)
+							: await this.filesService.saveBufferFile(
+									bufferData,
+									extension,
+								);
+						results.push(saved);
+					} catch (err) {
 						this.logger.warn(
-							`Failed to download image: ${imageUrl}`,
+							`Error processing image ${imageUrl}`,
+							err,
 						);
 						results.push(null);
-						continue;
 					}
-
-					const saved = isPreCompressed
-						? await this.filesService.savePreCompressedFile(
-							bufferData,
-							extension,
-						)
-						: await this.filesService.saveBufferFile(
-							bufferData,
-							extension,
-						);
-					results.push(saved);
-				} catch (err) {
-					this.logger.warn(`Error processing image ${imageUrl}`, err);
-					results.push(null);
 				}
-			}
 
-			return results;
-		});
+				return results;
+			},
+		);
 	}
 
 	async scrapeBookInfo(bookUrl: string): Promise<{
-		covers?: { url: string; title?: string; }[];
+		covers?: { url: string; title?: string }[];
 		chapters: {
 			title: string;
 			url: string;
@@ -615,26 +682,35 @@ export class ScrapingService implements OnApplicationShutdown {
 		}[];
 	}> {
 		const config = await this.getWebsiteConfig(bookUrl);
-		const { chapterListSelector, bookInfoExtractScript, preScript } = config;
+		const { chapterListSelector, bookInfoExtractScript, preScript } =
+			config;
 
 		if (!chapterListSelector && !bookInfoExtractScript) {
 			const domain = new URL(bookUrl).hostname;
-			this.logger.warn(`No book info configuration for domain: ${domain}`);
+			this.logger.warn(
+				`No book info configuration for domain: ${domain}`,
+			);
 			return { chapters: [] };
 		}
 
 		return this.runner.run(bookUrl, config, async ({ page }) => {
 			if (chapterListSelector) {
-				this.logger.debug(`Waiting for chapter selector: ${chapterListSelector}`);
-				await page.waitForSelector(chapterListSelector, { timeout: 15000 }).catch(() => {
-					this.logger.debug(`Chapter selector "${chapterListSelector}" not found within timeout`);
-				});
+				this.logger.debug(
+					`Waiting for chapter selector: ${chapterListSelector}`,
+				);
+				await page
+					.waitForSelector(chapterListSelector, { timeout: 15000 })
+					.catch(() => {
+						this.logger.debug(
+							`Chapter selector "${chapterListSelector}" not found within timeout`,
+						);
+					});
 			}
 
 			await this.executeCustomScript(page, preScript);
 
 			let result: {
-				covers?: { url: string; title?: string; }[];
+				covers?: { url: string; title?: string }[];
 				chapters: {
 					title: string;
 					url: string;
@@ -645,44 +721,77 @@ export class ScrapingService implements OnApplicationShutdown {
 
 			if (bookInfoExtractScript) {
 				try {
-					const rawResult = await page.evaluate(bookInfoExtractScript);
+					const rawResult = await page.evaluate(
+						bookInfoExtractScript,
+					);
 					if (!rawResult || typeof rawResult !== 'object') {
 						throw new Error('Script must return an object');
 					}
 
-					const typedResult = rawResult as any;
-					let normalizedCovers: { url: string; title?: string; }[] = [];
+					const typedResult = rawResult as {
+						covers?: ({ url: string; title?: string } | string)[];
+						cover?: { url: string; title?: string } | string;
+						chapters?: {
+							title: string;
+							url: string;
+							index: number;
+							isFinal?: boolean;
+						}[];
+					};
+					let normalizedCovers: { url: string; title?: string }[] =
+						[];
 
 					if (Array.isArray(typedResult.covers)) {
 						normalizedCovers = typedResult.covers
 							.map((c, i) => {
-								if (typeof c === 'string') return { url: c, title: `Capa ${i + 1}` };
-								return { url: c.url, title: c.title || `Capa ${i + 1}` };
+								if (typeof c === 'string')
+									return { url: c, title: `Capa ${i + 1}` };
+								return {
+									url: c.url,
+									title: c.title || `Capa ${i + 1}`,
+								};
 							})
 							.filter((c) => c.url);
 					} else if (typedResult.cover) {
 						normalizedCovers = [
 							typeof typedResult.cover === 'string'
-								? { url: typedResult.cover, title: 'Capa Principal' }
-								: { url: typedResult.cover.url, title: typedResult.cover.title || 'Capa Principal' },
+								? {
+										url: typedResult.cover,
+										title: 'Capa Principal',
+									}
+								: {
+										url: typedResult.cover.url,
+										title:
+											typedResult.cover.title ||
+											'Capa Principal',
+									},
 						];
 					}
 
 					result = {
 						covers: normalizedCovers,
-						chapters: Array.isArray(typedResult.chapters) ? typedResult.chapters : [],
+						chapters: Array.isArray(typedResult.chapters)
+							? typedResult.chapters
+							: [],
 					};
 				} catch (error) {
-					this.logger.error(`Error executing bookInfoExtractScript: ${error.message}`);
+					this.logger.error(
+						`Error executing bookInfoExtractScript: ${error.message}`,
+					);
 				}
 			} else if (chapterListSelector) {
 				const chapters = await page.evaluate((selector) => {
 					const elements = document.querySelectorAll(selector);
 					return Array.from(elements)
 						.map((el, index, arr) => {
-							const anchor = el.tagName === 'A' ? (el as HTMLAnchorElement) : el.querySelector('a');
+							const anchor =
+								el.tagName === 'A'
+									? (el as HTMLAnchorElement)
+									: el.querySelector('a');
 							return {
-								title: el.textContent?.trim() || `Chapter ${index + 1}`,
+								title:
+									el.textContent?.trim() ||
+									`Chapter ${index + 1}`,
 								url: anchor?.href || '',
 								index: index + 1,
 								isFinal: index === arr.length - 1,
@@ -702,7 +811,7 @@ export class ScrapingService implements OnApplicationShutdown {
 
 	async scrapeChapterList(
 		bookUrl: string,
-	): Promise<{ title: string; url: string; index: number; }[]> {
+	): Promise<{ title: string; url: string; index: number }[]> {
 		const result = await this.scrapeBookInfo(bookUrl);
 		return result.chapters;
 	}

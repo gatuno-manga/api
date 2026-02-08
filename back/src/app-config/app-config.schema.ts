@@ -55,7 +55,9 @@ export const validationSchema = Joi.object({
 		.description('Enable automatic book update checks'),
 	BOOK_UPDATE_CRON: Joi.string()
 		.default('0 */6 * * *')
-		.description('Cron expression for book update schedule (default: every 6 hours)'),
+		.description(
+			'Cron expression for book update schedule (default: every 6 hours)',
+		),
 	// Monitoring / Metrics
 	METRICS_ENABLED: Joi.boolean()
 		.default(true)
@@ -109,5 +111,7 @@ export const validationSchema = Joi.object({
 	DOWNLOAD_CACHE_THRESHOLD_MB: Joi.number()
 		.min(1)
 		.default(100)
-		.description('Size threshold in MB for switching from buffer to streaming mode in downloads'),
+		.description(
+			'Size threshold in MB for switching from buffer to streaming mode in downloads',
+		),
 });

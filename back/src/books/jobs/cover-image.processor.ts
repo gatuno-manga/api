@@ -1,14 +1,14 @@
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
-import { Job } from 'bullmq';
 import { Logger, OnModuleInit } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Book } from '../entitys/book.entity';
-import { DataSource, Repository } from 'typeorm';
-import { ScrapingService } from 'src/scraping/scraping.service';
-import { QueueCoverProcessorDto } from '../dto/queue-cover-processor.dto';
-import { Cover } from '../entitys/cover.entity';
-import { AppConfigService } from 'src/app-config/app-config.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Job } from 'bullmq';
+import { AppConfigService } from 'src/app-config/app-config.service';
+import { ScrapingService } from 'src/scraping/scraping.service';
+import { DataSource, Repository } from 'typeorm';
+import { QueueCoverProcessorDto } from '../dto/queue-cover-processor.dto';
+import { Book } from '../entitys/book.entity';
+import { Cover } from '../entitys/cover.entity';
 
 const QUEUE_NAME = 'cover-image-queue';
 const JOB_NAME = 'process-cover';
@@ -38,10 +38,14 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 	async process(job: Job<QueueCoverProcessorDto>): Promise<void> {
 		const { bookId, urlOrigin } = job.data;
 		// support both legacy single-cover jobs and new batch jobs
-		const covers: { url: string; title?: string }[] = (job.data as any)
-			.covers
-			? (job.data as any).covers
-			: [(job.data as any).cover];
+		const jobData = job.data as QueueCoverProcessorDto & {
+			cover?: { url: string; title?: string };
+		};
+		const covers: { url: string; title?: string }[] = jobData.covers?.length
+			? jobData.covers
+			: jobData.cover
+				? [jobData.cover]
+				: [];
 		this.logger.debug(
 			`Processando ${covers.length} capa(s) para o livro: ${bookId}`,
 		);

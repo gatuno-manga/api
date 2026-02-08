@@ -1,15 +1,15 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
+	IsArray,
+	IsBoolean,
+	IsInt,
+	IsObject,
 	IsOptional,
 	IsString,
 	IsUrl,
-	IsInt,
-	IsBoolean,
-	IsArray,
 	ValidateNested,
-	IsObject,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
 import { NormalizeUrl } from '../../common/decorators/normalize-url.decorator';
 
 export class CookieConfigDto {

@@ -1,6 +1,6 @@
 import { SelectQueryBuilder } from 'typeorm';
-import { Book } from '../entitys/book.entity';
 import { BookPageOptionsDto } from '../dto/book-page-options.dto';
+import { Book } from '../entitys/book.entity';
 import { FilterStrategy } from './filter-strategy.interface';
 
 export class PublicationFilterStrategy implements FilterStrategy {
@@ -13,7 +13,7 @@ export class PublicationFilterStrategy implements FilterStrategy {
 		options: BookPageOptionsDto,
 	): void {
 		const operator = options.publicationOperator || 'eq';
-		const publication = options.publication!;
+		const publication = options.publication ?? 0;
 
 		switch (operator) {
 			case 'eq':

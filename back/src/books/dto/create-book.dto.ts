@@ -1,29 +1,24 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform, Type } from 'class-transformer';
 import {
+	IsEnum,
 	IsNumber,
 	IsOptional,
 	IsPositive,
 	IsString,
-	ValidateNested,
-	IsEnum,
 	IsUrl,
-	Min,
 	Max,
+	Min,
+	ValidateNested,
 } from 'class-validator';
-import { CreateChapterDto } from './create-chapter.dto';
-import { Transform, Type } from 'class-transformer';
-import { CoverBookDto } from './cover-book.dto';
-import { BookType } from '../enum/book-type.enum';
-import { CreateAuthorDto } from './create-author.dto';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { transformCoverBookLegacyFormat } from './transformers/cover-book.transformer';
 import { NormalizeUrl } from '../../common/decorators/normalize-url.decorator';
+import { BookType } from '../enum/book-type.enum';
+import { CoverBookDto } from './cover-book.dto';
+import { CreateAuthorDto } from './create-author.dto';
+import { CreateChapterDto } from './create-chapter.dto';
+import { transformCoverBookLegacyFormat } from './transformers/cover-book.transformer';
 
 export class CreateBookDto {
-	@ApiProperty({
-		description: 'Book title',
-		example: 'One Piece',
-		maxLength: 300,
-	})
 	@ApiProperty({
 		description: 'Book title',
 		example: 'One Piece',
@@ -74,12 +69,6 @@ export class CreateBookDto {
 	@IsUrl({}, { each: true })
 	originalUrl?: string[] = [];
 
-	@ApiPropertyOptional({
-		description: 'Book description or synopsis',
-		example:
-			'A story about a young pirate who dreams of becoming the Pirate King',
-		maxLength: 5000,
-	})
 	@ApiPropertyOptional({
 		description: 'Book description or synopsis',
 		example:
@@ -152,5 +141,5 @@ export class CreateBookDto {
 		default: false,
 	})
 	@IsOptional()
-	validator: boolean = false;
+	ignoreConflict = false;
 }

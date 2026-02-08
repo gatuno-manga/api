@@ -1,12 +1,12 @@
 import { Controller, Get } from '@nestjs/common';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
+	DiskHealthIndicator,
 	HealthCheck,
 	HealthCheckService,
-	TypeOrmHealthIndicator,
 	MemoryHealthIndicator,
-	DiskHealthIndicator,
+	TypeOrmHealthIndicator,
 } from '@nestjs/terminus';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AppConfigService } from '../app-config/app-config.service';
 
 @ApiTags('Health')

@@ -1,13 +1,13 @@
+import { Logger } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Chapter } from '../entitys/chapter.entity';
+import { BookEvents } from '../constants/events.constant';
 import { Book } from '../entitys/book.entity';
-import { OnEvent } from '@nestjs/event-emitter';
-import { Logger } from '@nestjs/common';
+import { Chapter } from '../entitys/chapter.entity';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { ChapterScrapingService } from '../jobs/chapter-scraping.service';
 import { FixChapterService } from '../jobs/fix-chapter.service';
-import { BookEvents } from '../constants/events.constant';
 
 export class BookScrapingEvents {
 	private logger = new Logger(BookScrapingEvents.name);
@@ -45,8 +45,8 @@ export class BookScrapingEvents {
 	}
 
 	@OnEvent(BookEvents.CHAPTERS_UPDATED)
-	async processChaptersList(chapters: Chapter[] | Chapter) {
-		if (!Array.isArray(chapters)) chapters = [chapters];
+	async processChaptersList(input: Chapter[] | Chapter) {
+		const chapters = Array.isArray(input) ? input : [input];
 		const chaptersToProcess = chapters
 			.filter(
 				(chapter) => chapter.scrapingStatus === ScrapingStatus.PROCESS,
@@ -55,7 +55,7 @@ export class BookScrapingEvents {
 
 		if (chaptersToProcess.length === 0) {
 			this.logger.warn(
-				`Nenhum capítulo para processar na lista recebida.`,
+				'Nenhum capítulo para processar na lista recebida.',
 			);
 			return;
 		}
@@ -70,11 +70,11 @@ export class BookScrapingEvents {
 	}
 
 	@OnEvent(BookEvents.CHAPTERS_FIX)
-	async handleFixBook(chapters: Chapter[] | Chapter) {
-		if (!Array.isArray(chapters)) chapters = [chapters];
+	async handleFixBook(input: Chapter[] | Chapter) {
+		const chapters = Array.isArray(input) ? input : [input];
 		if (chapters.length === 0) {
 			this.logger.warn(
-				`Nenhum capítulo para consertar na lista recebida.`,
+				'Nenhum capítulo para consertar na lista recebida.',
 			);
 			return;
 		}

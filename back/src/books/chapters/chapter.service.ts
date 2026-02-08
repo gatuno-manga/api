@@ -1,13 +1,13 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
-import { AppConfigService } from 'src/app-config/app-config.service';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { InjectRepository } from '@nestjs/typeorm';
+import { AppConfigService } from 'src/app-config/app-config.service';
+import { In, Repository } from 'typeorm';
 import { ChapterRead } from '../entitys/chapter-read.entity';
 import { Chapter } from '../entitys/chapter.entity';
+import { ContentType } from '../enum/content-type.enum';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { ChapterUpdatedEvent } from './events/chapter-updated.event';
-import { ContentType } from '../enum/content-type.enum';
 
 @Injectable()
 export class ChapterService {
@@ -73,13 +73,13 @@ export class ChapterService {
 
 		// Monta resposta baseada no tipo de conteúdo
 		const baseResponse: Omit<Chapter, 'book'> & {
-            previous?: string;
-            next?: string;
-            bookId: string;
-            bookTitle: string;
-            totalChapters: number;
-            documentPath?: string | null;
-        } = {
+			previous?: string;
+			next?: string;
+			bookId: string;
+			bookTitle: string;
+			totalChapters: number;
+			documentPath?: string | null;
+		} = {
 			...chapterWithoutBook,
 			previous: previousChapter?.id,
 			next: nextChapter?.id,
@@ -97,11 +97,14 @@ export class ChapterService {
 			}
 		} else {
 			// Remove pages para outros tipos para economizar banda
-			delete (baseResponse as Partial<Chapter>).pages;
+			(baseResponse as Partial<Chapter>).pages = undefined;
 		}
 
 		// Para DOCUMENT: converte documentPath para URL completa
-		if (chapter.contentType === ContentType.DOCUMENT && chapter.documentPath) {
+		if (
+			chapter.contentType === ContentType.DOCUMENT &&
+			chapter.documentPath
+		) {
 			baseResponse.documentPath = this.urlImage(chapter.documentPath);
 		}
 
@@ -192,33 +195,60 @@ export class ChapterService {
 	}
 
 	async markChaptersAsRead(chapterIds: string[], userId: string) {
-		const results: { chapterId: string; success: boolean; result?: ChapterRead; error?: string; }[] = [];
+		const results: {
+			chapterId: string;
+			success: boolean;
+			result?: ChapterRead;
+			error?: string;
+		}[] = [];
 		for (const chapterId of chapterIds) {
 			try {
 				const result = await this.markChapterAsRead(chapterId, userId);
 				results.push({ chapterId, success: true, result });
 			} catch (error) {
-				results.push({ chapterId, success: false, error: error instanceof Error ? error.message : 'Unknown error' });
+				results.push({
+					chapterId,
+					success: false,
+					error:
+						error instanceof Error
+							? error.message
+							: 'Unknown error',
+				});
 			}
 		}
 		this.logger.log(
-			`Marked ${results.filter(r => r.success).length}/${chapterIds.length} chapters as read for user ${userId}`,
+			`Marked ${results.filter((r) => r.success).length}/${chapterIds.length} chapters as read for user ${userId}`,
 		);
 		return results;
 	}
 
 	async markChaptersAsUnread(chapterIds: string[], userId: string) {
-		const results: { chapterId: string; success: boolean; result?: import('typeorm').DeleteResult; error?: string; }[] = [];
+		const results: {
+			chapterId: string;
+			success: boolean;
+			result?: import('typeorm').DeleteResult;
+			error?: string;
+		}[] = [];
 		for (const chapterId of chapterIds) {
 			try {
-				const result = await this.markChapterAsUnread(chapterId, userId);
+				const result = await this.markChapterAsUnread(
+					chapterId,
+					userId,
+				);
 				results.push({ chapterId, success: true, result });
 			} catch (error) {
-				results.push({ chapterId, success: false, error: error instanceof Error ? error.message : 'Unknown error' });
+				results.push({
+					chapterId,
+					success: false,
+					error:
+						error instanceof Error
+							? error.message
+							: 'Unknown error',
+				});
 			}
 		}
 		this.logger.log(
-			`Marked ${results.filter(r => r.success).length}/${chapterIds.length} chapters as unread for user ${userId}`,
+			`Marked ${results.filter((r) => r.success).length}/${chapterIds.length} chapters as unread for user ${userId}`,
 		);
 		return results;
 	}

@@ -1,6 +1,6 @@
-import { IConcurrencyManager } from './concurrency-manager.interface';
 import { Logger } from '@nestjs/common';
 import Redis from 'ioredis';
+import { IConcurrencyManager } from './concurrency-manager.interface';
 
 /**
  * Redis-based distributed concurrency manager.
@@ -131,6 +131,6 @@ export class RedisConcurrencyManager implements IConcurrencyManager {
 	async getCurrentCount(domain: string): Promise<number> {
 		const key = this.keyPrefix + domain;
 		const val = await this.redis.get(key);
-		return parseInt(val || '0', 10);
+		return Number.parseInt(val || '0', 10);
 	}
 }

@@ -1,25 +1,26 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { CreateBookDto } from './dto/create-book.dto';
-import { UpdateBookDto } from './dto/update-book.dto';
-import { BookPageOptionsDto } from './dto/book-page-options.dto';
 import { PageDto } from 'src/pages/page.dto';
-import { UpdateChapterDto } from './dto/update-chapter.dto';
+import { BookPageOptionsDto } from './dto/book-page-options.dto';
+import { Book } from './entitys/book.entity';
+import { CreateBookDto } from './dto/create-book.dto';
 import { OrderChaptersDto } from './dto/order-chapters.dto';
 import { OrderCoversDto } from './dto/order-covers.dto';
+import { UpdateBookDto } from './dto/update-book.dto';
+import { UpdateChapterDto } from './dto/update-chapter.dto';
+import { BookCreationService } from './services/book-creation.service';
+import { BookQueryService } from './services/book-query.service';
+import { BookRelationshipService } from './services/book-relationship.service';
+import { BookUpdateService } from './services/book-update.service';
+import { ChapterManagementService } from './services/chapter-management.service';
 import {
+	AuthorsFilterStrategy,
+	ExcludeTagsFilterStrategy,
 	FilterStrategy,
-	TypeFilterStrategy,
+	PublicationFilterStrategy,
 	SearchFilterStrategy,
 	TagsFilterStrategy,
-	ExcludeTagsFilterStrategy,
-	PublicationFilterStrategy,
-	AuthorsFilterStrategy,
+	TypeFilterStrategy,
 } from './strategies';
-import { BookCreationService } from './services/book-creation.service';
-import { BookUpdateService } from './services/book-update.service';
-import { BookQueryService } from './services/book-query.service';
-import { ChapterManagementService } from './services/chapter-management.service';
-import { BookRelationshipService } from './services/book-relationship.service';
 
 /**
  * BooksService refatorado - agora atua como orquestrador (Facade)
@@ -93,8 +94,8 @@ export class BooksService {
 
 	async getAllBooks(
 		options: BookPageOptionsDto,
-		maxWeightSensitiveContent: number = 0,
-	): Promise<PageDto<any>> {
+		maxWeightSensitiveContent = 0,
+	): Promise<PageDto<Omit<Book, 'covers'> & { cover: string | null }>> {
 		return this.bookQueryService.getAllBooks(
 			options,
 			maxWeightSensitiveContent,
@@ -104,7 +105,7 @@ export class BooksService {
 
 	async getRandomBook(
 		options: BookPageOptionsDto,
-		maxWeightSensitiveContent: number = 0,
+		maxWeightSensitiveContent = 0,
 	): Promise<{ id: string }> {
 		return this.bookQueryService.getRandomBook(
 			options,
@@ -113,14 +114,14 @@ export class BooksService {
 		);
 	}
 
-	async getOne(id: string, maxWeightSensitiveContent: number = 0) {
+	async getOne(id: string, maxWeightSensitiveContent = 0) {
 		return this.bookQueryService.getOne(id, maxWeightSensitiveContent);
 	}
 
 	async getChapters(
 		id: string,
 		userid?: string,
-		maxWeightSensitiveContent: number = 0,
+		maxWeightSensitiveContent = 0,
 	) {
 		return this.bookQueryService.getChapters(
 			id,
@@ -129,11 +130,11 @@ export class BooksService {
 		);
 	}
 
-	async getCovers(id: string, maxWeightSensitiveContent: number = 0) {
+	async getCovers(id: string, maxWeightSensitiveContent = 0) {
 		return this.bookQueryService.getCovers(id, maxWeightSensitiveContent);
 	}
 
-	async getInfos(id: string, maxWeightSensitiveContent: number = 0) {
+	async getInfos(id: string, maxWeightSensitiveContent = 0) {
 		return this.bookQueryService.getInfos(id, maxWeightSensitiveContent);
 	}
 

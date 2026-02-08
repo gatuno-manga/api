@@ -22,7 +22,7 @@ export const config = (
 			database: configService.database.name,
 		})),
 	},
-	entities: [__dirname + '/../**/*.entity{.ts,.js}'],
+	entities: [`${__dirname}/../**/*.entity{.ts,.js}`],
 	synchronize: true,
 	poolSize: 20,
 	extra: {

@@ -1,3 +1,4 @@
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import {
 	Controller,
 	Get,
@@ -8,22 +9,21 @@ import {
 	UseInterceptors,
 } from '@nestjs/common';
 import {
-	ApiTags,
-	ApiOperation,
-	ApiResponse,
-	ApiParam,
 	ApiBearerAuth,
+	ApiOperation,
+	ApiParam,
+	ApiResponse,
+	ApiTags,
 } from '@nestjs/swagger';
-import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { Throttle } from '@nestjs/throttler';
-import { OptionalAuthGuard } from 'src/auth/guard/optional-auth.guard';
-import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
+import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
 import { Roles } from 'src/auth/decorator/roles.decorator';
+import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
+import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
+import { OptionalAuthGuard } from 'src/auth/guard/optional-auth.guard';
 import { RolesEnum } from 'src/users/enum/roles.enum';
 import { AuthorsService } from './authors.service';
 import { AuthorsOptions } from './dto/authors-options.dto';
-import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
-import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
 
 @ApiTags('Authors')
 @Controller('authors')

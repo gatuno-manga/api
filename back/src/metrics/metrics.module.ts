@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 import {
 	makeCounterProvider,
-	makeHistogramProvider,
 	makeGaugeProvider,
+	makeHistogramProvider,
 } from '@willsoto/nestjs-prometheus';
 
 const httpRequestsTotal = makeCounterProvider({

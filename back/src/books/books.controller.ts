@@ -1,3 +1,4 @@
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import {
 	Controller,
 	Get,
@@ -7,19 +8,18 @@ import {
 	UseInterceptors,
 } from '@nestjs/common';
 import {
-	ApiTags,
 	ApiOperation,
-	ApiResponse,
 	ApiParam,
 	ApiQuery,
+	ApiResponse,
+	ApiTags,
 } from '@nestjs/swagger';
-import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { Throttle } from '@nestjs/throttler';
+import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
+import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
+import { OptionalAuthGuard } from 'src/auth/guard/optional-auth.guard';
 import { BooksService } from './books.service';
 import { BookPageOptionsDto } from './dto/book-page-options.dto';
-import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
-import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
-import { OptionalAuthGuard } from 'src/auth/guard/optional-auth.guard';
 
 @ApiTags('Books')
 @Controller('books')

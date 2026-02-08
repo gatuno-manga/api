@@ -1,18 +1,18 @@
-import { Injectable, Scope, LoggerService } from '@nestjs/common';
+import { Injectable, LoggerService, Scope } from '@nestjs/common';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { AppConfigService } from './app-config/app-config.service';
 import {
-	LogLevel,
-	LogContext,
-	LogMetadata,
-	PerformanceLog,
-	HttpRequestLog,
-	QueueJobLog,
 	BookScrapingLog,
 	ChapterProcessingLog,
-	FileUploadLog,
-	UserActionLog,
 	DatabaseErrorLog,
+	FileUploadLog,
+	HttpRequestLog,
+	LogContext,
+	LogLevel,
+	LogMetadata,
+	PerformanceLog,
+	QueueJobLog,
+	UserActionLog,
 	ValidationErrorLog,
 } from './common/types/logging.types';
 
@@ -446,8 +446,9 @@ export class CustomLogger implements LoggerService {
 	private getLogLevel(context?: string): number {
 		const ctx = context || this.DEFAULT_CONTEXT;
 
-		if (CustomLogger.contextRules.has(ctx)) {
-			return CustomLogger.contextRules.get(ctx)!;
+		const contextLevel = CustomLogger.contextRules.get(ctx);
+		if (contextLevel !== undefined) {
+			return contextLevel;
 		}
 
 		return (

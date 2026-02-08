@@ -1,14 +1,14 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Book } from '../entitys/book.entity';
-import { Cover } from '../entitys/cover.entity';
+import { OrderCoversDto } from '../dto/order-covers.dto';
 import { UpdateBookDto } from '../dto/update-book.dto';
 import { UpdateCoverDto } from '../dto/update-cover.dto';
-import { OrderCoversDto } from '../dto/order-covers.dto';
+import { Book } from '../entitys/book.entity';
+import { Cover } from '../entitys/cover.entity';
 import { CoverImageService } from '../jobs/cover-image.service';
 import { BookRelationshipService } from './book-relationship.service';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 
 /**
  * Service responsável pela atualização de livros
@@ -70,7 +70,7 @@ export class BookUpdateService {
 				);
 		}
 
-		if (dto.cover && dto.cover.urlImgs && dto.cover.urlImgs.length > 0) {
+		if (dto.cover?.urlImgs && dto.cover.urlImgs.length > 0) {
 			await this.coverImageService.addCoverToQueue(
 				book.id,
 				dto.cover.urlOrigin,

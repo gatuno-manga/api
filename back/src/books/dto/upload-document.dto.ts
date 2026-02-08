@@ -10,22 +10,23 @@ import { DocumentFormat } from '../enum/document-format.enum';
  * Este DTO é para metadados opcionais
  */
 export class UploadDocumentDto {
-    @ApiProperty({
-        description: 'Título alternativo para o documento',
-        example: 'Capítulo 1 - Versão Revisada',
-        required: false,
-    })
-    @IsString()
-    @IsOptional()
-    title?: string;
+	@ApiProperty({
+		description: 'Título alternativo para o documento',
+		example: 'Capítulo 1 - Versão Revisada',
+		required: false,
+	})
+	@IsString()
+	@IsOptional()
+	title?: string;
 
-    @ApiProperty({
-        description: 'Formato do documento (detectado automaticamente se não fornecido)',
-        enum: DocumentFormat,
-        example: DocumentFormat.PDF,
-        required: false,
-    })
-    @IsEnum(DocumentFormat)
-    @IsOptional()
-    format?: DocumentFormat;
+	@ApiProperty({
+		description:
+			'Formato do documento (detectado automaticamente se não fornecido)',
+		enum: DocumentFormat,
+		example: DocumentFormat.PDF,
+		required: false,
+	})
+	@IsEnum(DocumentFormat)
+	@IsOptional()
+	format?: DocumentFormat;
 }

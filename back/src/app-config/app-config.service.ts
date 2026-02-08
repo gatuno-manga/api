@@ -30,7 +30,7 @@ export class AppConfigService {
 	}
 
 	get jwtAccessExpiration(): string {
-		return this.config.get<string>('JWT_ACCESS_EXPIRATION')!;
+		return this.config.get<string>('JWT_ACCESS_EXPIRATION') || '15m';
 	}
 
 	get jwtRefreshSecret(): string {
@@ -41,7 +41,7 @@ export class AppConfigService {
 	}
 
 	get jwtRefreshExpiration(): string {
-		return this.config.get<string>('JWT_REFRESH_EXPIRATION')!;
+		return this.config.get<string>('JWT_REFRESH_EXPIRATION') || '7d';
 	}
 
 	get saltLength(): number {

@@ -1,23 +1,23 @@
-import {
-	WebSocketGateway,
-	WebSocketServer,
-	SubscribeMessage,
-	MessageBody,
-	ConnectedSocket,
-	OnGatewayInit,
-	OnGatewayConnection,
-	OnGatewayDisconnect,
-} from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
 import { Logger, UseGuards } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { WsJwtGuard } from '../../auth/guard/ws-jwt.guard';
-import { ReadingProgressService } from '../reading-progress.service';
 import {
-	SaveReadingProgressDto,
-	ReadingProgressResponseDto,
-} from '../dto/reading-progress.dto';
+	ConnectedSocket,
+	MessageBody,
+	OnGatewayConnection,
+	OnGatewayDisconnect,
+	OnGatewayInit,
+	SubscribeMessage,
+	WebSocketGateway,
+	WebSocketServer,
+} from '@nestjs/websockets';
+import { Server, Socket } from 'socket.io';
+import { WsJwtGuard } from '../../auth/guard/ws-jwt.guard';
 import { ReadingEvents } from '../constants/events.constant';
+import {
+	ReadingProgressResponseDto,
+	SaveReadingProgressDto,
+} from '../dto/reading-progress.dto';
+import { ReadingProgressService } from '../reading-progress.service';
 
 interface ProgressUpdatePayload {
 	userId: string;

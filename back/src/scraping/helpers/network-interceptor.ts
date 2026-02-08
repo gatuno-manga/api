@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import type { Page, Response } from 'playwright';
+import { Page, Response } from 'playwright';
 
 /**
  * Configuration for URL filtering.
@@ -182,9 +182,14 @@ export class NetworkInterceptor {
 		originalSize: number,
 	): Promise<void> {
 		try {
-			const compressedData = await this.compressor!.compress(body);
+			const compressedData = await this.compressor?.compress(body);
 			const outputExtension =
-				this.compressor!.getOutputExtension(originalExtension);
+				this.compressor?.getOutputExtension(originalExtension);
+
+			if (!compressedData || !outputExtension) {
+				throw new Error('Compression failed to produce valid data');
+			}
+
 			const compressedSize = compressedData.length;
 			const savings = ((1 - compressedSize / originalSize) * 100).toFixed(
 				1,

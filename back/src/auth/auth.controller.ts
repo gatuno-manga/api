@@ -6,25 +6,25 @@ import {
 	Post,
 	Req,
 	Res,
-	UseGuards,
 	UnauthorizedException,
+	UseGuards,
 } from '@nestjs/common';
 import {
-	ApiTags,
+	ApiBearerAuth,
 	ApiOperation,
 	ApiResponse,
-	ApiBearerAuth,
+	ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
-import { AuthService } from './auth.service';
 import { AppConfigService } from 'src/app-config/app-config.service';
-import { SignUpAuthDto } from './dto/signup-auth.dto';
-import { SignInAuthDto } from './dto/signin-auth.dto';
-import { RefreshTokenGuard } from './guard/jwt-refresh.guard';
-import { JwtAuthGuard } from './guard/jwt-auth.guard';
-import { CurrentUserDto } from './dto/current-user.dto';
+import { AuthService } from './auth.service';
 import { CurrentUser } from './decorator/current-user.decorator';
+import { CurrentUserDto } from './dto/current-user.dto';
+import { SignInAuthDto } from './dto/signin-auth.dto';
+import { SignUpAuthDto } from './dto/signup-auth.dto';
+import { JwtAuthGuard } from './guard/jwt-auth.guard';
+import { RefreshTokenGuard } from './guard/jwt-refresh.guard';
 
 @ApiTags('Authentication')
 @Controller('auth')

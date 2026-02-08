@@ -4,22 +4,21 @@ import {
 	Logger,
 	NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Chapter } from '../entitys/chapter.entity';
-import { Book } from '../entitys/book.entity';
-import { CreateChapterDto } from '../dto/create-chapter.dto';
-import { CreateChapterManualDto } from '../dto/create-chapter-manual.dto';
-import { UpdateChapterDto } from '../dto/update-chapter.dto';
-import { OrderChaptersDto } from '../dto/order-chapters.dto';
-import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { InjectRepository } from '@nestjs/typeorm';
 import { normalizeUrl } from 'src/common/utils/url.utils';
+import { Repository } from 'typeorm';
 import { ChapterUpdatedEvent } from '../chapters/events/chapter-updated.event';
-
+import { CreateChapterManualDto } from '../dto/create-chapter-manual.dto';
+import { CreateChapterDto } from '../dto/create-chapter.dto';
+import { OrderChaptersDto } from '../dto/order-chapters.dto';
+import { UpdateChapterDto } from '../dto/update-chapter.dto';
+import { Book } from '../entitys/book.entity';
+import { Chapter } from '../entitys/chapter.entity';
+import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 /**
  * Service responsável por gerenciar capítulos de livros
-	*/;
+ */
 @Injectable()
 export class ChapterManagementService {
 	private readonly logger = new Logger(ChapterManagementService.name);
@@ -178,10 +177,10 @@ export class ChapterManagementService {
 			);
 		}
 
-		const existingChapters = book.chapters.reduce(
-			(acc, chapter) => ({ ...acc, [chapter.index]: chapter }),
-			{},
-		);
+		const existingChapters: Record<string, Chapter> = {};
+		for (const chapter of book.chapters) {
+			existingChapters[chapter.index] = chapter;
+		}
 
 		const determineDecimalPlaces = (): number => {
 			for (const c of dto) {
@@ -195,7 +194,7 @@ export class ChapterManagementService {
 
 			let maxPlaces = 0;
 			for (const ch of Object.keys(existingChapters)) {
-				if (ch && ch.toString().includes('.')) {
+				if (ch?.toString().includes('.')) {
 					const places = ch.toString().split('.')[1].length;
 					if (places > maxPlaces) maxPlaces = places;
 				}
@@ -209,9 +208,9 @@ export class ChapterManagementService {
 
 		const updatedChapters: Chapter[] = [];
 		for (const chapterDto of dto) {
-			const index = parseFloat(chapterDto.index.toString()).toFixed(
-				decimalPlaces,
-			);
+			const index = Number.parseFloat(
+				chapterDto.index.toString(),
+			).toFixed(decimalPlaces);
 			let chapter = existingChapters[index];
 
 			if (!chapter) {
@@ -254,7 +253,9 @@ export class ChapterManagementService {
 
 		const savedBook = await this.bookRepository.save(book);
 
-		savedBook.chapters.forEach((ch) => (ch.book = savedBook));
+		for (const ch of savedBook.chapters) {
+			ch.book = savedBook;
+		}
 		this.eventEmitter.emit('chapters.updated', savedBook.chapters);
 		for (const chapter of updatedChapters) {
 			this.eventEmitter.emit(
@@ -305,9 +306,9 @@ export class ChapterManagementService {
 
 		// Mapeia capítulos por ID
 		const chapterMap = new Map<string, Chapter>();
-		book.chapters.forEach((chapter) => {
+		for (const chapter of book.chapters) {
 			chapterMap.set(chapter.id, chapter);
-		});
+		}
 
 		// Aplica a nova ordem
 		for (const chapterDto of chapters) {
@@ -331,7 +332,9 @@ export class ChapterManagementService {
 		const savedBook = await this.bookRepository.save(book);
 
 		// Emit event for reordering
-		savedBook.chapters.forEach((ch) => (ch.book = savedBook));
+		for (const ch of savedBook.chapters) {
+			ch.book = savedBook;
+		}
 		for (const chapter of orderedChapters) {
 			this.eventEmitter.emit(
 				'chapter.updated',
@@ -367,11 +370,15 @@ export class ChapterManagementService {
 		this.logger.debug(
 			'Emitting chapters.updated event for resetBookChapters',
 		);
-		book.chapters.forEach((ch) => (ch.book = book));
+		for (const ch of book.chapters) {
+			ch.book = book;
+		}
 		this.eventEmitter.emit('chapters.updated', book.chapters);
 
 		// Remove circular references before returning
-		book.chapters.forEach((ch) => delete (ch as any).book);
+		for (const ch of book.chapters) {
+			(ch as unknown as { book: Book | undefined }).book = undefined;
+		}
 
 		return book;
 	}
@@ -391,11 +398,15 @@ export class ChapterManagementService {
 		}
 
 		// Ensure book is attached for event
-		book.chapters.forEach((ch) => (ch.book = book));
+		for (const ch of book.chapters) {
+			ch.book = book;
+		}
 		this.eventEmitter.emit('chapters.fix', book.chapters);
 
 		// Remove circular references before returning
-		book.chapters.forEach((ch) => delete (ch as any).book);
+		for (const ch of book.chapters) {
+			(ch as unknown as { book: Book | undefined }).book = undefined;
+		}
 
 		return book;
 	}

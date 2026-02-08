@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
+import { Injectable, Logger } from '@nestjs/common';
 import { Queue } from 'bullmq';
 
 const QUEUE_NAME = 'fix-chapter-queue';

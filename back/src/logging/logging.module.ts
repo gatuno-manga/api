@@ -59,12 +59,11 @@ import { CustomLogger } from '../custom.logger';
 						customLogLevel: (req, res, err) => {
 							if (res.statusCode >= 400 && res.statusCode < 500) {
 								return 'warn';
-							} else if (res.statusCode >= 500 || err) {
+							}
+							if (res.statusCode >= 500 || err) {
 								return 'error';
-							} else if (
-								res.statusCode >= 300 &&
-								res.statusCode < 400
-							) {
+							}
+							if (res.statusCode >= 300 && res.statusCode < 400) {
 								return 'silent';
 							}
 							return 'info';

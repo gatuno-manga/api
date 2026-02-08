@@ -1,6 +1,6 @@
-import { JwtPayloadBuilder } from './jwt-payload.builder';
-import { User } from '../../users/entitys/user.entity';
 import { Role } from '../../users/entitys/role.entity';
+import { User } from '../../users/entitys/user.entity';
+import { JwtPayloadBuilder } from './jwt-payload.builder';
 
 describe('JwtPayloadBuilder', () => {
 	let builder: JwtPayloadBuilder;

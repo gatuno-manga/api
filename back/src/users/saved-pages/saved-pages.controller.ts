@@ -10,18 +10,18 @@ import {
 	UseGuards,
 } from '@nestjs/common';
 import {
-	ApiTags,
-	ApiOperation,
-	ApiResponse,
 	ApiBearerAuth,
+	ApiOperation,
 	ApiParam,
+	ApiResponse,
+	ApiTags,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
-import { SavedPagesService } from './saved-pages.service';
-import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
 import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
+import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
+import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { CreateSavedPageDto } from './dto/create-saved-page.dto';
 import { UpdateSavedPageDto } from './dto/update-saved-page.dto';
+import { SavedPagesService } from './saved-pages.service';
 
 @ApiTags('Saved Pages')
 @Controller('saved-pages')

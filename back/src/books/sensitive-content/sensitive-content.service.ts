@@ -1,16 +1,16 @@
-import { CreateSensitiveContentDto } from './dto/create-sensitive-content.dto';
-import { UpdateSensitiveContentDto } from './dto/update-sensitive-content.dto';
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { SensitiveContent } from '../entitys/sensitive-content.entity';
 import {
-	Repository,
 	In,
-	MoreThanOrEqual,
 	LessThanOrEqual,
+	MoreThanOrEqual,
+	Repository,
 	SelectQueryBuilder,
 } from 'typeorm';
 import { Book } from '../entitys/book.entity';
+import { SensitiveContent } from '../entitys/sensitive-content.entity';
+import { CreateSensitiveContentDto } from './dto/create-sensitive-content.dto';
+import { UpdateSensitiveContentDto } from './dto/update-sensitive-content.dto';
 
 @Injectable()
 export class SensitiveContentService {
@@ -22,9 +22,7 @@ export class SensitiveContentService {
 		private readonly bookRepository: Repository<Book>,
 	) {}
 
-	async getAll(
-		maxWeightSensitiveContent: number = 0,
-	): Promise<SensitiveContent[]> {
+	async getAll(maxWeightSensitiveContent = 0): Promise<SensitiveContent[]> {
 		return this.sensitiveContentRepository.find({
 			select: ['id', 'name', 'altNames'],
 			order: { weight: 'ASC' },
@@ -114,7 +112,7 @@ export class SensitiveContentService {
 	async filterBooksSensitiveContent(
 		queryBuilder: SelectQueryBuilder<Book>,
 		names?: string[],
-		weight: number = 0,
+		weight = 0,
 	): Promise<void> {
 		let filterSafe = false;
 		let maxWeight: number | undefined = undefined;

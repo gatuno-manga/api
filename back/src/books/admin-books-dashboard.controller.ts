@@ -1,29 +1,22 @@
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
+import { Controller, Get, UseGuards, UseInterceptors } from '@nestjs/common';
 import {
-	Controller,
-	Get,
-	UseGuards,
-	UseInterceptors,
-} from '@nestjs/common';
-import {
-	ApiTags,
+	ApiBearerAuth,
 	ApiOperation,
 	ApiResponse,
-	ApiBearerAuth,
+	ApiTags,
 } from '@nestjs/swagger';
-import { BooksService } from './books.service';
-import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { Roles } from 'src/auth/decorator/roles.decorator';
+import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { RolesEnum } from 'src/users/enum/roles.enum';
-import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
+import { BooksService } from './books.service';
 
 @ApiTags('Books Admin Dashboard')
 @Controller('books')
 @UseGuards(JwtAuthGuard)
 @Roles(RolesEnum.ADMIN)
 export class AdminBooksDashboardController {
-	constructor(
-		private readonly booksService: BooksService,
-	) {}
+	constructor(private readonly booksService: BooksService) {}
 
 	@Get('dashboard/overview')
 	@ApiOperation({

@@ -1,7 +1,7 @@
+import { scrypt as _scrypt, randomBytes } from 'node:crypto';
+import { promisify } from 'node:util';
 import { Injectable } from '@nestjs/common';
-import { randomBytes, scrypt as _scrypt } from 'crypto';
 import { AppConfigService } from 'src/app-config/app-config.service';
-import { promisify } from 'util';
 
 const scrypt = promisify(_scrypt);
 @Injectable()

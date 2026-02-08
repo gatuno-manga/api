@@ -1,5 +1,5 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cache } from 'cache-manager';
 
 /**
@@ -70,7 +70,7 @@ export class CacheInvalidationService {
 			try {
 				await this.cacheManager.del(pattern);
 			} catch (error) {
-				this.logger.error(`Error deleting tags cache:`, error);
+				this.logger.error('Error deleting tags cache:', error);
 			}
 		}
 	}
@@ -87,7 +87,7 @@ export class CacheInvalidationService {
 			try {
 				await this.cacheManager.del(pattern);
 			} catch (error) {
-				this.logger.error(`Error deleting authors cache:`, error);
+				this.logger.error('Error deleting authors cache:', error);
 			}
 		}
 	}
@@ -105,7 +105,7 @@ export class CacheInvalidationService {
 				await this.cacheManager.del(pattern);
 			} catch (error) {
 				this.logger.error(
-					`Error deleting sensitive content cache:`,
+					'Error deleting sensitive content cache:',
 					error,
 				);
 			}

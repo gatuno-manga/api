@@ -15,15 +15,15 @@ import { normalizeUrl as normalizeUrlUtil } from '../utils/url.utils';
  * }
  */
 export function NormalizeUrl() {
-    return Transform(({ value }) => {
-        if (!value) return value;
+	return Transform(({ value }) => {
+		if (!value) return value;
 
-        // Handle array of URLs
-        if (Array.isArray(value)) {
-            return value.map((url) => normalizeUrlUtil(url));
-        }
+		// Handle array of URLs
+		if (Array.isArray(value)) {
+			return value.map((url) => normalizeUrlUtil(url));
+		}
 
-        // Handle single URL
-        return normalizeUrlUtil(value);
-    });
+		// Handle single URL
+		return normalizeUrlUtil(value);
+	});
 }

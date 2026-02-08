@@ -34,7 +34,9 @@ export class TokenStoreService {
 			return;
 		}
 
-		const latestExpiration = Math.max(...validTokens.map((t) => t.expiresAt));
+		const latestExpiration = Math.max(
+			...validTokens.map((t) => t.expiresAt),
+		);
 		const cacheTtl = Math.max(latestExpiration - Date.now(), 0);
 
 		await this.cacheManager.set(key, validTokens, cacheTtl);

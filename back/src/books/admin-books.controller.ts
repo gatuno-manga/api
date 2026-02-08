@@ -1,37 +1,37 @@
 import {
 	Body,
 	Controller,
+	Delete,
 	Get,
 	Param,
 	Patch,
 	Post,
-	Delete,
 	UseGuards,
 } from '@nestjs/common';
 import {
-	ApiTags,
-	ApiOperation,
-	ApiResponse,
-	ApiParam,
 	ApiBearerAuth,
 	ApiBody,
+	ApiOperation,
+	ApiParam,
+	ApiResponse,
+	ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { Roles } from 'src/auth/decorator/roles.decorator';
+import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
+import { RolesEnum } from 'src/users/enum/roles.enum';
 import { BooksService } from './books.service';
 import { CreateBookDto } from './dto/create-book.dto';
-import { UpdateChapterDto } from './dto/update-chapter.dto';
-import { UpdateBookDto } from './dto/update-book.dto';
-import { UpdateCoverDto } from './dto/update-cover.dto';
+import { CreateChapterManualDto } from './dto/create-chapter-manual.dto';
 import { OrderChaptersDto } from './dto/order-chapters.dto';
 import { OrderCoversDto } from './dto/order-covers.dto';
-import { CreateChapterManualDto } from './dto/create-chapter-manual.dto';
 import { ToggleAutoUpdateDto } from './dto/toggle-auto-update.dto';
-import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
-import { Roles } from 'src/auth/decorator/roles.decorator';
-import { RolesEnum } from 'src/users/enum/roles.enum';
-import { ChapterManagementService } from './services/chapter-management.service';
-import { BookDeletionService } from './services/book-deletion.service';
+import { UpdateBookDto } from './dto/update-book.dto';
+import { UpdateChapterDto } from './dto/update-chapter.dto';
+import { UpdateCoverDto } from './dto/update-cover.dto';
 import { BookUpdateScheduler } from './jobs/book-update.scheduler';
+import { BookDeletionService } from './services/book-deletion.service';
+import { ChapterManagementService } from './services/chapter-management.service';
 
 @ApiTags('Books Admin')
 @Controller('books')

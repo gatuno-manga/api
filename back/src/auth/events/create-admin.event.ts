@@ -1,10 +1,10 @@
+import { Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { AuthService } from '../auth.service';
-import { AppConfigService } from 'src/app-config/app-config.service';
 import { InjectRepository } from '@nestjs/typeorm';
+import { AppConfigService } from 'src/app-config/app-config.service';
 import { User } from 'src/users/entitys/user.entity';
 import { DataSource, Repository } from 'typeorm';
-import { Logger } from '@nestjs/common';
+import { AuthService } from '../auth.service';
 
 export class CreateAdminEvent {
 	private readonly logger = new Logger(CreateAdminEvent.name);

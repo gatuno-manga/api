@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import * as argon2 from 'argon2';
-import { PasswordHasher } from '../interfaces/password-hasher.interface';
 import { AppConfigService } from 'src/app-config/app-config.service';
+import { PasswordHasher } from '../interfaces/password-hasher.interface';
 
 @Injectable()
 export class Argon2Strategy implements PasswordHasher {

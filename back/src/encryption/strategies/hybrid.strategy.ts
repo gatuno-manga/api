@@ -1,8 +1,8 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PasswordHasher } from '../interfaces/password-hasher.interface';
-import { ScryptStrategy } from './scrypt.strategy';
-import { BcryptStrategy } from './bcrypt.strategy';
 import { Argon2Strategy } from './argon2.strategy';
+import { BcryptStrategy } from './bcrypt.strategy';
+import { ScryptStrategy } from './scrypt.strategy';
 
 @Injectable()
 export class HybridStrategy implements PasswordHasher {
