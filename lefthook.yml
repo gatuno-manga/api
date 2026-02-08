@@ -1,0 +1,9 @@
+# Configuração do Lefthook
+# Documentação: https://github.com/evilmartians/lefthook
+
+pre-commit:
+  parallel: true
+  commands:
+    # Aqui adicionaremos o Biome ou ESLint futuramente
+    check-code:
+      run: echo "Validando código..."

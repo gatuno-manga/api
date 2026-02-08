@@ -1,0 +1,13 @@
+{
+  "name": "gatuno-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "prepare": "lefthook install"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.4.1",
+    "@commitlint/config-conventional": "^20.4.1",
+    "lefthook": "^1.10.10"
+  }
+}
