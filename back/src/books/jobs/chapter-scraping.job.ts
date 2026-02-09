@@ -1,10 +1,10 @@
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
-import { Job } from 'bullmq';
 import { Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Chapter } from '../entitys/chapter.entity';
-import { DataSource, Repository } from 'typeorm';
+import { Job } from 'bullmq';
 import { AppConfigService } from 'src/app-config/app-config.service';
+import { DataSource, Repository } from 'typeorm';
+import { Chapter } from '../entities/chapter.entity';
 import { ChapterScrapingSharedService } from './chapter-scraping.shared';
 
 const QUEUE_NAME = 'chapter-scraping';

@@ -1,2 +1,9 @@
 /.env
 /backups
+node_modules/
+dist/
+build/
+.angular/
+.next/
+out/
+coverage/

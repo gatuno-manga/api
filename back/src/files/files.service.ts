@@ -1,7 +1,7 @@
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
-import * as fs from 'fs/promises';
 import { v4 as uuidv4 } from 'uuid';
-import * as path from 'path';
 import { FileCompressorFactory } from './factories/file-compressor.factory';
 
 @Injectable()

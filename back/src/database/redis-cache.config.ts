@@ -1,8 +1,8 @@
+import { createKeyv } from '@keyv/redis';
 import { CacheModuleAsyncOptions } from '@nestjs/cache-manager';
+import { CacheableMemory, Keyv } from 'cacheable';
 import { AppConfigModule } from 'src/app-config/app-config.module';
 import { AppConfigService } from 'src/app-config/app-config.service';
-import { CacheableMemory, Keyv } from 'cacheable';
-import { createKeyv } from '@keyv/redis';
 
 export const config: CacheModuleAsyncOptions = {
 	isGlobal: true,

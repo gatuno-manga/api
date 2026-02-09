@@ -4,10 +4,10 @@
  * @returns The normalized URL without 'www.'
  */
 export function normalizeUrl(url: string): string {
-    if (!url || typeof url !== 'string') return url;
+	if (!url || typeof url !== 'string') return url;
 
-    // Remove www. from URLs (e.g., https://www.example.com -> https://example.com)
-    return url.replace(/(:\/\/)(www\.)/gi, '$1');
+	// Remove www. from URLs (e.g., https://www.example.com -> https://example.com)
+	return url.replace(/(:\/\/)(www\.)/gi, '$1');
 }
 
 /**
@@ -16,6 +16,6 @@ export function normalizeUrl(url: string): string {
  * @returns Array of normalized URLs without 'www.'
  */
 export function normalizeUrls(urls: string[]): string[] {
-    if (!Array.isArray(urls)) return urls;
-    return urls.map(normalizeUrl);
+	if (!Array.isArray(urls)) return urls;
+	return urls.map(normalizeUrl);
 }

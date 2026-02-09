@@ -1,7 +1,7 @@
-import { IsArray, ValidateNested, IsUrl, ArrayMinSize } from 'class-validator';
 import { Type } from 'class-transformer';
-import { UrlImageDto } from './url-image.dto';
+import { ArrayMinSize, IsArray, IsUrl, ValidateNested } from 'class-validator';
 import { NormalizeUrl } from '../../common/decorators/normalize-url.decorator';
+import { UrlImageDto } from './url-image.dto';
 
 export class CoverBookDto {
 	@IsArray()

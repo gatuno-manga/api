@@ -1,3 +1,4 @@
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import {
 	Body,
 	Controller,
@@ -10,19 +11,18 @@ import {
 	UseInterceptors,
 } from '@nestjs/common';
 import {
-	ApiTags,
-	ApiOperation,
-	ApiResponse,
-	ApiParam,
 	ApiBearerAuth,
+	ApiOperation,
+	ApiParam,
+	ApiResponse,
+	ApiTags,
 } from '@nestjs/swagger';
-import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { Throttle } from '@nestjs/throttler';
-import { ChapterService } from './chapter.service';
-import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
-import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
 import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
+import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
+import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { OptionalAuthGuard } from 'src/auth/guard/optional-auth.guard';
+import { ChapterService } from './chapter.service';
 
 @ApiTags('Chapters')
 @Controller('chapters')
@@ -164,7 +164,10 @@ export class ChapterController {
 		@Body() chapterIds: string[],
 		@CurrentUser() user: CurrentUserDto,
 	) {
-		return this.chapterService.markChaptersAsUnread(chapterIds, user.userId);
+		return this.chapterService.markChaptersAsUnread(
+			chapterIds,
+			user.userId,
+		);
 	}
 
 	@Get('less-pages/:pages')

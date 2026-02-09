@@ -6,19 +6,20 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
+import { AppConfigService } from 'src/app-config/app-config.service';
 import { DataEncryptionProvider } from 'src/encryption/data-encryption.provider';
 import { PasswordEncryption } from 'src/encryption/password-encryption.provider';
 import { PasswordMigrationService } from 'src/encryption/password-migration.service';
-import { User } from 'src/users/entitys/user.entity';
+import { Role } from 'src/users/entities/role.entity';
+import { User } from 'src/users/entities/user.entity';
 import { Repository } from 'typeorm';
-import { AppConfigService } from 'src/app-config/app-config.service';
-import { Role } from 'src/users/entitys/role.entity';
 import { JwtPayloadBuilder } from './builders/jwt-payload.builder';
 import { TokenStoreService } from './services/token-store.service';
 
 @Injectable()
 export class AuthService {
-	private readonly logger = new Logger(AuthService.name);
+	public readonly logger = new Logger(AuthService.name);
+
 	constructor(
 		@InjectRepository(User)
 		private readonly userRepository: Repository<User>,

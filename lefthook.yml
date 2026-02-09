@@ -1,0 +1,13 @@
+# Configuração do Lefthook
+# Documentação: https://github.com/evilmartians/lefthook
+
+pre-commit:
+  parallel: true
+  commands:
+    check-secrets:
+      run: npx secretlint {staged_files}
+    check-spell:
+      run: npx cspell {staged_files} || true
+    check-code:
+      glob: "*.{js,ts,cjs,mjs,json}"
+      run: npx @biomejs/biome check --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files} && git add {staged_files}

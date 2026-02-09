@@ -1,6 +1,6 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
+import type { IFileCompressor } from '../interfaces/file-compressor.interface';
 import { FileCompressorFactory } from './file-compressor.factory';
-import { IFileCompressor } from '../interfaces/file-compressor.interface';
 
 describe('FileCompressorFactory', () => {
 	let factory: FileCompressorFactory;

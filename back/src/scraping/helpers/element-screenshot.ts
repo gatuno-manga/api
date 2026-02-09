@@ -1,5 +1,5 @@
-import { Page, Locator } from 'playwright';
 import { Logger } from '@nestjs/common';
+import { Locator, Page } from 'playwright';
 
 /**
  * Opções de configuração para captura de screenshots de elementos

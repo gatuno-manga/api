@@ -1,6 +1,6 @@
 export class ChapterUpdatedEvent {
-    constructor(
-        public readonly chapterId: string,
-        public readonly bookId: string,
-    ) {}
+	constructor(
+		public readonly chapterId: string,
+		public readonly bookId: string,
+	) {}
 }

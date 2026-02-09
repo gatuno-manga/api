@@ -1,18 +1,19 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { FilesService } from './files.service';
-import { FileCleanupService } from './file-cleanup.service';
-import { FileCleanupController } from './file-cleanup.controller';
-import { FileCleanupCron } from './file-cleanup.cron';
 import { AppConfigModule } from 'src/app-config/app-config.module';
 import { AuthModule } from 'src/auth/auth.module';
-import { SharpAdapter } from './adapters/sharp.adapter';
+import { Book } from 'src/books/entities/book.entity';
+import { Chapter } from 'src/books/entities/chapter.entity';
+import { Cover } from 'src/books/entities/cover.entity';
+import { Page } from 'src/books/entities/page.entity';
 import { NoCompressionAdapter } from './adapters/no-compression.adapter';
+import { SharpAdapter } from './adapters/sharp.adapter';
 import { FileCompressorFactory } from './factories/file-compressor.factory';
-import { Page } from 'src/books/entitys/page.entity';
-import { Cover } from 'src/books/entitys/cover.entity';
-import { Book } from 'src/books/entitys/book.entity';
-import { Chapter } from 'src/books/entitys/chapter.entity';
+import { IFileCompressor } from './interfaces/file-compressor.interface';
+import { FileCleanupController } from './file-cleanup.controller';
+import { FileCleanupCron } from './file-cleanup.cron';
+import { FileCleanupService } from './file-cleanup.service';
+import { FilesService } from './files.service';
 
 @Module({
 	controllers: [FileCleanupController],
@@ -40,7 +41,7 @@ import { Chapter } from 'src/books/entitys/chapter.entity';
 			provide: 'COMPRESSOR_FACTORY_INIT',
 			useFactory: (
 				factory: FileCompressorFactory,
-				compressors: any[],
+				compressors: IFileCompressor[],
 			) => {
 				factory.registerCompressors(compressors);
 				return factory;

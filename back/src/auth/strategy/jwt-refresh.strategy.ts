@@ -1,3 +1,4 @@
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
 	Inject,
 	Injectable,
@@ -6,13 +7,12 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PassportStrategy } from '@nestjs/passport';
+import { Cache } from 'cache-manager';
+import { Request } from 'express';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AppConfigService } from 'src/app-config/app-config.service';
-import { PayloadAuthDto } from '../dto/payload-auth.dto';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Request } from 'express';
 import { DataEncryptionProvider } from 'src/encryption/data-encryption.provider';
-import { Cache } from 'cache-manager';
+import { PayloadAuthDto } from '../dto/payload-auth.dto';
 import { StoredTokenDto } from '../dto/stored-token.dto';
 
 @Injectable()

@@ -1,6 +1,6 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsInt, Min } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
 
 export class PageOptionsDto {
 	@ApiProperty({
@@ -12,7 +12,7 @@ export class PageOptionsDto {
 	@Type(() => Number)
 	@IsInt()
 	@Min(1)
-	page: number = 1;
+	page = 1;
 
 	@ApiProperty({
 		description: 'Number of items per page',

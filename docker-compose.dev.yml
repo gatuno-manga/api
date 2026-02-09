@@ -10,6 +10,13 @@ services:
       - ALLOWED_URL=http://${APP_HOST},http://localhost:${APP_PORT}
       - APP_URL=http://localhost:${APP_PORT}
       - API_URL=http://localhost:${API_PORT}
+      - PLAYWRIGHT_WS_ENDPOINT=${PLAYWRIGHT_WS_ENDPOINT:-ws://playwright-debug:3000}
+      - PLAYWRIGHT_DEBUG=${PLAYWRIGHT_DEBUG:-true}
+      - PLAYWRIGHT_SLOW_MO=${PLAYWRIGHT_SLOW_MO}
+      # Session / JWT Settings (defaults in Joi schema: ACCESS=15m, REFRESH=7d, MAX_SESSIONS=0=unlimited)
+      # - JWT_ACCESS_EXPIRATION=15m
+      # - JWT_REFRESH_EXPIRATION=7d
+      # - MAX_SESSIONS_PER_USER=0
     depends_on:
       - playwright-debug
     develop:

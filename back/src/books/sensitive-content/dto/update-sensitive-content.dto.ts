@@ -1,5 +1,5 @@
-import { IsString, IsOptional, IsInt, Min } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class UpdateSensitiveContentDto {
 	@ApiPropertyOptional({

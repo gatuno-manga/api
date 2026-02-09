@@ -1,12 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Browser, BrowserContext, Page } from 'playwright';
 import { chromium as playwrightChromium } from 'playwright-extra';
-import type { Browser, BrowserContext, Page } from 'playwright';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-import { IBrowserFactory } from './browser.factory.interface';
 import {
 	BrowserConfig,
 	DEFAULT_BROWSER_CONFIG,
 } from './browser-config.interface';
+import { IBrowserFactory } from './browser.factory.interface';
 
 /**
  * Factory for creating Playwright browser instances with stealth mode.
@@ -34,19 +34,29 @@ export class PlaywrightBrowserFactory implements IBrowserFactory {
 	async launch(): Promise<Browser> {
 		const isDebug = this.config.debugMode;
 		const wsEndpoint = this.config.wsEndpoint;
-		
-		this.logger.log(`🚀 Preparando navegador (Debug: ${isDebug}, Remote: ${!!wsEndpoint})`);
+
+		this.logger.log(
+			`🚀 Preparando navegador (Debug: ${isDebug}, Remote: ${!!wsEndpoint})`,
+		);
 
 		// Se estamos em modo debug ou temos um endpoint, tentamos conexão remota primeiro
 		if (wsEndpoint) {
 			try {
-				this.logger.log(`Connecting to remote browser at ${wsEndpoint}...`);
+				this.logger.log(
+					`Connecting to remote browser at ${wsEndpoint}...`,
+				);
 				const { chromium } = await import('playwright');
-				return await chromium.connectOverCDP(wsEndpoint, { timeout: 15000 });
+				return await chromium.connectOverCDP(wsEndpoint, {
+					timeout: 15000,
+				});
 			} catch (error) {
-				this.logger.error(`❌ Failed to connect to remote browser: ${error.message}`);
+				this.logger.error(
+					`❌ Failed to connect to remote browser: ${error.message}`,
+				);
 				if (isDebug) {
-					this.logger.warn('⚠️  DEBUG MODE REQUIRES REMOTE BROWSER IN DOCKER!');
+					this.logger.warn(
+						'⚠️  DEBUG MODE REQUIRES REMOTE BROWSER IN DOCKER!',
+					);
 				}
 			}
 		}
@@ -141,9 +151,11 @@ export class PlaywrightBrowserFactory implements IBrowserFactory {
 						: originalQuery(parameters);
 
 				// Add chrome runtime
-
-				if (!(window as any).chrome) {
-					(window as any).chrome = {
+				const win = window as unknown as Window & {
+					chrome?: { runtime: Record<string, unknown> };
+				};
+				if (!win.chrome) {
+					win.chrome = {
 						runtime: {},
 					};
 				}

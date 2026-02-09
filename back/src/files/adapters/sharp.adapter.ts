@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import sharp from 'sharp';
-import { IImageCompressor } from '../interfaces/image-compressor.interface';
 import { IFileCompressor } from '../interfaces/file-compressor.interface';
+import { IImageCompressor } from '../interfaces/image-compressor.interface';
 
 @Injectable()
 export class SharpAdapter implements IImageCompressor, IFileCompressor {

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsString, ArrayMaxSize } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsString } from 'class-validator';
 
 export class DeleteBooksDto {
 	@ApiProperty({

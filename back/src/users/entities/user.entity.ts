@@ -2,10 +2,10 @@ import {
 	Column,
 	CreateDateColumn,
 	Entity,
+	JoinTable,
+	ManyToMany,
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
-	ManyToMany,
-	JoinTable,
 } from 'typeorm';
 import { Role } from './role.entity';
 

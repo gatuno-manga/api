@@ -1,8 +1,8 @@
 import { Logger } from '@nestjs/common';
-import { Book } from '../entitys/book.entity';
-import { Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Book } from '../entities/book.entity';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 
 export class BookInitEvents {

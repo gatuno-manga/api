@@ -1,22 +1,22 @@
 import { Module } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
-import { PasswordMigrationController } from './password-migration.controller';
-import { AppConfigModule } from 'src/app-config/app-config.module';
-import { EncryptionModule } from 'src/encryption/encryption.module';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from 'src/users/entitys/user.entity';
 import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { AppConfigModule } from 'src/app-config/app-config.module';
 import { AppConfigService } from 'src/app-config/app-config.service';
-import { JwtStrategy } from './strategy/jwt.strategy';
+import { DataEncryptionProvider } from 'src/encryption/data-encryption.provider';
+import { EncryptionModule } from 'src/encryption/encryption.module';
+import { Role } from 'src/users/entities/role.entity';
+import { User } from 'src/users/entities/user.entity';
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
+import { CreateAdminEvent } from './events/create-admin.event';
 import { JwtAuthGuard } from './guard/jwt-auth.guard';
 import { WsJwtGuard } from './guard/ws-jwt.guard';
-import { PassportModule } from '@nestjs/passport';
-import { DataEncryptionProvider } from 'src/encryption/data-encryption.provider';
-import { JwtRefreshStrategy } from './strategy/jwt-refresh.strategy';
-import { CreateAdminEvent } from './events/create-admin.event';
-import { Role } from 'src/users/entitys/role.entity';
+import { PasswordMigrationController } from './password-migration.controller';
 import { TokenStoreService } from './services/token-store.service';
+import { JwtRefreshStrategy } from './strategy/jwt-refresh.strategy';
+import { JwtStrategy } from './strategy/jwt.strategy';
 
 @Module({
 	imports: [

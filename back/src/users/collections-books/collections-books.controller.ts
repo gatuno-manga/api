@@ -8,18 +8,18 @@ import {
 	UseGuards,
 } from '@nestjs/common';
 import {
-	ApiTags,
-	ApiOperation,
-	ApiResponse,
 	ApiBearerAuth,
+	ApiOperation,
 	ApiParam,
+	ApiResponse,
+	ApiTags,
 } from '@nestjs/swagger';
+import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
+import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { CollectionsBooksService } from './collections-books.service';
-import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
-import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
-import { CreateCollectionBookDto } from './dto/create-collection-book.dto';
 import { AddBookCollectionDto } from './dto/add-book-collection.dto';
+import { CreateCollectionBookDto } from './dto/create-collection-book.dto';
 
 @ApiTags('Collections')
 @Controller('collections')

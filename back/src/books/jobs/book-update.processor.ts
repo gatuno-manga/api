@@ -1,13 +1,13 @@
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
-import { Job } from 'bullmq';
 import { Logger, OnModuleInit } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Book } from '../entitys/book.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Job } from 'bullmq';
 import { AppConfigService } from 'src/app-config/app-config.service';
-import { CoverImageService } from './cover-image.service';
+import { Repository } from 'typeorm';
+import { Book } from '../entities/book.entity';
 import { BookContentUpdateService } from '../services/book-content-update.service';
+import { CoverImageService } from './cover-image.service';
 
 const QUEUE_NAME = 'book-update-queue';
 
@@ -61,10 +61,7 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
 	}
 
 	@OnWorkerEvent('completed')
-	async onCompleted(
-		job: Job<BookUpdateJobData>,
-		result: BookUpdateResult,
-	) {
+	async onCompleted(job: Job<BookUpdateJobData>, result: BookUpdateResult) {
 		const book = await this.bookRepository.findOne({
 			where: { id: job.data.bookId },
 			select: ['id', 'title'],
@@ -100,7 +97,10 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
 				error: error.message,
 				timestamp: Date.now(),
 			});
-			this.logger.error(`Update failed for book: ${book.title}`, error.stack);
+			this.logger.error(
+				`Update failed for book: ${book.title}`,
+				error.stack,
+			);
 		}
 	}
 

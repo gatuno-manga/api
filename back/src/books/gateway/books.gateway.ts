@@ -1,21 +1,21 @@
-import {
-	WebSocketGateway,
-	WebSocketServer,
-	OnGatewayInit,
-	OnGatewayConnection,
-	OnGatewayDisconnect,
-	SubscribeMessage,
-	MessageBody,
-	ConnectedSocket,
-} from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
 import { Logger, UseGuards } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { Book } from '../entitys/book.entity';
-import { Chapter } from '../entitys/chapter.entity';
+import {
+	ConnectedSocket,
+	MessageBody,
+	OnGatewayConnection,
+	OnGatewayDisconnect,
+	OnGatewayInit,
+	SubscribeMessage,
+	WebSocketGateway,
+	WebSocketServer,
+} from '@nestjs/websockets';
+import { Server, Socket } from 'socket.io';
 import { WsJwtGuard } from '../../auth/guard/ws-jwt.guard';
 import { RolesEnum } from '../../users/enum/roles.enum';
 import { BookEvents } from '../constants/events.constant';
+import { Book } from '../entities/book.entity';
+import { Chapter } from '../entities/chapter.entity';
 
 /**
  * Gateway WebSocket para comunicação em tempo real de eventos de livros
@@ -34,7 +34,8 @@ import { BookEvents } from '../constants/events.constant';
 	transports: ['websocket', 'polling'],
 })
 export class BooksGateway
-	implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+	implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
 	@WebSocketServer()
 	server: Server;
 
@@ -93,26 +94,22 @@ export class BooksGateway
 	/**
 	 * Helper para broadcasting seguro de eventos
 	 */
-	private broadcast(rooms: string | string[], event: string, payload: any) {
+	private broadcast(
+		rooms: string | string[],
+		event: string,
+		payload: unknown,
+	) {
 		try {
 			const roomList = Array.isArray(rooms) ? rooms : [rooms];
 			this.logger.debug(
 				`Broadcasting ${event} to rooms: ${roomList.join(', ')}`,
 			);
-			
-			const emitter = this.server;
-			roomList.forEach(room => emitter.to(room));
-			emitter.emit(event, payload);
 
-			// Note: Socket.io chaining .to().to().emit() sends to all combined.
-			// Iterating and emitting might duplicate if not careful, but server.to(r1).to(r2).emit() works.
-			// Let's use the chain correctly.
-			let broadcastOperator: any = this.server;
-			for (const room of roomList) {
+			let broadcastOperator = this.server.to(roomList[0]);
+			for (const room of roomList.slice(1)) {
 				broadcastOperator = broadcastOperator.to(room);
 			}
 			broadcastOperator.emit(event, payload);
-
 		} catch (error) {
 			this.logger.error(`Failed to broadcast ${event}: ${error.message}`);
 		}
@@ -287,7 +284,7 @@ export class BooksGateway
 		if (!chapters || chapters.length === 0) return;
 
 		const bookId = chapters[0]?.book?.id;
-		
+
 		const chapterData = chapters.map((ch) => ({
 			id: ch.id,
 			title: ch.title,
@@ -296,23 +293,31 @@ export class BooksGateway
 		}));
 
 		// Envia para room do livro e admins
-		this.broadcast([`book:${bookId}`, 'admin'], BookEvents.CHAPTERS_UPDATED, {
-			bookId,
-			chapters: chapterData,
-		});
+		this.broadcast(
+			[`book:${bookId}`, 'admin'],
+			BookEvents.CHAPTERS_UPDATED,
+			{
+				bookId,
+				chapters: chapterData,
+			},
+		);
 
 		// Envia para rooms específicas de cada capítulo
-		chapters.forEach((chapter) => {
-			this.broadcast(`chapter:${chapter.id}`, BookEvents.CHAPTER_UPDATED, {
-				bookId,
-				chapter: {
-					id: chapter.id,
-					title: chapter.title,
-					index: chapter.index,
-					scrapingStatus: chapter.scrapingStatus,
+		for (const chapter of chapters) {
+			this.broadcast(
+				`chapter:${chapter.id}`,
+				BookEvents.CHAPTER_UPDATED,
+				{
+					bookId,
+					chapter: {
+						id: chapter.id,
+						title: chapter.title,
+						index: chapter.index,
+						scrapingStatus: chapter.scrapingStatus,
+					},
 				},
-			});
-		});
+			);
+		}
 	}
 
 	@OnEvent(BookEvents.CHAPTERS_FIX)
@@ -320,7 +325,7 @@ export class BooksGateway
 		if (!chapters || chapters.length === 0) return;
 
 		const bookId = chapters[0]?.book?.id;
-		
+
 		// Apenas admins recebem eventos de correção
 		this.broadcast('admin', BookEvents.CHAPTERS_FIX, {
 			bookId,
@@ -335,7 +340,7 @@ export class BooksGateway
 		this.broadcast(
 			[`book:${data.bookId}`, `chapter:${data.chapterId}`, 'admin'],
 			BookEvents.SCRAPING_STARTED,
-			data
+			data,
 		);
 	}
 
@@ -348,7 +353,7 @@ export class BooksGateway
 		this.broadcast(
 			[`book:${data.bookId}`, `chapter:${data.chapterId}`, 'admin'],
 			BookEvents.SCRAPING_COMPLETED,
-			data
+			data,
 		);
 	}
 
@@ -361,7 +366,7 @@ export class BooksGateway
 		this.broadcast(
 			[`book:${data.bookId}`, `chapter:${data.chapterId}`, 'admin'],
 			BookEvents.SCRAPING_FAILED,
-			data
+			data,
 		);
 	}
 
@@ -378,12 +383,20 @@ export class BooksGateway
 
 	@OnEvent(BookEvents.COVER_SELECTED)
 	handleCoverSelected(data: { bookId: string; coverId: string }) {
-		this.broadcast([`book:${data.bookId}`, 'admin'], BookEvents.COVER_SELECTED, data);
+		this.broadcast(
+			[`book:${data.bookId}`, 'admin'],
+			BookEvents.COVER_SELECTED,
+			data,
+		);
 	}
 
 	@OnEvent(BookEvents.COVER_UPDATED)
 	handleCoverUpdated(data: { bookId: string; coverId: string }) {
-		this.broadcast([`book:${data.bookId}`, 'admin'], BookEvents.COVER_UPDATED, data);
+		this.broadcast(
+			[`book:${data.bookId}`, 'admin'],
+			BookEvents.COVER_UPDATED,
+			data,
+		);
 	}
 
 	@OnEvent(BookEvents.COVER_UPLOADED)
@@ -392,7 +405,11 @@ export class BooksGateway
 		coverId: string;
 		url: string;
 	}) {
-		this.broadcast([`book:${data.bookId}`, 'admin'], BookEvents.COVER_UPLOADED, data);
+		this.broadcast(
+			[`book:${data.bookId}`, 'admin'],
+			BookEvents.COVER_UPLOADED,
+			data,
+		);
 	}
 
 	@OnEvent(BookEvents.COVERS_UPLOADED)
@@ -401,7 +418,11 @@ export class BooksGateway
 		coverIds: string[];
 		count: number;
 	}) {
-		this.broadcast([`book:${data.bookId}`, 'admin'], BookEvents.COVERS_UPLOADED, data);
+		this.broadcast(
+			[`book:${data.bookId}`, 'admin'],
+			BookEvents.COVERS_UPLOADED,
+			data,
+		);
 	}
 
 	// ==================== EVENTOS DE CAPÍTULOS CRIADOS/UPLOAD ====================
@@ -409,7 +430,7 @@ export class BooksGateway
 	@OnEvent(BookEvents.CHAPTER_CREATED)
 	handleChapterCreated(chapter: Chapter) {
 		const bookId = chapter.book?.id;
-		
+
 		const chapterData = {
 			id: chapter.id,
 			title: chapter.title,
@@ -418,7 +439,11 @@ export class BooksGateway
 			bookId,
 		};
 
-		this.broadcast([`book:${bookId}`, 'admin'], BookEvents.CHAPTER_CREATED, chapterData);
+		this.broadcast(
+			[`book:${bookId}`, 'admin'],
+			BookEvents.CHAPTER_CREATED,
+			chapterData,
+		);
 	}
 
 	@OnEvent(BookEvents.PAGES_UPLOADED)
@@ -430,7 +455,7 @@ export class BooksGateway
 		this.broadcast(
 			[`book:${data.bookId}`, `chapter:${data.chapterId}`, 'admin'],
 			BookEvents.PAGES_UPLOADED,
-			data
+			data,
 		);
 	}
 
@@ -448,7 +473,11 @@ export class BooksGateway
 			title: data.bookTitle,
 			filesCount: data.covers.length + data.pages.length,
 		};
-		this.broadcast(['admin', `book:${data.bookId}`], BookEvents.DELETED, eventData);
+		this.broadcast(
+			['admin', `book:${data.bookId}`],
+			BookEvents.DELETED,
+			eventData,
+		);
 	}
 
 	@OnEvent(BookEvents.CHAPTER_DELETED)
@@ -462,7 +491,7 @@ export class BooksGateway
 			bookId: data.bookId,
 			pagesCount: data.pages.length,
 		};
-		
+
 		const rooms = ['admin', `chapter:${data.chapterId}`];
 		if (data.bookId) {
 			rooms.push(`book:${data.bookId}`);
@@ -498,7 +527,11 @@ export class BooksGateway
 			pageId: data.pageId,
 			chapterId: data.chapterId,
 		};
-		this.broadcast([`chapter:${data.chapterId}`, 'admin'], BookEvents.PAGE_DELETED, eventData);
+		this.broadcast(
+			[`chapter:${data.chapterId}`, 'admin'],
+			BookEvents.PAGE_DELETED,
+			eventData,
+		);
 	}
 
 	@OnEvent(BookEvents.NEW_CHAPTERS)
@@ -512,7 +545,11 @@ export class BooksGateway
 			newChaptersCount: data.newChaptersCount,
 			chapters: data.chapters,
 		};
-		this.broadcast([`book:${data.bookId}`, 'admin'], BookEvents.NEW_CHAPTERS, eventData);
+		this.broadcast(
+			[`book:${data.bookId}`, 'admin'],
+			BookEvents.NEW_CHAPTERS,
+			eventData,
+		);
 	}
 
 	@OnEvent(BookEvents.UPDATE_STARTED)

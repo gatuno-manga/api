@@ -1,10 +1,16 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { FilesService } from './files.service';
+import * as fs from 'node:fs/promises';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { FileCompressorFactory } from './factories/file-compressor.factory';
-import * as fs from 'fs/promises';
+import { FilesService } from './files.service';
 
 // Mock do fs
-jest.mock('fs/promises');
+jest.mock('node:fs/promises', () => ({
+	writeFile: jest.fn(),
+	mkdir: jest.fn(),
+	unlink: jest.fn(),
+	stat: jest.fn(),
+	readFile: jest.fn(),
+}));
 
 describe('FilesService', () => {
 	let service: FilesService;

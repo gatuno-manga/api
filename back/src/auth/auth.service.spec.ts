@@ -1,15 +1,15 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { AuthService } from './auth.service';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { User } from '../users/entitys/user.entity';
-import { Role } from '../users/entitys/role.entity';
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { AppConfigService } from '../app-config/app-config.service';
+import { DataEncryptionProvider } from '../encryption/data-encryption.provider';
 import { PasswordEncryption } from '../encryption/password-encryption.provider';
 import { PasswordMigrationService } from '../encryption/password-migration.service';
-import { DataEncryptionProvider } from '../encryption/data-encryption.provider';
-import { AppConfigService } from '../app-config/app-config.service';
+import { Role } from '../users/entities/role.entity';
+import { User } from '../users/entities/user.entity';
+import { AuthService } from './auth.service';
 import { TokenStoreService } from './services/token-store.service';
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 
 describe('AuthService', () => {
 	let service: AuthService;
@@ -135,7 +135,7 @@ describe('AuthService', () => {
 	});
 
 	it('should have logger initialized', () => {
-		expect(service['logger']).toBeDefined();
+		expect(service.logger).toBeDefined();
 	});
 
 	describe('getAlgorithm', () => {
@@ -440,7 +440,7 @@ describe('AuthService', () => {
 
 			expect(result).toHaveProperty('accessToken');
 			expect(result).toHaveProperty('refreshToken');
-			expect(tokenStore.saveTokens).toHaveBeenCalled();
+			expect(tokenStore.addToken).toHaveBeenCalled();
 		});
 
 		it('should throw UnauthorizedException if no refresh token provided', async () => {
@@ -516,8 +516,8 @@ describe('AuthService', () => {
 
 			await service.refreshTokens(userId, 'old_refresh');
 
-			const calls = tokenStore.saveTokens.mock.calls;
-			expect(calls[0][1]).toHaveLength(2); // Removed 1, added 1
+			const calls = tokenStore.addToken.mock.calls;
+			expect(calls[0][2]).toHaveLength(1); // One token remains after removing the old one
 		});
 	});
 });

@@ -1,6 +1,6 @@
 import { Controller, Get, Logger } from '@nestjs/common';
-import { PasswordMigrationService } from 'src/encryption/password-migration.service';
 import { PasswordEncryption } from 'src/encryption/password-encryption.provider';
+import { PasswordMigrationService } from 'src/encryption/password-migration.service';
 
 @Controller('auth/password-migration')
 export class PasswordMigrationController {

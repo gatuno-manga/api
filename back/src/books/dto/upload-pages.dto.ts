@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsNumber, ArrayMinSize, ArrayMaxSize } from 'class-validator';
 import { Type } from 'class-transformer';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsNumber } from 'class-validator';
 
 export class UploadPagesDto {
 	@ApiProperty({

@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Book } from '../books/entitys/book.entity';
-import { Chapter } from '../books/entitys/chapter.entity';
-import { User } from '../users/entitys/user.entity';
-import { Page } from '../books/entitys/page.entity';
-import { Tag } from '../books/entitys/tags.entity';
-import { Author } from '../books/entitys/author.entity';
-import { SensitiveContent } from '../books/entitys/sensitive-content.entity';
+import { Author } from '../books/entities/author.entity';
+import { Book } from '../books/entities/book.entity';
+import { Chapter } from '../books/entities/chapter.entity';
+import { Page } from '../books/entities/page.entity';
+import { SensitiveContent } from '../books/entities/sensitive-content.entity';
+import { Tag } from '../books/entities/tags.entity';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class DashboardService {
@@ -89,20 +89,20 @@ export class DashboardService {
 			status: {
 				books: booksByStatus.map((item) => ({
 					status: item.status || 'UNKNOWN',
-					count: parseInt(item.count),
+					count: Number.parseInt(item.count),
 				})),
 				chapters: chaptersByStatus.map((item) => ({
 					status: item.status || 'UNKNOWN',
-					count: parseInt(item.count),
+					count: Number.parseInt(item.count),
 				})),
 			},
 			sensitiveContent: sensitiveContentDistribution.map((item) => ({
 				name: item.name,
-				count: parseInt(item.count),
+				count: Number.parseInt(item.count),
 			})),
 			tags: tagsDistribution.map((item) => ({
 				name: item.name,
-				count: parseInt(item.count),
+				count: Number.parseInt(item.count),
 			})),
 		};
 	}

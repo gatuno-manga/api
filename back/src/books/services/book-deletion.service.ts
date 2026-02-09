@@ -1,16 +1,16 @@
 import {
+	BadRequestException,
 	Injectable,
 	Logger,
 	NotFoundException,
-	BadRequestException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
-import { Book } from '../entitys/book.entity';
-import { Chapter } from '../entitys/chapter.entity';
-import { Cover } from '../entitys/cover.entity';
-import { Page } from '../entitys/page.entity';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { InjectRepository } from '@nestjs/typeorm';
+import { In, Repository } from 'typeorm';
+import { Book } from '../entities/book.entity';
+import { Chapter } from '../entities/chapter.entity';
+import { Cover } from '../entities/cover.entity';
+import { Page } from '../entities/page.entity';
 
 export interface DeletionResult {
 	deletedBooks?: number;
@@ -367,7 +367,17 @@ export class BookDeletionService {
 		this.logger.log(`${pagesToDelete.length} pages deleted successfully`);
 	}
 
-	async listDeletedBooks(): Promise<any[]> {
+	async listDeletedBooks(): Promise<
+		{
+			id: string;
+			title: string;
+			deletedAt: Date;
+			chaptersCount: number;
+			pagesCount: number;
+			coversCount: number;
+			totalFiles: number;
+		}[]
+	> {
 		const books = await this.bookRepository.find({
 			where: {},
 			withDeleted: true,
@@ -399,7 +409,16 @@ export class BookDeletionService {
 			});
 	}
 
-	async listDeletedChapters(): Promise<any[]> {
+	async listDeletedChapters(): Promise<
+		{
+			id: string;
+			title: string;
+			bookId: string | undefined;
+			bookTitle: string | undefined;
+			deletedAt: Date;
+			pagesCount: number;
+		}[]
+	> {
 		const chapters = await this.chapterRepository.find({
 			where: {},
 			withDeleted: true,
@@ -424,7 +443,16 @@ export class BookDeletionService {
 			});
 	}
 
-	async listDeletedCovers(): Promise<any[]> {
+	async listDeletedCovers(): Promise<
+		{
+			id: string;
+			title: string;
+			url: string;
+			bookId: string | undefined;
+			bookTitle: string | undefined;
+			deletedAt: Date;
+		}[]
+	> {
 		const covers = await this.coverRepository.find({
 			where: {},
 			withDeleted: true,
@@ -443,7 +471,18 @@ export class BookDeletionService {
 			}));
 	}
 
-	async listDeletedPages(): Promise<any[]> {
+	async listDeletedPages(): Promise<
+		{
+			id: number;
+			index: number;
+			path: string;
+			chapterId: string | undefined;
+			chapterTitle: string | undefined;
+			bookId: string | undefined;
+			bookTitle: string | undefined;
+			deletedAt: Date;
+		}[]
+	> {
 		const pages = await this.pageRepository.find({
 			where: {},
 			withDeleted: true,

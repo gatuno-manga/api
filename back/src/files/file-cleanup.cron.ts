@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { FileCleanupService } from './file-cleanup.service';
-import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class FileCleanupCron {
@@ -66,8 +66,7 @@ export class FileCleanupCron {
 
 			if (orphanFiles.length > 0) {
 				this.logger.warn(
-					`Found ${orphanFiles.length} orphan files. ` +
-						`Run cleanup endpoint to remove them.`,
+					`Found ${orphanFiles.length} orphan files. Run cleanup endpoint to remove them.`,
 				);
 			}
 		} catch (error) {

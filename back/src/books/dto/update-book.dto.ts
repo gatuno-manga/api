@@ -1,20 +1,19 @@
-import { CreateBookDto } from './create-book.dto';
-import { OmitType, PartialType } from '@nestjs/mapped-types';
+import { ApiPropertyOptional, OmitType, PartialType } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
+	IsEnum,
 	IsOptional,
 	IsString,
-	ValidateNested,
-	IsEnum,
 	IsUrl,
+	ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { NormalizeUrl } from '../../common/decorators/normalize-url.decorator';
 import { BookType } from '../enum/book-type.enum';
 import { CreateAuthorDto } from './create-author.dto';
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { NormalizeUrl } from '../../common/decorators/normalize-url.decorator';
+import { CreateBookDto } from './create-book.dto';
 
 export class UpdateBookDto extends PartialType(
-	OmitType(CreateBookDto, ['chapters', 'validator'] as const),
+	OmitType(CreateBookDto, ['chapters', 'ignoreConflict'] as const),
 ) {
 	@ApiPropertyOptional({
 		description: 'Alternative titles for the book',

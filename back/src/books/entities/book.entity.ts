@@ -1,25 +1,25 @@
 import {
+	Check,
 	Column,
 	CreateDateColumn,
+	DeleteDateColumn,
 	Entity,
+	Index,
 	JoinTable,
 	ManyToMany,
 	OneToMany,
 	PrimaryGeneratedColumn,
 	Relation,
 	UpdateDateColumn,
-	DeleteDateColumn,
-	Index,
-	Check,
 } from 'typeorm';
-import { Chapter } from './chapter.entity';
-import { ScrapingStatus } from '../enum/scrapingStatus.enum';
-import { Tag } from './tags.entity';
 import { BookType } from '../enum/book-type.enum';
-import { Author } from './author.entity';
-import { SensitiveContent } from './sensitive-content.entity';
-import { Cover } from './cover.entity';
 import { ExportFormat } from '../enum/export-format.enum';
+import { ScrapingStatus } from '../enum/scrapingStatus.enum';
+import { Author } from './author.entity';
+import { Chapter } from './chapter.entity';
+import { Cover } from './cover.entity';
+import { SensitiveContent } from './sensitive-content.entity';
+import { Tag } from './tags.entity';
 
 @Entity('books')
 @Index(['title'])
@@ -37,7 +37,11 @@ export class Book {
 	@Column({ length: 500 })
 	title: string;
 
-	@OneToMany(() => Cover, (cover) => cover.book, { cascade: true })
+	@OneToMany(
+		() => Cover,
+		(cover) => cover.book,
+		{ cascade: true },
+	)
 	covers: Relation<Cover[]>;
 
 	@Column({
@@ -99,18 +103,26 @@ export class Book {
 	})
 	availableFormats: ExportFormat[];
 
-	@OneToMany(() => Chapter, (chapter) => chapter.book, {
-		cascade: true,
-	})
+	@OneToMany(
+		() => Chapter,
+		(chapter) => chapter.book,
+		{
+			cascade: true,
+		},
+	)
 	chapters: Relation<Chapter[]>;
 
 	@ManyToMany(() => Tag)
 	@JoinTable()
 	tags: Relation<Tag[]>;
 
-	@ManyToMany(() => Author, (author) => author.books, {
-		cascade: true,
-	})
+	@ManyToMany(
+		() => Author,
+		(author) => author.books,
+		{
+			cascade: true,
+		},
+	)
 	@JoinTable()
 	authors: Relation<Author[]>;
 

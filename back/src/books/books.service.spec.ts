@@ -1,15 +1,15 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { BooksService } from './books.service';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Book } from './entitys/book.entity';
-import { Tag } from './entitys/tags.entity';
-import { Author } from './entitys/author.entity';
-import { SensitiveContent } from './entitys/sensitive-content.entity';
+import { BooksService } from './books.service';
+import { Author } from './entities/author.entity';
+import { Book } from './entities/book.entity';
+import { SensitiveContent } from './entities/sensitive-content.entity';
+import { Tag } from './entities/tags.entity';
 import { BookCreationService } from './services/book-creation.service';
-import { BookUpdateService } from './services/book-update.service';
 import { BookQueryService } from './services/book-query.service';
-import { ChapterManagementService } from './services/chapter-management.service';
 import { BookRelationshipService } from './services/book-relationship.service';
+import { BookUpdateService } from './services/book-update.service';
+import { ChapterManagementService } from './services/chapter-management.service';
 
 describe('BooksService', () => {
 	let service: BooksService;
@@ -93,7 +93,12 @@ describe('BooksService', () => {
 					provide: 'BullQueue_book-update-queue',
 					useValue: {
 						add: jest.fn(),
-						getJobCounts: jest.fn().mockResolvedValue({ waiting: 0, active: 0, completed: 0, failed: 0 }),
+						getJobCounts: jest.fn().mockResolvedValue({
+							waiting: 0,
+							active: 0,
+							completed: 0,
+							failed: 0,
+						}),
 						getActive: jest.fn().mockResolvedValue([]),
 						getWaiting: jest.fn().mockResolvedValue([]),
 					},
@@ -129,12 +134,12 @@ describe('BooksService', () => {
 	});
 
 	it('should have logger initialized', () => {
-		expect(service['logger']).toBeDefined();
+		expect(service.logger).toBeDefined();
 	});
 
 	it('should have filter strategies initialized', () => {
-		expect(service['filterStrategies']).toBeDefined();
-		expect(service['filterStrategies'].length).toBeGreaterThan(0);
+		expect(service.filterStrategies).toBeDefined();
+		expect(service.filterStrategies.length).toBeGreaterThan(0);
 	});
 
 	describe('createBook', () => {

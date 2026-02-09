@@ -1,0 +1,34 @@
+# Dependências
+node_modules/
+.npm/
+
+# Builds e Saídas
+dist/
+build/
+.angular/
+.next/
+out/
+coverage/
+
+# Arquivos de Sistema e IDEs
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.log
+
+# Banco de Dados e Backups
+backups/
+database/master/
+database/slave/
+
+# Arquivos de Configuração de Travamento
+package-lock.json
+
+# Binários e arquivos grandes
+*.pdf
+*.zip
+*.tar.gz
+
+# Pasta temporária do projeto
+.gemini/

@@ -1,5 +1,5 @@
+import { User } from 'src/users/entities/user.entity';
 import { JwtPayloadDto } from '../dto/jwt-payload.dto';
-import { User } from 'src/users/entitys/user.entity';
 
 export class JwtPayloadBuilder {
 	private payload: Partial<JwtPayloadDto> = {};
@@ -67,12 +67,12 @@ export class JwtPayloadBuilder {
 		return this;
 	}
 
-	setCustomClaims(customClaims: Record<string, any>): this {
+	setCustomClaims(customClaims: Record<string, unknown>): this {
 		this.payload.customClaims = customClaims;
 		return this;
 	}
 
-	addCustomClaim(key: string, value: any): this {
+	addCustomClaim(key: string, value: unknown): this {
 		if (!this.payload.customClaims) {
 			this.payload.customClaims = {};
 		}

@@ -1,24 +1,24 @@
 import {
-	Controller,
-	Get,
-	Post,
-	Delete,
 	Body,
+	Controller,
+	Delete,
+	Get,
 	Param,
-	UseGuards,
 	ParseUUIDPipe,
+	Post,
+	UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
-import { ReadingProgressService } from './reading-progress.service';
+import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import {
+	BulkReadingProgressDto,
+	ReadingProgressResponseDto,
 	SaveReadingProgressDto,
 	SyncReadingProgressDto,
-	ReadingProgressResponseDto,
 	SyncResponseDto,
-	BulkReadingProgressDto,
 } from './dto/reading-progress.dto';
+import { ReadingProgressService } from './reading-progress.service';
 
 @Controller('reading-progress')
 @UseGuards(JwtAuthGuard)

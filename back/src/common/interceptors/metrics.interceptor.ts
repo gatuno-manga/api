@@ -1,13 +1,13 @@
 import {
+	CallHandler,
+	ExecutionContext,
 	Injectable,
 	NestInterceptor,
-	ExecutionContext,
-	CallHandler,
 } from '@nestjs/common';
-import { Observable, throwError } from 'rxjs';
-import { tap, catchError } from 'rxjs/operators';
 import { InjectMetric } from '@willsoto/nestjs-prometheus';
 import { Counter, Histogram } from 'prom-client';
+import { Observable, throwError } from 'rxjs';
+import { catchError, tap } from 'rxjs/operators';
 
 @Injectable()
 export class MetricsInterceptor implements NestInterceptor {
@@ -22,7 +22,10 @@ export class MetricsInterceptor implements NestInterceptor {
 		private readonly responseSize: Histogram,
 	) {}
 
-	intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+	intercept(
+		context: ExecutionContext,
+		next: CallHandler,
+	): Observable<unknown> {
 		const httpContext = context.switchToHttp();
 		const request = httpContext.getRequest();
 		const response = httpContext.getResponse();

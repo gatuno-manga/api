@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import type { Page } from 'playwright';
+import { Page } from 'playwright';
 import { ComplexityMultipliers } from './page-complexity-detector';
 
 /**
@@ -127,7 +127,7 @@ export class PageScroller {
 					img: HTMLImageElement,
 					resolve: () => void,
 				): void {
-					const retryCount = parseInt(
+					const retryCount = Number.parseInt(
 						img.dataset.retryCount || '0',
 						10,
 					);
@@ -185,13 +185,13 @@ export class PageScroller {
 											element as HTMLImageElement,
 										);
 									}
-									element
-										.querySelectorAll(config.imageSelector)
-										.forEach((img) =>
-											processNewImageNode(
-												img as HTMLImageElement,
-											),
+									for (const img of element.querySelectorAll(
+										config.imageSelector,
+									)) {
+										processNewImageNode(
+											img as HTMLImageElement,
 										);
+									}
 								}
 							}
 						} else if (
@@ -214,11 +214,11 @@ export class PageScroller {
 				});
 
 				// Process existing images
-				document
-					.querySelectorAll(config.imageSelector)
-					.forEach((img) =>
-						processNewImageNode(img as HTMLImageElement),
-					);
+				for (const img of document.querySelectorAll(
+					config.imageSelector,
+				)) {
+					processNewImageNode(img as HTMLImageElement);
+				}
 
 				// First, scroll to top to ensure cover/header images load
 				window.scrollTo(0, 0);

@@ -101,7 +101,9 @@ export class FileCompressorFactory {
 			if (compressor.getSupportedExtensions) {
 				const compressorExtensions =
 					compressor.getSupportedExtensions();
-				compressorExtensions.forEach((ext) => extensions.add(ext));
+				for (const ext of compressorExtensions) {
+					extensions.add(ext);
+				}
 			}
 		}
 

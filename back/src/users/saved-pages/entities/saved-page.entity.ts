@@ -1,3 +1,6 @@
+import { Book } from 'src/books/entities/book.entity';
+import { Chapter } from 'src/books/entities/chapter.entity';
+import { Page } from 'src/books/entities/page.entity';
 import {
 	Column,
 	CreateDateColumn,
@@ -8,10 +11,7 @@ import {
 	Unique,
 	UpdateDateColumn,
 } from 'typeorm';
-import { User } from '../../entitys/user.entity';
-import { Page } from 'src/books/entitys/page.entity';
-import { Chapter } from 'src/books/entitys/chapter.entity';
-import { Book } from 'src/books/entitys/book.entity';
+import { User } from '../../entities/user.entity';
 
 /**
  * Entity para páginas salvas/favoritas do usuário.

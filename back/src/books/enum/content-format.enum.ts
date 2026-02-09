@@ -3,7 +3,7 @@
  * Usado quando ContentType = TEXT
  */
 export enum ContentFormat {
-    MARKDOWN = 'markdown',
-    HTML = 'html',
-    PLAIN = 'plain',
+	MARKDOWN = 'markdown',
+	HTML = 'html',
+	PLAIN = 'plain',
 }

@@ -1,12 +1,12 @@
 import {
 	Column,
+	DeleteDateColumn,
 	Entity,
 	JoinColumn,
 	ManyToOne,
 	PrimaryGeneratedColumn,
 	Relation,
 	Unique,
-	DeleteDateColumn,
 } from 'typeorm';
 import { Chapter } from './chapter.entity';
 

@@ -1,6 +1,6 @@
 import { SelectQueryBuilder } from 'typeorm';
-import { Book } from '../entitys/book.entity';
 import { BookPageOptionsDto } from '../dto/book-page-options.dto';
+import { Book } from '../entities/book.entity';
 import { BaseManyToManyFilterStrategy } from './base-many-to-many-filter.strategy';
 
 export class TagsFilterStrategy extends BaseManyToManyFilterStrategy {
@@ -17,6 +17,7 @@ export class TagsFilterStrategy extends BaseManyToManyFilterStrategy {
 		options: BookPageOptionsDto,
 	): void {
 		const logic = options.tagsLogic || 'and';
-		this.applyLogic(queryBuilder, options.tags!, logic, false);
+		const tags = options.tags ?? [];
+		this.applyLogic(queryBuilder, tags, logic, false);
 	}
 }

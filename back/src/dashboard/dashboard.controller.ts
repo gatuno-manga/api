@@ -1,9 +1,9 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
-import { DashboardService } from './dashboard.service';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../auth/decorator/roles.decorator';
+import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
 import { RolesEnum } from '../users/enum/roles.enum';
+import { DashboardService } from './dashboard.service';
 
 @ApiTags('Dashboard')
 @Controller('dashboard')

@@ -1,11 +1,11 @@
 import {
 	Column,
+	DeleteDateColumn,
 	Entity,
+	Index,
 	ManyToOne,
 	PrimaryGeneratedColumn,
 	Relation,
-	DeleteDateColumn,
-	Index,
 } from 'typeorm';
 import { Book } from './book.entity';
 
@@ -33,7 +33,11 @@ export class Cover {
 	@Column({ default: false })
 	selected: boolean;
 
-	@ManyToOne(() => Book, (book) => book.covers, { onDelete: 'CASCADE' })
+	@ManyToOne(
+		() => Book,
+		(book) => book.covers,
+		{ onDelete: 'CASCADE' },
+	)
 	book: Relation<Book>;
 
 	@DeleteDateColumn()

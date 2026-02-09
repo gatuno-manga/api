@@ -10,19 +10,19 @@ import {
 	UseGuards,
 } from '@nestjs/common';
 import {
-	ApiTags,
-	ApiOperation,
-	ApiResponse,
 	ApiBearerAuth,
+	ApiOperation,
 	ApiParam,
+	ApiResponse,
+	ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { Roles } from 'src/auth/decorator/roles.decorator';
+import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { RolesEnum } from 'src/users/enum/roles.enum';
 import { RegisterWebSiteDto } from './dto/register-website.dto';
-import { WebsiteService } from './website.service';
 import { UpdateWebsiteDto } from './dto/update-website.dto';
+import { WebsiteService } from './website.service';
 
 @ApiTags('Website Scraping')
 @Controller('website')

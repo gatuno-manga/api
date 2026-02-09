@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { User } from 'src/users/entities/user.entity';
 import { Repository } from 'typeorm';
-import { User } from 'src/users/entitys/user.entity';
 import { PasswordEncryption } from './password-encryption.provider';
 
 @Injectable()

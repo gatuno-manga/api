@@ -1,14 +1,14 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Book } from '../entitys/book.entity';
-import { Chapter } from '../entitys/chapter.entity';
+import { BookEvents } from '../constants/events.constant';
 import { CreateBookDto } from '../dto/create-book.dto';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Book } from '../entities/book.entity';
+import { Chapter } from '../entities/chapter.entity';
 import { CoverImageService } from '../jobs/cover-image.service';
 import { BookRelationshipService } from './book-relationship.service';
 import { ChapterManagementService } from './chapter-management.service';
-import { BookEvents } from '../constants/events.constant';
 
 /**
  * Service responsável pela criação de livros
@@ -35,11 +35,9 @@ export class BookCreationService {
 			dto.alternativeTitle || [],
 		);
 
-		if (conflictCheck.conflict && !dto.validator) {
+		if (conflictCheck.conflict && !dto.ignoreConflict) {
 			throw new BadRequestException({
-				message:
-					`Já existe um livro com o título "${dto.title}" ou com um dos títulos alternativos. ` +
-					`Se deseja cadastrar mesmo assim, defina o campo 'validator' como true.`,
+				message: `Já existe um livro com o título "${dto.title}" ou com um dos títulos alternativos. Se deseja cadastrar mesmo assim, defina o campo 'validator' como true.`,
 				conflictingBook: conflictCheck.existingBook,
 			});
 		}
@@ -91,11 +89,7 @@ export class BookCreationService {
 					book.chapters = chapters;
 				}
 
-				if (
-					dto.cover &&
-					dto.cover.urlImgs &&
-					dto.cover.urlImgs.length > 0
-				) {
+				if (dto.cover?.urlImgs && dto.cover.urlImgs.length > 0) {
 					await this.coverImageService.addCoverToQueue(
 						book.id,
 						dto.cover.urlOrigin,

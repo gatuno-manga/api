@@ -1,18 +1,32 @@
-import { Book } from '../entitys/book.entity';
-import { Chapter } from '../entitys/chapter.entity';
-import { Tag } from '../entitys/tags.entity';
-import { Author } from '../entitys/author.entity';
-import { SensitiveContent } from '../entitys/sensitive-content.entity';
-import { Cover } from '../entitys/cover.entity';
+import { Author } from '../entities/author.entity';
+import { Book } from '../entities/book.entity';
+import { Chapter } from '../entities/chapter.entity';
+import { Cover } from '../entities/cover.entity';
+import { SensitiveContent } from '../entities/sensitive-content.entity';
+import { Tag } from '../entities/tags.entity';
 import { BookType } from '../enum/book-type.enum';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
+
+/**
+ * Tipo auxiliar para o builder que substitui os wrappers Relation<T>
+ * por tipos diretos, evitando casts desnecessários
+ */
+type BookBuilderData = Omit<
+	Partial<Book>,
+	'tags' | 'authors' | 'chapters' | 'covers'
+> & {
+	tags?: Tag[];
+	authors?: Author[];
+	chapters?: Chapter[];
+	covers?: Cover[];
+};
 
 /**
  * Builder Pattern para construção fluente de entidades Book
  * Reduz complexidade e melhora legibilidade na criação de livros
  */
 export class BookBuilder {
-	private book: Partial<Book>;
+	private book: BookBuilderData;
 
 	constructor() {
 		this.book = {
@@ -125,7 +139,7 @@ export class BookBuilder {
 	 * Define as tags do livro
 	 */
 	withTags(tags: Tag[]): this {
-		this.book.tags = tags as any;
+		this.book.tags = tags;
 		return this;
 	}
 
@@ -134,9 +148,9 @@ export class BookBuilder {
 	 */
 	addTag(tag: Tag): this {
 		if (!this.book.tags) {
-			this.book.tags = [] as any;
+			this.book.tags = [];
 		}
-		(this.book.tags as Tag[]).push(tag);
+		this.book.tags.push(tag);
 		return this;
 	}
 
@@ -144,7 +158,7 @@ export class BookBuilder {
 	 * Define os autores do livro
 	 */
 	withAuthors(authors: Author[]): this {
-		this.book.authors = authors as any;
+		this.book.authors = authors;
 		return this;
 	}
 
@@ -153,9 +167,9 @@ export class BookBuilder {
 	 */
 	addAuthor(author: Author): this {
 		if (!this.book.authors) {
-			this.book.authors = [] as any;
+			this.book.authors = [];
 		}
-		(this.book.authors as Author[]).push(author);
+		this.book.authors.push(author);
 		return this;
 	}
 
@@ -182,7 +196,7 @@ export class BookBuilder {
 	 * Define os capítulos
 	 */
 	withChapters(chapters: Chapter[]): this {
-		this.book.chapters = chapters as any;
+		this.book.chapters = chapters;
 		return this;
 	}
 
@@ -191,9 +205,9 @@ export class BookBuilder {
 	 */
 	addChapter(chapter: Chapter): this {
 		if (!this.book.chapters) {
-			this.book.chapters = [] as any;
+			this.book.chapters = [];
 		}
-		(this.book.chapters as Chapter[]).push(chapter);
+		this.book.chapters.push(chapter);
 		return this;
 	}
 
@@ -201,7 +215,7 @@ export class BookBuilder {
 	 * Define as capas
 	 */
 	withCovers(covers: Cover[]): this {
-		this.book.covers = covers as any;
+		this.book.covers = covers;
 		return this;
 	}
 
@@ -210,9 +224,9 @@ export class BookBuilder {
 	 */
 	addCover(cover: Cover): this {
 		if (!this.book.covers) {
-			this.book.covers = [] as any;
+			this.book.covers = [];
 		}
-		(this.book.covers as Cover[]).push(cover);
+		this.book.covers.push(cover);
 		return this;
 	}
 
@@ -261,7 +275,7 @@ export class BookBuilder {
 	 */
 	static fromExisting(book: Book): BookBuilder {
 		const builder = new BookBuilder();
-		builder.book = { ...book };
+		builder.book = { ...book } as BookBuilderData;
 		return builder;
 	}
 }

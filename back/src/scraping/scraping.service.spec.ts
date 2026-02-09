@@ -1,10 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ScrapingService } from './scraping.service';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { AppConfigService } from '../app-config/app-config.service';
 import { FilesService } from '../files/files.service';
-import { WebsiteService } from './website.service';
-import { PlaywrightBrowserFactory } from './browser';
 import { REDIS_CLIENT } from '../redis/redis.constants';
+import { PlaywrightBrowserFactory } from './browser';
+import { ScrapingService } from './scraping.service';
+import { WebsiteService } from './website.service';
 
 // Mock playwright
 jest.mock('playwright-extra', () => ({
@@ -121,18 +121,16 @@ describe('ScrapingService', () => {
 	});
 
 	it('should have logger initialized', () => {
-		expect(service['logger']).toBeDefined();
+		expect(service.logger).toBeDefined();
 	});
 
 	it('should have browser factory initialized', () => {
-		expect(service['browserFactory']).toBeDefined();
-		expect(service['browserFactory']).toBeInstanceOf(
-			PlaywrightBrowserFactory,
-		);
+		expect(service.browserFactory).toBeDefined();
+		expect(service.browserFactory).toBeInstanceOf(PlaywrightBrowserFactory);
 	});
 
 	it('should have concurrency manager initialized', () => {
-		expect(service['concurrencyManager']).toBeDefined();
+		expect(service.concurrencyManager).toBeDefined();
 	});
 
 	describe('setConcurrencyManager', () => {
@@ -143,7 +141,7 @@ describe('ScrapingService', () => {
 			};
 
 			service.setConcurrencyManager(mockManager);
-			expect(service['concurrencyManager']).toBe(mockManager);
+			expect(service.concurrencyManager).toBe(mockManager);
 		});
 	});
 
@@ -154,7 +152,7 @@ describe('ScrapingService', () => {
 			});
 
 			service.setBrowserFactory(mockFactory);
-			expect(service['browserFactory']).toBe(mockFactory);
+			expect(service.browserFactory).toBe(mockFactory);
 		});
 	});
 
@@ -162,7 +160,7 @@ describe('ScrapingService', () => {
 		it('should return default config when website not found', async () => {
 			mockWebsiteService.getByUrl.mockResolvedValue(null);
 
-			const config = await service['getWebsiteConfig'](
+			const config = await service.getWebsiteConfig(
 				'https://example.com',
 			);
 
@@ -198,7 +196,7 @@ describe('ScrapingService', () => {
 				useScreenshotMode: false,
 			});
 
-			const config = await service['getWebsiteConfig'](
+			const config = await service.getWebsiteConfig(
 				'https://example.com',
 			);
 
@@ -230,7 +228,7 @@ describe('ScrapingService', () => {
 				whitelistTerms: null,
 			});
 
-			const config = await service['getWebsiteConfig'](
+			const config = await service.getWebsiteConfig(
 				'https://example.com',
 			);
 
@@ -245,7 +243,7 @@ describe('ScrapingService', () => {
 				useScreenshotMode: true,
 			});
 
-			const config = await service['getWebsiteConfig'](
+			const config = await service.getWebsiteConfig(
 				'https://example.com',
 			);
 

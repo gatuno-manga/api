@@ -1,31 +1,31 @@
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import {
-	Controller,
-	Patch,
-	Param,
 	Body,
+	Controller,
+	Delete,
 	Get,
+	Param,
+	Patch,
 	Post,
 	Put,
-	Delete,
 	UseGuards,
 	UseInterceptors,
 } from '@nestjs/common';
 import {
-	ApiTags,
-	ApiOperation,
-	ApiResponse,
-	ApiParam,
 	ApiBearerAuth,
+	ApiOperation,
+	ApiParam,
+	ApiResponse,
+	ApiTags,
 } from '@nestjs/swagger';
-import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { Throttle } from '@nestjs/throttler';
-import { SensitiveContentService } from './sensitive-content.service';
+import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
+import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
+import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
+import { OptionalAuthGuard } from 'src/auth/guard/optional-auth.guard';
 import { CreateSensitiveContentDto } from './dto/create-sensitive-content.dto';
 import { UpdateSensitiveContentDto } from './dto/update-sensitive-content.dto';
-import { OptionalAuthGuard } from 'src/auth/guard/optional-auth.guard';
-import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
-import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
-import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
+import { SensitiveContentService } from './sensitive-content.service';
 
 @ApiTags('Sensitive Content')
 @Controller('sensitive-content')

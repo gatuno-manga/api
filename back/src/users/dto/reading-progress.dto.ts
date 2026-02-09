@@ -1,5 +1,14 @@
-import { IsUUID, IsInt, IsOptional, IsBoolean, Min, IsArray, ValidateNested, IsDate } from 'class-validator';
 import { Type } from 'class-transformer';
+import {
+	IsArray,
+	IsBoolean,
+	IsDate,
+	IsInt,
+	IsOptional,
+	IsUUID,
+	Min,
+	ValidateNested,
+} from 'class-validator';
 
 export class SaveReadingProgressDto {
 	@IsUUID()

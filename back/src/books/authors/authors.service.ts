@@ -1,10 +1,10 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Author } from '../entitys/author.entity';
-import { Repository, In } from 'typeorm';
-import { Book } from '../entitys/book.entity';
-import { AuthorsOptions } from './dto/authors-options.dto';
+import { In, Repository } from 'typeorm';
+import { Author } from '../entities/author.entity';
+import { Book } from '../entities/book.entity';
 import { SensitiveContentService } from '../sensitive-content/sensitive-content.service';
+import { AuthorsOptions } from './dto/authors-options.dto';
 
 @Injectable()
 export class AuthorsService {
@@ -20,7 +20,7 @@ export class AuthorsService {
 
 	async get(
 		options: AuthorsOptions,
-		maxWeightSensitiveContent: number = 99,
+		maxWeightSensitiveContent = 99,
 	): Promise<Author[]> {
 		const queryBuilder = this.bookRepository
 			.createQueryBuilder('book')
@@ -49,7 +49,7 @@ export class AuthorsService {
 
 	async getAll(
 		options: AuthorsOptions,
-		maxWeightSensitiveContent: number = 99,
+		maxWeightSensitiveContent = 99,
 	): Promise<Author[]> {
 		const allSensitiveContent = await this.sensitiveContentService.getAll(
 			maxWeightSensitiveContent,

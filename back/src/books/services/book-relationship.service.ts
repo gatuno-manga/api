@@ -1,10 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Tag } from '../entitys/tags.entity';
-import { Author } from '../entitys/author.entity';
-import { SensitiveContent } from '../entitys/sensitive-content.entity';
 import { CreateAuthorDto } from '../dto/create-author.dto';
+import { Author } from '../entities/author.entity';
+import { SensitiveContent } from '../entities/sensitive-content.entity';
+import { Tag } from '../entities/tags.entity';
 
 /**
  * Service responsável por gerenciar relacionamentos de livros

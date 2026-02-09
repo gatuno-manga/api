@@ -1,7 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
-import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
 
 describe('UsersController', () => {
 	let controller: UsersController;

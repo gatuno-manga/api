@@ -1,11 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
-import { Chapter } from '../entitys/chapter.entity';
-import { Not, Repository } from 'typeorm';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ScrapingStatus } from '../enum/scrapingStatus.enum';
+import { Queue } from 'bullmq';
+import { Not, Repository } from 'typeorm';
+import { Chapter } from '../entities/chapter.entity';
 import { ContentType } from '../enum/content-type.enum';
+import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 
 const QUEUE_NAME = 'chapter-scraping';
 const JOB_NAME = 'process-chapter';

@@ -1,8 +1,8 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { PasswordEncryption } from './password-encryption.provider';
-import { ScryptStrategy } from './strategies/scrypt.strategy';
-import { BcryptStrategy } from './strategies/bcrypt.strategy';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { AppConfigService } from 'src/app-config/app-config.service';
+import { PasswordEncryption } from './password-encryption.provider';
+import { BcryptStrategy } from './strategies/bcrypt.strategy';
+import { ScryptStrategy } from './strategies/scrypt.strategy';
 
 describe('PasswordEncryption com Strategy Pattern', () => {
 	let service: PasswordEncryption;

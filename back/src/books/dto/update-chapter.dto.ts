@@ -1,3 +1,4 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
 	IsNumber,
 	IsOptional,
@@ -5,7 +6,6 @@ import {
 	IsString,
 	IsUrl,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { NormalizeUrl } from '../../common/decorators/normalize-url.decorator';
 
 export class UpdateChapterDto {

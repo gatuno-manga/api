@@ -1,30 +1,30 @@
+import { BullModule } from '@nestjs/bullmq';
 import { Module, OnApplicationBootstrap } from '@nestjs/common';
-import { APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { DatabaseModule } from './database/database.module';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import {
 	EventEmitter2,
 	EventEmitterModule,
 	EventEmitterReadinessWatcher,
 } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppConfigModule } from './app-config/app-config.module';
 import { AppConfigService } from './app-config/app-config.service';
-import { ScrapingModule } from './scraping/scraping.module';
-import { BooksModule } from './books/books.module';
-import { FilesModule } from './files/files.module';
-import { UsersModule } from './users/users.module';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
-import { BullModule } from '@nestjs/bullmq';
-import { LoggingModule } from './logging/logging.module';
-import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
-import { HealthModule } from './health/health.module';
-import { MetricsModule } from './metrics/metrics.module';
-import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { ScheduleModule } from '@nestjs/schedule';
+import { BooksModule } from './books/books.module';
 import { CommonModule } from './common/common.module';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { DatabaseModule } from './database/database.module';
+import { FilesModule } from './files/files.module';
+import { HealthModule } from './health/health.module';
+import { LoggingModule } from './logging/logging.module';
+import { MetricsModule } from './metrics/metrics.module';
+import { ScrapingModule } from './scraping/scraping.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
 	imports: [

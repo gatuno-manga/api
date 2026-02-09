@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import type { BrowserContext, Page } from 'playwright';
+import { BrowserContext, Page } from 'playwright';
 
 /**
  * Cookie configuration for injection into browser context.
@@ -221,7 +221,7 @@ export class StorageInjector {
 				const result: Record<string, string | null> = {};
 				for (const key of keys) {
 					const val = window.localStorage.getItem(key);
-					result[key] = val ? val.substring(0, 100) + '...' : null;
+					result[key] = val ? `${val.substring(0, 100)}...` : null;
 				}
 				return result;
 			}, Object.keys(this.config.localStorage));

@@ -1,6 +1,6 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { SharpAdapter } from './sharp.adapter';
+import { Test, type TestingModule } from '@nestjs/testing';
 import * as sharp from 'sharp';
+import { SharpAdapter } from './sharp.adapter';
 
 // Mock do sharp
 jest.mock('sharp');

@@ -1,31 +1,29 @@
+import * as path from 'node:path';
 import {
+	BadRequestException,
 	Injectable,
 	NotFoundException,
-	BadRequestException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import * as path from 'path';
-import { Book } from '../entitys/book.entity';
-import { Cover } from '../entitys/cover.entity';
-import { Page } from '../entitys/page.entity';
-import { Chapter } from '../entitys/chapter.entity';
-import { FilesService } from 'src/files/files.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { CustomLogger } from 'src/custom.logger';
+import { InjectRepository } from '@nestjs/typeorm';
 import { InjectMetric } from '@willsoto/nestjs-prometheus';
 import { Counter, Histogram } from 'prom-client';
-import { ContentType } from '../enum/content-type.enum';
+import { CustomLogger } from 'src/custom.logger';
+import { FilesService } from 'src/files/files.service';
+import { Repository } from 'typeorm';
+import {
+	FORMAT_TO_EXTENSION,
+	MIMETYPE_TO_FORMAT,
+} from '../constants/content-types.constants';
+import { UploadTextContentDto } from '../dto/upload-text-content.dto';
+import { Book } from '../entities/book.entity';
+import { Chapter } from '../entities/chapter.entity';
+import { Cover } from '../entities/cover.entity';
+import { Page } from '../entities/page.entity';
 import { ContentFormat } from '../enum/content-format.enum';
+import { ContentType } from '../enum/content-type.enum';
 import { DocumentFormat } from '../enum/document-format.enum';
 import { ExportFormat } from '../enum/export-format.enum';
-import {
-	UploadTextContentDto,
-} from '../dto/upload-text-content.dto';
-import {
-	MIMETYPE_TO_FORMAT,
-	FORMAT_TO_EXTENSION,
-} from '../constants/content-types.constants';
 
 /**
  * Service responsável por upload de capas e páginas de capítulos
@@ -583,7 +581,10 @@ export class BookUploadService {
 			const savedChapter = await this.chapterRepository.save(chapter);
 
 			// Atualiza formatos disponíveis no livro
-			await this.updateBookAvailableFormats(chapter.book.id, documentFormat);
+			await this.updateBookAvailableFormats(
+				chapter.book.id,
+				documentFormat,
+			);
 
 			const duration = Date.now() - startTime;
 
@@ -635,7 +636,7 @@ export class BookUploadService {
 
 		this.logger.logChapterProcessing({
 			chapterId,
-			message: `Starting text content upload`,
+			message: 'Starting text content upload',
 			metadata: {
 				format: dto.format,
 				contentLength: dto.content.length,
@@ -684,7 +685,10 @@ export class BookUploadService {
 
 			// Atualiza formatos disponíveis no livro
 			const exportFormat = this.contentFormatToExportFormat(dto.format);
-			await this.updateBookAvailableFormats(chapter.book.id, exportFormat);
+			await this.updateBookAvailableFormats(
+				chapter.book.id,
+				exportFormat,
+			);
 
 			const duration = Date.now() - startTime;
 

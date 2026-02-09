@@ -1,5 +1,5 @@
-import { User } from '../entitys/user.entity';
-import { Role } from '../entitys/role.entity';
+import { Role } from '../entities/role.entity';
+import { User } from '../entities/user.entity';
 
 /**
  * Builder Pattern para a entidade User

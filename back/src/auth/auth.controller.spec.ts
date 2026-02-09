@@ -1,4 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { AppConfigService } from '../app-config/app-config.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guard/jwt-auth.guard';
@@ -27,6 +28,13 @@ describe('AuthController', () => {
 				{
 					provide: AuthService,
 					useValue: mockAuthService,
+				},
+				{
+					provide: AppConfigService,
+					useValue: {
+						apiUrl: 'http://localhost:3000',
+						refreshTokenTtl: 604800000,
+					},
 				},
 			],
 		})
