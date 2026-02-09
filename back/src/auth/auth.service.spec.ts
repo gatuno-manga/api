@@ -6,8 +6,8 @@ import { AppConfigService } from '../app-config/app-config.service';
 import { DataEncryptionProvider } from '../encryption/data-encryption.provider';
 import { PasswordEncryption } from '../encryption/password-encryption.provider';
 import { PasswordMigrationService } from '../encryption/password-migration.service';
-import { Role } from '../users/entitys/role.entity';
-import { User } from '../users/entitys/user.entity';
+import { Role } from '../users/entities/role.entity';
+import { User } from '../users/entities/user.entity';
 import { AuthService } from './auth.service';
 import { TokenStoreService } from './services/token-store.service';
 

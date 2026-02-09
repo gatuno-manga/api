@@ -7,8 +7,8 @@ import {
 	Repository,
 	SelectQueryBuilder,
 } from 'typeorm';
-import { Book } from '../entitys/book.entity';
-import { SensitiveContent } from '../entitys/sensitive-content.entity';
+import { Book } from '../entities/book.entity';
+import { SensitiveContent } from '../entities/sensitive-content.entity';
 import { CreateSensitiveContentDto } from './dto/create-sensitive-content.dto';
 import { UpdateSensitiveContentDto } from './dto/update-sensitive-content.dto';
 

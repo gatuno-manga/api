@@ -1,6 +1,6 @@
 import { PassThrough } from 'node:stream';
 import { Injectable, Logger, StreamableFile } from '@nestjs/common';
-import { Chapter } from 'src/books/entitys/chapter.entity';
+import { Chapter } from 'src/books/entities/chapter.entity';
 import { ContentFormat } from '../../enum/content-format.enum';
 import { ContentType } from '../../enum/content-type.enum';
 import { DownloadStrategy } from './download.strategy';

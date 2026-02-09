@@ -1,6 +1,6 @@
 import { SelectQueryBuilder } from 'typeorm';
 import { BookPageOptionsDto } from '../dto/book-page-options.dto';
-import { Book } from '../entitys/book.entity';
+import { Book } from '../entities/book.entity';
 import { FilterStrategy } from './filter-strategy.interface';
 
 /**

@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { RegisterWebSiteDto } from './dto/register-website.dto';
 import { UpdateWebsiteDto } from './dto/update-website.dto';
-import { Website } from './entitys/website.entity';
+import { Website } from './entities/website.entity';
 
 @Injectable()
 export class WebsiteService {

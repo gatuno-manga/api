@@ -3,8 +3,8 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ScrapingService } from 'src/scraping/scraping.service';
 import { Repository } from 'typeorm';
-import { Chapter } from '../entitys/chapter.entity';
-import { Page } from '../entitys/page.entity';
+import { Chapter } from '../entities/chapter.entity';
+import { Page } from '../entities/page.entity';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 
 /**

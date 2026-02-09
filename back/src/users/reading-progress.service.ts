@@ -9,7 +9,7 @@ import {
 	SyncReadingProgressDto,
 	SyncResponseDto,
 } from './dto/reading-progress.dto';
-import { ReadingProgress } from './entitys/reading-progress.entity';
+import { ReadingProgress } from './entities/reading-progress.entity';
 
 @Injectable()
 export class ReadingProgressService {

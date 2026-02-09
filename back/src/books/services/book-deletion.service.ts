@@ -7,10 +7,10 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
-import { Book } from '../entitys/book.entity';
-import { Chapter } from '../entitys/chapter.entity';
-import { Cover } from '../entitys/cover.entity';
-import { Page } from '../entitys/page.entity';
+import { Book } from '../entities/book.entity';
+import { Chapter } from '../entities/chapter.entity';
+import { Cover } from '../entities/cover.entity';
+import { Page } from '../entities/page.entity';
 
 export interface DeletionResult {
 	deletedBooks?: number;

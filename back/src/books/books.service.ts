@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PageDto } from 'src/pages/page.dto';
 import { BookPageOptionsDto } from './dto/book-page-options.dto';
-import { Book } from './entitys/book.entity';
+import { Book } from './entities/book.entity';
 import { CreateBookDto } from './dto/create-book.dto';
 import { OrderChaptersDto } from './dto/order-chapters.dto';
 import { OrderCoversDto } from './dto/order-covers.dto';

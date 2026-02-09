@@ -1,4 +1,4 @@
-import { Book } from 'src/books/entitys/book.entity';
+import { Book } from 'src/books/entities/book.entity';
 import {
 	Column,
 	CreateDateColumn,
@@ -9,7 +9,7 @@ import {
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
 } from 'typeorm';
-import { User } from '../../entitys/user.entity';
+import { User } from '../../entities/user.entity';
 
 @Entity('collection_book')
 export class CollectionBook {

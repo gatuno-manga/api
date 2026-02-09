@@ -1,5 +1,5 @@
 import { StreamableFile } from '@nestjs/common';
-import { Chapter } from 'src/books/entitys/chapter.entity';
+import { Chapter } from 'src/books/entities/chapter.entity';
 
 export interface DownloadStrategy {
 	/**

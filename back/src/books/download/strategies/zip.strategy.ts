@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import { Injectable, Logger, StreamableFile } from '@nestjs/common';
 import archiver from 'archiver';
-import { Chapter } from 'src/books/entitys/chapter.entity';
+import { Chapter } from 'src/books/entities/chapter.entity';
 import { DownloadStrategy } from './download.strategy';
 
 // Caminho base onde o volume de dados está montado no container

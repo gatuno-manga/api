@@ -1,9 +1,9 @@
-import { Author } from '../entitys/author.entity';
-import { Book } from '../entitys/book.entity';
-import { Chapter } from '../entitys/chapter.entity';
-import { Cover } from '../entitys/cover.entity';
-import { SensitiveContent } from '../entitys/sensitive-content.entity';
-import { Tag } from '../entitys/tags.entity';
+import { Author } from '../entities/author.entity';
+import { Book } from '../entities/book.entity';
+import { Chapter } from '../entities/chapter.entity';
+import { Cover } from '../entities/cover.entity';
+import { SensitiveContent } from '../entities/sensitive-content.entity';
+import { Tag } from '../entities/tags.entity';
 import { BookType } from '../enum/book-type.enum';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 

@@ -1,7 +1,7 @@
 import { PassThrough, Readable } from 'node:stream';
 import { Injectable, Logger, StreamableFile } from '@nestjs/common';
 import archiver from 'archiver';
-import { Chapter } from 'src/books/entitys/chapter.entity';
+import { Chapter } from 'src/books/entities/chapter.entity';
 import { DownloadStrategy } from './download.strategy';
 import { PdfStrategy } from './pdf.strategy';
 

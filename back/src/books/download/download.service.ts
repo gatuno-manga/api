@@ -10,8 +10,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { In, Repository } from 'typeorm';
-import { Book } from '../entitys/book.entity';
-import { Chapter } from '../entitys/chapter.entity';
+import { Book } from '../entities/book.entity';
+import { Chapter } from '../entities/chapter.entity';
 import { DownloadCacheService } from './download-cache.service';
 import {
 	BookDownloadFormat,
@@ -279,13 +279,13 @@ export class DownloadService {
 		if (chapters.length === 1) {
 			const chapter = chapters[0];
 			const sanitized = this.sanitizeFileName(
-				`Capitulo_${chapter.index}_${chapter.title}`,
+				`Cap_${chapter.index}_${chapter.title}`,
 			);
 			return `${sanitized}.${extension}`;
 		}
 
-		const sanitized = this.sanitizeFileName(bookTitle || 'Livro_Completo');
-		return `${sanitized}_${chapters.length}_capitulos.${extension}`;
+		const sanitized = this.sanitizeFileName(bookTitle || 'Full_Book');
+		return `${sanitized}_${chapters.length}_cap.${extension}`;
 	}
 
 	/**

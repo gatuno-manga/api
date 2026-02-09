@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
+	IsBoolean,
 	IsEnum,
 	IsNumber,
 	IsOptional,
@@ -139,7 +140,9 @@ export class CreateBookDto {
 			'If true, allows creating the book even with a title conflict.',
 		example: false,
 		default: false,
+		type: Boolean,
 	})
 	@IsOptional()
+	@IsBoolean()
 	ignoreConflict = false;
 }

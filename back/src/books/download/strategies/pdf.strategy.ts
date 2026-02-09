@@ -4,7 +4,7 @@ import { PassThrough } from 'node:stream';
 import { Injectable, Logger, StreamableFile } from '@nestjs/common';
 import PDFDocument from 'pdfkit';
 import sharp from 'sharp';
-import { Chapter } from 'src/books/entitys/chapter.entity';
+import { Chapter } from 'src/books/entities/chapter.entity';
 import { DownloadStrategy } from './download.strategy';
 
 // Caminho base onde o volume de dados está montado no container

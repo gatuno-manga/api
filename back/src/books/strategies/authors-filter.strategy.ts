@@ -1,6 +1,6 @@
 import { SelectQueryBuilder } from 'typeorm';
 import { BookPageOptionsDto } from '../dto/book-page-options.dto';
-import { Book } from '../entitys/book.entity';
+import { Book } from '../entities/book.entity';
 import { BaseManyToManyFilterStrategy } from './base-many-to-many-filter.strategy';
 
 export class AuthorsFilterStrategy extends BaseManyToManyFilterStrategy {

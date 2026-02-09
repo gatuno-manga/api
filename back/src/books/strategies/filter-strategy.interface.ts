@@ -1,6 +1,6 @@
 import { SelectQueryBuilder } from 'typeorm';
 import { BookPageOptionsDto } from '../dto/book-page-options.dto';
-import { Book } from '../entitys/book.entity';
+import { Book } from '../entities/book.entity';
 
 /**
  * Interface base para estratégias de filtro de livros.

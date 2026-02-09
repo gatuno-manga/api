@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import { Injectable, Logger, StreamableFile } from '@nestjs/common';
-import { Chapter } from 'src/books/entitys/chapter.entity';
+import { Chapter } from 'src/books/entities/chapter.entity';
 import { ContentType } from '../../enum/content-type.enum';
 import { DocumentFormat } from '../../enum/document-format.enum';
 import { DownloadStrategy } from './download.strategy';

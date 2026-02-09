@@ -7,8 +7,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { Role } from './entitys/role.entity';
-import { User } from './entitys/user.entity';
+import { Role } from './entities/role.entity';
+import { User } from './entities/user.entity';
 import { RolesEnum } from './enum/roles.enum';
 
 @Injectable()

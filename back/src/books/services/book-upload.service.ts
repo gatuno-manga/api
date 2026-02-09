@@ -16,10 +16,10 @@ import {
 	MIMETYPE_TO_FORMAT,
 } from '../constants/content-types.constants';
 import { UploadTextContentDto } from '../dto/upload-text-content.dto';
-import { Book } from '../entitys/book.entity';
-import { Chapter } from '../entitys/chapter.entity';
-import { Cover } from '../entitys/cover.entity';
-import { Page } from '../entitys/page.entity';
+import { Book } from '../entities/book.entity';
+import { Chapter } from '../entities/chapter.entity';
+import { Cover } from '../entities/cover.entity';
+import { Page } from '../entities/page.entity';
 import { ContentFormat } from '../enum/content-format.enum';
 import { ContentType } from '../enum/content-type.enum';
 import { DocumentFormat } from '../enum/document-format.enum';

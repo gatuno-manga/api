@@ -13,8 +13,8 @@ import { CreateChapterManualDto } from '../dto/create-chapter-manual.dto';
 import { CreateChapterDto } from '../dto/create-chapter.dto';
 import { OrderChaptersDto } from '../dto/order-chapters.dto';
 import { UpdateChapterDto } from '../dto/update-chapter.dto';
-import { Book } from '../entitys/book.entity';
-import { Chapter } from '../entitys/chapter.entity';
+import { Book } from '../entities/book.entity';
+import { Chapter } from '../entities/chapter.entity';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 /**
  * Service responsável por gerenciar capítulos de livros

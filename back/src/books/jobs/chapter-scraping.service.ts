@@ -3,7 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Queue } from 'bullmq';
 import { Not, Repository } from 'typeorm';
-import { Chapter } from '../entitys/chapter.entity';
+import { Chapter } from '../entities/chapter.entity';
 import { ContentType } from '../enum/content-type.enum';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 

@@ -1,5 +1,5 @@
-import { Role } from '../../users/entitys/role.entity';
-import { User } from '../../users/entitys/user.entity';
+import { Role } from '../../users/entities/role.entity';
+import { User } from '../../users/entities/user.entity';
 import { JwtPayloadBuilder } from './jwt-payload.builder';
 
 describe('JwtPayloadBuilder', () => {

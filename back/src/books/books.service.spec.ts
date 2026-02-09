@@ -1,10 +1,10 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { BooksService } from './books.service';
-import { Author } from './entitys/author.entity';
-import { Book } from './entitys/book.entity';
-import { SensitiveContent } from './entitys/sensitive-content.entity';
-import { Tag } from './entitys/tags.entity';
+import { Author } from './entities/author.entity';
+import { Book } from './entities/book.entity';
+import { SensitiveContent } from './entities/sensitive-content.entity';
+import { Tag } from './entities/tags.entity';
 import { BookCreationService } from './services/book-creation.service';
 import { BookQueryService } from './services/book-query.service';
 import { BookRelationshipService } from './services/book-relationship.service';

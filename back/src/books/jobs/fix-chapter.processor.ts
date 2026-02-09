@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Job } from 'bullmq';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { Repository } from 'typeorm';
-import { Chapter } from '../entitys/chapter.entity';
+import { Chapter } from '../entities/chapter.entity';
 import { ChapterScrapingSharedService } from './chapter-scraping.shared';
 
 const QUEUE_NAME = 'fix-chapter-queue';

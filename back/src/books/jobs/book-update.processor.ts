@@ -5,7 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Job } from 'bullmq';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { Repository } from 'typeorm';
-import { Book } from '../entitys/book.entity';
+import { Book } from '../entities/book.entity';
 import { BookContentUpdateService } from '../services/book-content-update.service';
 import { CoverImageService } from './cover-image.service';
 

@@ -1,11 +1,11 @@
-import { Chapter } from 'src/books/entitys/chapter.entity';
+import { Chapter } from 'src/books/entities/chapter.entity';
 import {
 	CreateDateColumn,
 	Entity,
 	ManyToOne,
 	PrimaryGeneratedColumn,
 } from 'typeorm';
-import { User } from '../../users/entitys/user.entity';
+import { User } from '../../users/entities/user.entity';
 
 @Entity('chapters_read')
 export class ChapterRead {

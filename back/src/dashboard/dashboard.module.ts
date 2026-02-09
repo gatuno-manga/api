@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
-import { Author } from '../books/entitys/author.entity';
-import { Book } from '../books/entitys/book.entity';
-import { Chapter } from '../books/entitys/chapter.entity';
-import { Page } from '../books/entitys/page.entity';
-import { SensitiveContent } from '../books/entitys/sensitive-content.entity';
-import { Tag } from '../books/entitys/tags.entity';
-import { User } from '../users/entitys/user.entity';
+import { Author } from '../books/entities/author.entity';
+import { Book } from '../books/entities/book.entity';
+import { Chapter } from '../books/entities/chapter.entity';
+import { Page } from '../books/entities/page.entity';
+import { SensitiveContent } from '../books/entities/sensitive-content.entity';
+import { Tag } from '../books/entities/tags.entity';
+import { User } from '../users/entities/user.entity';
 import { DashboardController } from './dashboard.controller';
 import { DashboardService } from './dashboard.service';
 

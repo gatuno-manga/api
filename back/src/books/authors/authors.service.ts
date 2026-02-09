@@ -1,8 +1,8 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
-import { Author } from '../entitys/author.entity';
-import { Book } from '../entitys/book.entity';
+import { Author } from '../entities/author.entity';
+import { Book } from '../entities/book.entity';
 import { SensitiveContentService } from '../sensitive-content/sensitive-content.service';
 import { AuthorsOptions } from './dto/authors-options.dto';
 

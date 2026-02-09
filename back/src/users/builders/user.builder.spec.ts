@@ -1,5 +1,5 @@
-import type { Role } from '../entitys/role.entity';
-import { User } from '../entitys/user.entity';
+import type { Role } from '../entities/role.entity';
+import { User } from '../entities/user.entity';
 import { UserBuilder } from './user.builder';
 
 describe('UserBuilder', () => {

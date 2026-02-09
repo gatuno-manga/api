@@ -5,9 +5,9 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AppConfigService } from 'src/app-config/app-config.service';
-import { Book } from 'src/books/entitys/book.entity';
-import { Chapter } from 'src/books/entitys/chapter.entity';
-import { Page } from 'src/books/entitys/page.entity';
+import { Book } from 'src/books/entities/book.entity';
+import { Chapter } from 'src/books/entities/chapter.entity';
+import { Page } from 'src/books/entities/page.entity';
 import { Repository } from 'typeorm';
 import { CreateSavedPageDto } from './dto/create-saved-page.dto';
 import { UpdateSavedPageDto } from './dto/update-saved-page.dto';

@@ -7,8 +7,8 @@ import { AppConfigService } from 'src/app-config/app-config.service';
 import { ScrapingService } from 'src/scraping/scraping.service';
 import { DataSource, Repository } from 'typeorm';
 import { QueueCoverProcessorDto } from '../dto/queue-cover-processor.dto';
-import { Book } from '../entitys/book.entity';
-import { Cover } from '../entitys/cover.entity';
+import { Book } from '../entities/book.entity';
+import { Cover } from '../entities/cover.entity';
 
 const QUEUE_NAME = 'cover-image-queue';
 const JOB_NAME = 'process-cover';

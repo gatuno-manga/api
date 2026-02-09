@@ -8,7 +8,7 @@ import { ScrapingService } from 'src/scraping/scraping.service';
 import { IsNull, Repository } from 'typeorm';
 import { QueueCoverProcessorDto } from '../dto/queue-cover-processor.dto';
 import { UrlImageDto } from '../dto/url-image.dto';
-import { Cover } from '../entitys/cover.entity';
+import { Cover } from '../entities/cover.entity';
 
 const QUEUE_NAME = 'cover-image-queue';
 const JOB_NAME = 'process-cover';

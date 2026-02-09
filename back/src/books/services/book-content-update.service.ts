@@ -4,9 +4,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { normalizeUrl } from 'src/common/utils/url.utils';
 import { ScrapingService } from 'src/scraping/scraping.service';
 import { Repository } from 'typeorm';
-import { Book } from '../entitys/book.entity';
-import { Chapter } from '../entitys/chapter.entity';
-import { Cover } from '../entitys/cover.entity';
+import { Book } from '../entities/book.entity';
+import { Chapter } from '../entities/chapter.entity';
+import { Cover } from '../entities/cover.entity';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { CoverImageService } from '../jobs/cover-image.service';
 

@@ -1,4 +1,4 @@
-import { User } from 'src/users/entitys/user.entity';
+import { User } from 'src/users/entities/user.entity';
 import { JwtPayloadDto } from '../dto/jwt-payload.dto';
 
 export class JwtPayloadBuilder {

@@ -4,7 +4,7 @@ import { AppConfigModule } from 'src/app-config/app-config.module';
 import { AuthModule } from 'src/auth/auth.module';
 import { FilesModule } from 'src/files/files.module';
 import { RedisModule } from 'src/redis';
-import { Website } from './entitys/website.entity';
+import { Website } from './entities/website.entity';
 import { ScrapingService } from './scraping.service';
 import { WebsiteController } from './website.controller';
 import { WebsiteService } from './website.service';

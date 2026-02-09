@@ -14,8 +14,8 @@ import { Server, Socket } from 'socket.io';
 import { WsJwtGuard } from '../../auth/guard/ws-jwt.guard';
 import { RolesEnum } from '../../users/enum/roles.enum';
 import { BookEvents } from '../constants/events.constant';
-import { Book } from '../entitys/book.entity';
-import { Chapter } from '../entitys/chapter.entity';
+import { Book } from '../entities/book.entity';
+import { Chapter } from '../entities/chapter.entity';
 
 /**
  * Gateway WebSocket para comunicação em tempo real de eventos de livros

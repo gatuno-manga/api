@@ -5,8 +5,8 @@ import { Repository } from 'typeorm';
 import { OrderCoversDto } from '../dto/order-covers.dto';
 import { UpdateBookDto } from '../dto/update-book.dto';
 import { UpdateCoverDto } from '../dto/update-cover.dto';
-import { Book } from '../entitys/book.entity';
-import { Cover } from '../entitys/cover.entity';
+import { Book } from '../entities/book.entity';
+import { Cover } from '../entities/cover.entity';
 import { CoverImageService } from '../jobs/cover-image.service';
 import { BookRelationshipService } from './book-relationship.service';
 
