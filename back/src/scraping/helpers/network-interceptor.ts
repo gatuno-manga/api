@@ -44,9 +44,9 @@ export interface CachedImage {
  * Optionally compresses images immediately upon caching for memory efficiency.
  */
 export class NetworkInterceptor {
-	private readonly logger = new Logger(NetworkInterceptor.name);
+	readonly logger = new Logger(NetworkInterceptor.name);
 	private readonly imageCache = new Map<string, CachedImage>();
-	private isIntercepting = false;
+	isIntercepting = false;
 	private compressionQueue: Promise<void>[] = [];
 
 	constructor(
@@ -55,13 +55,13 @@ export class NetworkInterceptor {
 			blacklistTerms: [],
 			whitelistTerms: [],
 		},
-		private readonly compressor?: ImageCompressor,
+		readonly compressor?: ImageCompressor,
 	) {}
 
 	/**
 	 * Check if a URL should be accepted based on filter configuration.
 	 */
-	private shouldAcceptUrl(url: string): boolean {
+	shouldAcceptUrl(url: string): boolean {
 		const lowerUrl = url.toLowerCase();
 
 		// Check blacklist first

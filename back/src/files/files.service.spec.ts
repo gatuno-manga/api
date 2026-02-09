@@ -4,7 +4,13 @@ import { FileCompressorFactory } from './factories/file-compressor.factory';
 import { FilesService } from './files.service';
 
 // Mock do fs
-jest.mock('fs/promises');
+jest.mock('node:fs/promises', () => ({
+	writeFile: jest.fn(),
+	mkdir: jest.fn(),
+	unlink: jest.fn(),
+	stat: jest.fn(),
+	readFile: jest.fn(),
+}));
 
 describe('FilesService', () => {
 	let service: FilesService;

@@ -440,7 +440,7 @@ describe('AuthService', () => {
 
 			expect(result).toHaveProperty('accessToken');
 			expect(result).toHaveProperty('refreshToken');
-			expect(tokenStore.saveTokens).toHaveBeenCalled();
+			expect(tokenStore.addToken).toHaveBeenCalled();
 		});
 
 		it('should throw UnauthorizedException if no refresh token provided', async () => {
@@ -516,8 +516,8 @@ describe('AuthService', () => {
 
 			await service.refreshTokens(userId, 'old_refresh');
 
-			const calls = tokenStore.saveTokens.mock.calls;
-			expect(calls[0][1]).toHaveLength(2); // Removed 1, added 1
+			const calls = tokenStore.addToken.mock.calls;
+			expect(calls[0][2]).toHaveLength(1); // One token remains after removing the old one
 		});
 	});
 });

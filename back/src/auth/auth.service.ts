@@ -18,7 +18,8 @@ import { TokenStoreService } from './services/token-store.service';
 
 @Injectable()
 export class AuthService {
-	private readonly logger = new Logger(AuthService.name);
+	public readonly logger = new Logger(AuthService.name);
+
 	constructor(
 		@InjectRepository(User)
 		private readonly userRepository: Repository<User>,

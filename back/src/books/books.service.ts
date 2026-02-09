@@ -29,7 +29,7 @@ import {
 @Injectable()
 export class BooksService {
 	logger = new Logger(BooksService.name);
-	private readonly filterStrategies: FilterStrategy[];
+	readonly filterStrategies: FilterStrategy[];
 
 	constructor(
 		private readonly bookCreationService: BookCreationService,

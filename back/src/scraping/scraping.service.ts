@@ -38,9 +38,9 @@ import { WebsiteService } from './website.service';
 
 @Injectable()
 export class ScrapingService implements OnApplicationShutdown {
-	private readonly logger = new Logger(ScrapingService.name);
-	private browserFactory: PlaywrightBrowserFactory;
-	private concurrencyManager: IConcurrencyManager;
+	readonly logger = new Logger(ScrapingService.name);
+	browserFactory: PlaywrightBrowserFactory;
+	concurrencyManager: IConcurrencyManager;
 	private imageCompressor: ImageCompressor | undefined;
 	private runner: ScrapingSessionRunner;
 
@@ -127,7 +127,7 @@ export class ScrapingService implements OnApplicationShutdown {
 		this.logger.debug('Browser factory replaced');
 	}
 
-	private async getWebsiteConfig(url: string): Promise<WebsiteConfigDto> {
+	public async getWebsiteConfig(url: string): Promise<WebsiteConfigDto> {
 		let selector = 'img';
 		let preScript = '';
 		let posScript = '';
