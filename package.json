@@ -1,13 +1,23 @@
 {
-  "name": "gatuno-workspace",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "prepare": "lefthook install"
-  },
-  "devDependencies": {
-    "@commitlint/cli": "^20.4.1",
-    "@commitlint/config-conventional": "^20.4.1",
-    "lefthook": "^1.10.10"
-  }
+	"name": "gatuno-workspace",
+	"version": "1.0.0",
+	"private": true,
+	"scripts": {
+		"prepare": "lefthook install",
+		"lint": "biome check .",
+		"lint:fix": "biome check --write --unsafe .",
+		"lint:secrets": "secretlint \"**/*\"",
+		"lint:spell": "cspell \"**/*.{ts,js,json,md,scss,html}\"",
+		"format": "biome format --write ."
+	},
+	"devDependencies": {
+		"@biomejs/biome": "1.9.4",
+		"@commitlint/cli": "^20.4.1",
+		"@commitlint/config-conventional": "^20.4.1",
+		"@cspell/dict-pt-br": "^2.4.2",
+		"@secretlint/secretlint-rule-preset-recommend": "^11.3.1",
+		"cspell": "^9.6.4",
+		"lefthook": "^1.10.10",
+		"secretlint": "^11.3.1"
+	}
 }

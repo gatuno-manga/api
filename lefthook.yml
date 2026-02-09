@@ -4,6 +4,10 @@
 pre-commit:
   parallel: true
   commands:
-    # Aqui adicionaremos o Biome ou ESLint futuramente
+    check-secrets:
+      run: npx secretlint {staged_files}
+    check-spell:
+      run: npx cspell {staged_files} || true
     check-code:
-      run: echo "Validando código..."
+      glob: "*.{js,ts,cjs,mjs,json}"
+      run: npx @biomejs/biome check --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files} && git add {staged_files}
