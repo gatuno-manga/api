@@ -1,4 +1,4 @@
-import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
+import { CacheTTL } from '@nestjs/cache-manager';
 import {
 	Controller,
 	Get,
@@ -21,6 +21,7 @@ import { Roles } from 'src/auth/decorator/roles.decorator';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { OptionalAuthGuard } from 'src/auth/guard/optional-auth.guard';
+import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-cache.interceptor';
 import { RolesEnum } from 'src/users/enum/roles.enum';
 import { AuthorsService } from './authors.service';
 import { AuthorsOptions } from './dto/authors-options.dto';
@@ -32,7 +33,7 @@ export class AuthorsController {
 
 	@Get()
 	@Throttle({ long: { limit: 100, ttl: 60000 } })
-	@UseInterceptors(CacheInterceptor)
+	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(1800)
 	@ApiOperation({
 		summary: 'Get all authors',

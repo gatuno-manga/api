@@ -1,4 +1,4 @@
-import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
+import { CacheTTL } from '@nestjs/cache-manager';
 import {
 	Controller,
 	Get,
@@ -18,6 +18,7 @@ import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
 import { OptionalAuthGuard } from 'src/auth/guard/optional-auth.guard';
+import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-cache.interceptor';
 import { BooksService } from './books.service';
 import { BookPageOptionsDto } from './dto/book-page-options.dto';
 
@@ -28,7 +29,7 @@ export class BooksController {
 
 	@Get()
 	@Throttle({ long: { limit: 100, ttl: 60000 } })
-	@UseInterceptors(CacheInterceptor)
+	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(180)
 	@ApiOperation({
 		summary: 'Get all books',
@@ -49,7 +50,7 @@ export class BooksController {
 
 	@Get('random')
 	@Throttle({ long: { limit: 100, ttl: 60000 } })
-	@UseInterceptors(CacheInterceptor)
+	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(60)
 	@ApiOperation({
 		summary: 'Get random book',
@@ -151,7 +152,7 @@ export class BooksController {
 
 	@Get(':idBook')
 	@Throttle({ long: { limit: 200, ttl: 60000 } })
-	@UseInterceptors(CacheInterceptor)
+	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(1800)
 	@ApiOperation({
 		summary: 'Get book by ID',
@@ -172,7 +173,7 @@ export class BooksController {
 
 	@Get(':idBook/chapters')
 	@Throttle({ long: { limit: 200, ttl: 60000 } })
-	@UseInterceptors(CacheInterceptor)
+	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(600)
 	@ApiOperation({
 		summary: 'Get book chapters',
@@ -203,7 +204,7 @@ export class BooksController {
 
 	@Get(':idBook/covers')
 	@Throttle({ long: { limit: 200, ttl: 60000 } })
-	@UseInterceptors(CacheInterceptor)
+	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(3600)
 	@ApiOperation({
 		summary: 'Get book covers',
@@ -227,7 +228,7 @@ export class BooksController {
 
 	@Get(':idBook/infos')
 	@Throttle({ long: { limit: 200, ttl: 60000 } })
-	@UseInterceptors(CacheInterceptor)
+	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(1800)
 	@ApiOperation({
 		summary: 'Get book information',

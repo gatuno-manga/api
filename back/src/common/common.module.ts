@@ -1,4 +1,5 @@
 import { Global, Module } from '@nestjs/common';
+import { UserAwareCacheInterceptor } from './interceptors/user-aware-cache.interceptor';
 import { CacheInvalidationService } from './services/cache-invalidation.service';
 
 /**
@@ -6,7 +7,7 @@ import { CacheInvalidationService } from './services/cache-invalidation.service'
  */
 @Global()
 @Module({
-	providers: [CacheInvalidationService],
-	exports: [CacheInvalidationService],
+	providers: [CacheInvalidationService, UserAwareCacheInterceptor],
+	exports: [CacheInvalidationService, UserAwareCacheInterceptor],
 })
 export class CommonModule {}

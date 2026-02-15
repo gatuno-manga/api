@@ -1,4 +1,4 @@
-import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
+import { CacheTTL } from '@nestjs/cache-manager';
 import {
 	Body,
 	Controller,
@@ -23,6 +23,7 @@ import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { OptionalAuthGuard } from 'src/auth/guard/optional-auth.guard';
+import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-cache.interceptor';
 import { CreateSensitiveContentDto } from './dto/create-sensitive-content.dto';
 import { UpdateSensitiveContentDto } from './dto/update-sensitive-content.dto';
 import { SensitiveContentService } from './sensitive-content.service';
@@ -36,7 +37,7 @@ export class SensitiveContentController {
 
 	@Get()
 	@Throttle({ long: { limit: 100, ttl: 60000 } })
-	@UseInterceptors(CacheInterceptor)
+	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(3600)
 	@ApiOperation({
 		summary: 'Get all sensitive content tags',
@@ -56,7 +57,7 @@ export class SensitiveContentController {
 
 	@Get(':id')
 	@Throttle({ long: { limit: 100, ttl: 60000 } })
-	@UseInterceptors(CacheInterceptor)
+	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(3600)
 	@ApiOperation({
 		summary: 'Get sensitive content by ID',

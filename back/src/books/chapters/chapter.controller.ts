@@ -1,4 +1,4 @@
-import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
+import { CacheTTL } from '@nestjs/cache-manager';
 import {
 	Body,
 	Controller,
@@ -22,6 +22,7 @@ import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { OptionalAuthGuard } from 'src/auth/guard/optional-auth.guard';
+import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-cache.interceptor';
 import { ChapterService } from './chapter.service';
 
 @ApiTags('Chapters')
@@ -31,7 +32,7 @@ export class ChapterController {
 
 	@Get(':idChapter')
 	@Throttle({ long: { limit: 200, ttl: 60000 } })
-	@UseInterceptors(CacheInterceptor)
+	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(600)
 	@ApiOperation({
 		summary: 'Get chapter by ID',
