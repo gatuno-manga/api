@@ -5,7 +5,7 @@ import { AppConfigService } from 'src/app-config/app-config.service';
 import { AuthModule } from 'src/auth/auth.module';
 import { FilesModule } from 'src/files/files.module';
 import { RedisModule } from 'src/redis';
-import { PlaywrightBrowserFactory } from './browser';
+import { BrowserConfig, PlaywrightBrowserFactory } from './browser';
 import { Website } from './entities/website.entity';
 import { BrowserPoolService } from './pool';
 import { ScrapingService } from './scraping.service';
