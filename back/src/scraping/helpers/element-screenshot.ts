@@ -255,6 +255,56 @@ export class ElementScreenshot {
 	}
 
 	/**
+	 * Captura screenshots de todos os elementos usando streaming (memory-efficient).
+	 * Yields each screenshot immediately after capture instead of accumulating in memory.
+	 * Use this method for better memory efficiency, especially with many/large screenshots.
+	 */
+	async *captureAllElementsStream(): AsyncGenerator<Buffer> {
+		// Contagem ANTES do scroll (para comparar)
+		const initialCount = await this.page
+			.locator(this.options.selector)
+			.count();
+		this.logger.debug(
+			`Initial count before scroll: ${initialCount} elements`,
+		);
+
+		// Scroll agressivo para carregar todas as imagens lazy-loaded
+		await this.aggressiveScroll();
+
+		// Espera extra após scroll para garantir que tudo carregou
+		await this.page.waitForTimeout(1000);
+
+		// Contagem DEPOIS do scroll
+		const elements = this.page.locator(this.options.selector);
+		const count = await elements.count();
+		this.logger.log(
+			`Found ${count} elements after scroll (was ${initialCount} before)`,
+		);
+
+		if (count === 0) {
+			this.logger.warn('No elements found after scroll!');
+			return;
+		}
+
+		let capturedCount = 0;
+
+		// Captura sequencial - para cada elemento, scroll até ele e captura
+		for (let i = 0; i < count; i++) {
+			const element = elements.nth(i);
+			const screenshot = await this.captureElement(element, i);
+
+			if (screenshot) {
+				capturedCount++;
+				yield screenshot; // Yield immediately for streaming
+			}
+		}
+
+		this.logger.log(
+			`Streamed ${capturedCount}/${count} element screenshots`,
+		);
+	}
+
+	/**
 	 * Scroll agressivo para carregar todas as imagens lazy-loaded.
 	 *
 	 * Baseado no método Python que funciona corretamente:

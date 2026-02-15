@@ -1,3 +1,6 @@
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { Logger } from '@nestjs/common';
 import { Page, Response } from 'playwright';
 
@@ -18,6 +21,23 @@ export interface UrlFilterConfig {
 }
 
 /**
+ * Configuration for memory limits.
+ */
+export interface MemoryLimits {
+	/**
+	 * Maximum cache size in bytes.
+	 * @default 100 * 1024 * 1024 (100MB)
+	 */
+	maxCacheSize: number;
+
+	/**
+	 * Threshold in bytes above which images are streamed to temp files.
+	 * @default 5 * 1024 * 1024 (5MB)
+	 */
+	largeImageThreshold: number;
+}
+
+/**
  * Interface for image compression during interception.
  */
 export interface ImageCompressor {
@@ -30,24 +50,37 @@ export interface ImageCompressor {
  */
 export interface CachedImage {
 	url: string;
-	data: Buffer;
+	data: Buffer | null; // null if offloaded to temp file
 	contentType: string;
 	/** Whether the image has been compressed */
 	compressed: boolean;
 	/** Final extension after compression */
 	extension: string;
+	/** Temporary file path if offloaded */
+	tempFilePath?: string;
+	/** Last access time for LRU eviction */
+	lastAccess: number;
 }
+
+const DEFAULT_MEMORY_LIMITS: MemoryLimits = {
+	maxCacheSize: 100 * 1024 * 1024, // 100MB
+	largeImageThreshold: 5 * 1024 * 1024, // 5MB
+};
 
 /**
  * Helper for intercepting network traffic and caching images.
  * This is more efficient than fetching images separately after the page loads.
  * Optionally compresses images immediately upon caching for memory efficiency.
+ * Implements memory management via LRU eviction and temp file offloading.
  */
 export class NetworkInterceptor {
 	readonly logger = new Logger(NetworkInterceptor.name);
 	private readonly imageCache = new Map<string, CachedImage>();
 	isIntercepting = false;
 	private compressionQueue: Promise<void>[] = [];
+	private currentCacheSize = 0;
+	private tempFiles: Set<string> = new Set();
+	private readonly memoryLimits: MemoryLimits;
 
 	constructor(
 		private readonly page: Page,
@@ -56,7 +89,10 @@ export class NetworkInterceptor {
 			whitelistTerms: [],
 		},
 		readonly compressor?: ImageCompressor,
-	) {}
+		memoryLimits?: Partial<MemoryLimits>,
+	) {
+		this.memoryLimits = { ...DEFAULT_MEMORY_LIMITS, ...memoryLimits };
+	}
 
 	/**
 	 * Check if a URL should be accepted based on filter configuration.
@@ -143,6 +179,21 @@ export class NetworkInterceptor {
 			);
 			const originalSize = body.length;
 
+			// Check if we need to offload to temp file
+			if (originalSize > this.memoryLimits.largeImageThreshold) {
+				await this.cacheToTempFile(
+					url,
+					body,
+					contentType,
+					originalExtension,
+					originalSize,
+				);
+				return;
+			}
+
+			// Ensure cache doesn't exceed limit
+			await this.ensureCacheSpace(originalSize);
+
 			// If compressor is available, compress immediately (non-blocking)
 			if (this.compressor) {
 				const compressionTask = this.compressAndCache(
@@ -155,12 +206,13 @@ export class NetworkInterceptor {
 				this.compressionQueue.push(compressionTask);
 			} else {
 				// Cache without compression
-				this.imageCache.set(url, {
+				this.addToCache(url, {
 					url,
 					data: body,
 					contentType,
 					compressed: false,
 					extension: originalExtension,
+					lastAccess: Date.now(),
 				});
 				this.logger.debug(
 					`Cached image: ${url} (${originalSize} bytes)`,
@@ -168,6 +220,111 @@ export class NetworkInterceptor {
 			}
 		} catch (error) {
 			// Silently ignore errors (response might be unavailable)
+		}
+	}
+
+	/**
+	 * Ensure there's enough space in the cache by evicting LRU entries.
+	 */
+	private async ensureCacheSpace(requiredBytes: number): Promise<void> {
+		while (
+			this.currentCacheSize + requiredBytes >
+			this.memoryLimits.maxCacheSize
+		) {
+			const evicted = this.evictLRU();
+			if (!evicted) {
+				this.logger.warn(
+					'Failed to evict LRU entry, cache may exceed limit',
+				);
+				break;
+			}
+		}
+	}
+
+	/**
+	 * Evict the least recently used cache entry.
+	 */
+	private evictLRU(): boolean {
+		let oldestUrl: string | null = null;
+		let oldestTime = Number.MAX_SAFE_INTEGER;
+
+		for (const [url, cached] of this.imageCache.entries()) {
+			if (cached.lastAccess < oldestTime) {
+				oldestTime = cached.lastAccess;
+				oldestUrl = url;
+			}
+		}
+
+		if (oldestUrl) {
+			const evicted = this.imageCache.get(oldestUrl);
+			this.imageCache.delete(oldestUrl);
+			if (evicted?.data) {
+				this.currentCacheSize -= evicted.data.length;
+			}
+			this.logger.debug(
+				`Evicted LRU image: ${oldestUrl} (${evicted?.data?.length || 0} bytes)`,
+			);
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Add an image to the cache and update size tracking.
+	 */
+	private addToCache(url: string, cached: CachedImage): void {
+		// Remove old entry if exists
+		const old = this.imageCache.get(url);
+		if (old?.data) {
+			this.currentCacheSize -= old.data.length;
+		}
+
+		// Add new entry
+		this.imageCache.set(url, cached);
+		if (cached.data) {
+			this.currentCacheSize += cached.data.length;
+		}
+	}
+
+	/**
+	 * Cache a large image to a temporary file.
+	 */
+	private async cacheToTempFile(
+		url: string,
+		body: Buffer,
+		contentType: string,
+		extension: string,
+		size: number,
+	): Promise<void> {
+		try {
+			const tempDir = await fs.mkdtemp(
+				path.join(os.tmpdir(), 'gatuno-cache-'),
+			);
+			const tempFilePath = path.join(
+				tempDir,
+				`image-${Date.now()}${extension}`,
+			);
+			await fs.writeFile(tempFilePath, body);
+			this.tempFiles.add(tempFilePath);
+
+			this.imageCache.set(url, {
+				url,
+				data: null,
+				contentType,
+				compressed: false,
+				extension,
+				tempFilePath,
+				lastAccess: Date.now(),
+			});
+
+			this.logger.debug(
+				`Large image offloaded to temp file: ${url} (${size} bytes) -> ${tempFilePath}`,
+			);
+		} catch (error) {
+			this.logger.error(
+				`Failed to offload to temp file: ${error.message}`,
+			);
 		}
 	}
 
@@ -195,12 +352,16 @@ export class NetworkInterceptor {
 				1,
 			);
 
-			this.imageCache.set(url, {
+			// Ensure cache space before adding
+			await this.ensureCacheSpace(compressedSize);
+
+			this.addToCache(url, {
 				url,
 				data: compressedData,
 				contentType: 'image/webp', // After compression
 				compressed: true,
 				extension: outputExtension,
+				lastAccess: Date.now(),
 			});
 
 			this.logger.debug(
@@ -208,12 +369,14 @@ export class NetworkInterceptor {
 			);
 		} catch (error) {
 			// Fallback: cache original on compression error
-			this.imageCache.set(url, {
+			await this.ensureCacheSpace(originalSize);
+			this.addToCache(url, {
 				url,
 				data: body,
 				contentType,
 				compressed: false,
 				extension: originalExtension,
+				lastAccess: Date.now(),
 			});
 			this.logger.warn(`Compression failed for ${url}, caching original`);
 		}
@@ -277,21 +440,44 @@ export class NetworkInterceptor {
 
 	/**
 	 * Get a cached image as Buffer (preferred - more efficient).
+	 * Loads from temp file if image was offloaded.
 	 */
-	getCachedImageAsBuffer(url: string): Buffer | null {
+	async getCachedImageAsBuffer(url: string): Promise<Buffer | null> {
 		const cached = this.getCachedImage(url);
 		if (!cached) return null;
-		return cached.data;
+
+		// Update last access time for LRU
+		cached.lastAccess = Date.now();
+
+		// If has data in memory, return it
+		if (cached.data) {
+			return cached.data;
+		}
+
+		// Load from temp file
+		if (cached.tempFilePath) {
+			try {
+				const fileData = await fs.readFile(cached.tempFilePath);
+				return fileData;
+			} catch (error) {
+				this.logger.error(
+					`Failed to read temp file ${cached.tempFilePath}: ${error.message}`,
+				);
+				return null;
+			}
+		}
+
+		return null;
 	}
 
 	/**
 	 * Get a cached image as base64.
 	 * @deprecated Use getCachedImageAsBuffer for better performance
 	 */
-	getCachedImageAsBase64(url: string): string | null {
-		const cached = this.getCachedImage(url);
-		if (!cached) return null;
-		return cached.data.toString('base64');
+	async getCachedImageAsBase64(url: string): Promise<string | null> {
+		const buffer = await this.getCachedImageAsBuffer(url);
+		if (!buffer) return null;
+		return buffer.toString('base64');
 	}
 
 	/**
@@ -319,26 +505,53 @@ export class NetworkInterceptor {
 	/**
 	 * Get cache statistics.
 	 */
-	getStats(): { count: number; totalBytes: number; compressedCount: number } {
+	getStats(): {
+		count: number;
+		totalBytes: number;
+		compressedCount: number;
+		tempFileCount: number;
+	} {
 		let totalBytes = 0;
 		let compressedCount = 0;
+		let tempFileCount = 0;
 		for (const image of this.imageCache.values()) {
-			totalBytes += image.data.length;
+			if (image.data) {
+				totalBytes += image.data.length;
+			}
 			if (image.compressed) compressedCount++;
+			if (image.tempFilePath) tempFileCount++;
 		}
 		return {
 			count: this.imageCache.size,
 			totalBytes,
 			compressedCount,
+			tempFileCount,
 		};
 	}
 
 	/**
-	 * Clear the cache.
+	 * Clear the cache and delete temp files.
 	 */
-	clearCache(): void {
+	async clearCache(): Promise<void> {
+		// Clear compression queue
+		this.compressionQueue.length = 0;
+
+		// Delete temp files
+		for (const tempFilePath of this.tempFiles) {
+			try {
+				await fs.unlink(tempFilePath);
+				this.logger.debug(`Deleted temp file: ${tempFilePath}`);
+			} catch (error) {
+				this.logger.warn(
+					`Failed to delete temp file ${tempFilePath}: ${error.message}`,
+				);
+			}
+		}
+		this.tempFiles.clear();
+
+		// Clear cache
 		this.imageCache.clear();
-		this.compressionQueue = [];
+		this.currentCacheSize = 0;
 	}
 
 	/**

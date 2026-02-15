@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { BrowserContext, Page } from 'playwright';
+import { Browser, BrowserContext, Page } from 'playwright';
 import { PlaywrightBrowserFactory } from '../browser';
 import { IConcurrencyManager } from '../concurrency';
 import { WebsiteConfigDto } from '../dto/website-config.dto';
@@ -30,12 +30,13 @@ export class ScrapingSessionRunner {
 
 		await this.concurrencyManager.acquire(domain, concurrencyLimit);
 
+		let browser: Browser | null = null;
 		let context: BrowserContext | null = null;
 		let page: Page | null = null;
 		let networkInterceptor: NetworkInterceptor | undefined;
 
 		try {
-			const browser = await this.browserFactory.launch();
+			browser = await this.browserFactory.launch();
 			context = await this.browserFactory.createContext(browser);
 			page = await this.browserFactory.createPage(context);
 
@@ -107,15 +108,46 @@ export class ScrapingSessionRunner {
 
 			return await task(scrapingContext);
 		} finally {
+			// Cleanup in proper order: NetworkInterceptor → Page → Context → Browser
 			if (networkInterceptor) {
-				networkInterceptor.clearCache();
-				networkInterceptor.stopInterception();
+				try {
+					await networkInterceptor.clearCache();
+					networkInterceptor.stopInterception();
+				} catch (e) {
+					this.logger.warn(
+						'Error cleaning up network interceptor',
+						e,
+					);
+				}
 			}
+
+			if (page) {
+				try {
+					await page.close();
+					this.logger.debug('Page closed');
+				} catch (e) {
+					this.logger.warn('Error closing page', e);
+				}
+			}
+
 			if (context) {
-				await context
-					.close()
-					.catch((e) => this.logger.warn('Error closing context', e));
+				try {
+					await context.close();
+					this.logger.debug('Context closed');
+				} catch (e) {
+					this.logger.warn('Error closing context', e);
+				}
 			}
+
+			if (browser) {
+				try {
+					await this.browserFactory.release(browser);
+					this.logger.debug('Browser released');
+				} catch (e) {
+					this.logger.warn('Error releasing browser', e);
+				}
+			}
+
 			this.concurrencyManager.release(domain);
 		}
 	}

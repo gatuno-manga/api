@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Browser, BrowserContext, Page } from 'playwright';
 import { chromium as playwrightChromium } from 'playwright-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { PooledBrowser } from '../pool';
 import {
 	BrowserConfig,
 	DEFAULT_BROWSER_CONFIG,
@@ -9,18 +10,38 @@ import {
 import { IBrowserFactory } from './browser.factory.interface';
 
 /**
+ * Extended Browser type with pool metadata
+ */
+interface PooledBrowserInstance extends Browser {
+	__pooled?: boolean;
+	__pooledId?: string;
+	__pooledRef?: PooledBrowser;
+}
+
+/**
  * Factory for creating Playwright browser instances with stealth mode.
  * Uses playwright-extra with stealth plugin to avoid bot detection.
+ * Supports browser pooling for resource efficiency.
  */
 @Injectable()
 export class PlaywrightBrowserFactory implements IBrowserFactory {
 	private readonly logger = new Logger(PlaywrightBrowserFactory.name);
 	private readonly config: Required<BrowserConfig>;
 	private stealthInitialized = false;
+	private browserPool?: import('../pool').BrowserPoolService;
 
 	constructor(config?: Partial<BrowserConfig>) {
 		this.config = { ...DEFAULT_BROWSER_CONFIG, ...config };
 		this.initializeStealth();
+	}
+
+	/**
+	 * Set the browser pool for resource management.
+	 * Should be called by the scraping module during initialization.
+	 */
+	setBrowserPool(pool: import('../pool').BrowserPoolService): void {
+		this.browserPool = pool;
+		this.logger.log('Browser pool integration enabled');
 	}
 
 	private initializeStealth(): void {
@@ -32,6 +53,34 @@ export class PlaywrightBrowserFactory implements IBrowserFactory {
 	}
 
 	async launch(): Promise<Browser> {
+		// Try to use browser pool if available
+		if (this.browserPool) {
+			try {
+				const pooledBrowser = await this.browserPool.acquire();
+				this.logger.debug(
+					`Acquired browser from pool: ${pooledBrowser.id}`,
+				);
+				// Tag the browser so we know it came from the pool
+				const browser = pooledBrowser.browser as PooledBrowserInstance;
+				browser.__pooled = true;
+				browser.__pooledId = pooledBrowser.id;
+				browser.__pooledRef = pooledBrowser;
+				return browser;
+			} catch (error) {
+				this.logger.warn(
+					`Failed to acquire from pool, falling back to direct launch: ${error.message}`,
+				);
+			}
+		}
+
+		// Fallback to direct launch
+		return this.launchDirect();
+	}
+
+	/**
+	 * Launch a browser directly (not from pool).
+	 */
+	private async launchDirect(): Promise<Browser> {
 		const isDebug = this.config.debugMode;
 		const wsEndpoint = this.config.wsEndpoint;
 
@@ -86,6 +135,12 @@ export class PlaywrightBrowserFactory implements IBrowserFactory {
 
 	async createContext(browser: Browser): Promise<BrowserContext> {
 		this.logger.debug('Creating browser context...');
+
+		// Increment context count if this is a pooled browser
+		const pooledBrowser = browser as PooledBrowserInstance;
+		if (pooledBrowser.__pooledRef) {
+			this.browserPool?.incrementContextCount(pooledBrowser.__pooledRef);
+		}
 
 		const context = await browser.newContext({
 			userAgent: this.config.userAgent,
@@ -178,6 +233,39 @@ export class PlaywrightBrowserFactory implements IBrowserFactory {
 		const context = await this.createContext(browser);
 		const page = await this.createPage(context);
 		return { browser, context, page };
+	}
+
+	/**
+	 * Release a browser back to the pool or close it if not pooled.
+	 * MUST be called after using a browser to prevent resource leaks.
+	 */
+	async release(browser: Browser): Promise<void> {
+		// Check if this is a pooled browser
+		const pooledBrowser = browser as PooledBrowserInstance;
+		if (pooledBrowser.__pooled && pooledBrowser.__pooledRef) {
+			this.logger.debug(
+				`Releasing browser ${pooledBrowser.__pooledRef.id} to pool`,
+			);
+			await this.browserPool?.release(pooledBrowser.__pooledRef);
+		} else {
+			// Not from pool, close directly
+			this.logger.debug('Closing non-pooled browser');
+			try {
+				await browser.close();
+			} catch (error) {
+				this.logger.warn(`Error closing browser: ${error.message}`);
+			}
+		}
+	}
+
+	/**
+	 * Shutdown the factory and release all resources.
+	 * Called during application shutdown.
+	 */
+	async shutdown(): Promise<void> {
+		this.logger.log('Shutting down browser factory...');
+		// The pool will handle its own shutdown via onModuleDestroy
+		this.logger.log('Browser factory shutdown complete');
 	}
 
 	getConfig(): Required<BrowserConfig> {

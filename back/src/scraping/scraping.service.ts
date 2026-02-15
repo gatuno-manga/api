@@ -39,7 +39,6 @@ import { WebsiteService } from './website.service';
 @Injectable()
 export class ScrapingService implements OnApplicationShutdown {
 	readonly logger = new Logger(ScrapingService.name);
-	browserFactory: PlaywrightBrowserFactory;
 	concurrencyManager: IConcurrencyManager;
 	private imageCompressor: ImageCompressor | undefined;
 	private runner: ScrapingSessionRunner;
@@ -48,9 +47,9 @@ export class ScrapingService implements OnApplicationShutdown {
 		private readonly appConfigService: AppConfigService,
 		private readonly filesService: FilesService,
 		private readonly webSiteService: WebsiteService,
+		private readonly browserFactory: PlaywrightBrowserFactory,
 		@Inject(REDIS_CLIENT) private readonly redis: Redis,
 	) {
-		this.initializeBrowserFactory();
 		this.initializeImageCompressor();
 		this.initializeConcurrencyManager();
 		this.runner = new ScrapingSessionRunner(
@@ -58,24 +57,11 @@ export class ScrapingService implements OnApplicationShutdown {
 			this.concurrencyManager,
 			this.imageCompressor,
 		);
-	}
 
-	private initializeBrowserFactory(): void {
-		const { debugMode, slowMo, wsEndpoint } =
-			this.appConfigService.playwright;
-
-		this.browserFactory = new PlaywrightBrowserFactory({
-			headless: !debugMode,
-			debugMode,
-			slowMo,
-			wsEndpoint,
-			downloadDir: '/usr/src/app/data',
-		});
-
-		if (debugMode) {
+		if (this.appConfigService.playwright.debugMode) {
 			this.logger.log('🔍 Playwright DEBUG mode enabled');
 		}
-		this.logger.debug('Browser factory initialized');
+		this.logger.debug('Scraping service initialized');
 	}
 
 	private initializeConcurrencyManager(): void {
@@ -118,9 +104,8 @@ export class ScrapingService implements OnApplicationShutdown {
 	}
 
 	setBrowserFactory(factory: PlaywrightBrowserFactory): void {
-		this.browserFactory = factory;
 		this.runner = new ScrapingSessionRunner(
-			this.browserFactory,
+			factory,
 			this.concurrencyManager,
 			this.imageCompressor,
 		);
@@ -224,7 +209,9 @@ export class ScrapingService implements OnApplicationShutdown {
 			if (networkInterceptor) {
 				if (networkInterceptor.hasImage(imageUrl)) {
 					bufferData =
-						networkInterceptor.getCachedImageAsBuffer(imageUrl);
+						await networkInterceptor.getCachedImageAsBuffer(
+							imageUrl,
+						);
 					extension = networkInterceptor.getExtension(imageUrl);
 					isPreCompressed = networkInterceptor.isCompressed(imageUrl);
 					this.logger.debug(
@@ -454,7 +441,9 @@ export class ScrapingService implements OnApplicationShutdown {
 				if (networkInterceptor) {
 					if (networkInterceptor.hasImage(imageUrl)) {
 						bufferData =
-							networkInterceptor.getCachedImageAsBuffer(imageUrl);
+							await networkInterceptor.getCachedImageAsBuffer(
+								imageUrl,
+							);
 						extension = networkInterceptor.getExtension(imageUrl);
 						isPreCompressed =
 							networkInterceptor.isCompressed(imageUrl);
@@ -523,7 +512,9 @@ export class ScrapingService implements OnApplicationShutdown {
 
 					if (networkInterceptor.hasImage(imageUrl)) {
 						bufferData =
-							networkInterceptor.getCachedImageAsBuffer(imageUrl);
+							await networkInterceptor.getCachedImageAsBuffer(
+								imageUrl,
+							);
 					} else {
 						this.logger.warn(
 							`Image not found in network cache even after force load: ${imageUrl}`,
@@ -606,7 +597,7 @@ export class ScrapingService implements OnApplicationShutdown {
 
 							if (networkInterceptor.hasImage(imageUrl)) {
 								bufferData =
-									networkInterceptor.getCachedImageAsBuffer(
+									await networkInterceptor.getCachedImageAsBuffer(
 										imageUrl,
 									);
 								extension =
@@ -817,8 +808,24 @@ export class ScrapingService implements OnApplicationShutdown {
 	}
 
 	async onApplicationShutdown(): Promise<void> {
-		this.logger.log('Shutting down scraping service...');
-		// Runner handles browser instances, but we can close the factory if needed
-		// this.browserFactory.close(); // If factory had a close method
+		this.logger.log('🛑 Shutting down scraping service...');
+
+		// Gracefully shutdown browser factory and pool
+		try {
+			await Promise.race([
+				this.browserFactory.shutdown(),
+				new Promise((_, reject) =>
+					setTimeout(
+						() => reject(new Error('Shutdown timeout')),
+						30000,
+					),
+				),
+			]);
+			this.logger.log('✅ Scraping service shutdown complete');
+		} catch (error) {
+			this.logger.error(
+				`Error during scraping service shutdown: ${error.message}`,
+			);
+		}
 	}
 }
