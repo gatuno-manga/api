@@ -37,6 +37,10 @@ services:
     networks:
       - gatuno-net
 
+  redis:
+    restart: always
+    networks:
+      - gatuno-net
 networks:
   gatuno-net:
     driver: bridge
