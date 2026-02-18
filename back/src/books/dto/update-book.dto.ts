@@ -23,7 +23,7 @@ export class UpdateBookDto extends PartialType(
 	})
 	@IsOptional()
 	@IsString({ each: true })
-	alternativeTitle?: string[];
+	alternativeTitle?: string[] = undefined;
 
 	@ApiPropertyOptional({
 		description: 'Type of book (Manga, Manhwa, Manhua, Book, or Other)',
@@ -42,7 +42,7 @@ export class UpdateBookDto extends PartialType(
 	})
 	@IsOptional()
 	@IsString({ each: true })
-	sensitiveContent?: string[];
+	sensitiveContent?: string[] = undefined;
 
 	@ApiPropertyOptional({
 		description: 'Original URLs where the book can be found',
@@ -54,7 +54,7 @@ export class UpdateBookDto extends PartialType(
 	@IsOptional()
 	@NormalizeUrl()
 	@IsUrl({}, { each: true })
-	originalUrl?: string[];
+	originalUrl?: string[] = undefined;
 
 	@ApiPropertyOptional({
 		description: 'Array of tag names for the book',
@@ -64,7 +64,7 @@ export class UpdateBookDto extends PartialType(
 	})
 	@IsOptional()
 	@IsString({ each: true })
-	tags?: string[];
+	tags?: string[] = undefined;
 
 	@ApiPropertyOptional({
 		description: 'Array of authors',
@@ -74,5 +74,5 @@ export class UpdateBookDto extends PartialType(
 	@IsOptional()
 	@ValidateNested({ each: true })
 	@Type(() => CreateAuthorDto)
-	authors?: CreateAuthorDto[];
+	authors?: CreateAuthorDto[] = undefined;
 }

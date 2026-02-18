@@ -31,59 +31,98 @@ export class BookUpdateService {
 	 * Atualiza um livro existente
 	 */
 	async updateBook(id: string, dto: UpdateBookDto): Promise<Book> {
-		const book = await this.bookRepository.findOne({
-			where: { id },
-			relations: ['tags', 'sensitiveContent', 'authors'],
-		});
+		const exists = await this.bookRepository.existsBy({ id });
 
-		if (!book) {
+		if (!exists) {
 			this.logger.warn(`Book with id ${id} not found`);
 			throw new NotFoundException(`Book with id ${id} not found`);
 		}
 
-		this.bookRepository.merge(book, {
-			title: dto.title,
-			alternativeTitle: dto.alternativeTitle,
-			originalUrl: dto.originalUrl,
-			description: dto.description,
-			publication: dto.publication,
-			type: dto.type,
-		});
+		const scalarUpdates: Partial<Book> = {};
+		if (dto.title !== undefined) scalarUpdates.title = dto.title;
+		if (dto.alternativeTitle !== undefined)
+			scalarUpdates.alternativeTitle = dto.alternativeTitle;
+		if (dto.originalUrl !== undefined)
+			scalarUpdates.originalUrl = dto.originalUrl;
+		if (dto.description !== undefined)
+			scalarUpdates.description = dto.description;
+		if (dto.publication !== undefined)
+			scalarUpdates.publication = dto.publication;
+		if (dto.type !== undefined) scalarUpdates.type = dto.type;
 
-		if (dto.tags && dto.tags.length > 0) {
-			book.tags = await this.bookRelationshipService.findOrCreateTags(
-				dto.tags,
-			);
+		if (Object.keys(scalarUpdates).length > 0) {
+			await this.bookRepository.update({ id }, scalarUpdates);
 		}
 
-		if (dto.authors && dto.authors.length > 0) {
-			book.authors =
-				await this.bookRelationshipService.findOrCreateAuthors(
-					dto.authors,
-				);
+		if (dto.tags !== undefined) {
+			const newTags =
+				dto.tags.length > 0
+					? await this.bookRelationshipService.findOrCreateTags(
+							dto.tags,
+						)
+					: [];
+			const bookForTags = await this.findBookWith(id, ['tags']);
+			bookForTags.tags = newTags;
+			await this.bookRepository.save(bookForTags);
 		}
 
-		if (dto.sensitiveContent && dto.sensitiveContent.length > 0) {
-			book.sensitiveContent =
-				await this.bookRelationshipService.findOrCreateSensitiveContent(
-					dto.sensitiveContent,
-				);
+		if (dto.authors !== undefined) {
+			const newAuthors =
+				dto.authors.length > 0
+					? await this.bookRelationshipService.findOrCreateAuthors(
+							dto.authors,
+						)
+					: [];
+			const bookForAuthors = await this.findBookWith(id, ['authors']);
+			bookForAuthors.authors = newAuthors;
+			await this.bookRepository.save(bookForAuthors);
+		}
+
+		if (dto.sensitiveContent !== undefined) {
+			const newContent =
+				dto.sensitiveContent.length > 0
+					? await this.bookRelationshipService.findOrCreateSensitiveContent(
+							dto.sensitiveContent,
+						)
+					: [];
+			const bookForContent = await this.findBookWith(id, [
+				'sensitiveContent',
+			]);
+			bookForContent.sensitiveContent = newContent;
+			await this.bookRepository.save(bookForContent);
 		}
 
 		if (dto.cover?.urlImgs && dto.cover.urlImgs.length > 0) {
 			await this.coverImageService.addCoverToQueue(
-				book.id,
+				id,
 				dto.cover.urlOrigin,
 				dto.cover.urlImgs,
 			);
 		}
 
-		const updatedBook = await this.bookRepository.save(book);
+		const updatedBook = await this.findBookWith(id, [
+			'tags',
+			'sensitiveContent',
+			'authors',
+		]);
 
-		// Emite evento de atualização de livro
 		this.eventEmitter.emit('book.updated', updatedBook);
 
 		return updatedBook;
+	}
+
+	/**
+	 * Busca um livro com as relações especificadas ou lança NotFoundException
+	 */
+	private async findBookWith(id: string, relations: string[]): Promise<Book> {
+		const book = await this.bookRepository.findOne({
+			where: { id },
+			relations,
+		});
+		if (!book) {
+			throw new NotFoundException(`Book with id ${id} not found`);
+		}
+		return book;
 	}
 
 	/**
