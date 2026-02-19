@@ -65,4 +65,20 @@ export interface PooledBrowser {
 	createdAt: Date;
 	lastUsedAt: Date;
 	isHealthy: boolean;
+	/**
+	 * Marcado como true quando o browser atingiu maxContextsBeforeRestart.
+	 * Browsers com esta flag não recebem novas sessões (drain pattern).
+	 * O reinício ocorre somente quando activeContexts chegar a 0.
+	 */
+	isPendingRestart: boolean;
+	/**
+	 * Lock que impede múltiplas chamadas concorrentes de restartBrowser()
+	 * para a mesma instância (evita a "explosão" do pool).
+	 */
+	isRestarting: boolean;
+	/**
+	 * Timestamp em que isPendingRestart foi definido como true.
+	 * Usado pelo health check para detectar browsers presos.
+	 */
+	pendingRestartSince?: Date;
 }

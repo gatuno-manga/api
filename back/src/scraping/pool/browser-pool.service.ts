@@ -29,6 +29,7 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 	private isShuttingDown = false;
 	private poolConfig: BrowserPoolConfig;
 	private browserConfig?: Required<BrowserConfig>;
+	private healthCheckInterval?: ReturnType<typeof setInterval>;
 
 	constructor(
 		poolConfig?: Partial<BrowserPoolConfig>,
@@ -66,6 +67,13 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 		await Promise.allSettled(warmupPromises);
 		this.logger.log(
 			`✅ Browser pool initialized with ${this.pool.size} browsers`,
+		);
+
+		// Verifica periodicamente se algum browser ficou preso em isPendingRestart
+		// (ex: sessão vazou e nunca chamou release)
+		this.healthCheckInterval = setInterval(
+			() => this.checkStuckBrowsers(),
+			60_000,
 		);
 	}
 
@@ -123,15 +131,28 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 			`Released browser ${browser.id} (active contexts: ${browser.activeContexts})`,
 		);
 
-		// Check if browser needs restart
+		// Marca como pendente na primeira vez que o limite é atingido.
+		// Não reinicia imediatamente: aguarda o drain (activeContexts === 0)
+		// para não derrubar sessões ainda ativas na mesma instância.
 		if (
+			!browser.isPendingRestart &&
 			browser.totalContextsCreated >=
-			this.poolConfig.maxContextsBeforeRestart
+				this.poolConfig.maxContextsBeforeRestart
 		) {
+			browser.isPendingRestart = true;
+			browser.pendingRestartSince = new Date();
 			this.logger.log(
-				`Browser ${browser.id} reached context limit, restarting...`,
+				`Browser ${browser.id} reached context limit, draining before restart...`,
 			);
-			await this.restartBrowser(browser.id);
+		}
+
+		// Reinicia apenas quando totalmente drenado e sem lock ativo
+		if (
+			browser.isPendingRestart &&
+			browser.activeContexts === 0 &&
+			!browser.isRestarting
+		) {
+			void this.restartBrowser(browser.id);
 			return;
 		}
 
@@ -160,8 +181,13 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 		return {
 			totalBrowsers: browsers.length,
 			activeBrowsers: browsers.filter((b) => b.activeContexts > 0).length,
-			idleBrowsers: browsers.filter((b) => b.activeContexts === 0).length,
+			idleBrowsers: browsers.filter(
+				(b) => b.activeContexts === 0 && !b.isPendingRestart,
+			).length,
 			unhealthyBrowsers: browsers.filter((b) => !b.isHealthy).length,
+			pendingRestartBrowsers: browsers.filter((b) => b.isPendingRestart)
+				.length,
+			restartingBrowsers: browsers.filter((b) => b.isRestarting).length,
 			totalActiveContexts: browsers.reduce(
 				(sum, b) => sum + b.activeContexts,
 				0,
@@ -176,6 +202,33 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 	}
 
 	/**
+	 * Health check: força o reinício de browsers presos em isPendingRestart
+	 * por mais tempo que o dobro do acquireTimeout (indicativo de sessão vazada
+	 * que nunca chamou release).
+	 */
+	private checkStuckBrowsers(): void {
+		const now = Date.now();
+		const stuckThresholdMs = this.poolConfig.acquireTimeout * 2;
+
+		for (const browser of this.pool.values()) {
+			if (
+				browser.isPendingRestart &&
+				!browser.isRestarting &&
+				browser.pendingRestartSince &&
+				now - browser.pendingRestartSince.getTime() > stuckThresholdMs
+			) {
+				const stuckSeconds = Math.round(
+					(now - browser.pendingRestartSince.getTime()) / 1000,
+				);
+				this.logger.warn(
+					`Browser ${browser.id} stuck in pendingRestart for ${stuckSeconds}s (leaked session?), forcing restart`,
+				);
+				void this.restartBrowser(browser.id);
+			}
+		}
+	}
+
+	/**
 	 * Gracefully shutdown the pool.
 	 */
 	async shutdown(): Promise<void> {
@@ -185,6 +238,10 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 
 		this.isShuttingDown = true;
 		this.logger.log('🛑 Shutting down browser pool...');
+
+		if (this.healthCheckInterval) {
+			clearInterval(this.healthCheckInterval);
+		}
 
 		// Reject all waiting requests
 		for (const waiter of this.waitQueue) {
@@ -252,6 +309,8 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 			createdAt: new Date(),
 			lastUsedAt: new Date(),
 			isHealthy: true,
+			isPendingRestart: false,
+			isRestarting: false,
 		};
 
 		this.pool.set(id, pooledBrowser);
@@ -287,11 +346,14 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 
 	/**
 	 * Find an available browser in the pool.
+	 * Browsers aguardando drain (isPendingRestart) são excluídos da seleção
+	 * para não receber novas sessões.
 	 */
 	private findAvailableBrowser(): PooledBrowser | null {
 		for (const browser of this.pool.values()) {
 			if (
 				browser.isHealthy &&
+				!browser.isPendingRestart &&
 				browser.activeContexts < this.poolConfig.maxContextsPerBrowser
 			) {
 				return browser;
@@ -389,7 +451,11 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 	}
 
 	/**
-	 * Restart a browser.
+	 * Reinicia um browser de forma segura.
+	 *
+	 * Proteções implementadas:
+	 * - Lock `isRestarting` impede chamadas concorrentes para a mesma instância
+	 * - Respeita `poolSize` para não criar mais browsers do que o configurado
 	 */
 	private async restartBrowser(id: string): Promise<void> {
 		const oldBrowser = this.pool.get(id);
@@ -397,14 +463,34 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 			return;
 		}
 
-		// Close old browser
-		await this.closeBrowser(id, oldBrowser.browser);
-		this.pool.delete(id);
+		// Lock: evita reentrada concorrente para o mesmo browser
+		if (oldBrowser.isRestarting) {
+			this.logger.debug(
+				`Browser ${id} already restarting, skipping duplicate call`,
+			);
+			return;
+		}
+		oldBrowser.isRestarting = true;
 
-		// Create new browser
+		// Remove do pool ANTES de criar o substituto para que
+		// pool.size reflita o estado correto durante createBrowser()
+		this.pool.delete(id);
+		await this.closeBrowser(id, oldBrowser.browser);
+
+		// Respeita o limite de poolSize: só cria substituto se há vaga.
+		// Se o pool já foi reabastecido por outro caminho, não abre novo browser.
+		if (this.pool.size >= this.poolConfig.poolSize) {
+			this.logger.warn(
+				`Pool already at capacity (${this.pool.size}/${this.poolConfig.poolSize}), skipping replacement for ${id}`,
+			);
+			this.processWaitQueue();
+			return;
+		}
+
 		try {
-			await this.createBrowser();
-			this.logger.log(`Browser ${id} restarted successfully`);
+			const newBrowser = await this.createBrowser();
+			this.logger.log(`✅ Browser ${id} replaced with ${newBrowser.id}`);
+			this.processWaitQueue();
 		} catch (error) {
 			this.logger.error(
 				`Failed to restart browser ${id}: ${error.message}`,
