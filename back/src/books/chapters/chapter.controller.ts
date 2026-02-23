@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import {
 	ApiBearerAuth,
+	ApiBody,
 	ApiOperation,
 	ApiParam,
 	ApiResponse,
@@ -190,5 +191,24 @@ export class ChapterController {
 	@UseGuards(JwtAuthGuard)
 	getChaptersWithLessPages(@Param('pages') pages: number) {
 		return this.chapterService.listLessPages(pages);
+	}
+
+	@Post('batch/data')
+	@Throttle({ long: { limit: 100, ttl: 60000 } })
+	@ApiOperation({
+		summary: 'Get multiple chapters data',
+		description:
+			'Retrieve content and details for multiple chapters at once (Optimized for offline download)',
+	})
+	@ApiBody({ type: [String], description: 'Array of chapter IDs' })
+	@ApiResponse({
+		status: 200,
+		description: 'Chapters data retrieved successfully',
+	})
+	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiBearerAuth('JWT-auth')
+	@UseGuards(OptionalAuthGuard)
+	getChaptersBatch(@Body() chapterIds: string[]) {
+		return this.chapterService.getChaptersBatch(chapterIds);
 	}
 }

@@ -286,4 +286,83 @@ export class ChapterService {
 		}
 		return chapters;
 	}
+
+	/**
+	 * Busca dados de múltiplos capítulos de uma vez para facilitar o download offline.
+	 * Inclui páginas, URLs completas e referências de navegação (anterior/próximo).
+	 */
+	async getChaptersBatch(ids: string[]) {
+		if (!ids || ids.length === 0) return [];
+
+		const chapters = await this.chapterRepository.find({
+			where: { id: In(ids) },
+			relations: ['pages', 'book'],
+		});
+
+		if (chapters.length === 0) return [];
+
+		// Agrupa capítulos por livro para calcular anterior/próximo eficientemente
+		const bookIds = [...new Set(chapters.map((c) => c.book.id))];
+
+		const allChaptersOfBooks = await this.chapterRepository.find({
+			where: { book: { id: In(bookIds) } },
+			select: ['id', 'index', 'book'],
+			relations: ['book'],
+			order: { index: 'ASC' },
+		});
+
+		const chaptersByBook = new Map<string, Chapter[]>();
+		for (const ch of allChaptersOfBooks) {
+			const bId = ch.book.id;
+			if (!chaptersByBook.has(bId)) {
+				chaptersByBook.set(bId, []);
+			}
+			chaptersByBook.get(bId)?.push(ch);
+		}
+
+		return chapters.map((chapter) => {
+			const bookChapters = chaptersByBook.get(chapter.book.id) || [];
+			const currentIndex = bookChapters.findIndex(
+				(c) => c.id === chapter.id,
+			);
+
+			const previousChapter =
+				currentIndex > 0 ? bookChapters[currentIndex - 1] : null;
+			const nextChapter =
+				currentIndex !== -1 && currentIndex < bookChapters.length - 1
+					? bookChapters[currentIndex + 1]
+					: null;
+
+			const { book, ...chapterWithoutBook } = chapter;
+
+			const baseResponse = {
+				...chapterWithoutBook,
+				previous: previousChapter?.id,
+				next: nextChapter?.id,
+				bookId: book.id,
+				bookTitle: book.title,
+				totalChapters:
+					bookChapters.length > 0
+						? Number(bookChapters[bookChapters.length - 1].index)
+						: 0,
+				documentPath:
+					chapter.contentType === ContentType.DOCUMENT &&
+					chapter.documentPath
+						? this.urlImage(chapter.documentPath)
+						: undefined,
+			};
+
+			// Converte caminhos para URLs completas
+			if (
+				chapter.contentType === ContentType.IMAGE &&
+				baseResponse.pages
+			) {
+				for (const page of baseResponse.pages) {
+					page.path = this.urlImage(page.path);
+				}
+			}
+
+			return baseResponse;
+		});
+	}
 }
