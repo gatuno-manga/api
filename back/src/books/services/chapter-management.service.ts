@@ -7,7 +7,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { normalizeUrl } from 'src/common/utils/url.utils';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { ChapterUpdatedEvent } from '../chapters/events/chapter-updated.event';
 import { CreateChapterManualDto } from '../dto/create-chapter-manual.dto';
 import { CreateChapterDto } from '../dto/create-chapter.dto';
@@ -29,6 +29,7 @@ export class ChapterManagementService {
 		@InjectRepository(Book)
 		private readonly bookRepository: Repository<Book>,
 		private readonly eventEmitter: EventEmitter2,
+		private readonly dataSource: DataSource,
 	) {}
 
 	/**
@@ -293,27 +294,12 @@ export class ChapterManagementService {
 			);
 		}
 
-		// Define índices temporários para evitar conflitos
-		let tempIndex = -100_000;
-		for (const chapter of book.chapters) {
-			chapter.index = tempIndex++;
-		}
-		await this.chapterRepository.save(book.chapters);
-
-		this.logger.log(
-			`Reordered chapters for book ${idBook} to temporary indices`,
-		);
-
-		// Mapeia capítulos por ID
 		const chapterMap = new Map<string, Chapter>();
 		for (const chapter of book.chapters) {
 			chapterMap.set(chapter.id, chapter);
 		}
-
-		// Aplica a nova ordem
 		for (const chapterDto of chapters) {
-			const chapter = chapterMap.get(chapterDto.id);
-			if (!chapter) {
+			if (!chapterMap.has(chapterDto.id)) {
 				this.logger.warn(
 					`Chapter with id ${chapterDto.id} not found in book ${idBook}`,
 				);
@@ -321,17 +307,45 @@ export class ChapterManagementService {
 					`Chapter with id ${chapterDto.id} not found in book ${idBook}`,
 				);
 			}
-			chapter.index = chapterDto.index;
 		}
 
-		const orderedChapters = await this.chapterRepository.save(
-			Array.from(chapterMap.values()),
-		);
-		book.chapters = orderedChapters;
+		const queryRunner = this.dataSource.createQueryRunner('master');
+		let savedBook: Book;
+		let orderedChapters: Chapter[];
 
-		const savedBook = await this.bookRepository.save(book);
+		try {
+			await queryRunner.connect();
+			await queryRunner.startTransaction();
 
-		// Emit event for reordering
+			let tempIndex = -100_000;
+			for (const chapter of book.chapters) {
+				chapter.index = tempIndex++;
+			}
+			await queryRunner.manager.save(Chapter, book.chapters);
+
+			for (const chapterDto of chapters) {
+				const chapter = chapterMap.get(chapterDto.id);
+				if (chapter) chapter.index = chapterDto.index;
+			}
+
+			orderedChapters = await queryRunner.manager.save(
+				Chapter,
+				Array.from(chapterMap.values()),
+			);
+			book.chapters = orderedChapters;
+
+			savedBook = await queryRunner.manager.save(Book, book);
+
+			await queryRunner.commitTransaction();
+		} catch (error) {
+			await queryRunner.rollbackTransaction();
+			throw error;
+		} finally {
+			await queryRunner.release();
+		}
+
+		this.logger.log(`Reordered chapters for book ${idBook}`);
+
 		for (const ch of savedBook.chapters) {
 			ch.book = savedBook;
 		}

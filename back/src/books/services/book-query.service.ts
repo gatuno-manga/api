@@ -15,7 +15,6 @@ import { Repository, SelectQueryBuilder } from 'typeorm';
 import { BookPageOptionsDto } from '../dto/book-page-options.dto';
 import { Author } from '../entities/author.entity';
 import { Book } from '../entities/book.entity';
-import { ChapterRead } from '../entities/chapter-read.entity';
 import { Chapter } from '../entities/chapter.entity';
 import { Page } from '../entities/page.entity';
 import { SensitiveContent } from '../entities/sensitive-content.entity';
@@ -55,6 +54,10 @@ export class BookQueryService {
 		@InjectQueue('fix-chapter-queue')
 		private readonly fixChapterQueue: Queue<{ chapterId: string }>,
 	) {}
+
+	/** Cache de curto prazo para getQueueStats (TTL: 30s) */
+	private queueStatsCache: { data: unknown; expiresAt: number } | null = null;
+	private readonly QUEUE_STATS_TTL_MS = 30_000;
 
 	/**
 	 * Aplica filtros dinâmicos aos livros
@@ -171,10 +174,10 @@ export class BookQueryService {
 	): Promise<{ id: string }> {
 		const queryBuilder = this.bookRepository
 			.createQueryBuilder('book')
-			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
-			.leftJoinAndSelect('book.tags', 'tags')
-			.leftJoinAndSelect('book.authors', 'authors')
-			.select(['book.id']);
+			.leftJoin('book.sensitiveContent', 'sensitiveContent')
+			.leftJoin('book.tags', 'tags')
+			.leftJoin('book.authors', 'authors')
+			.select('book.id');
 
 		await this.applyBookFilters(
 			queryBuilder,
@@ -183,9 +186,15 @@ export class BookQueryService {
 			filterStrategies,
 		);
 
-		queryBuilder.orderBy('RAND()').limit(1);
+		const count = await queryBuilder.getCount();
 
-		const book = await queryBuilder.getOne();
+		if (count === 0) {
+			this.logger.warn('No books found matching the filters');
+			throw new NotFoundException('No books found matching the filters');
+		}
+
+		const randomOffset = Math.floor(Math.random() * count);
+		const book = await queryBuilder.skip(randomOffset).take(1).getOne();
 
 		if (!book) {
 			this.logger.warn('No books found matching the filters');
@@ -248,6 +257,7 @@ export class BookQueryService {
 		}
 
 		const coverUrl = book.covers?.[0]?.url || '';
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { covers, ...rest } = book;
 
 		return {
@@ -298,31 +308,35 @@ export class BookQueryService {
 			])
 			.orderBy('chapter.index', 'ASC');
 
-		const chapters = await chaptersQuery.getMany();
-
-		if (!userid) return chapters;
-
-		let readChapterIds = new Set<string>();
-		if (userid) {
-			const readChapters = await this.bookRepository.manager
-				.getRepository(ChapterRead)
-				.createQueryBuilder('cr')
-				.innerJoin('cr.chapter', 'chapter')
-				.innerJoin('chapter.book', 'book')
-				.where('cr.user.id = :userid', { userid })
-				.andWhere('book.id = :bookId', { bookId: id })
-				.select('chapter.id')
-				.getRawMany();
-
-			readChapterIds = new Set(readChapters.map((r) => r.chapter_id));
+		if (!userid) {
+			return chaptersQuery.getMany();
 		}
 
-		const chaptersWithReadStatus = chapters.map((chapter) => ({
-			...chapter,
-			read: readChapterIds.has(chapter.id),
-		}));
+		chaptersQuery.addSelect(
+			(qb) =>
+				qb
+					.select('COUNT(cr.id)')
+					.from('chapters_read', 'cr')
+					.where('cr.chapterId = chapter.id')
+					.andWhere('cr.userId = :userid', { userid }),
+			'readCount',
+		);
 
-		return chaptersWithReadStatus;
+		const rawChapters = await chaptersQuery.getRawMany<{
+			chapter_id: string;
+			chapter_title: string;
+			chapter_index: number;
+			chapter_scrapingStatus: string;
+			readCount: string;
+		}>();
+
+		return rawChapters.map((row) => ({
+			id: row.chapter_id,
+			title: row.chapter_title,
+			index: row.chapter_index,
+			scrapingStatus: row.chapter_scrapingStatus,
+			read: Number(row.readCount) > 0,
+		}));
 	}
 
 	/**
@@ -407,6 +421,7 @@ export class BookQueryService {
 			);
 		}
 
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { sensitiveContent, ...rest } = book;
 		return rest;
 	}
@@ -415,63 +430,91 @@ export class BookQueryService {
 	 * Verifica status de um livro
 	 */
 	async verifyBook(idBook: string) {
-		const book = await this.bookRepository.findOne({
+		const bookExists = await this.bookRepository.findOne({
 			where: { id: idBook },
-			relations: ['chapters', 'chapters.pages'],
+			select: { id: true },
 		});
 
-		if (!book) {
+		if (!bookExists) {
 			this.logger.warn(`Book with id ${idBook} not found`);
 			throw new NotFoundException(`Book with id ${idBook} not found`);
 		}
 
-		const errorChapters: Chapter[] = [];
-		for (const chapter of book.chapters) {
-			const hasNullPathPage = chapter.pages.some(
-				(page) =>
-					page.path === null ||
-					page.path.startsWith('null') ||
-					page.path.startsWith('undefined'),
-			);
+		const chapters = await this.chapterRepository
+			.createQueryBuilder('ch')
+			.where('ch.bookId = :idBook', { idBook })
+			.select(['ch.id', 'ch.title', 'ch.scrapingStatus'])
+			.getMany();
 
-			if (
-				chapter.scrapingStatus === ScrapingStatus.ERROR ||
-				chapter.pages.length <= 5 ||
-				hasNullPathPage
-			) {
-				chapter.scrapingStatus = ScrapingStatus.ERROR;
-				errorChapters.push(chapter);
-			}
+		if (chapters.length === 0) {
+			return {
+				numberOfChapters: 0,
+				numberOfPages: 0,
+				numberOfChaptersWithError: 0,
+				pagesErrorCount: 0,
+				errorChapters: [],
+			};
 		}
 
+		const chapterIds = chapters.map((ch) => ch.id);
+
+		const [pageCountRows, errorPageCountRows] = await Promise.all([
+			this.pageRepository
+				.createQueryBuilder('p')
+				.innerJoin('p.chapter', 'ch')
+				.where('ch.id IN (:...chapterIds)', { chapterIds })
+				.select('ch.id', 'chapterId')
+				.addSelect('COUNT(p.id)', 'total')
+				.groupBy('ch.id')
+				.getRawMany<{ chapterId: string; total: string }>(),
+			this.pageRepository
+				.createQueryBuilder('p')
+				.innerJoin('p.chapter', 'ch')
+				.where('ch.id IN (:...chapterIds)', { chapterIds })
+				.andWhere(
+					"(p.path IS NULL OR p.path LIKE 'null%' OR p.path LIKE 'undefined%')",
+				)
+				.select('ch.id', 'chapterId')
+				.addSelect('COUNT(p.id)', 'cnt')
+				.groupBy('ch.id')
+				.getRawMany<{ chapterId: string; cnt: string }>(),
+		]);
+
+		const pageCountMap = new Map(
+			pageCountRows.map((r) => [r.chapterId, Number(r.total)]),
+		);
+		const errorPageCountMap = new Map(
+			errorPageCountRows.map((r) => [r.chapterId, Number(r.cnt)]),
+		);
+
+		const numberOfPages = Array.from(pageCountMap.values()).reduce(
+			(acc, v) => acc + v,
+			0,
+		);
+
+		const errorChapters = chapters.filter((ch) => {
+			const pageCount = pageCountMap.get(ch.id) ?? 0;
+			const errorCount = errorPageCountMap.get(ch.id) ?? 0;
+			return (
+				ch.scrapingStatus === ScrapingStatus.ERROR ||
+				pageCount <= 5 ||
+				errorCount > 0
+			);
+		});
+
 		return {
-			numberOfChapters: book.chapters.length,
-			numberOfPages: book.chapters.reduce(
-				(acc, chapter) => acc + chapter.pages.length,
-				0,
-			),
+			numberOfChapters: chapters.length,
+			numberOfPages,
 			numberOfChaptersWithError: errorChapters.length,
 			pagesErrorCount: errorChapters.reduce(
-				(acc, chapter) =>
-					acc +
-					chapter.pages.filter(
-						(page) =>
-							page.path === null ||
-							page.path.startsWith('null') ||
-							page.path.startsWith('undefined'),
-					).length,
+				(acc, ch) => acc + (errorPageCountMap.get(ch.id) ?? 0),
 				0,
 			),
-			errorChapters: errorChapters.map((chapter) => ({
-				id: chapter.id,
-				title: chapter.title,
-				scrapingStatus: chapter.scrapingStatus,
-				erroPages: chapter.pages.filter(
-					(page) =>
-						page.path === null ||
-						page.path.startsWith('null') ||
-						page.path.startsWith('undefined'),
-				).length,
+			errorChapters: errorChapters.map((ch) => ({
+				id: ch.id,
+				title: ch.title,
+				scrapingStatus: ScrapingStatus.ERROR,
+				erroPages: errorPageCountMap.get(ch.id) ?? 0,
 			})),
 		};
 	}
@@ -561,6 +604,13 @@ export class BookQueryService {
 	}
 
 	async getQueueStats() {
+		if (
+			this.queueStatsCache &&
+			Date.now() < this.queueStatsCache.expiresAt
+		) {
+			return this.queueStatsCache.data;
+		}
+
 		try {
 			const [
 				bookUpdateCounts,
@@ -718,7 +768,7 @@ export class BookQueryService {
 				...(pending && pendingMeta(job)),
 			});
 
-			return {
+			const result = {
 				queues: [
 					{
 						name: 'book-update-queue',
@@ -758,6 +808,13 @@ export class BookQueryService {
 					},
 				],
 			};
+
+			this.queueStatsCache = {
+				data: result,
+				expiresAt: Date.now() + this.QUEUE_STATS_TTL_MS,
+			};
+
+			return result;
 		} catch (error) {
 			this.logger.error('Failed to fetch queue stats', error);
 			throw error;

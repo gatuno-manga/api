@@ -7,6 +7,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectMetric } from '@willsoto/nestjs-prometheus';
+import pLimit from 'p-limit';
 import { Counter, Histogram } from 'prom-client';
 import { CustomLogger } from 'src/custom.logger';
 import { FilesService } from 'src/files/files.service';
@@ -307,29 +308,38 @@ export class BookUploadService {
 			throw new NotFoundException(`Book with id ${bookId} not found`);
 		}
 
+		const savedPaths: string[] = [];
+
 		try {
+			const limit = pLimit(5);
+
 			const covers = await Promise.all(
-				files.map(async (file, index) => {
-					if (!file.mimetype.match(/^image\//)) {
-						throw new BadRequestException(
-							`File ${file.originalname} is not an image`,
-						);
-					}
+				files.map((file, index) =>
+					limit(async () => {
+						if (!file.mimetype.match(/^image\//)) {
+							throw new BadRequestException(
+								`File ${file.originalname} is not an image`,
+							);
+						}
 
-					const extension = path.extname(file.originalname) || '.jpg';
-					const savedPath = await this.filesService.saveBufferFile(
-						file.buffer,
-						extension,
-					);
+						const extension =
+							path.extname(file.originalname) || '.jpg';
+						const savedPath =
+							await this.filesService.saveBufferFile(
+								file.buffer,
+								extension,
+							);
+						savedPaths.push(savedPath);
 
-					return this.coverRepository.create({
-						title: file.originalname,
-						url: savedPath,
-						book: book,
-						index: book.covers.length + index,
-						selected: book.covers.length === 0 && index === 0,
-					});
-				}),
+						return this.coverRepository.create({
+							title: file.originalname,
+							url: savedPath,
+							book: book,
+							index: book.covers.length + index,
+							selected: book.covers.length === 0 && index === 0,
+						});
+					}),
+				),
 			);
 
 			const savedCovers = await this.coverRepository.save(covers);
@@ -359,6 +369,20 @@ export class BookUploadService {
 
 			return savedCovers;
 		} catch (error) {
+			if (savedPaths.length > 0) {
+				await Promise.all(
+					savedPaths.map((p) =>
+						this.filesService
+							.deleteFile(p)
+							.catch((e) =>
+								this.logger.warn(
+									`Failed to clean up file ${p} after upload error: ${e.message}`,
+									'BookUploadService',
+								),
+							),
+					),
+				);
+			}
 			this.logger.error(error, 'BookUploadService', {
 				bookId,
 				filesCount: files.length,

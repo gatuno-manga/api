@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { Book } from '../entities/book.entity';
 import { Chapter } from '../entities/chapter.entity';
 import { Cover } from '../entities/cover.entity';
@@ -36,6 +36,7 @@ export class BookDeletionService {
 		@InjectRepository(Page)
 		private readonly pageRepository: Repository<Page>,
 		private readonly eventEmitter: EventEmitter2,
+		private readonly dataSource: DataSource,
 	) {}
 
 	async deleteBook(bookId: string): Promise<DeletionResult> {
@@ -43,28 +44,60 @@ export class BookDeletionService {
 
 		const book = await this.bookRepository.findOne({
 			where: { id: bookId },
-			relations: ['chapters', 'chapters.pages', 'covers'],
+			select: { id: true, title: true },
 		});
 
 		if (!book) {
 			throw new NotFoundException(`Book with id ${bookId} not found`);
 		}
 
-		const coverFiles = book.covers.map((c) => c.url);
-		const pageFiles = book.chapters.flatMap((ch) =>
-			ch.pages.map((p) => p.path),
-		);
+		const [coverPaths, pagePaths] = await Promise.all([
+			this.coverRepository
+				.createQueryBuilder('cv')
+				.innerJoin('cv.book', 'bk')
+				.where('bk.id = :bookId', { bookId })
+				.select(['cv.url'])
+				.getMany(),
+			this.pageRepository
+				.createQueryBuilder('p')
+				.innerJoin('p.chapter', 'ch')
+				.where('ch.bookId = :bookId', { bookId })
+				.select(['p.path'])
+				.getMany(),
+		]);
+
+		const coverFiles = coverPaths.map((c) => c.url).filter(Boolean);
+		const pageFiles = pagePaths.map((p) => p.path).filter(Boolean);
 		const totalFiles = coverFiles.length + pageFiles.length;
 
-		const deletedChaptersCount = book.chapters.length;
-		const deletedPagesCount = book.chapters.reduce(
-			(sum, ch) => sum + ch.pages.length,
-			0,
-		);
-		const deletedCoversCount = book.covers.length;
+		const [deletedChaptersCount, deletedCoversCount] = await Promise.all([
+			this.chapterRepository.count({ where: { book: { id: bookId } } }),
+			this.coverRepository.count({ where: { book: { id: bookId } } }),
+		]);
 
 		try {
-			await this.bookRepository.softRemove(book);
+			await this.pageRepository
+				.createQueryBuilder('p')
+				.softDelete()
+				.where(
+					'chapterId IN (SELECT id FROM chapters WHERE bookId = :bookId)',
+					{ bookId },
+				)
+				.execute();
+
+			await this.chapterRepository
+				.createQueryBuilder('ch')
+				.softDelete()
+				.where('ch.bookId = :bookId', { bookId })
+				.execute();
+
+			await this.coverRepository
+				.createQueryBuilder('cv')
+				.softDelete()
+				.where('cv.bookId = :bookId', { bookId })
+				.execute();
+
+			await this.bookRepository.softDelete({ id: bookId });
 
 			this.eventEmitter.emit('book.deleted', {
 				bookId: book.id,
@@ -78,7 +111,7 @@ export class BookDeletionService {
 			return {
 				deletedBooks: 1,
 				deletedChapters: deletedChaptersCount,
-				deletedPages: deletedPagesCount,
+				deletedPages: pageFiles.length,
 				deletedCovers: deletedCoversCount,
 				filesScheduledForDeletion: totalFiles,
 				success: true,
@@ -88,7 +121,7 @@ export class BookDeletionService {
 			return {
 				filesScheduledForDeletion: 0,
 				success: false,
-				errors: [error.message],
+				errors: [(error as Error).message],
 			};
 		}
 	}
@@ -108,46 +141,110 @@ export class BookDeletionService {
 
 		const books = await this.bookRepository.find({
 			where: { id: In(bookIds) },
-			relations: ['chapters', 'chapters.pages', 'covers'],
+			select: { id: true, title: true },
 		});
 
 		if (books.length === 0) {
 			throw new NotFoundException('No books found with provided IDs');
 		}
 
-		let totalFiles = 0;
-		let totalChapters = 0;
-		let totalPages = 0;
-		let totalCovers = 0;
-		const errors: string[] = [];
+		const foundBookIds = books.map((b) => b.id);
+
+		const [coverRows, pageRows] = await Promise.all([
+			this.coverRepository
+				.createQueryBuilder('cv')
+				.innerJoin('cv.book', 'bk')
+				.where('bk.id IN (:...foundBookIds)', { foundBookIds })
+				.select('bk.id', 'bookId')
+				.addSelect('cv.url', 'url')
+				.getRawMany<{ bookId: string; url: string }>(),
+			this.pageRepository
+				.createQueryBuilder('p')
+				.innerJoin('p.chapter', 'ch')
+				.innerJoin('ch.book', 'bk')
+				.where('bk.id IN (:...foundBookIds)', { foundBookIds })
+				.select('bk.id', 'bookId')
+				.addSelect('p.path', 'path')
+				.getRawMany<{ bookId: string; path: string }>(),
+		]);
+
+		const coversByBook = new Map<string, string[]>();
+		const pagesByBook = new Map<string, string[]>();
+		for (const row of coverRows) {
+			if (!coversByBook.has(row.bookId)) coversByBook.set(row.bookId, []);
+			if (row.url) coversByBook.get(row.bookId)?.push(row.url);
+		}
+		for (const row of pageRows) {
+			if (!pagesByBook.has(row.bookId)) pagesByBook.set(row.bookId, []);
+			if (row.path) pagesByBook.get(row.bookId)?.push(row.path);
+		}
+
+		const totalFiles =
+			coverRows.filter((r) => r.url).length +
+			pageRows.filter((r) => r.path).length;
+
+		const [totalChapters, totalCovers] = await Promise.all([
+			this.chapterRepository.count({
+				where: { book: { id: In(foundBookIds) } },
+			}),
+			coverRows.length,
+		]);
+
+		const queryRunner = this.dataSource.createQueryRunner('master');
+		try {
+			await queryRunner.connect();
+			await queryRunner.startTransaction();
+
+			await queryRunner.manager
+				.createQueryBuilder(Page, 'p')
+				.softDelete()
+				.where(
+					'chapterId IN (SELECT id FROM chapters WHERE bookId IN (:...foundBookIds))',
+					{ foundBookIds },
+				)
+				.execute();
+
+			await queryRunner.manager
+				.createQueryBuilder(Chapter, 'ch')
+				.softDelete()
+				.where('ch.bookId IN (:...foundBookIds)', { foundBookIds })
+				.execute();
+
+			await queryRunner.manager
+				.createQueryBuilder(Cover, 'cv')
+				.softDelete()
+				.where('cv.bookId IN (:...foundBookIds)', { foundBookIds })
+				.execute();
+
+			await queryRunner.manager
+				.createQueryBuilder(Book, 'b')
+				.softDelete()
+				.whereInIds(foundBookIds)
+				.execute();
+
+			await queryRunner.commitTransaction();
+		} catch (error) {
+			await queryRunner.rollbackTransaction();
+			this.logger.error(
+				'Error in batch book deletion, rolled back:',
+				error,
+			);
+			return {
+				filesScheduledForDeletion: 0,
+				success: false,
+				errors: [(error as Error).message],
+			};
+		} finally {
+			await queryRunner.release();
+		}
 
 		for (const book of books) {
-			const coverFiles = book.covers.map((c) => c.url);
-			const pageFiles = book.chapters.flatMap((ch) =>
-				ch.pages.map((p) => p.path),
-			);
-
-			totalFiles += coverFiles.length + pageFiles.length;
-			totalChapters += book.chapters.length;
-			totalPages += book.chapters.reduce(
-				(sum, ch) => sum + ch.pages.length,
-				0,
-			);
-			totalCovers += book.covers.length;
-
-			try {
-				await this.bookRepository.softRemove(book);
-
-				this.eventEmitter.emit('book.deleted', {
-					bookId: book.id,
-					bookTitle: book.title,
-					covers: coverFiles,
-					pages: pageFiles,
-				});
-			} catch (error) {
-				this.logger.error(`Error deleting book ${book.id}:`, error);
-				errors.push(`Book ${book.id}: ${error.message}`);
-			}
+			this.eventEmitter.emit('book.deleted', {
+				bookId: book.id,
+				bookTitle: book.title,
+				covers: coversByBook.get(book.id) ?? [],
+				pages: pagesByBook.get(book.id) ?? [],
+			});
 		}
 
 		this.logger.log(`Batch deletion completed: ${books.length} books`);
@@ -155,11 +252,10 @@ export class BookDeletionService {
 		return {
 			deletedBooks: books.length,
 			deletedChapters: totalChapters,
-			deletedPages: totalPages,
+			deletedPages: pageRows.filter((r) => r.path).length,
 			deletedCovers: totalCovers,
 			filesScheduledForDeletion: totalFiles,
-			success: errors.length === 0,
-			errors: errors.length > 0 ? errors : undefined,
+			success: true,
 		};
 	}
 
@@ -202,7 +298,7 @@ export class BookDeletionService {
 			return {
 				filesScheduledForDeletion: 0,
 				success: false,
-				errors: [error.message],
+				errors: [(error as Error).message],
 			};
 		}
 	}
@@ -251,7 +347,9 @@ export class BookDeletionService {
 					`Error deleting chapter ${chapter.id}:`,
 					error,
 				);
-				errors.push(`Chapter ${chapter.id}: ${error.message}`);
+				errors.push(
+					`Chapter ${chapter.id}: ${(error as Error).message}`,
+				);
 			}
 		}
 
@@ -316,7 +414,7 @@ export class BookDeletionService {
 				});
 			} catch (error) {
 				this.logger.error(`Error deleting cover ${cover.id}:`, error);
-				errors.push(`Cover ${cover.id}: ${error.message}`);
+				errors.push(`Cover ${cover.id}: ${(error as Error).message}`);
 			}
 		}
 
@@ -378,35 +476,73 @@ export class BookDeletionService {
 			totalFiles: number;
 		}[]
 	> {
-		const books = await this.bookRepository.find({
-			where: {},
-			withDeleted: true,
-			relations: ['chapters', 'chapters.pages', 'covers'],
+		const books = await this.bookRepository
+			.createQueryBuilder('book')
+			.withDeleted()
+			.where('book.deletedAt IS NOT NULL')
+			.select(['book.id', 'book.title', 'book.deletedAt'])
+			.getMany();
+
+		if (books.length === 0) return [];
+
+		const bookIds = books.map((b) => b.id);
+
+		const [chapterRows, pageRows, coverRows] = await Promise.all([
+			this.chapterRepository
+				.createQueryBuilder('ch')
+				.withDeleted()
+				.where('ch.bookId IN (:...bookIds)', { bookIds })
+				.andWhere('ch.deletedAt IS NOT NULL')
+				.select('ch.bookId', 'bookId')
+				.addSelect('COUNT(ch.id)', 'cnt')
+				.groupBy('ch.bookId')
+				.getRawMany<{ bookId: string; cnt: string }>(),
+			this.pageRepository
+				.createQueryBuilder('p')
+				.withDeleted()
+				.innerJoin('p.chapter', 'ch')
+				.where('ch.bookId IN (:...bookIds)', { bookIds })
+				.andWhere('p.deletedAt IS NOT NULL')
+				.select('ch.bookId', 'bookId')
+				.addSelect('COUNT(p.id)', 'cnt')
+				.groupBy('ch.bookId')
+				.getRawMany<{ bookId: string; cnt: string }>(),
+			this.coverRepository
+				.createQueryBuilder('cv')
+				.withDeleted()
+				.innerJoin('cv.book', 'bk')
+				.where('bk.id IN (:...bookIds)', { bookIds })
+				.andWhere('cv.deletedAt IS NOT NULL')
+				.select('bk.id', 'bookId')
+				.addSelect('COUNT(cv.id)', 'cnt')
+				.groupBy('bk.id')
+				.getRawMany<{ bookId: string; cnt: string }>(),
+		]);
+
+		const chapterCountMap = new Map(
+			chapterRows.map((r) => [r.bookId, Number(r.cnt)]),
+		);
+		const pageCountMap = new Map(
+			pageRows.map((r) => [r.bookId, Number(r.cnt)]),
+		);
+		const coverCountMap = new Map(
+			coverRows.map((r) => [r.bookId, Number(r.cnt)]),
+		);
+
+		return books.map((book) => {
+			const chaptersCount = chapterCountMap.get(book.id) ?? 0;
+			const pagesCount = pageCountMap.get(book.id) ?? 0;
+			const coversCount = coverCountMap.get(book.id) ?? 0;
+			return {
+				id: book.id,
+				title: book.title,
+				deletedAt: book.deletedAt,
+				chaptersCount,
+				pagesCount,
+				coversCount,
+				totalFiles: coversCount + pagesCount,
+			};
 		});
-
-		return books
-			.filter((book) => book.deletedAt !== null)
-			.map((book) => {
-				const coverCount = book.covers.filter(
-					(c) => c.deletedAt !== null,
-				).length;
-				const chapterCount = book.chapters.filter(
-					(ch) => ch.deletedAt !== null,
-				).length;
-				const pageCount = book.chapters
-					.flatMap((ch) => ch.pages)
-					.filter((p) => p.deletedAt !== null).length;
-
-				return {
-					id: book.id,
-					title: book.title,
-					deletedAt: book.deletedAt,
-					chaptersCount: chapterCount,
-					pagesCount: pageCount,
-					coversCount: coverCount,
-					totalFiles: coverCount + pageCount,
-				};
-			});
 	}
 
 	async listDeletedChapters(): Promise<
@@ -419,28 +555,47 @@ export class BookDeletionService {
 			pagesCount: number;
 		}[]
 	> {
-		const chapters = await this.chapterRepository.find({
-			where: {},
-			withDeleted: true,
-			relations: ['pages', 'book'],
-		});
+		const chapters = await this.chapterRepository
+			.createQueryBuilder('ch')
+			.withDeleted()
+			.leftJoinAndSelect('ch.book', 'book')
+			.where('ch.deletedAt IS NOT NULL')
+			.select([
+				'ch.id',
+				'ch.title',
+				'ch.deletedAt',
+				'book.id',
+				'book.title',
+			])
+			.getMany();
 
-		return chapters
-			.filter((ch) => ch.deletedAt !== null)
-			.map((chapter) => {
-				const pageCount = chapter.pages.filter(
-					(p) => p.deletedAt !== null,
-				).length;
+		if (chapters.length === 0) return [];
 
-				return {
-					id: chapter.id,
-					title: chapter.title,
-					bookId: chapter.book?.id,
-					bookTitle: chapter.book?.title,
-					deletedAt: chapter.deletedAt,
-					pagesCount: pageCount,
-				};
-			});
+		const chapterIds = chapters.map((c) => c.id);
+
+		const pageCountRows = await this.pageRepository
+			.createQueryBuilder('p')
+			.withDeleted()
+			.innerJoin('p.chapter', 'ch')
+			.where('ch.id IN (:...chapterIds)', { chapterIds })
+			.andWhere('p.deletedAt IS NOT NULL')
+			.select('ch.id', 'chapterId')
+			.addSelect('COUNT(p.id)', 'cnt')
+			.groupBy('ch.id')
+			.getRawMany<{ chapterId: string; cnt: string }>();
+
+		const pageCountMap = new Map(
+			pageCountRows.map((r) => [r.chapterId, Number(r.cnt)]),
+		);
+
+		return chapters.map((chapter) => ({
+			id: chapter.id,
+			title: chapter.title,
+			bookId: chapter.book?.id,
+			bookTitle: chapter.book?.title,
+			deletedAt: chapter.deletedAt,
+			pagesCount: pageCountMap.get(chapter.id) ?? 0,
+		}));
 	}
 
 	async listDeletedCovers(): Promise<
@@ -453,22 +608,29 @@ export class BookDeletionService {
 			deletedAt: Date;
 		}[]
 	> {
-		const covers = await this.coverRepository.find({
-			where: {},
-			withDeleted: true,
-			relations: ['book'],
-		});
+		const covers = await this.coverRepository
+			.createQueryBuilder('cv')
+			.withDeleted()
+			.leftJoinAndSelect('cv.book', 'book')
+			.where('cv.deletedAt IS NOT NULL')
+			.select([
+				'cv.id',
+				'cv.title',
+				'cv.url',
+				'cv.deletedAt',
+				'book.id',
+				'book.title',
+			])
+			.getMany();
 
-		return covers
-			.filter((c) => c.deletedAt !== null)
-			.map((cover) => ({
-				id: cover.id,
-				title: cover.title,
-				url: cover.url,
-				bookId: cover.book?.id,
-				bookTitle: cover.book?.title,
-				deletedAt: cover.deletedAt,
-			}));
+		return covers.map((cover) => ({
+			id: cover.id,
+			title: cover.title,
+			url: cover.url,
+			bookId: cover.book?.id,
+			bookTitle: cover.book?.title,
+			deletedAt: cover.deletedAt,
+		}));
 	}
 
 	async listDeletedPages(): Promise<
@@ -483,23 +645,33 @@ export class BookDeletionService {
 			deletedAt: Date;
 		}[]
 	> {
-		const pages = await this.pageRepository.find({
-			where: {},
-			withDeleted: true,
-			relations: ['chapter', 'chapter.book'],
-		});
+		const pages = await this.pageRepository
+			.createQueryBuilder('p')
+			.withDeleted()
+			.leftJoinAndSelect('p.chapter', 'ch')
+			.leftJoinAndSelect('ch.book', 'book')
+			.where('p.deletedAt IS NOT NULL')
+			.select([
+				'p.id',
+				'p.index',
+				'p.path',
+				'p.deletedAt',
+				'ch.id',
+				'ch.title',
+				'book.id',
+				'book.title',
+			])
+			.getMany();
 
-		return pages
-			.filter((p) => p.deletedAt !== null)
-			.map((page) => ({
-				id: page.id,
-				index: page.index,
-				path: page.path,
-				chapterId: page.chapter?.id,
-				chapterTitle: page.chapter?.title,
-				bookId: page.chapter?.book?.id,
-				bookTitle: page.chapter?.book?.title,
-				deletedAt: page.deletedAt,
-			}));
+		return pages.map((page) => ({
+			id: page.id,
+			index: page.index,
+			path: page.path,
+			chapterId: page.chapter?.id,
+			chapterTitle: page.chapter?.title,
+			bookId: page.chapter?.book?.id,
+			bookTitle: page.chapter?.book?.title,
+			deletedAt: page.deletedAt,
+		}));
 	}
 }
