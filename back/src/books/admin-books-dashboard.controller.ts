@@ -60,36 +60,85 @@ export class AdminBooksDashboardController {
 		schema: {
 			type: 'object',
 			properties: {
-				counts: {
-					type: 'object',
-					properties: {
-						waiting: { type: 'number' },
-						active: { type: 'number' },
-						completed: { type: 'number' },
-						failed: { type: 'number' },
-						delayed: { type: 'number' },
-					},
-				},
-				activeJobs: {
+				queues: {
 					type: 'array',
 					items: {
 						type: 'object',
 						properties: {
-							id: { type: 'string' },
-							bookId: { type: 'string' },
-							bookTitle: { type: 'string' },
-							timestamp: { type: 'number' },
-						},
-					},
-				},
-				waitingJobs: {
-					type: 'array',
-					items: {
-						type: 'object',
-						properties: {
-							id: { type: 'string' },
-							bookId: { type: 'string' },
-							bookTitle: { type: 'string' },
+							name: {
+								type: 'string',
+								example: 'book-update-queue',
+							},
+							counts: {
+								type: 'object',
+								properties: {
+									waiting: { type: 'number' },
+									active: { type: 'number' },
+									completed: { type: 'number' },
+									failed: { type: 'number' },
+									delayed: { type: 'number' },
+								},
+							},
+							activeJobs: {
+								type: 'array',
+								items: {
+									type: 'object',
+									properties: {
+										id: { type: 'string' },
+										bookId: {
+											type: 'string',
+											nullable: true,
+										},
+										bookTitle: { type: 'string' },
+										chapterId: {
+											type: 'string',
+											nullable: true,
+										},
+										chapterTitle: {
+											type: 'string',
+											nullable: true,
+										},
+										urlOrigin: {
+											type: 'string',
+											nullable: true,
+										},
+										timestamp: { type: 'number' },
+									},
+								},
+							},
+							pendingJobs: {
+								type: 'array',
+								items: {
+									type: 'object',
+									properties: {
+										id: { type: 'string' },
+										bookId: {
+											type: 'string',
+											nullable: true,
+										},
+										bookTitle: { type: 'string' },
+										chapterId: {
+											type: 'string',
+											nullable: true,
+										},
+										chapterTitle: {
+											type: 'string',
+											nullable: true,
+										},
+										urlOrigin: {
+											type: 'string',
+											nullable: true,
+										},
+										timestamp: { type: 'number' },
+										delayed: { type: 'boolean' },
+										processAt: {
+											type: 'string',
+											format: 'date-time',
+											nullable: true,
+										},
+									},
+								},
+							},
 						},
 					},
 				},

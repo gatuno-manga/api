@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Queue } from 'bullmq';
+import { QueueCoverProcessorDto } from '../dto/queue-cover-processor.dto';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { MetadataPageDto } from 'src/pages/metadata-page.dto';
 import { PageDto } from 'src/pages/page.dto';
@@ -47,6 +48,12 @@ export class BookQueryService {
 		private readonly appConfig: AppConfigService,
 		@InjectQueue('book-update-queue')
 		private readonly bookUpdateQueue: Queue<{ bookId: string }>,
+		@InjectQueue('chapter-scraping')
+		private readonly chapterScrapingQueue: Queue<string>,
+		@InjectQueue('cover-image-queue')
+		private readonly coverImageQueue: Queue<QueueCoverProcessorDto>,
+		@InjectQueue('fix-chapter-queue')
+		private readonly fixChapterQueue: Queue<{ chapterId: string }>,
 	) {}
 
 	/**
@@ -553,48 +560,207 @@ export class BookQueryService {
 		return `${appUrl}${url}`;
 	}
 
-	/**
-	 * Busca estatísticas da fila de atualização
-	 */
 	async getQueueStats() {
-		const counts = await this.bookUpdateQueue.getJobCounts();
-		const activeJobs = await this.bookUpdateQueue.getActive();
-		const waitingJobs = await this.bookUpdateQueue.getWaiting();
+		try {
+			const [
+				bookUpdateCounts,
+				bookUpdateActive,
+				bookUpdateWaiting,
+				bookUpdateDelayed,
+				chapterScrapingCounts,
+				chapterScrapingActive,
+				chapterScrapingWaiting,
+				chapterScrapingDelayed,
+				coverImageCounts,
+				coverImageActive,
+				coverImageWaiting,
+				coverImageDelayed,
+				fixChapterCounts,
+				fixChapterActive,
+				fixChapterWaiting,
+				fixChapterDelayed,
+			] = await Promise.all([
+				this.bookUpdateQueue.getJobCounts(),
+				this.bookUpdateQueue.getActive(),
+				this.bookUpdateQueue.getWaiting(),
+				this.bookUpdateQueue.getDelayed(),
+				this.chapterScrapingQueue.getJobCounts(),
+				this.chapterScrapingQueue.getActive(),
+				this.chapterScrapingQueue.getWaiting(),
+				this.chapterScrapingQueue.getDelayed(),
+				this.coverImageQueue.getJobCounts(),
+				this.coverImageQueue.getActive(),
+				this.coverImageQueue.getWaiting(),
+				this.coverImageQueue.getDelayed(),
+				this.fixChapterQueue.getJobCounts(),
+				this.fixChapterQueue.getActive(),
+				this.fixChapterQueue.getWaiting(),
+				this.fixChapterQueue.getDelayed(),
+			]);
 
-		// Buscar informações dos livros para os jobs ativos e em espera
-		const activeJobsWithBookInfo = await Promise.all(
-			activeJobs.map(async (job) => {
-				const book = await this.bookRepository.findOne({
-					where: { id: job.data.bookId },
-					select: ['id', 'title'],
-				});
+			const bookUpdatePending = [
+				...bookUpdateWaiting,
+				...bookUpdateDelayed,
+			].slice(0, 10);
+			const coverImagePending = [
+				...coverImageWaiting,
+				...coverImageDelayed,
+			].slice(0, 10);
+
+			const bookIds = [
+				...new Set([
+					...bookUpdateActive.map((j) => j.data.bookId),
+					...bookUpdatePending.map((j) => j.data.bookId),
+					...coverImageActive.map((j) => j.data.bookId),
+					...coverImagePending.map((j) => j.data.bookId),
+				]),
+			].filter(Boolean);
+
+			const books =
+				bookIds.length > 0
+					? await this.bookRepository.find({
+							where: bookIds.map((id) => ({ id })),
+							select: { id: true, title: true },
+						})
+					: [];
+			const bookMap = new Map(books.map((b) => [b.id, b.title]));
+
+			const chapterScrapingPending = [
+				...chapterScrapingWaiting,
+				...chapterScrapingDelayed,
+			].slice(0, 10);
+			const fixChapterPending = [
+				...fixChapterWaiting,
+				...fixChapterDelayed,
+			].slice(0, 10);
+
+			const chapterIds = [
+				...new Set([
+					...chapterScrapingActive.map(
+						(j) => j.data as unknown as string,
+					),
+					...chapterScrapingPending.map(
+						(j) => j.data as unknown as string,
+					),
+					...fixChapterActive.map((j) => j.data.chapterId),
+					...fixChapterPending.map((j) => j.data.chapterId),
+				]),
+			].filter(Boolean);
+
+			const chapters =
+				chapterIds.length > 0
+					? await this.chapterRepository
+							.createQueryBuilder('chapter')
+							.innerJoinAndSelect('chapter.book', 'book')
+							.whereInIds(chapterIds)
+							.select([
+								'chapter.id',
+								'chapter.title',
+								'book.id',
+								'book.title',
+							])
+							.getMany()
+					: [];
+			const chapterMap = new Map(
+				chapters.map((c) => [
+					c.id,
+					{
+						title: c.title,
+						bookId: c.book?.id ?? null,
+						bookTitle: c.book?.title ?? 'Unknown',
+					},
+				]),
+			);
+
+			const pendingMeta = (job: {
+				delay: number;
+				timestamp: number;
+			}) => ({
+				delayed: job.delay > 0,
+				processAt:
+					job.delay > 0 ? new Date(job.timestamp + job.delay) : null,
+			});
+
+			const mapBookJob = (job, pending = false) => ({
+				id: job.id,
+				bookId: job.data.bookId,
+				bookTitle: bookMap.get(job.data.bookId) ?? 'Unknown',
+				timestamp: job.timestamp,
+				...(pending && pendingMeta(job)),
+			});
+
+			const mapChapterJob = (
+				job,
+				isDirectString: boolean,
+				pending = false,
+			) => {
+				const chapterId = isDirectString
+					? (job.data as unknown as string)
+					: job.data.chapterId;
+				const info = chapterMap.get(chapterId);
 				return {
 					id: job.id,
-					bookId: job.data.bookId,
-					bookTitle: book?.title || 'Unknown',
+					chapterId,
+					chapterTitle: info?.title ?? 'Unknown',
+					bookId: info?.bookId ?? null,
+					bookTitle: info?.bookTitle ?? 'Unknown',
 					timestamp: job.timestamp,
+					...(pending && pendingMeta(job)),
 				};
-			}),
-		);
+			};
 
-		const waitingJobsWithBookInfo = await Promise.all(
-			waitingJobs.slice(0, 10).map(async (job) => {
-				const book = await this.bookRepository.findOne({
-					where: { id: job.data.bookId },
-					select: ['id', 'title'],
-				});
-				return {
-					id: job.id,
-					bookId: job.data.bookId,
-					bookTitle: book?.title || 'Unknown',
-				};
-			}),
-		);
+			const mapCoverJob = (job, pending = false) => ({
+				id: job.id,
+				bookId: job.data.bookId,
+				bookTitle: bookMap.get(job.data.bookId) ?? 'Unknown',
+				urlOrigin: job.data.urlOrigin,
+				timestamp: job.timestamp,
+				...(pending && pendingMeta(job)),
+			});
 
-		return {
-			counts,
-			activeJobs: activeJobsWithBookInfo,
-			waitingJobs: waitingJobsWithBookInfo,
-		};
+			return {
+				queues: [
+					{
+						name: 'book-update-queue',
+						counts: bookUpdateCounts,
+						activeJobs: bookUpdateActive.map((j) => mapBookJob(j)),
+						pendingJobs: bookUpdatePending.map((j) =>
+							mapBookJob(j, true),
+						),
+					},
+					{
+						name: 'chapter-scraping',
+						counts: chapterScrapingCounts,
+						activeJobs: chapterScrapingActive.map((j) =>
+							mapChapterJob(j, true),
+						),
+						pendingJobs: chapterScrapingPending.map((j) =>
+							mapChapterJob(j, true, true),
+						),
+					},
+					{
+						name: 'cover-image-queue',
+						counts: coverImageCounts,
+						activeJobs: coverImageActive.map((j) => mapCoverJob(j)),
+						pendingJobs: coverImagePending.map((j) =>
+							mapCoverJob(j, true),
+						),
+					},
+					{
+						name: 'fix-chapter-queue',
+						counts: fixChapterCounts,
+						activeJobs: fixChapterActive.map((j) =>
+							mapChapterJob(j, false),
+						),
+						pendingJobs: fixChapterPending.map((j) =>
+							mapChapterJob(j, false, true),
+						),
+					},
+				],
+			};
+		} catch (error) {
+			this.logger.error('Failed to fetch queue stats', error);
+			throw error;
+		}
 	}
 }
