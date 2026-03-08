@@ -399,10 +399,9 @@ export class ScrapingService implements OnApplicationShutdown {
 			`Found ${count} elements. Capturing PNG screenshots...`,
 		);
 
-		const screenshots = await elementScreenshot.captureAllAsBuffers();
 		const results: (string | null)[] = [];
 
-		for (const buffer of screenshots) {
+		for await (const buffer of elementScreenshot.captureAllElementsStream()) {
 			try {
 				const savedPath = await this.filesService.saveBufferFile(
 					buffer,

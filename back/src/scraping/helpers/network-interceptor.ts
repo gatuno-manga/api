@@ -82,6 +82,19 @@ export class NetworkInterceptor {
 	private tempFiles: Set<string> = new Set();
 	private readonly memoryLimits: MemoryLimits;
 
+	/** Named handler stored so it can be removed via page.off() */
+	private readonly responseHandler = (response: Response): void => {
+		void this.handleResponse(response);
+	};
+
+	/** Maximum number of concurrent image compressions */
+	private readonly compressionConcurrency: number;
+	private activeCompressions = 0;
+	private readonly compressionWaiters: Array<() => void> = [];
+
+	/** Set to true by clearCache() to prevent stale compressions from re-populating the cache */
+	private _cleared = false;
+
 	constructor(
 		private readonly page: Page,
 		private readonly filterConfig: UrlFilterConfig = {
@@ -90,8 +103,12 @@ export class NetworkInterceptor {
 		},
 		readonly compressor?: ImageCompressor,
 		memoryLimits?: Partial<MemoryLimits>,
+		compressionConcurrency?: number,
 	) {
 		this.memoryLimits = { ...DEFAULT_MEMORY_LIMITS, ...memoryLimits };
+		this.compressionConcurrency =
+			compressionConcurrency ??
+			Number(process.env.SCRAPING_COMPRESSION_CONCURRENCY ?? '4');
 	}
 
 	/**
@@ -151,6 +168,9 @@ export class NetworkInterceptor {
 	 * Optionally compresses the image immediately for memory efficiency.
 	 */
 	private async handleResponse(response: Response): Promise<void> {
+		// Ignore responses that arrive after interception was stopped
+		if (!this.isIntercepting) return;
+
 		try {
 			const request = response.request();
 			const resourceType = request.resourceType();
@@ -194,7 +214,7 @@ export class NetworkInterceptor {
 			// Ensure cache doesn't exceed limit
 			await this.ensureCacheSpace(originalSize);
 
-			// If compressor is available, compress immediately (non-blocking)
+			// If compressor is available, compress immediately (non-blocking, concurrency-limited)
 			if (this.compressor) {
 				const compressionTask = this.compressAndCache(
 					url,
@@ -274,6 +294,9 @@ export class NetworkInterceptor {
 	 * Add an image to the cache and update size tracking.
 	 */
 	private addToCache(url: string, cached: CachedImage): void {
+		// Do not re-populate after clearCache() has been called
+		if (this._cleared) return;
+
 		// Remove old entry if exists
 		const old = this.imageCache.get(url);
 		if (old?.data) {
@@ -329,7 +352,32 @@ export class NetworkInterceptor {
 	}
 
 	/**
+	 * Acquire a compression slot (blocks if concurrency limit is reached).
+	 */
+	private waitForCompressionSlot(): Promise<void> {
+		if (this.activeCompressions < this.compressionConcurrency) {
+			this.activeCompressions++;
+			return Promise.resolve();
+		}
+		return new Promise<void>((resolve) => {
+			this.compressionWaiters.push(resolve);
+		}).then(() => {
+			this.activeCompressions++;
+		});
+	}
+
+	/**
+	 * Release a compression slot and wake up the next waiter if any.
+	 */
+	private releaseCompressionSlot(): void {
+		this.activeCompressions = Math.max(0, this.activeCompressions - 1);
+		const next = this.compressionWaiters.shift();
+		if (next) next();
+	}
+
+	/**
 	 * Compress and cache an image asynchronously.
+	 * Respects the concurrency semaphore and the _cleared flag.
 	 */
 	private async compressAndCache(
 		url: string,
@@ -338,7 +386,11 @@ export class NetworkInterceptor {
 		originalExtension: string,
 		originalSize: number,
 	): Promise<void> {
+		await this.waitForCompressionSlot();
 		try {
+			// Session was cleared while we were waiting — discard work
+			if (this._cleared) return;
+
 			const compressedData = await this.compressor?.compress(body);
 			const outputExtension =
 				this.compressor?.getOutputExtension(originalExtension);
@@ -346,6 +398,8 @@ export class NetworkInterceptor {
 			if (!compressedData || !outputExtension) {
 				throw new Error('Compression failed to produce valid data');
 			}
+
+			if (this._cleared) return;
 
 			const compressedSize = compressedData.length;
 			const savings = ((1 - compressedSize / originalSize) * 100).toFixed(
@@ -368,6 +422,8 @@ export class NetworkInterceptor {
 				`Cached & compressed: ${url} (${originalSize} → ${compressedSize} bytes, -${savings}%)`,
 			);
 		} catch (error) {
+			if (this._cleared) return;
+
 			// Fallback: cache original on compression error
 			await this.ensureCacheSpace(originalSize);
 			this.addToCache(url, {
@@ -379,6 +435,8 @@ export class NetworkInterceptor {
 				lastAccess: Date.now(),
 			});
 			this.logger.warn(`Compression failed for ${url}, caching original`);
+		} finally {
+			this.releaseCompressionSlot();
 		}
 	}
 
@@ -404,16 +462,19 @@ export class NetworkInterceptor {
 	async startInterception(): Promise<void> {
 		if (this.isIntercepting) return;
 
-		this.page.on('response', (response) => this.handleResponse(response));
+		this.page.on('response', this.responseHandler);
 		this.isIntercepting = true;
 		this.logger.debug('Network interception started');
 	}
 
 	/**
 	 * Stop intercepting (cleanup).
+	 * Removes the named response listener so no further responses are processed.
 	 */
 	stopInterception(): void {
+		if (!this.isIntercepting) return;
 		this.isIntercepting = false;
+		this.page.off('response', this.responseHandler);
 		this.logger.debug(
 			`Network interception stopped. Cached ${this.imageCache.size} images`,
 		);
@@ -531,10 +592,22 @@ export class NetworkInterceptor {
 
 	/**
 	 * Clear the cache and delete temp files.
+	 * Awaits all in-flight compressions before clearing to prevent stale re-population.
 	 */
 	async clearCache(): Promise<void> {
-		// Clear compression queue
+		// Signal that no new entries should be added
+		this._cleared = true;
+
+		// Drain all in-flight compressions before wiping the cache
+		if (this.compressionQueue.length > 0) {
+			this.logger.debug(
+				`clearCache: awaiting ${this.compressionQueue.length} in-flight compressions...`,
+			);
+			await Promise.allSettled(this.compressionQueue);
+		}
 		this.compressionQueue.length = 0;
+		this.compressionWaiters.length = 0;
+		this.activeCompressions = 0;
 
 		// Delete temp files
 		for (const tempFilePath of this.tempFiles) {

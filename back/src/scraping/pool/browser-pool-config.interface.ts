@@ -81,4 +81,9 @@ export interface PooledBrowser {
 	 * Usado pelo health check para detectar browsers presos.
 	 */
 	pendingRestartSince?: Date;
+	/**
+	 * Named 'disconnected' event handler stored so it can be removed
+	 * via browser.off() when the browser is closed, preventing listener leaks.
+	 */
+	disconnectedHandler?: () => void;
 }

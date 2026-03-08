@@ -13,10 +13,6 @@ import {
 	PooledBrowser,
 } from './browser-pool-config.interface';
 
-/**
- * Browser pool service that manages a pool of Playwright browser instances.
- * Reduces overhead of launching browsers for each scraping session.
- */
 @Injectable()
 export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 	private readonly logger = new Logger(BrowserPoolService.name);
@@ -51,7 +47,6 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 			`🏊 Initializing browser pool (size: ${this.poolConfig.poolSize})`,
 		);
 
-		// Pre-warm the pool
 		const warmupPromises: Promise<PooledBrowser | undefined>[] = [];
 		for (let i = 0; i < this.poolConfig.poolSize; i++) {
 			warmupPromises.push(
@@ -69,8 +64,6 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 			`✅ Browser pool initialized with ${this.pool.size} browsers`,
 		);
 
-		// Verifica periodicamente se algum browser ficou preso em isPendingRestart
-		// (ex: sessão vazou e nunca chamou release)
 		this.healthCheckInterval = setInterval(
 			() => this.checkStuckBrowsers(),
 			60_000,
@@ -81,10 +74,6 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 		await this.shutdown();
 	}
 
-	/**
-	 * Acquire a browser from the pool.
-	 * If all browsers are at capacity, waits for one to become available.
-	 */
 	async acquire(): Promise<PooledBrowser> {
 		if (this.isShuttingDown) {
 			throw new Error('Browser pool is shutting down');
@@ -96,25 +85,19 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 			);
 		}
 
-		// Try to find an available browser
 		const available = this.findAvailableBrowser();
 		if (available) {
 			return this.markBrowserInUse(available);
 		}
 
-		// If pool not full, create a new browser
 		if (this.pool.size < this.poolConfig.poolSize) {
 			const browser = await this.createBrowser();
 			return this.markBrowserInUse(browser);
 		}
 
-		// Wait for a browser to become available
 		return this.waitForBrowser();
 	}
 
-	/**
-	 * Release a browser back to the pool.
-	 */
 	async release(pooledBrowser: PooledBrowser): Promise<void> {
 		const browser = this.pool.get(pooledBrowser.id);
 		if (!browser) {
@@ -131,9 +114,6 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 			`Released browser ${browser.id} (active contexts: ${browser.activeContexts})`,
 		);
 
-		// Marca como pendente na primeira vez que o limite é atingido.
-		// Não reinicia imediatamente: aguarda o drain (activeContexts === 0)
-		// para não derrubar sessões ainda ativas na mesma instância.
 		if (
 			!browser.isPendingRestart &&
 			browser.totalContextsCreated >=
@@ -146,7 +126,6 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 			);
 		}
 
-		// Reinicia apenas quando totalmente drenado e sem lock ativo
 		if (
 			browser.isPendingRestart &&
 			browser.activeContexts === 0 &&
@@ -156,13 +135,9 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 			return;
 		}
 
-		// Process wait queue
 		this.processWaitQueue();
 	}
 
-	/**
-	 * Increment context count when a context is created.
-	 */
 	incrementContextCount(pooledBrowser: PooledBrowser): void {
 		const browser = this.pool.get(pooledBrowser.id);
 		if (browser) {
@@ -173,9 +148,6 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 		}
 	}
 
-	/**
-	 * Get pool statistics.
-	 */
 	getStats() {
 		const browsers = Array.from(this.pool.values());
 		return {
@@ -201,11 +173,6 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 		};
 	}
 
-	/**
-	 * Health check: força o reinício de browsers presos em isPendingRestart
-	 * por mais tempo que o dobro do acquireTimeout (indicativo de sessão vazada
-	 * que nunca chamou release).
-	 */
 	private checkStuckBrowsers(): void {
 		const now = Date.now();
 		const stuckThresholdMs = this.poolConfig.acquireTimeout * 2;
@@ -228,9 +195,6 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 		}
 	}
 
-	/**
-	 * Gracefully shutdown the pool.
-	 */
 	async shutdown(): Promise<void> {
 		if (this.isShuttingDown) {
 			return;
@@ -243,17 +207,19 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 			clearInterval(this.healthCheckInterval);
 		}
 
-		// Reject all waiting requests
 		for (const waiter of this.waitQueue) {
 			waiter.reject(new Error('Browser pool shutting down'));
 		}
 		this.waitQueue.length = 0;
 
-		// Close all browsers
 		const closePromises: Promise<void>[] = [];
 		for (const [id, pooledBrowser] of this.pool.entries()) {
 			closePromises.push(
-				this.closeBrowser(id, pooledBrowser.browser).catch((error) => {
+				this.closeBrowser(
+					id,
+					pooledBrowser.browser,
+					pooledBrowser.disconnectedHandler,
+				).catch((error) => {
 					this.logger.error(
 						`Failed to close browser ${id}: ${error.message}`,
 					);
@@ -266,15 +232,11 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 		this.logger.log('✅ Browser pool shutdown complete');
 	}
 
-	/**
-	 * Create a new browser instance.
-	 */
 	private async createBrowser(): Promise<PooledBrowser> {
 		const id = `browser-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
 		this.logger.debug(`Creating browser ${id}...`);
 
-		// Use wsEndpoint if configured (remote browser)
 		let browser: Browser;
 		const wsEndpoint = this.browserConfig?.wsEndpoint;
 
@@ -295,11 +257,11 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 			browser = await this.launchLocalBrowser();
 		}
 
-		// Monitor browser crashes
-		browser.on('disconnected', () => {
+		const onDisconnected = (): void => {
 			this.logger.warn(`Browser ${id} disconnected unexpectedly`);
 			this.handleBrowserCrash(id);
-		});
+		};
+		browser.on('disconnected', onDisconnected);
 
 		const pooledBrowser: PooledBrowser = {
 			id,
@@ -311,6 +273,7 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 			isHealthy: true,
 			isPendingRestart: false,
 			isRestarting: false,
+			disconnectedHandler: onDisconnected,
 		};
 
 		this.pool.set(id, pooledBrowser);
@@ -319,9 +282,6 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 		return pooledBrowser;
 	}
 
-	/**
-	 * Launch a local browser instance.
-	 */
 	private async launchLocalBrowser(): Promise<Browser> {
 		const headless = this.browserConfig?.headless ?? true;
 		const slowMo = this.browserConfig?.slowMo ?? 0;
@@ -344,11 +304,6 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 		});
 	}
 
-	/**
-	 * Find an available browser in the pool.
-	 * Browsers aguardando drain (isPendingRestart) são excluídos da seleção
-	 * para não receber novas sessões.
-	 */
 	private findAvailableBrowser(): PooledBrowser | null {
 		for (const browser of this.pool.values()) {
 			if (
@@ -362,9 +317,6 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 		return null;
 	}
 
-	/**
-	 * Mark a browser as in-use.
-	 */
 	private markBrowserInUse(pooledBrowser: PooledBrowser): PooledBrowser {
 		pooledBrowser.activeContexts++;
 		pooledBrowser.lastUsedAt = new Date();
@@ -374,9 +326,6 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 		return pooledBrowser;
 	}
 
-	/**
-	 * Wait for a browser to become available.
-	 */
 	private async waitForBrowser(): Promise<PooledBrowser> {
 		return new Promise((resolve, reject) => {
 			const timeout = setTimeout(() => {
@@ -411,9 +360,6 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 		});
 	}
 
-	/**
-	 * Process the wait queue when a browser becomes available.
-	 */
 	private processWaitQueue(): void {
 		if (this.waitQueue.length === 0) {
 			return;
@@ -428,16 +374,12 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 		if (waiter) {
 			this.logger.debug('Processing wait queue request');
 			waiter.resolve(this.markBrowserInUse(available));
-			// Process more if available
 			if (this.waitQueue.length > 0) {
 				setImmediate(() => this.processWaitQueue());
 			}
 		}
 	}
 
-	/**
-	 * Handle browser crash.
-	 */
 	private async handleBrowserCrash(id: string): Promise<void> {
 		const browser = this.pool.get(id);
 		if (!browser) {
@@ -450,20 +392,12 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 		await this.restartBrowser(id);
 	}
 
-	/**
-	 * Reinicia um browser de forma segura.
-	 *
-	 * Proteções implementadas:
-	 * - Lock `isRestarting` impede chamadas concorrentes para a mesma instância
-	 * - Respeita `poolSize` para não criar mais browsers do que o configurado
-	 */
 	private async restartBrowser(id: string): Promise<void> {
 		const oldBrowser = this.pool.get(id);
 		if (!oldBrowser) {
 			return;
 		}
 
-		// Lock: evita reentrada concorrente para o mesmo browser
 		if (oldBrowser.isRestarting) {
 			this.logger.debug(
 				`Browser ${id} already restarting, skipping duplicate call`,
@@ -472,13 +406,13 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 		}
 		oldBrowser.isRestarting = true;
 
-		// Remove do pool ANTES de criar o substituto para que
-		// pool.size reflita o estado correto durante createBrowser()
 		this.pool.delete(id);
-		await this.closeBrowser(id, oldBrowser.browser);
+		await this.closeBrowser(
+			id,
+			oldBrowser.browser,
+			oldBrowser.disconnectedHandler,
+		);
 
-		// Respeita o limite de poolSize: só cria substituto se há vaga.
-		// Se o pool já foi reabastecido por outro caminho, não abre novo browser.
 		if (this.pool.size >= this.poolConfig.poolSize) {
 			this.logger.warn(
 				`Pool already at capacity (${this.pool.size}/${this.poolConfig.poolSize}), skipping replacement for ${id}`,
@@ -498,12 +432,16 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 		}
 	}
 
-	/**
-	 * Close a browser instance.
-	 */
-	private async closeBrowser(id: string, browser: Browser): Promise<void> {
+	private async closeBrowser(
+		id: string,
+		browser: Browser,
+		disconnectedHandler?: () => void,
+	): Promise<void> {
 		try {
 			this.logger.debug(`Closing browser ${id}...`);
+			if (disconnectedHandler) {
+				browser.off('disconnected', disconnectedHandler);
+			}
 			await browser.close();
 			this.logger.debug(`Browser ${id} closed`);
 		} catch (error) {

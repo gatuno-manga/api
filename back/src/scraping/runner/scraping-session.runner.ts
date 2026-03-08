@@ -108,16 +108,20 @@ export class ScrapingSessionRunner {
 
 			return await task(scrapingContext);
 		} finally {
-			// Cleanup in proper order: NetworkInterceptor → Page → Context → Browser
+			// Cleanup order:
+			// 1. Stop interception immediately (no new responses accepted)
+			// 2. Drain in-flight compressions while page is still alive
+			// 3. Close page
+			// 4. Clear cache (safe: _cleared flag set, compressions already drained)
+			// 5. Close context
+			// 6. Release browser
+			// 7. Release concurrency slot
 			if (networkInterceptor) {
 				try {
-					await networkInterceptor.clearCache();
 					networkInterceptor.stopInterception();
+					await networkInterceptor.waitForCompressions();
 				} catch (e) {
-					this.logger.warn(
-						'Error cleaning up network interceptor',
-						e,
-					);
+					this.logger.warn('Error stopping network interceptor', e);
 				}
 			}
 
@@ -127,6 +131,17 @@ export class ScrapingSessionRunner {
 					this.logger.debug('Page closed');
 				} catch (e) {
 					this.logger.warn('Error closing page', e);
+				}
+			}
+
+			if (networkInterceptor) {
+				try {
+					await networkInterceptor.clearCache();
+				} catch (e) {
+					this.logger.warn(
+						'Error clearing network interceptor cache',
+						e,
+					);
 				}
 			}
 
