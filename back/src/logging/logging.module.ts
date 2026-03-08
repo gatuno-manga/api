@@ -3,6 +3,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { AppConfigModule } from '../app-config/app-config.module';
 import { AppConfigService } from '../app-config/app-config.service';
 import { CustomLogger } from '../custom.logger';
+import { LoggerRuleEngine } from './logger-rule-engine';
 
 @Module({
 	imports: [
@@ -105,7 +106,16 @@ import { CustomLogger } from '../custom.logger';
 		}),
 		AppConfigModule,
 	],
-	providers: [CustomLogger],
+	providers: [
+		{
+			provide: LoggerRuleEngine,
+			useFactory: (config: AppConfigService) => {
+				return new LoggerRuleEngine(config.LogLevel);
+			},
+			inject: [AppConfigService],
+		},
+		CustomLogger,
+	],
 	exports: [LoggerModule, CustomLogger],
 })
 export class LoggingModule {}
