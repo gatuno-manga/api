@@ -24,83 +24,125 @@ export class BookRelationshipService {
 	) {}
 
 	/**
-	 * Busca ou cria tags baseado em nomes
+	 * Busca ou cria tags baseado em nomes.
+	 * Carrega todas as tags em uma única query e faz o match em memória,
+	 * evitando N queries paralelas com JSON_CONTAINS (full table scan).
 	 */
 	async findOrCreateTags(tagNames: string[]): Promise<Tag[]> {
-		return Promise.all(
-			tagNames.map(async (tagName) => {
-				const lowerTagName = tagName.toLowerCase();
-				let tag = await this.tagRepository
-					.createQueryBuilder('tag')
-					.where('tag.name = :tagName', { tagName: lowerTagName })
-					.orWhere('JSON_CONTAINS(tag.altNames, :jsonTagName)', {
-						jsonTagName: `"${lowerTagName}"`,
-					})
-					.getOne();
-				if (!tag) {
-					tag = this.tagRepository.create({ name: lowerTagName });
-					await this.tagRepository.save(tag);
-					this.logger.debug(`Tag criada: ${lowerTagName}`);
-				}
-				return tag;
-			}),
-		);
+		if (tagNames.length === 0) return [];
+
+		const lowerNames = tagNames.map((n) => n.toLowerCase());
+
+		// Uma única query para carregar todas as tags existentes
+		const allTags = await this.tagRepository.find();
+
+		// Mapas de lookup em memória: name → Tag e altName → Tag
+		const byName = new Map<string, Tag>();
+		const byAltName = new Map<string, Tag>();
+		for (const tag of allTags) {
+			byName.set(tag.name.toLowerCase(), tag);
+			for (const alt of tag.altNames ?? []) {
+				byAltName.set(alt.toLowerCase(), tag);
+			}
+		}
+
+		const result: Tag[] = [];
+		for (const lowerName of lowerNames) {
+			const existing = byName.get(lowerName) ?? byAltName.get(lowerName);
+			if (existing) {
+				result.push(existing);
+			} else {
+				// Cria sequencialmente para evitar race condition em inserts
+				const tag = this.tagRepository.create({ name: lowerName });
+				const saved = await this.tagRepository.save(tag);
+				this.logger.debug(`Tag criada: ${lowerName}`);
+				// Atualiza os mapas para que nomes duplicados no mesmo batch não criem duplicatas
+				byName.set(lowerName, saved);
+				result.push(saved);
+			}
+		}
+		return result;
 	}
 
 	/**
-	 * Busca ou cria autores baseado em DTOs
+	 * Busca ou cria autores baseado em DTOs.
+	 * Usa uma única query para buscar os existentes antes de criar os ausentes.
 	 */
 	async findOrCreateAuthors(
 		authorsDto: CreateAuthorDto[],
 	): Promise<Author[]> {
-		return Promise.all(
-			authorsDto.map(async (authorDto) => {
-				let author = await this.authorRepository.findOne({
-					where: { name: authorDto.name },
-				});
-				if (!author) {
-					author = this.authorRepository.create({
-						name: authorDto.name,
-						biography: authorDto.biography,
-					});
-					await this.authorRepository.save(author);
-					this.logger.debug(`Autor criado: ${authorDto.name}`);
-				}
-				return author;
-			}),
+		if (authorsDto.length === 0) return [];
+
+		const names = authorsDto.map((a) => a.name);
+
+		// Busca todos os autores do batch de uma vez
+		const existing = await this.authorRepository
+			.createQueryBuilder('author')
+			.where('author.name IN (:...names)', { names })
+			.getMany();
+
+		const byName = new Map<string, Author>(
+			existing.map((a) => [a.name, a]),
 		);
+
+		const result: Author[] = [];
+		for (const dto of authorsDto) {
+			const found = byName.get(dto.name);
+			if (found) {
+				result.push(found);
+			} else {
+				const author = this.authorRepository.create({
+					name: dto.name,
+					biography: dto.biography,
+				});
+				const saved = await this.authorRepository.save(author);
+				this.logger.debug(`Autor criado: ${dto.name}`);
+				byName.set(dto.name, saved);
+				result.push(saved);
+			}
+		}
+		return result;
 	}
 
 	/**
-	 * Busca ou cria conteúdo sensível baseado em nomes
+	 * Busca ou cria conteúdo sensível baseado em nomes.
+	 * Carrega todos em uma única query e faz o match em memória,
+	 * evitando N queries paralelas com JSON_CONTAINS (full table scan).
 	 */
 	async findOrCreateSensitiveContent(
 		sensitiveContentNames: string[],
 	): Promise<SensitiveContent[]> {
-		return Promise.all(
-			sensitiveContentNames.map(async (name) => {
-				const lowerName = name.toLowerCase();
-				let sensitiveContent = await this.sensitiveContentRepository
-					.createQueryBuilder('sensitiveContent')
-					.where('sensitiveContent.name = :name', { name: lowerName })
-					.orWhere(
-						'JSON_CONTAINS(sensitiveContent.altNames, :jsonName)',
-						{
-							jsonName: `"${lowerName}"`,
-						},
-					)
-					.getOne();
-				if (!sensitiveContent) {
-					sensitiveContent = this.sensitiveContentRepository.create({
-						name: lowerName,
-					});
-					await this.sensitiveContentRepository.save(
-						sensitiveContent,
-					);
-					this.logger.debug(`Conteúdo sensível criado: ${lowerName}`);
-				}
-				return sensitiveContent;
-			}),
-		);
+		if (sensitiveContentNames.length === 0) return [];
+
+		const lowerNames = sensitiveContentNames.map((n) => n.toLowerCase());
+
+		// Uma única query para carregar todos os conteúdos sensíveis existentes
+		const all = await this.sensitiveContentRepository.find();
+
+		const byName = new Map<string, SensitiveContent>();
+		const byAltName = new Map<string, SensitiveContent>();
+		for (const sc of all) {
+			byName.set(sc.name.toLowerCase(), sc);
+			for (const alt of sc.altNames ?? []) {
+				byAltName.set(alt.toLowerCase(), sc);
+			}
+		}
+
+		const result: SensitiveContent[] = [];
+		for (const lowerName of lowerNames) {
+			const existing = byName.get(lowerName) ?? byAltName.get(lowerName);
+			if (existing) {
+				result.push(existing);
+			} else {
+				const sc = this.sensitiveContentRepository.create({
+					name: lowerName,
+				});
+				const saved = await this.sensitiveContentRepository.save(sc);
+				this.logger.debug(`Conteúdo sensível criado: ${lowerName}`);
+				byName.set(lowerName, saved);
+				result.push(saved);
+			}
+		}
+		return result;
 	}
 }

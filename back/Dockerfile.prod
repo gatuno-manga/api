@@ -48,4 +48,4 @@ RUN chown -R appuser:appgroup ./node_modules
 
 USER appuser
 
-CMD ["node", "dist/main.js"]
+CMD ["node", "--max-old-space-size=2048", "dist/main.js"]
