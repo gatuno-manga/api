@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
+
+/** Código MySQL para violação de chave única */
+const MYSQL_DUPLICATE_ENTRY = 1062;
 import { CreateAuthorDto } from '../dto/create-author.dto';
 import { Author } from '../entities/author.entity';
 import { SensitiveContent } from '../entities/sensitive-content.entity';
@@ -52,13 +55,28 @@ export class BookRelationshipService {
 			if (existing) {
 				result.push(existing);
 			} else {
-				// Cria sequencialmente para evitar race condition em inserts
-				const tag = this.tagRepository.create({ name: lowerName });
-				const saved = await this.tagRepository.save(tag);
-				this.logger.debug(`Tag criada: ${lowerName}`);
-				// Atualiza os mapas para que nomes duplicados no mesmo batch não criem duplicatas
-				byName.set(lowerName, saved);
-				result.push(saved);
+				try {
+					const tag = this.tagRepository.create({ name: lowerName });
+					const saved = await this.tagRepository.save(tag);
+					this.logger.debug(`Tag criada: ${lowerName}`);
+					byName.set(lowerName, saved);
+					result.push(saved);
+				} catch (err) {
+					// Race condition: outra request inseriu antes — busca o registro existente
+					if (
+						err instanceof QueryFailedError &&
+						(err.driverError as { errno?: number }).errno ===
+							MYSQL_DUPLICATE_ENTRY
+					) {
+						const tag = await this.tagRepository.findOneOrFail({
+							where: { name: lowerName },
+						});
+						byName.set(lowerName, tag);
+						result.push(tag);
+					} else {
+						throw err;
+					}
+				}
 			}
 		}
 		return result;
@@ -91,14 +109,31 @@ export class BookRelationshipService {
 			if (found) {
 				result.push(found);
 			} else {
-				const author = this.authorRepository.create({
-					name: dto.name,
-					biography: dto.biography,
-				});
-				const saved = await this.authorRepository.save(author);
-				this.logger.debug(`Autor criado: ${dto.name}`);
-				byName.set(dto.name, saved);
-				result.push(saved);
+				try {
+					const author = this.authorRepository.create({
+						name: dto.name,
+						biography: dto.biography,
+					});
+					const saved = await this.authorRepository.save(author);
+					this.logger.debug(`Autor criado: ${dto.name}`);
+					byName.set(dto.name, saved);
+					result.push(saved);
+				} catch (err) {
+					if (
+						err instanceof QueryFailedError &&
+						(err.driverError as { errno?: number }).errno ===
+							MYSQL_DUPLICATE_ENTRY
+					) {
+						const author =
+							await this.authorRepository.findOneOrFail({
+								where: { name: dto.name },
+							});
+						byName.set(dto.name, author);
+						result.push(author);
+					} else {
+						throw err;
+					}
+				}
 			}
 		}
 		return result;
@@ -134,13 +169,32 @@ export class BookRelationshipService {
 			if (existing) {
 				result.push(existing);
 			} else {
-				const sc = this.sensitiveContentRepository.create({
-					name: lowerName,
-				});
-				const saved = await this.sensitiveContentRepository.save(sc);
-				this.logger.debug(`Conteúdo sensível criado: ${lowerName}`);
-				byName.set(lowerName, saved);
-				result.push(saved);
+				try {
+					const sc = this.sensitiveContentRepository.create({
+						name: lowerName,
+					});
+					const saved =
+						await this.sensitiveContentRepository.save(sc);
+					this.logger.debug(`Conteúdo sensível criado: ${lowerName}`);
+					byName.set(lowerName, saved);
+					result.push(saved);
+				} catch (err) {
+					// Race condition: outra request inseriu antes — busca o registro existente
+					if (
+						err instanceof QueryFailedError &&
+						(err.driverError as { errno?: number }).errno ===
+							MYSQL_DUPLICATE_ENTRY
+					) {
+						const sc =
+							await this.sensitiveContentRepository.findOneOrFail(
+								{ where: { name: lowerName } },
+							);
+						byName.set(lowerName, sc);
+						result.push(sc);
+					} else {
+						throw err;
+					}
+				}
 			}
 		}
 		return result;
