@@ -93,7 +93,7 @@ export class BookQueryService {
 			.createQueryBuilder('book')
 			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
 			.leftJoinAndSelect('book.tags', 'tags')
-			.leftJoinAndSelect('book.authors', 'authors')
+			.leftJoin('book.authors', 'authors')
 			.leftJoinAndSelect(
 				'book.covers',
 				'covers',
@@ -107,6 +107,8 @@ export class BookQueryService {
 				'book.type',
 				'book.autoUpdate',
 				'book.createdAt',
+				'book.updatedAt',
+				'book.publication',
 				'sensitiveContent.name',
 				'sensitiveContent.weight',
 				'covers.id',
@@ -128,16 +130,24 @@ export class BookQueryService {
 
 		switch (orderByField) {
 			case 'title':
-				queryBuilder.orderBy('book.title', orderDirection);
+				queryBuilder
+					.orderBy('book.title', orderDirection)
+					.addOrderBy('book.id', 'ASC');
 				break;
 			case 'publication':
-				queryBuilder.orderBy('book.publication', orderDirection);
+				queryBuilder
+					.orderBy('book.publication', orderDirection)
+					.addOrderBy('book.id', 'ASC');
 				break;
 			case 'updatedAt':
-				queryBuilder.orderBy('book.updatedAt', orderDirection);
+				queryBuilder
+					.orderBy('book.updatedAt', orderDirection)
+					.addOrderBy('book.id', 'ASC');
 				break;
 			default:
-				queryBuilder.orderBy('book.createdAt', orderDirection);
+				queryBuilder
+					.orderBy('book.createdAt', orderDirection)
+					.addOrderBy('book.id', 'ASC');
 				break;
 		}
 
