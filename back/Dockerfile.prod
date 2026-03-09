@@ -1,50 +1,51 @@
-# Build stage
-FROM node:24.11.1-bookworm-slim AS builder
+ARG NODE_VERSION=24.11.1
 
+# ─── Estágio base ─────────────────────────────────────────────────────────────
+FROM node:${NODE_VERSION}-bookworm-slim AS base
 WORKDIR /usr/src/app
 
-# Instalar dependências de build para módulos nativos (sharp, bcrypt)
+# ─── Estágio de dependências (cache isolado do npm ci) ────────────────────────
+FROM base AS deps
+# Ferramentas nativas para módulos como sharp e bcrypt
 RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
-
 COPY package.json package-lock.json* ./
 RUN npm ci
 
+# ─── Estágio de build ─────────────────────────────────────────────────────────
+FROM deps AS builder
 COPY . .
 RUN npm run build
+# Eliminar devDependencies para preparar node_modules de produção
+RUN npm prune --omit=dev
 
-# Remover dependências de dev
-RUN npm prune --production
-
-# Production stage
-FROM node:24.11.1-bookworm-slim AS production
+# ─── Estágio de produção ──────────────────────────────────────────────────────
+FROM node:${NODE_VERSION}-bookworm-slim AS production
 
 WORKDIR /usr/src/app
 
-# Definir path dos browsers para um local acessível e persistente se necessário
+# Path onde o Playwright armazenará os browsers instalados
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-# Copiar dependências de produção primeiro para poder rodar o install do playwright
+# Criar grupo/usuário não-root com UID/GID determinísticos (1001)
+RUN groupadd -r -g 1001 appgroup && \
+    useradd -r -u 1001 -g appgroup -d /home/appuser -m appuser && \
+    mkdir -p /ms-playwright /usr/src/app/data && \
+    chown -R appuser:appgroup /ms-playwright /usr/src/app/data
+
+# Copiar dependências antes de qualquer instalação de browser
 COPY --from=builder /usr/src/app/node_modules ./node_modules
 COPY --from=builder /usr/src/app/package.json ./package.json
 
-# Instalar dependências do OS para o Chromium e o próprio Chromium
-# Usamos o playwright do node_modules copiado
+# Instalar dependências do OS + Chromium como root (necessário para apt-get)
 RUN npx playwright install --with-deps chromium && \
-    rm -rf /var/lib/apt/lists/* && \
-    rm -rf /root/.npm
+    rm -rf /var/lib/apt/lists/* /root/.npm
 
-# Criar usuário não-root
-RUN groupadd -r appgroup && useradd -r -g appgroup -d /home/appuser appuser && \
-    mkdir -p /home/appuser && chown -R appuser:appgroup /home/appuser && \
-    mkdir -p /ms-playwright && chown -R appuser:appgroup /ms-playwright && \
-    mkdir -p /usr/src/app/data && chown -R appuser:appgroup /usr/src/app/data
-
-# Copiar código compilado e .env
+# Copiar código compilado com ownership correto
+# NOTA: .env NÃO é copiado — segredos devem ser injetados via env_file/runtime
 COPY --from=builder --chown=appuser:appgroup /usr/src/app/dist ./dist
-COPY --from=builder --chown=appuser:appgroup /usr/src/app/.env ./.env
 
-# Garantir permissões no node_modules (foi copiado como root antes)
-RUN chown -R appuser:appgroup ./node_modules
+# Corrigir ownership do node_modules copiado como root
+RUN chown -R appuser:appgroup ./node_modules /usr/src/app
 
 USER appuser
 

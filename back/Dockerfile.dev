@@ -1,5 +1,8 @@
+# ARG centraliza a versão — atualize apenas aqui ao fazer upgrade
+ARG PLAYWRIGHT_VERSION=v1.49.1
+
 # Usar imagem do Playwright que já tem os browsers e dependências
-FROM mcr.microsoft.com/playwright:v1.49.1-noble AS development
+FROM mcr.microsoft.com/playwright:${PLAYWRIGHT_VERSION}-noble AS development
 
 WORKDIR /usr/src/app
 

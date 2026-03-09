@@ -10,8 +10,8 @@ npm-debug.log*
 .idea/
 .DS_Store
 
+# Bloquear TODOS os arquivos .env — segredos devem ser injetados via runtime
 .env*
-!.env
 *.log
 
 coverage/

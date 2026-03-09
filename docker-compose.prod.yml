@@ -3,6 +3,8 @@ services:
     build:
       context: ./back
       dockerfile: Dockerfile.prod
+    env_file:
+      - ./back/.env
     ports:
       - "${API_PORT}:3000"
     restart: always
