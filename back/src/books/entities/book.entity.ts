@@ -27,6 +27,7 @@ import { Tag } from './tags.entity';
 @Index(['scrapingStatus'])
 @Index(['createdAt'])
 @Index(['deletedAt'])
+@Index(['title', 'description'], { fulltext: true })
 @Check(
 	`"publication" IS NULL OR ("publication" >= 1980 AND "publication" <= ${new Date().getFullYear() + 2})`,
 )
