@@ -9,7 +9,7 @@ import { ChapterScrapingSharedService } from './chapter-scraping.shared';
 
 const QUEUE_NAME = 'chapter-scraping';
 
-@Processor(QUEUE_NAME)
+@Processor(QUEUE_NAME, { lockDuration: 120000 })
 export class ChapterScrapingJob extends WorkerHost implements OnModuleInit {
 	private readonly logger = new Logger(ChapterScrapingJob.name);
 

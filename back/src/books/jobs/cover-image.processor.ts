@@ -13,7 +13,7 @@ import { Cover } from '../entities/cover.entity';
 const QUEUE_NAME = 'cover-image-queue';
 const JOB_NAME = 'process-cover';
 
-@Processor(QUEUE_NAME)
+@Processor(QUEUE_NAME, { lockDuration: 120000 })
 export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 	private readonly logger = new Logger(CoverImageProcessor.name);
 

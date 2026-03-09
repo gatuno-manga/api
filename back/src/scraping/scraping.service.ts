@@ -77,9 +77,9 @@ export class ScrapingService implements OnApplicationShutdown {
 		const compressorFactory = this.filesService.getCompressorFactory();
 
 		this.imageCompressor = {
-			compress: (buffer: Buffer) =>
+			compress: (buffer: Buffer, extension?: string) =>
 				compressorFactory
-					.compress(buffer, '.jpg')
+					.compress(buffer, extension ?? '.jpg')
 					.then((r) => r.buffer),
 			getOutputExtension: (ext: string) => {
 				const compressor = compressorFactory.getCompressor(ext);

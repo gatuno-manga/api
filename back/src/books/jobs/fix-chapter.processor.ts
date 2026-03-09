@@ -9,7 +9,7 @@ import { ChapterScrapingSharedService } from './chapter-scraping.shared';
 
 const QUEUE_NAME = 'fix-chapter-queue';
 
-@Processor(QUEUE_NAME)
+@Processor(QUEUE_NAME, { lockDuration: 120000 })
 export class FixChapterProcessor extends WorkerHost implements OnModuleInit {
 	private readonly logger = new Logger(FixChapterProcessor.name);
 

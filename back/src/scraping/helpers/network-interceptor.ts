@@ -41,7 +41,7 @@ export interface MemoryLimits {
  * Interface for image compression during interception.
  */
 export interface ImageCompressor {
-	compress(buffer: Buffer): Promise<Buffer>;
+	compress(buffer: Buffer, extension?: string): Promise<Buffer>;
 	getOutputExtension(originalExtension: string): string;
 }
 
@@ -191,6 +191,13 @@ export class NetworkInterceptor {
 
 			// Get response body
 			const body = await response.body();
+
+			// Skip empty responses (e.g. 204 no-content, ad trackers)
+			if (body.length === 0) {
+				this.logger.debug(`Skipping empty-body response: ${url}`);
+				return;
+			}
+
 			const contentType =
 				response.headers()['content-type'] || 'image/jpeg';
 			const originalExtension = this.getExtensionFromResponse(
@@ -391,7 +398,10 @@ export class NetworkInterceptor {
 			// Session was cleared while we were waiting — discard work
 			if (this._cleared) return;
 
-			const compressedData = await this.compressor?.compress(body);
+			const compressedData = await this.compressor?.compress(
+				body,
+				originalExtension,
+			);
 			const outputExtension =
 				this.compressor?.getOutputExtension(originalExtension);
 

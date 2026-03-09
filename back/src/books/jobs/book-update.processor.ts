@@ -20,7 +20,7 @@ interface BookUpdateResult {
 	newCovers: number;
 }
 
-@Processor(QUEUE_NAME)
+@Processor(QUEUE_NAME, { lockDuration: 120000 })
 export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
 	private readonly logger = new Logger(BookUpdateProcessor.name);
 
