@@ -73,6 +73,7 @@ services:
       - database-data:/var/lib/mysql
       - ./database/master/init.sh:/docker-entrypoint-initdb.d/init.sh
       - ./database/master/my.cnf:/etc/mysql/conf.d/my.cnf
+      - ./database/migrations:/migrations:ro
     networks:
       - gatuno-net
 
