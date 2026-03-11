@@ -77,8 +77,11 @@ export class NetworkInterceptor {
 	readonly logger = new Logger(NetworkInterceptor.name);
 	private readonly imageCache = new Map<string, CachedImage>();
 	isIntercepting = false;
-	private compressionQueue: Promise<void>[] = [];
+	/** Active compression promises; entries are deleted on completion so the set stays small. */
+	private readonly compressionQueue = new Set<Promise<void>>();
 	private currentCacheSize = 0;
+	/** Sum of raw body bytes currently waiting for a compression slot (not yet in cache). */
+	private inFlightBytes = 0;
 	private tempFiles: Set<string> = new Set();
 	private readonly memoryLimits: MemoryLimits;
 
@@ -223,6 +226,19 @@ export class NetworkInterceptor {
 
 			// If compressor is available, compress immediately (non-blocking, concurrency-limited)
 			if (this.compressor) {
+				// Guard: count in-flight bytes (queued but not yet in cache) against the
+				// same limit as the cache itself. Without this, every image response
+				// simultaneously adds its raw body to async closures with no cap.
+				if (
+					this.currentCacheSize + this.inFlightBytes + originalSize >
+					this.memoryLimits.maxCacheSize
+				) {
+					this.logger.warn(
+						`Memory limit reached (cache=${this.currentCacheSize}, in-flight=${this.inFlightBytes}), skipping: ${url}`,
+					);
+					return;
+				}
+				this.inFlightBytes += originalSize;
 				const compressionTask = this.compressAndCache(
 					url,
 					body,
@@ -230,7 +246,11 @@ export class NetworkInterceptor {
 					originalExtension,
 					originalSize,
 				);
-				this.compressionQueue.push(compressionTask);
+				this.compressionQueue.add(compressionTask);
+				// Self-cleaning: remove from the set once settled so the set never grows unboundedly.
+				void compressionTask.finally(() =>
+					this.compressionQueue.delete(compressionTask),
+				);
 			} else {
 				// Cache without compression
 				this.addToCache(url, {
@@ -394,6 +414,9 @@ export class NetworkInterceptor {
 		originalSize: number,
 	): Promise<void> {
 		await this.waitForCompressionSlot();
+		// Slot acquired: the body buffer is now being actively processed, so
+		// remove it from the in-flight accounting (it will enter the cache next).
+		this.inFlightBytes = Math.max(0, this.inFlightBytes - originalSize);
 		try {
 			// Session was cleared while we were waiting — discard work
 			if (this._cleared) return;
@@ -447,6 +470,8 @@ export class NetworkInterceptor {
 			this.logger.warn(`Compression failed for ${url}, caching original`);
 		} finally {
 			this.releaseCompressionSlot();
+			// Ensure inFlightBytes never drifts negative on unexpected paths.
+			this.inFlightBytes = Math.max(0, this.inFlightBytes);
 		}
 	}
 
@@ -455,12 +480,11 @@ export class NetworkInterceptor {
 	 * Call this before accessing the cache to ensure all images are ready.
 	 */
 	async waitForCompressions(): Promise<void> {
-		if (this.compressionQueue.length > 0) {
+		if (this.compressionQueue.size > 0) {
 			this.logger.debug(
-				`Waiting for ${this.compressionQueue.length} compressions...`,
+				`Waiting for ${this.compressionQueue.size} compressions...`,
 			);
-			await Promise.all(this.compressionQueue);
-			this.compressionQueue = [];
+			await Promise.allSettled([...this.compressionQueue]);
 			this.logger.debug('All compressions complete');
 		}
 	}
@@ -609,15 +633,16 @@ export class NetworkInterceptor {
 		this._cleared = true;
 
 		// Drain all in-flight compressions before wiping the cache
-		if (this.compressionQueue.length > 0) {
+		if (this.compressionQueue.size > 0) {
 			this.logger.debug(
-				`clearCache: awaiting ${this.compressionQueue.length} in-flight compressions...`,
+				`clearCache: awaiting ${this.compressionQueue.size} in-flight compressions...`,
 			);
-			await Promise.allSettled(this.compressionQueue);
+			await Promise.allSettled([...this.compressionQueue]);
 		}
-		this.compressionQueue.length = 0;
+		this.compressionQueue.clear();
 		this.compressionWaiters.length = 0;
 		this.activeCompressions = 0;
+		this.inFlightBytes = 0;
 
 		// Delete temp files
 		for (const tempFilePath of this.tempFiles) {

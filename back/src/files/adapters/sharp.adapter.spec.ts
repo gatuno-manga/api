@@ -107,6 +107,20 @@ describe('SharpAdapter', () => {
 		});
 	});
 
+	describe('libvips cache desabilitado', () => {
+		it('deve chamar sharp.cache(false) ao carregar o módulo para evitar vazamento de memória', () => {
+			// sharp.cache(false) é chamado no escopo do módulo (fora de qualquer classe).
+			// jest.isolateModules força a re-avaliação do módulo com o spy no lugar,
+			// contornando o cache de módulo do Jest e o afterEach(() => clearAllMocks).
+			jest.isolateModules(() => {
+				const sharpMock = require('sharp');
+				sharpMock.cache = jest.fn();
+				require('./sharp.adapter'); // re-executa o módulo → chama sharp.cache(false)
+				expect(sharpMock.cache).toHaveBeenCalledWith(false);
+			});
+		});
+	});
+
 	describe('getSupportedExtensions', () => {
 		it('deve retornar lista de extensões suportadas', () => {
 			const extensions = adapter.getSupportedExtensions();

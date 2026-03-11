@@ -202,19 +202,19 @@ describe('NetworkInterceptor', () => {
 	});
 
 	describe('Buffer operations', () => {
-		it('should return null for non-cached URL when getting buffer', () => {
+		it('should return null for non-cached URL when getting buffer', async () => {
 			const interceptor = new NetworkInterceptor(mockPage);
 			expect(
-				interceptor.getCachedImageAsBuffer(
+				await interceptor.getCachedImageAsBuffer(
 					'https://example.com/image.jpg',
 				),
 			).toBeNull();
 		});
 
-		it('should return null for non-cached URL when getting base64', () => {
+		it('should return null for non-cached URL when getting base64', async () => {
 			const interceptor = new NetworkInterceptor(mockPage);
 			expect(
-				interceptor.getCachedImageAsBase64(
+				await interceptor.getCachedImageAsBase64(
 					'https://example.com/image.jpg',
 				),
 			).toBeNull();
