@@ -5,8 +5,11 @@ services:
       dockerfile: Dockerfile.dev
     ports:
       - "${API_PORT}:3000"
+      - "9229:9229"
+    command: npm run start:debug
     environment:
       - CHOKIDAR_USEPOLLING=true
+      - NODE_OPTIONS=--max-old-space-size=3072
       - ALLOWED_URL=http://${APP_HOST},http://localhost:${APP_PORT}
       - APP_URL=http://localhost:${APP_PORT}
       - API_URL=http://localhost:${API_PORT}

@@ -20,6 +20,17 @@ services:
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     volumes:
       - api-data:/usr/src/app/data
     depends_on:
@@ -49,6 +60,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
     volumes:
       - redis_data:/data
     networks:
@@ -62,6 +74,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 60s
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASS}
       MYSQL_DATABASE: ${DB_NAME}
@@ -93,6 +106,7 @@ services:
         interval: 10s
         timeout: 5s
         retries: 5
+        start_period: 60s
       volumes:
         - ./database/slave/my.cnf:/etc/mysql/conf.d/my.cnf
         - ./database/slave/init.sh:/docker-entrypoint-initdb.d/init.sh
@@ -113,6 +127,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 60s
     volumes:
       - database-slave-2-data:/var/lib/mysql
       - ./database/slave/my.cnf:/etc/mysql/conf.d/my.cnf
@@ -125,7 +140,8 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV}
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     networks:
       - gatuno-net
 
