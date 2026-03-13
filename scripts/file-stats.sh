@@ -20,6 +20,7 @@ INSIDE_MODE=false
 VOLUME_NAME="$DEFAULT_VOLUME_NAME"
 CONTAINER_PATH="$DEFAULT_CONTAINER_PATH"
 DOCKER_IMAGE="$DEFAULT_IMAGE"
+LOG_FILE=""
 
 declare -A EXT_COUNTS
 declare -A DIR_FILES
@@ -42,6 +43,7 @@ show_help() {
     echo "  -v NOME   Nome do volume Docker (padrao: ${DEFAULT_VOLUME_NAME})"
     echo "  -p CAMINHO Caminho dentro do container (padrao: ${DEFAULT_CONTAINER_PATH})"
     echo "  -i IMAGEM Imagem Docker para execucao interna (padrao: ${DEFAULT_IMAGE})"
+    echo "  -l ARQUIVO Caminho do arquivo de log (padrao: logs/file-stats-AAAAMMDD-HHMMSS.log)"
     echo "  -h        Mostrar esta ajuda"
     echo ""
     echo "Exemplos:"
@@ -49,6 +51,20 @@ show_help() {
     echo "  $0 -n 20"
     echo "  $0 -v gatuno_api-data -p /data"
     echo "  $0 ./scripts -n 5"
+}
+
+setup_logging() {
+    if [ -n "$LOG_FILE" ]; then
+        mkdir -p "$(dirname "$LOG_FILE")"
+    else
+        mkdir -p "logs"
+        LOG_FILE="logs/file-stats-$(date +%Y%m%d-%H%M%S).log"
+    fi
+
+    # Espelha toda a saida no terminal e no arquivo de log.
+    exec > >(tee -a "$LOG_FILE") 2>&1
+    echo "Log: $LOG_FILE"
+    echo ""
 }
 
 human_size() {
@@ -340,6 +356,10 @@ parse_args() {
                 DOCKER_IMAGE="$2"
                 shift 2
                 ;;
+            -l)
+                LOG_FILE="$2"
+                shift 2
+                ;;
             -h|--help)
                 show_help
                 exit 0
@@ -370,6 +390,10 @@ parse_args() {
 
 main() {
     parse_args "$@"
+
+    if [ "$INSIDE_MODE" = false ]; then
+        setup_logging
+    fi
 
     if ! [[ "$TOP_N" =~ ^[0-9]+$ ]] || [ "$TOP_N" -lt 1 ]; then
         echo "Erro: -n precisa ser um numero inteiro maior que zero"
