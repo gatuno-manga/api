@@ -221,9 +221,20 @@ run_analysis() {
         ext="$(get_extension "$rel_path")"
         EXT_COUNTS["$ext"]=$(( ${EXT_COUNTS["$ext"]:-0} + 1 ))
 
-        top_dir="$(top_level_dir "$rel_path")"
-        DIR_FILES["$top_dir"]=$(( ${DIR_FILES["$top_dir"]:-0} + 1 ))
-        DIR_BYTES["$top_dir"]=$(( ${DIR_BYTES["$top_dir"]:-0} + size ))
+        # Conta o arquivo em todas as pastas ancestrais (estatistica recursiva).
+        if [[ "$rel_path" == */* ]]; then
+            dir_cursor="${rel_path%/*}"
+            while :; do
+                DIR_FILES["$dir_cursor"]=$(( ${DIR_FILES["$dir_cursor"]:-0} + 1 ))
+                DIR_BYTES["$dir_cursor"]=$(( ${DIR_BYTES["$dir_cursor"]:-0} + size ))
+
+                if [[ "$dir_cursor" == */* ]]; then
+                    dir_cursor="${dir_cursor%/*}"
+                else
+                    break
+                fi
+            done
+        fi
 
         update_top_n "$size" "$rel_path"
     done < <(find "$dir" -type f -print0)
@@ -238,9 +249,11 @@ run_analysis() {
         [ -z "$rel_dir" ] && continue
         ROOT_SUBDIRS=$((ROOT_SUBDIRS + 1))
         if [[ "$rel_dir" == */* ]]; then
-            dir_top="${rel_dir%%/*}"
-            DIR_SUBDIRS["$dir_top"]=$(( ${DIR_SUBDIRS["$dir_top"]:-0} + 1 ))
+            dir_parent="${rel_dir%/*}"
+        else
+            dir_parent="."
         fi
+        DIR_SUBDIRS["$dir_parent"]=$(( ${DIR_SUBDIRS["$dir_parent"]:-0} + 1 ))
     done < <(find "$dir" -mindepth 1 -type d -print0)
 
     local average_bytes
@@ -264,14 +277,14 @@ run_analysis() {
     done
     echo ""
 
-    echo "3) ESTATISTICAS POR PASTA"
+    echo "3) ESTATISTICAS POR PASTA (RECURSIVO)"
     echo "----------------------------------------"
     echo "Pasta | Arquivos | Subpastas | Tamanho | Media"
     echo "----- | -------- | --------- | ------- | -----"
     printf "%s | %d | %d | %s | %s\n" ". (raiz)" "$TOTAL_FILES" "$ROOT_SUBDIRS" "$(human_size "$TOTAL_BYTES")" "$(human_size "$average_bytes")"
 
-    while IFS= read -r -d '' abs_top_dir; do
-        dir_name="${abs_top_dir#"$dir"/}"
+    while IFS= read -r -d '' abs_sub_dir; do
+        dir_name="${abs_sub_dir#"$dir"/}"
         files_in_dir=${DIR_FILES["$dir_name"]:-0}
         subdirs_in_dir=${DIR_SUBDIRS["$dir_name"]:-0}
         bytes_in_dir=${DIR_BYTES["$dir_name"]:-0}
@@ -283,7 +296,7 @@ run_analysis() {
         fi
 
         printf "%s | %d | %d | %s | %s\n" "$dir_name" "$files_in_dir" "$subdirs_in_dir" "$(human_size "$bytes_in_dir")" "$(human_size "$dir_avg")"
-    done < <(find "$dir" -mindepth 1 -maxdepth 1 -type d -print0 | LC_ALL=C sort -z)
+    done < <(find "$dir" -mindepth 1 -type d -print0 | LC_ALL=C sort -z)
     echo ""
 
     echo "4) TOP ${TOP_N} MAIORES ARQUIVOS"
