@@ -21,7 +21,13 @@ services:
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "const http=require('http');const req=http.get('http://localhost:3000/api/health',(res)=>{process.exit(res.statusCode===200?0:1)});req.on('error',()=>process.exit(1));req.setTimeout(5000,()=>{req.destroy();process.exit(1);});",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
