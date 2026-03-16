@@ -21,7 +21,7 @@ services:
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
