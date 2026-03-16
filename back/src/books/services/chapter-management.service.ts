@@ -9,12 +9,16 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { normalizeUrl } from 'src/common/utils/url.utils';
 import { DataSource, Repository } from 'typeorm';
 import { ChapterUpdatedEvent } from '../chapters/events/chapter-updated.event';
+import { CreateChapterBatchItemDto } from '../dto/create-chapter-batch-item.dto';
 import { CreateChapterManualDto } from '../dto/create-chapter-manual.dto';
 import { CreateChapterDto } from '../dto/create-chapter.dto';
 import { OrderChaptersDto } from '../dto/order-chapters.dto';
 import { UpdateChapterDto } from '../dto/update-chapter.dto';
 import { Book } from '../entities/book.entity';
 import { Chapter } from '../entities/chapter.entity';
+import { ContentFormat } from '../enum/content-format.enum';
+import { ContentType } from '../enum/content-type.enum';
+import { ExportFormat } from '../enum/export-format.enum';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 /**
  * Service responsável por gerenciar capítulos de livros
@@ -32,6 +36,31 @@ export class ChapterManagementService {
 		private readonly dataSource: DataSource,
 	) {}
 
+	private validateManualChapterTextFields(dto: CreateChapterManualDto) {
+		const hasContent = dto.content !== undefined && dto.content !== null;
+		const hasFormat = dto.format !== undefined && dto.format !== null;
+
+		if (hasContent !== hasFormat) {
+			throw new BadRequestException(
+				"Campos 'content' e 'format' devem ser enviados juntos",
+			);
+		}
+	}
+
+	private mapContentFormatToExportFormat(
+		format: ContentFormat,
+	): ExportFormat {
+		switch (format) {
+			case ContentFormat.MARKDOWN:
+				return ExportFormat.MARKDOWN;
+			case ContentFormat.HTML:
+			case ContentFormat.PLAIN:
+				return ExportFormat.PDF;
+			default:
+				return ExportFormat.PDF;
+		}
+	}
+
 	/**
 	 * Cria um capítulo manual (sem URL para scraping)
 	 */
@@ -39,6 +68,7 @@ export class ChapterManagementService {
 		bookId: string,
 		dto: CreateChapterManualDto,
 	): Promise<Chapter> {
+		this.validateManualChapterTextFields(dto);
 		this.logger.log(`Creating manual chapter for book: ${bookId}`);
 
 		const book = await this.bookRepository.findOne({
@@ -92,6 +122,172 @@ export class ChapterManagementService {
 		);
 
 		return savedChapter;
+	}
+
+	/**
+	 * Cria capítulo manual e, opcionalmente, já salva conteúdo textual
+	 */
+	async createManualChapterWithContent(
+		bookId: string,
+		dto: CreateChapterManualDto,
+	): Promise<Chapter> {
+		this.validateManualChapterTextFields(dto);
+		const content = dto.content;
+		const format = dto.format;
+		if (!content || !format) {
+			return this.createManualChapter(bookId, dto);
+		}
+
+		const savedChapter = await this.dataSource.transaction(
+			async (manager) => {
+				const transactionBookRepo = manager.getRepository(Book);
+				const transactionChapterRepo = manager.getRepository(Chapter);
+
+				const book = await transactionBookRepo.findOne({
+					where: { id: bookId },
+					relations: ['chapters'],
+				});
+
+				if (!book) {
+					this.logger.warn(`Book with id ${bookId} not found`);
+					throw new NotFoundException(
+						`Book with id ${bookId} not found`,
+					);
+				}
+
+				let index = dto.index;
+				if (index === undefined || index === null) {
+					const maxIndex =
+						book.chapters.length > 0
+							? Math.max(
+									...book.chapters.map((c) =>
+										Number(c.index),
+									),
+								)
+							: 0;
+					index = maxIndex + 1;
+				}
+
+				const existingChapter = book.chapters.find(
+					(c) => Number(c.index) === index,
+				);
+				if (existingChapter) {
+					throw new BadRequestException(
+						`Chapter with index ${index} already exists`,
+					);
+				}
+
+				const chapter = transactionChapterRepo.create({
+					title: dto.title || `Chapter ${index}`,
+					originalUrl: '',
+					index,
+					book,
+					scrapingStatus: null,
+					contentType: ContentType.TEXT,
+					content,
+					contentFormat: format,
+					documentPath: null,
+					documentFormat: null,
+				});
+
+				const createdChapter =
+					await transactionChapterRepo.save(chapter);
+
+				const exportFormat =
+					this.mapContentFormatToExportFormat(format);
+				const currentFormats = book.availableFormats || [];
+				if (!currentFormats.includes(exportFormat)) {
+					book.availableFormats = [...currentFormats, exportFormat];
+					await transactionBookRepo.save(book);
+				}
+
+				return createdChapter;
+			},
+		);
+
+		this.logger.log(
+			`Manual chapter with text created: ${savedChapter.title} (${savedChapter.id})`,
+		);
+
+		this.eventEmitter.emit('chapter.created', savedChapter);
+		this.eventEmitter.emit(
+			'chapter.updated',
+			new ChapterUpdatedEvent(savedChapter.id, bookId),
+		);
+		this.eventEmitter.emit('chapter.content.uploaded', {
+			chapterId: savedChapter.id,
+			bookId,
+			format,
+		});
+
+		return savedChapter;
+	}
+
+	/**
+	 * Cria capítulos manuais em lote com resultado por item
+	 */
+	async createManualChaptersInBatch(
+		items: CreateChapterBatchItemDto[],
+	): Promise<{
+		total: number;
+		success: number;
+		failed: number;
+		results: Array<{
+			position: number;
+			bookId: string;
+			chapterId?: string;
+			status: 'success' | 'error';
+			message?: string;
+		}>;
+	}> {
+		const results: Array<{
+			position: number;
+			bookId: string;
+			chapterId?: string;
+			status: 'success' | 'error';
+			message?: string;
+		}> = [];
+
+		for (let i = 0; i < items.length; i++) {
+			const item = items[i];
+			try {
+				const chapter = await this.createManualChapterWithContent(
+					item.bookId,
+					{
+						title: item.title,
+						index: item.index,
+						content: item.content,
+						format: item.format,
+					},
+				);
+
+				results.push({
+					position: i,
+					bookId: item.bookId,
+					chapterId: chapter.id,
+					status: 'success',
+				});
+			} catch (error) {
+				const message =
+					error instanceof Error
+						? error.message
+						: 'Erro desconhecido';
+				results.push({
+					position: i,
+					bookId: item.bookId,
+					status: 'error',
+					message,
+				});
+			}
+		}
+
+		const success = results.filter((r) => r.status === 'success').length;
+		return {
+			total: items.length,
+			success,
+			failed: items.length - success,
+			results,
+		};
 	}
 
 	/**

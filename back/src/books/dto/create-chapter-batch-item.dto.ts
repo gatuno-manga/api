@@ -1,4 +1,4 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
 	IsEnum,
 	IsNotEmpty,
@@ -6,12 +6,21 @@ import {
 	IsOptional,
 	IsPositive,
 	IsString,
+	IsUrl,
+	IsUUID,
 	MaxLength,
 	ValidateIf,
 } from 'class-validator';
 import { ContentFormat } from '../enum/content-format.enum';
 
-export class CreateChapterManualDto {
+export class CreateChapterBatchItemDto {
+	@ApiProperty({
+		description: 'Book ID that will receive the chapter',
+		example: '550e8400-e29b-41d4-a716-446655440000',
+	})
+	@IsUUID()
+	bookId: string;
+
 	@ApiPropertyOptional({
 		description: 'Chapter title',
 		example: 'Chapter 1: The Beginning',
@@ -23,14 +32,22 @@ export class CreateChapterManualDto {
 	title?: string;
 
 	@ApiPropertyOptional({
-		description: 'Chapter order index',
+		description: 'Optional chapter order index',
 		example: 1,
-		minimum: 0,
+		minimum: 1,
 	})
 	@IsNumber()
 	@IsPositive()
 	@IsOptional()
 	index?: number;
+
+	@ApiPropertyOptional({
+		description: 'Optional source URL (ignored for manual creation)',
+		example: 'https://example.com/book/chapter-1',
+	})
+	@IsUrl()
+	@IsOptional()
+	url?: string;
 
 	@ApiPropertyOptional({
 		description:
@@ -41,7 +58,7 @@ export class CreateChapterManualDto {
 	@IsString()
 	@IsNotEmpty({ message: 'O conteúdo não pode estar vazio' })
 	@MaxLength(500000, { message: 'O conteúdo excede o limite de 500KB' })
-	@ValidateIf((dto: CreateChapterManualDto) => dto.format !== undefined)
+	@ValidateIf((dto: CreateChapterBatchItemDto) => dto.format !== undefined)
 	content?: string;
 
 	@ApiPropertyOptional({
@@ -53,6 +70,6 @@ export class CreateChapterManualDto {
 	@IsEnum(ContentFormat, {
 		message: 'Formato deve ser: markdown, html ou plain',
 	})
-	@ValidateIf((dto: CreateChapterManualDto) => dto.content !== undefined)
+	@ValidateIf((dto: CreateChapterBatchItemDto) => dto.content !== undefined)
 	format?: ContentFormat;
 }

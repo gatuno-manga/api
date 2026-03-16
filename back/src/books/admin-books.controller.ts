@@ -1,9 +1,11 @@
 import {
+	BadRequestException,
 	Body,
 	Controller,
 	Delete,
 	Get,
 	Param,
+	ParseArrayPipe,
 	Patch,
 	Post,
 	UseGuards,
@@ -22,6 +24,7 @@ import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { RolesEnum } from 'src/users/enum/roles.enum';
 import { BooksService } from './books.service';
 import { CreateBookDto } from './dto/create-book.dto';
+import { CreateChapterBatchItemDto } from './dto/create-chapter-batch-item.dto';
 import { CreateChapterManualDto } from './dto/create-chapter-manual.dto';
 import { OrderChaptersDto } from './dto/order-chapters.dto';
 import { OrderCoversDto } from './dto/order-covers.dto';
@@ -354,6 +357,75 @@ export class AdminBooksController {
 		@Body() dto: CreateChapterManualDto,
 	) {
 		return this.chapterManagementService.createManualChapter(idBook, dto);
+	}
+
+	@Post(':idBook/chapters/manual-with-content')
+	@Throttle({ medium: { limit: 30, ttl: 60000 } }) // 30 req/min
+	@ApiOperation({
+		summary: 'Create manual chapter with optional text content',
+		description:
+			'Create a manual chapter and optionally include text content in the same request (Admin only)',
+	})
+	@ApiParam({
+		name: 'idBook',
+		description: 'Book unique identifier',
+		example: '550e8400-e29b-41d4-a716-446655440000',
+	})
+	@ApiBody({
+		type: CreateChapterManualDto,
+		description:
+			"Use 'title' and 'index' as usual. If 'content' is provided, 'format' is required.",
+	})
+	@ApiResponse({ status: 201, description: 'Chapter created successfully' })
+	@ApiResponse({ status: 400, description: 'Invalid input data' })
+	@ApiResponse({ status: 404, description: 'Book not found' })
+	@ApiBearerAuth('JWT-auth')
+	createManualChapterWithContent(
+		@Param('idBook') idBook: string,
+		@Body() dto: CreateChapterManualDto,
+	) {
+		return this.chapterManagementService.createManualChapterWithContent(
+			idBook,
+			dto,
+		);
+	}
+
+	@Post('batch/chapters')
+	@Throttle({ short: { limit: 5, ttl: 60000 } }) // 5 req/min
+	@ApiOperation({
+		summary: 'Create chapters in batch',
+		description:
+			'Create manual chapters in batch, optionally with text content (Admin only)',
+	})
+	@ApiBody({
+		schema: {
+			type: 'array',
+			items: { $ref: '#/components/schemas/CreateChapterBatchItemDto' },
+		},
+	})
+	@ApiResponse({
+		status: 201,
+		description: 'Batch processed with per-item status',
+	})
+	@ApiResponse({ status: 400, description: 'Invalid input data' })
+	@ApiBearerAuth('JWT-auth')
+	createChaptersInBatch(
+		@Body(
+			new ParseArrayPipe({
+				items: CreateChapterBatchItemDto,
+				whitelist: true,
+				forbidNonWhitelisted: true,
+			}),
+		)
+		dto: CreateChapterBatchItemDto[],
+	) {
+		if (dto.length > 100) {
+			throw new BadRequestException(
+				'Limite máximo por lote é 100 capítulos',
+			);
+		}
+
+		return this.chapterManagementService.createManualChaptersInBatch(dto);
 	}
 
 	// ==================== DELETION ENDPOINTS ====================
