@@ -126,36 +126,43 @@ FIX_CHAPTER_CONCURRENCY=2
 docker compose -f docker-compose.dev.yml up -d --build
 ```
 
+Ou usando o arquivo combinado (equivalente ao comando acima):
+
+```bash
+docker compose -f docker-compose.common.yml -f docker-compose.dev.yml up -d --build
+```
+
 2. Aguarde todos os serviços iniciarem. Você pode verificar o status com:
 
 ```bash
 docker compose -f docker-compose.dev.yml ps
 ```
 
-3. Configure a replicação do banco de dados (Master-Slave):
+3. A replicação MySQL (Master-Slave) é configurada automaticamente pelos scripts de inicialização:
 
-```bash
-bash init-slave.sh
-```
+-   `database/master/init.sh`
+-   `database/slave/init.sh`
 
-Este script irá:
-
--   Aguardar o banco master iniciar
--   Criar o usuário de replicação
--   Gerar um dump do banco master
--   Configurar os slaves para replicar do master
+Não é necessário executar script manual `init-slave.sh`.
 
 4. Acesse os serviços:
 
 -   **Aplicação Frontend**: http://localhost:4200
 -   **API Backend**: http://localhost:3000
+
+Ferramentas opcionais (executadas separadamente):
+
+```bash
+docker compose -f docker-compose.tools.yml up -d --build
+```
+
 -   **PhpMyAdmin**: http://localhost:8080
 -   **Redis Commander**: http://localhost:8081
--   **Selenium Hub**: http://localhost:4444
+-   **Playwright Debug (browser remoto)**: http://localhost:3001
 
 ### Executando o ambiente de produção
 
-Para produção, é necessário configurar o Traefik antes. Certifique-se de que a rede `traefik_traefik-proxy-net` existe.
+Para produção, ajuste as variáveis no `.env` da raiz e no `back/.env`.
 
 1. Configure as variáveis de ambiente para produção no arquivo `.env`:
 
@@ -163,6 +170,8 @@ Para produção, é necessário configurar o Traefik antes. Certifique-se de que
 NODE_ENV=production
 API_HOST=api.seudominio.com
 APP_HOST=seudominio.com
+API_PORT=3000
+APP_PORT=4000
 ```
 
 2. Inicie os containers de produção:
@@ -171,10 +180,17 @@ APP_HOST=seudominio.com
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-3. Configure a replicação do banco de dados:
+Ou usando os arquivos combinados:
 
 ```bash
-bash init-slave.sh
+docker compose -f docker-compose.common.yml -f docker-compose.prod.yml up -d --build
+```
+
+3. Verifique saúde da replicação:
+
+```bash
+docker exec gatuno-database-slave-1 mysql -uroot -p"${DB_PASS}" -e "SHOW REPLICA STATUS\\G"
+docker exec gatuno-database-slave-2 mysql -uroot -p"${DB_PASS}" -e "SHOW REPLICA STATUS\\G"
 ```
 
 ### Comandos úteis
@@ -206,7 +222,8 @@ docker compose -f docker-compose.dev.yml down -v
 **Verificar status da replicação:**
 
 ```bash
-docker exec gatuno-database-slave-1 mysql -u root -p"${DB_PASS}" -e "SHOW SLAVE STATUS\G"
+docker exec gatuno-database-slave-1 mysql -uroot -p"${DB_PASS}" -e "SHOW REPLICA STATUS\G"
+docker exec gatuno-database-slave-2 mysql -uroot -p"${DB_PASS}" -e "SHOW REPLICA STATUS\G"
 ```
 
 ### Estrutura dos serviços
@@ -214,15 +231,21 @@ docker exec gatuno-database-slave-1 mysql -u root -p"${DB_PASS}" -e "SHOW SLAVE 
 O projeto utiliza os seguintes serviços:
 
 -   **api**: Backend NestJS (porta 3000)
--   **app**: Frontend Angular (porta 4200)
+-   **app (dev)**: Frontend Angular (porta 4200)
+-   **app (prod)**: Frontend Angular (porta 4000)
 -   **database-master**: MySQL Master (porta 3306)
 -   **database-slave-1**: MySQL Slave 1 (porta 3307)
 -   **database-slave-2**: MySQL Slave 2 (porta 3308)
 -   **redis**: Cache Redis (porta 6379)
+
+Serviços opcionais de ferramentas (`docker-compose.tools.yml`):
+
 -   **redis-commander**: Interface web para Redis (porta 8081)
--   **selenium-hub**: Selenium Grid Hub (porta 4444)
--   **node-docker**: Selenium Node com suporte a Docker
 -   **phpmyadmin**: Interface web para MySQL (porta 8080)
+
+Serviço opcional de debug browser (`docker-compose.dev.yml`):
+
+-   **playwright-debug**: Browser remoto para scraping/debug (porta 3001)
 
 # 🤝 Contribuidores
 
