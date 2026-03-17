@@ -30,7 +30,7 @@ export class Chapter {
 	@Column({ nullable: true })
 	originalUrl: string;
 
-	@Column({ type: 'decimal', precision: 15, scale: 3 })
+	@Column({ type: 'decimal', precision: 15, scale: 5 })
 	index: number;
 
 	/**
