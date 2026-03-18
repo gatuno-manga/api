@@ -7,6 +7,8 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Queue } from 'bullmq';
+import { BookChaptersCursorPageDto } from '../dto/book-chapters-cursor-page.dto';
+import { BookChaptersCursorOptionsDto } from '../dto/book-chapters-cursor-options.dto';
 import { QueueCoverProcessorDto } from '../dto/queue-cover-processor.dto';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { MetadataPageDto } from 'src/pages/metadata-page.dto';
@@ -281,9 +283,10 @@ export class BookQueryService {
 	 */
 	async getChapters(
 		id: string,
+		options: BookChaptersCursorOptionsDto,
 		userid?: string,
 		maxWeightSensitiveContent = 0,
-	) {
+	): Promise<BookChaptersCursorPageDto> {
 		const book = await this.bookRepository
 			.createQueryBuilder('book')
 			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
@@ -307,6 +310,9 @@ export class BookQueryService {
 			);
 		}
 
+		const pageLimit = options.limit ?? 200;
+		const cursorIndex = this.decodeCursor(options.cursor);
+
 		const chaptersQuery = this.chapterRepository
 			.createQueryBuilder('chapter')
 			.where('chapter.bookId = :id', { id })
@@ -316,10 +322,18 @@ export class BookQueryService {
 				'chapter.index',
 				'chapter.scrapingStatus',
 			])
-			.orderBy('chapter.index', 'ASC');
+			.orderBy('chapter.index', 'ASC')
+			.limit(pageLimit + 1);
+
+		if (cursorIndex !== null) {
+			chaptersQuery.andWhere('chapter.index > :cursorIndex', {
+				cursorIndex,
+			});
+		}
 
 		if (!userid) {
-			return chaptersQuery.getMany();
+			const chapters = await chaptersQuery.getMany();
+			return this.createChapterCursorPage(chapters, pageLimit);
 		}
 
 		chaptersQuery.addSelect(
@@ -340,13 +354,60 @@ export class BookQueryService {
 			readCount: string;
 		}>();
 
-		return rawChapters.map((row) => ({
+		const chapters = rawChapters.map((row) => ({
 			id: row.chapter_id,
 			title: row.chapter_title,
 			index: row.chapter_index,
-			scrapingStatus: row.chapter_scrapingStatus,
+			scrapingStatus: row.chapter_scrapingStatus as ScrapingStatus,
 			read: Number(row.readCount) > 0,
 		}));
+
+		return this.createChapterCursorPage(chapters, pageLimit);
+	}
+
+	private createChapterCursorPage(
+		chapters: Array<{
+			id: string;
+			title: string;
+			index: number;
+			scrapingStatus: ScrapingStatus | null;
+			read?: boolean;
+		}>,
+		limit: number,
+	): BookChaptersCursorPageDto {
+		const hasNextPage = chapters.length > limit;
+		const data = hasNextPage ? chapters.slice(0, limit) : chapters;
+		const lastItem = data[data.length - 1];
+
+		return {
+			data,
+			nextCursor:
+				hasNextPage && lastItem
+					? Buffer.from(String(lastItem.index)).toString('base64')
+					: null,
+			hasNextPage,
+		};
+	}
+
+	private decodeCursor(cursor?: string): number | null {
+		if (!cursor) {
+			return null;
+		}
+
+		try {
+			const decodedCursor = Buffer.from(cursor, 'base64').toString(
+				'utf8',
+			);
+			const cursorValue = Number(decodedCursor);
+
+			if (Number.isNaN(cursorValue)) {
+				return null;
+			}
+
+			return cursorValue;
+		} catch {
+			return null;
+		}
 	}
 
 	/**

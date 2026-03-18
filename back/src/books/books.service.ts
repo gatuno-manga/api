@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PageDto } from 'src/pages/page.dto';
+import { BookChaptersCursorPageDto } from './dto/book-chapters-cursor-page.dto';
+import { BookChaptersCursorOptionsDto } from './dto/book-chapters-cursor-options.dto';
 import { BookPageOptionsDto } from './dto/book-page-options.dto';
 import { Book } from './entities/book.entity';
 import { CreateBookDto } from './dto/create-book.dto';
@@ -120,11 +122,13 @@ export class BooksService {
 
 	async getChapters(
 		id: string,
+		options: BookChaptersCursorOptionsDto,
 		userid?: string,
 		maxWeightSensitiveContent = 0,
-	) {
+	): Promise<BookChaptersCursorPageDto> {
 		return this.bookQueryService.getChapters(
 			id,
+			options,
 			userid,
 			maxWeightSensitiveContent,
 		);

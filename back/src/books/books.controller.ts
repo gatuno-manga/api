@@ -20,6 +20,8 @@ import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
 import { OptionalAuthGuard } from 'src/auth/guard/optional-auth.guard';
 import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-cache.interceptor';
 import { BooksService } from './books.service';
+import { BookChaptersCursorPageDto } from './dto/book-chapters-cursor-page.dto';
+import { BookChaptersCursorOptionsDto } from './dto/book-chapters-cursor-options.dto';
 import { BookPageOptionsDto } from './dto/book-page-options.dto';
 
 @ApiTags('Books')
@@ -184,19 +186,34 @@ export class BooksController {
 		description: 'Book unique identifier',
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
+	@ApiQuery({
+		name: 'cursor',
+		required: false,
+		description: 'Cursor em base64 retornado na página anterior',
+		example: 'MTAwLjA=',
+	})
+	@ApiQuery({
+		name: 'limit',
+		required: false,
+		description: 'Quantidade de capítulos por página',
+		example: 200,
+	})
 	@ApiResponse({
 		status: 200,
 		description: 'Chapters retrieved successfully',
+		type: BookChaptersCursorPageDto,
 	})
 	@ApiResponse({ status: 404, description: 'Book not found' })
 	@ApiResponse({ status: 429, description: 'Too many requests' })
 	@UseGuards(OptionalAuthGuard)
 	getBookChapters(
 		@Param('idBook') id: string,
+		@Query() options: BookChaptersCursorOptionsDto,
 		@CurrentUser() user?: CurrentUserDto,
-	) {
+	): Promise<BookChaptersCursorPageDto> {
 		return this.booksService.getChapters(
 			id,
+			options,
 			user?.userId,
 			user?.maxWeightSensitiveContent,
 		);

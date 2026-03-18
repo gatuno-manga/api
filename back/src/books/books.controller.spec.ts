@@ -162,13 +162,19 @@ describe('BooksController', () => {
 	describe('getBookChapters', () => {
 		it('should call booksService.getChapters with id', async () => {
 			const id = 'test-id';
-			const mockChapters = [{ id: '1', title: 'Chapter 1' }];
+			const options = { limit: 200 } as any;
+			const mockChapters = {
+				data: [{ id: '1', title: 'Chapter 1' }],
+				nextCursor: null,
+				hasNextPage: false,
+			};
 			mockBooksService.getChapters.mockResolvedValue(mockChapters);
 
-			const result = await controller.getBookChapters(id);
+			const result = await controller.getBookChapters(id, options);
 
 			expect(booksService.getChapters).toHaveBeenCalledWith(
 				id,
+				options,
 				undefined,
 				undefined,
 			);
@@ -181,12 +187,14 @@ describe('BooksController', () => {
 				userId: 'user-1',
 				maxWeightSensitiveContent: 5,
 			} as any;
+			const options = { cursor: 'MTA=', limit: 100 } as any;
 			mockBooksService.getChapters.mockResolvedValue([]);
 
-			await controller.getBookChapters(id, user);
+			await controller.getBookChapters(id, options, user);
 
 			expect(booksService.getChapters).toHaveBeenCalledWith(
 				id,
+				options,
 				'user-1',
 				5,
 			);
