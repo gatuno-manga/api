@@ -73,7 +73,6 @@ export class ChapterManagementService {
 
 		const book = await this.bookRepository.findOne({
 			where: { id: bookId },
-			relations: ['chapters'],
 		});
 
 		if (!book) {
@@ -84,17 +83,21 @@ export class ChapterManagementService {
 		// Determinar índice automaticamente se não fornecido
 		let index = dto.index;
 		if (index === undefined || index === null) {
-			const maxIndex =
-				book.chapters.length > 0
-					? Math.max(...book.chapters.map((c) => Number(c.index)))
-					: 0;
-			index = maxIndex + 1;
+			const lastChapter = await this.chapterRepository.findOne({
+				where: { book: { id: bookId } },
+				order: { index: 'DESC' },
+			});
+			index = (lastChapter ? Number(lastChapter.index) : 0) + 1;
 		}
 
 		// Verificar se o índice já existe
-		const existingChapter = book.chapters.find(
-			(c) => Number(c.index) === index,
-		);
+		const existingChapter = await this.chapterRepository.findOne({
+			where: {
+				book: { id: bookId },
+				index: index,
+			},
+		});
+
 		if (existingChapter) {
 			throw new BadRequestException(
 				`Chapter with index ${index} already exists`,
@@ -145,7 +148,6 @@ export class ChapterManagementService {
 
 				const book = await transactionBookRepo.findOne({
 					where: { id: bookId },
-					relations: ['chapters'],
 				});
 
 				if (!book) {
@@ -157,20 +159,20 @@ export class ChapterManagementService {
 
 				let index = dto.index;
 				if (index === undefined || index === null) {
-					const maxIndex =
-						book.chapters.length > 0
-							? Math.max(
-									...book.chapters.map((c) =>
-										Number(c.index),
-									),
-								)
-							: 0;
-					index = maxIndex + 1;
+					const lastChapter = await transactionChapterRepo.findOne({
+						where: { book: { id: bookId } },
+						order: { index: 'DESC' },
+					});
+					index = (lastChapter ? Number(lastChapter.index) : 0) + 1;
 				}
 
-				const existingChapter = book.chapters.find(
-					(c) => Number(c.index) === index,
-				);
+				const existingChapter = await transactionChapterRepo.findOne({
+					where: {
+						book: { id: bookId },
+						index: index,
+					},
+				});
+
 				if (existingChapter) {
 					throw new BadRequestException(
 						`Chapter with index ${index} already exists`,
