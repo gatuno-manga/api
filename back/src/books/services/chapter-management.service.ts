@@ -7,7 +7,8 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { normalizeUrl } from 'src/common/utils/url.utils';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
+import { BookEvents } from '../constants/events.constant';
 import { ChapterUpdatedEvent } from '../chapters/events/chapter-updated.event';
 import { CreateChapterBatchItemDto } from '../dto/create-chapter-batch-item.dto';
 import { CreateChapterManualDto } from '../dto/create-chapter-manual.dto';
@@ -118,9 +119,9 @@ export class ChapterManagementService {
 			`Manual chapter created: ${savedChapter.title} (${savedChapter.id})`,
 		);
 
-		this.eventEmitter.emit('chapter.created', savedChapter);
+		this.eventEmitter.emit(BookEvents.CHAPTER_CREATED, savedChapter);
 		this.eventEmitter.emit(
-			'chapter.updated',
+			BookEvents.CHAPTER_UPDATED,
 			new ChapterUpdatedEvent(savedChapter.id, bookId),
 		);
 
@@ -211,9 +212,9 @@ export class ChapterManagementService {
 			`Manual chapter with text created: ${savedChapter.title} (${savedChapter.id})`,
 		);
 
-		this.eventEmitter.emit('chapter.created', savedChapter);
+		this.eventEmitter.emit(BookEvents.CHAPTER_CREATED, savedChapter);
 		this.eventEmitter.emit(
-			'chapter.updated',
+			BookEvents.CHAPTER_UPDATED,
 			new ChapterUpdatedEvent(savedChapter.id, bookId),
 		);
 		this.eventEmitter.emit('chapter.content.uploaded', {
@@ -336,6 +337,30 @@ export class ChapterManagementService {
 		return manager.save(chapters);
 	}
 
+	private determineDecimalPlaces(
+		dto: UpdateChapterDto[],
+		existingChapters: Chapter[],
+	): number {
+		for (const c of dto) {
+			if (c.index !== undefined && c.index !== null) {
+				const s = c.index.toString();
+				if (s.includes('.')) {
+					return s.split('.')[1].length;
+				}
+			}
+		}
+
+		let maxPlaces = 0;
+		for (const chapter of existingChapters) {
+			if (chapter.index?.toString().includes('.')) {
+				const places = chapter.index.toString().split('.')[1].length;
+				if (places > maxPlaces) maxPlaces = places;
+			}
+		}
+
+		return maxPlaces > 0 ? maxPlaces : 3;
+	}
+
 	/**
 	 * Atualiza capítulos de um livro
 	 */
@@ -345,18 +370,7 @@ export class ChapterManagementService {
 	): Promise<Chapter[]> {
 		const book = await this.bookRepository.findOne({
 			where: { id: idBook },
-			relations: ['chapters'],
-			select: {
-				id: true,
-				chapters: {
-					id: true,
-					title: true,
-					index: true,
-					originalUrl: true,
-					scrapingStatus: true,
-					book: false,
-				},
-			},
+			select: { id: true, title: true, availableFormats: true },
 		});
 
 		if (!book) {
@@ -364,61 +378,46 @@ export class ChapterManagementService {
 			throw new NotFoundException(`Book with id ${idBook} not found`);
 		}
 
+		// Validar duplicatas no DTO
 		const indices = dto.map((c) => c.index);
-		const duplicates = indices.filter(
-			(item, idx) => indices.indexOf(item) !== idx,
-		);
-		const uniqueDuplicates = [...new Set(duplicates)];
-
-		if (uniqueDuplicates.length > 0) {
+		const uniqueIndices = new Set(indices);
+		if (indices.length !== uniqueIndices.size) {
+			const duplicates = indices.filter(
+				(item, idx) => indices.indexOf(item) !== idx,
+			);
 			throw new BadRequestException(
-				`Há capítulos com índices duplicados: ${uniqueDuplicates.join(', ')}`,
+				`Há capítulos com índices duplicados: ${[...new Set(duplicates)].join(', ')}`,
 			);
 		}
 
-		const existingChapters: Record<string, Chapter> = {};
-		for (const chapter of book.chapters) {
-			existingChapters[chapter.index] = chapter;
+		// Buscar capítulos existentes que correspondem aos índices do DTO
+		const existingChapters = await this.chapterRepository.find({
+			where: {
+				book: { id: idBook },
+				index: In(indices),
+			},
+		});
+
+		const decimalPlaces = this.determineDecimalPlaces(
+			dto,
+			existingChapters,
+		);
+		const chapterMap = new Map<string, Chapter>();
+		for (const ch of existingChapters) {
+			chapterMap.set(Number(ch.index).toFixed(decimalPlaces), ch);
 		}
-
-		const determineDecimalPlaces = (): number => {
-			for (const c of dto) {
-				if (c.index !== undefined && c.index !== null) {
-					const s = c.index.toString();
-					if (s.includes('.')) {
-						return s.split('.')[1].length;
-					}
-				}
-			}
-
-			let maxPlaces = 0;
-			for (const ch of Object.keys(existingChapters)) {
-				if (ch?.toString().includes('.')) {
-					const places = ch.toString().split('.')[1].length;
-					if (places > maxPlaces) maxPlaces = places;
-				}
-			}
-			if (maxPlaces > 0) return maxPlaces;
-
-			return 3;
-		};
-
-		const decimalPlaces = determineDecimalPlaces();
 
 		const updatedChapters: Chapter[] = [];
 		for (const chapterDto of dto) {
-			const index = Number.parseFloat(
+			const indexStr = Number.parseFloat(
 				chapterDto.index.toString(),
 			).toFixed(decimalPlaces);
-			let chapter = existingChapters[index];
+			let chapter = chapterMap.get(indexStr);
 
 			if (!chapter) {
 				if (!chapterDto.url) {
-					this.logger.warn(
-						`Missing data for chapter with index ${chapterDto.index} in book ${idBook}`,
-					);
 					throw new NotFoundException(
-						`Missing data for chapter with index ${chapterDto.index} in book ${idBook}`,
+						`Chapter with index ${chapterDto.index} not found and no URL provided to create it`,
 					);
 				}
 				chapter = this.chapterRepository.create({
@@ -428,42 +427,33 @@ export class ChapterManagementService {
 					book: book,
 				});
 			} else {
-				let scrapingStatus = chapter.scrapingStatus;
-				if (chapterDto.url) {
-					scrapingStatus = ScrapingStatus.PROCESS;
-				}
+				const scrapingStatus = chapterDto.url
+					? ScrapingStatus.PROCESS
+					: chapter.scrapingStatus;
+
 				this.chapterRepository.merge(chapter, {
 					title: chapterDto.title,
 					index: chapterDto.index,
 					originalUrl: chapterDto.url,
-					scrapingStatus: scrapingStatus,
+					scrapingStatus,
 				});
 			}
 			updatedChapters.push(chapter);
 		}
 
-		book.chapters = [
-			...updatedChapters,
-			...book.chapters.filter(
-				(chapter) =>
-					!updatedChapters.some((c) => c.index === chapter.index),
-			),
-		];
+		const savedChapters =
+			await this.chapterRepository.save(updatedChapters);
 
-		const savedBook = await this.bookRepository.save(book);
-
-		for (const ch of savedBook.chapters) {
-			ch.book = savedBook;
-		}
-		this.eventEmitter.emit('chapters.updated', savedBook.chapters);
-		for (const chapter of updatedChapters) {
+		// Emitir eventos
+		this.eventEmitter.emit(BookEvents.CHAPTERS_UPDATED, savedChapters);
+		for (const chapter of savedChapters) {
 			this.eventEmitter.emit(
-				'chapter.updated',
+				BookEvents.CHAPTER_UPDATED,
 				new ChapterUpdatedEvent(chapter.id, idBook),
 			);
 		}
 
-		return savedBook.chapters;
+		return savedChapters;
 	}
 
 	/**
@@ -507,40 +497,36 @@ export class ChapterManagementService {
 			}
 		}
 
-		const queryRunner = this.dataSource.createQueryRunner('master');
-		let savedBook: Book;
-		let orderedChapters: Chapter[];
+		const { savedBook, orderedChapters } =
+			await this.dataSource.transaction(async (manager) => {
+				const transactionChapterRepo = manager.getRepository(Chapter);
+				const transactionBookRepo = manager.getRepository(Book);
 
-		try {
-			await queryRunner.connect();
-			await queryRunner.startTransaction();
+				// Usar índices temporários negativos para evitar conflitos de UNIQUE constraint durante o processo
+				let tempIndex = -100_000;
+				for (const chapter of book.chapters) {
+					chapter.index = tempIndex++;
+				}
+				await transactionChapterRepo.save(book.chapters);
 
-			let tempIndex = -100_000;
-			for (const chapter of book.chapters) {
-				chapter.index = tempIndex++;
-			}
-			await queryRunner.manager.save(Chapter, book.chapters);
+				// Aplicar os novos índices finais
+				for (const chapterDto of chapters) {
+					const chapter = chapterMap.get(chapterDto.id);
+					if (chapter) chapter.index = chapterDto.index;
+				}
 
-			for (const chapterDto of chapters) {
-				const chapter = chapterMap.get(chapterDto.id);
-				if (chapter) chapter.index = chapterDto.index;
-			}
+				const resultChapters = await transactionChapterRepo.save(
+					Array.from(chapterMap.values()),
+				);
+				book.chapters = resultChapters;
 
-			orderedChapters = await queryRunner.manager.save(
-				Chapter,
-				Array.from(chapterMap.values()),
-			);
-			book.chapters = orderedChapters;
+				const resultBook = await transactionBookRepo.save(book);
 
-			savedBook = await queryRunner.manager.save(Book, book);
-
-			await queryRunner.commitTransaction();
-		} catch (error) {
-			await queryRunner.rollbackTransaction();
-			throw error;
-		} finally {
-			await queryRunner.release();
-		}
+				return {
+					savedBook: resultBook,
+					orderedChapters: resultChapters,
+				};
+			});
 
 		this.logger.log(`Reordered chapters for book ${idBook}`);
 
@@ -549,11 +535,11 @@ export class ChapterManagementService {
 		}
 		for (const chapter of orderedChapters) {
 			this.eventEmitter.emit(
-				'chapter.updated',
+				BookEvents.CHAPTER_UPDATED,
 				new ChapterUpdatedEvent(chapter.id, idBook),
 			);
 		}
-		this.eventEmitter.emit('chapters.updated', savedBook.chapters);
+		this.eventEmitter.emit(BookEvents.CHAPTERS_UPDATED, savedBook.chapters);
 
 		return savedBook;
 	}
@@ -578,21 +564,21 @@ export class ChapterManagementService {
 
 		await this.bookRepository.save(book);
 
-		// Ensure book is attached for event
-		this.logger.debug(
-			'Emitting chapters.updated event for resetBookChapters',
-		);
+		// Garantir que o livro esteja anexado para o evento sem causar erro de referência circular no JSON
 		for (const ch of book.chapters) {
 			ch.book = book;
 		}
-		this.eventEmitter.emit('chapters.updated', book.chapters);
+		this.eventEmitter.emit(BookEvents.CHAPTERS_UPDATED, book.chapters);
 
-		// Remove circular references before returning
-		for (const ch of book.chapters) {
-			(ch as unknown as { book: Book | undefined }).book = undefined;
-		}
-
-		return book;
+		// Remover referências circulares de forma limpa antes de retornar
+		return {
+			...book,
+			chapters: book.chapters.map((ch) => {
+				// eslint-disable-next-line @typescript-eslint/no-unused-vars
+				const { book: _, ...chapterWithoutBook } = ch;
+				return chapterWithoutBook as Chapter;
+			}),
+		} as Book;
 	}
 
 	/**
@@ -609,17 +595,18 @@ export class ChapterManagementService {
 			throw new NotFoundException(`Book with id ${idBook} not found`);
 		}
 
-		// Ensure book is attached for event
 		for (const ch of book.chapters) {
 			ch.book = book;
 		}
-		this.eventEmitter.emit('chapters.fix', book.chapters);
+		this.eventEmitter.emit(BookEvents.CHAPTERS_FIX, book.chapters);
 
-		// Remove circular references before returning
-		for (const ch of book.chapters) {
-			(ch as unknown as { book: Book | undefined }).book = undefined;
-		}
-
-		return book;
+		return {
+			...book,
+			chapters: book.chapters.map((ch) => {
+				// eslint-disable-next-line @typescript-eslint/no-unused-vars
+				const { book: _, ...chapterWithoutBook } = ch;
+				return chapterWithoutBook as Chapter;
+			}),
+		} as Book;
 	}
 }
