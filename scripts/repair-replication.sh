@@ -27,6 +27,8 @@ CHANGE REPLICATION SOURCE TO
   SOURCE_RETRY_COUNT=8640,
   GET_SOURCE_PUBLIC_KEY=1;
 START REPLICA;
+SET GLOBAL read_only = ON;
+SET GLOBAL super_read_only = ON;
 SQL
 
   docker exec "$container" mysql -uroot -p"$ROOT_PASS" -e "SHOW REPLICA STATUS\\G" | grep -E "Replica_IO_Running:|Replica_SQL_Running:|Seconds_Behind_Source:|Last_IO_Error:|Last_SQL_Error:" || true

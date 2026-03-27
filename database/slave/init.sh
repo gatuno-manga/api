@@ -24,6 +24,10 @@ mysql -u root -p"$MYSQL_ROOT_PASSWORD" <<-EOSQL
         GET_SOURCE_PUBLIC_KEY=1;
 
     START REPLICA;
+
+  -- Evita escrita acidental no replica e reduz risco de divergencia
+  SET GLOBAL read_only = ON;
+  SET GLOBAL super_read_only = ON;
 EOSQL
 
 mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "SHOW REPLICA STATUS\\G" || true
