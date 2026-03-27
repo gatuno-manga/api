@@ -21,6 +21,10 @@ RUN npm prune --omit=dev
 # ─── Estágio de produção ──────────────────────────────────────────────────────
 FROM node:${NODE_VERSION}-bookworm-slim AS production
 
+# Instalar jemalloc para melhor gerenciamento de memória
+RUN apt-get update && apt-get install -y libjemalloc2 && rm -rf /var/lib/apt/lists/*
+ENV LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libjemalloc.so.2"
+
 WORKDIR /usr/src/app
 
 # Path onde o Playwright armazenará os browsers instalados
