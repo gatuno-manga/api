@@ -88,11 +88,65 @@ export class FileCleanupService {
 		}
 	}
 
+	/**
+	 * Obtém todos os arquivos recursivamente, ignorando diretórios de sistema como 'cache'
+	 * @private
+	 */
+	private async getAllFilesRecursive(
+		dir: string,
+		baseDir?: string,
+	): Promise<
+		{ filename: string; fullPath: string; size: number; mtime: Date }[]
+	> {
+		const effectiveBaseDir = baseDir || dir;
+		const entries = await fs.readdir(dir, { withFileTypes: true });
+		type FileInfo = {
+			filename: string;
+			fullPath: string;
+			size: number;
+			mtime: Date;
+		};
+		let files: FileInfo[] = [];
+
+		for (const entry of entries) {
+			const fullPath = path.join(dir, entry.name);
+			const relativePath = path.relative(effectiveBaseDir, fullPath);
+
+			if (entry.isDirectory()) {
+				// Ignora o diretório de cache
+				if (entry.name === 'cache') continue;
+
+				const subFiles = await this.getAllFilesRecursive(
+					fullPath,
+					effectiveBaseDir,
+				);
+				files = files.concat(subFiles);
+			} else {
+				try {
+					const stats = await fs.stat(fullPath);
+					files.push({
+						filename: relativePath,
+						fullPath,
+						size: stats.size,
+						mtime: stats.mtime,
+					});
+				} catch (error) {
+					this.logger.error(
+						`Error reading file stats for ${relativePath}:`,
+						error,
+					);
+				}
+			}
+		}
+
+		return files;
+	}
+
 	async findOrphanFiles(): Promise<OrphanFile[]> {
 		this.logger.log('Starting orphan file scan...');
 
 		try {
-			const files = await fs.readdir(this.downloadDir);
+			const allFiles = await this.getAllFilesRecursive(this.downloadDir);
 
 			const pages = await this.pageRepository.find({
 				select: ['path'],
@@ -113,33 +167,15 @@ export class FileCleanupService {
 
 			const orphanFiles: OrphanFile[] = [];
 
-			for (const filename of files) {
-				if (!allReferencedFiles.has(filename)) {
-					const fullPath = path.join(this.downloadDir, filename);
-
-					try {
-						const stats = await fs.stat(fullPath);
-
-						if (stats.isDirectory()) {
-							this.logger.debug(
-								`Skipping directory: ${filename}`,
-							);
-							continue;
-						}
-
-						orphanFiles.push({
-							filename,
-							fullPath,
-							size: stats.size,
-							lastModified: stats.mtime,
-							reason: 'no_page_reference',
-						});
-					} catch (error) {
-						this.logger.error(
-							`Error reading file stats for ${filename}:`,
-							error,
-						);
-					}
+			for (const file of allFiles) {
+				if (!allReferencedFiles.has(file.filename)) {
+					orphanFiles.push({
+						filename: file.filename,
+						fullPath: file.fullPath,
+						size: file.size,
+						lastModified: file.mtime,
+						reason: 'no_page_reference',
+					});
 				}
 			}
 
@@ -359,23 +395,14 @@ export class FileCleanupService {
 		deletedCovers: number;
 		retentionDays: number;
 	}> {
-		this.logger.log('Calculating storage statistics...');
+		this.logger.log('Calculating storage statistics (Streaming mode)...');
 
-		const files = await fs.readdir(this.downloadDir);
 		let totalSize = 0;
-		const fileCount = files.length;
+		let fileCount = 0;
 
-		for (const filename of files) {
-			try {
-				const fullPath = path.join(this.downloadDir, filename);
-				const stats = await fs.stat(fullPath);
-				totalSize += stats.size;
-			} catch (error) {
-				this.logger.error(
-					`Error reading file stats for ${filename}:`,
-					error,
-				);
-			}
+		for await (const file of this.getAllFilesGenerator(this.downloadDir)) {
+			totalSize += file.size;
+			fileCount++;
 		}
 
 		const pages = await this.pageRepository.count();

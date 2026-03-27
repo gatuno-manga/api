@@ -31,6 +31,31 @@ export class FilesService {
 	}
 
 	/**
+	 * Implementação interna de salvamento com sharding (2 caracteres)
+	 * @private
+	 */
+	private async saveFileInternal(
+		buffer: Buffer,
+		extension: string,
+	): Promise<string> {
+		const uuid = uuidv4();
+		const shard = uuid.substring(0, 2);
+		const fileName = `${uuid}${extension}`;
+
+		// Estrutura: data/ab/uuid.ext
+		const shardDir = path.join(this.downloadDir, shard);
+
+		// Cria o diretório (ex: data/ab) se não existir
+		await fs.mkdir(shardDir, { recursive: true });
+
+		const filePath = path.join(shardDir, fileName);
+		await fs.writeFile(filePath, buffer);
+
+		// O caminho público agora inclui o shard: /data/ab/uuid.ext
+		return this.getPublicPath(path.join(shard, fileName));
+	}
+
+	/**
 	 * Salva um arquivo que já foi comprimido (sem recompressão)
 	 * @param buffer Buffer contendo os dados já comprimidos
 	 * @param extension Extensão final do arquivo (ex: '.webp')
@@ -40,10 +65,7 @@ export class FilesService {
 		buffer: Buffer,
 		extension: string,
 	): Promise<string> {
-		const fileName = `${uuidv4()}${extension}`;
-		const filePath = path.join(this.downloadDir, fileName);
-		await fs.writeFile(filePath, buffer);
-		return this.getPublicPath(fileName);
+		return this.saveFileInternal(buffer, extension);
 	}
 
 	/**
@@ -81,11 +103,7 @@ export class FilesService {
 			fileBuffer = buffer;
 		}
 
-		const fileName = `${uuidv4()}${finalExtension}`;
-		const filePath = path.join(this.downloadDir, fileName);
-		await fs.writeFile(filePath, fileBuffer);
-
-		return this.getPublicPath(fileName);
+		return this.saveFileInternal(fileBuffer, finalExtension);
 	}
 
 	/**
