@@ -35,6 +35,12 @@ if ! docker compose version >/dev/null 2>&1; then
   exit 1
 fi
 
+MASTER_HOST="${DB_MASTER_HOST:-database-master}"
+ROOT_PASS="${DB_PASS:-}"
+REPL_USER="${DB_REPL_USER:-}"
+REPL_PASS="${DB_REPL_PASS:-}"
+DB_NAME_VALUE="${DB_NAME:-}"
+
 usage() {
   cat <<'USAGE'
 Uso:
@@ -50,7 +56,7 @@ Opcoes:
 Ambiente opcional:
   GATUNO_COMPOSE_FILES   Lista de arquivos compose separados por ':'
                          Exemplo: docker-compose.common.yml:docker-compose.prod.yml
-  DB_PASS                Senha root para validar SHOW REPLICA STATUS ao final.
+  DB_PASS                Senha root do MySQL (obrigatoria para reseed).
 USAGE
 }
 
@@ -75,6 +81,18 @@ compose() {
   docker compose "${COMPOSE_ARGS[@]}" "$@"
 }
 
+require_vars() {
+  if [[ -z "$ROOT_PASS" || -z "$REPL_USER" || -z "$REPL_PASS" || -z "$DB_NAME_VALUE" ]]; then
+    echo "Erro: defina DB_PASS, DB_REPL_USER, DB_REPL_PASS e DB_NAME no .env."
+    exit 1
+  fi
+}
+
+service_container_id() {
+  local service="$1"
+  compose ps -q "$service"
+}
+
 volume_name() {
   case "$1" in
     database-slave-1) echo "database-slave-1-data" ;;
@@ -85,33 +103,35 @@ volume_name() {
   esac
 }
 
-container_name() {
-  case "$1" in
-    database-slave-1) echo "gatuno-database-slave-1" ;;
-    database-slave-2) echo "gatuno-database-slave-2" ;;
-    *)
-      echo ""
-      ;;
-  esac
+wait_mysql_ready() {
+  local container="$1"
+  local attempts=60
+  local sleep_seconds=2
+
+  for ((i=1; i<=attempts; i++)); do
+    if docker exec "$container" mysqladmin -uroot -p"$ROOT_PASS" ping --silent >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep "$sleep_seconds"
+  done
+
+  echo "Erro: MySQL do container ${container} nao ficou pronto a tempo."
+  return 1
 }
 
 wait_replica_ok() {
   local container="$1"
-  local attempts=45
+  local attempts=60
   local sleep_seconds=2
-
-  if [[ -z "${DB_PASS:-}" ]]; then
-    echo "[info] DB_PASS nao definido; pulando validacao SQL detalhada para ${container}."
-    return 0
-  fi
+  local status=""
 
   for ((i=1; i<=attempts; i++)); do
-    status="$(docker exec "$container" mysql -uroot -p"$DB_PASS" -e "SHOW REPLICA STATUS\\G" 2>/dev/null || true)"
+    status="$(docker exec "$container" mysql -uroot -p"$ROOT_PASS" -e "SHOW REPLICA STATUS\\G" 2>/dev/null || true)"
 
     if echo "$status" | grep -q "Replica_IO_Running: Yes" && \
        echo "$status" | grep -q "Replica_SQL_Running: Yes"; then
       echo "[ok] Replicacao ativa em ${container}."
-      echo "$status" | grep -E "Replica_IO_Running:|Replica_SQL_Running:|Seconds_Behind_Source:|Last_SQL_Error:" || true
+      echo "$status" | grep -E "Replica_IO_Running:|Replica_SQL_Running:|Seconds_Behind_Source:|Last_IO_Error:|Last_SQL_Error:" || true
       return 0
     fi
 
@@ -119,8 +139,48 @@ wait_replica_ok() {
   done
 
   echo "[warn] Replicacao ainda nao ficou OK em ${container}."
-  docker exec "$container" mysql -uroot -p"$DB_PASS" -e "SHOW REPLICA STATUS\\G" || true
+  docker exec "$container" mysql -uroot -p"$ROOT_PASS" -e "SHOW REPLICA STATUS\\G" || true
   return 1
+}
+
+reseed_slave() {
+  local service="$1"
+  local slave_container="$2"
+  local master_container
+
+  master_container="$(service_container_id "database-master")"
+  if [[ -z "$master_container" ]]; then
+    echo "Erro: nao foi possivel localizar o container do servico database-master."
+    exit 1
+  fi
+
+  echo "==> Reseed do ${service} a partir do master"
+
+  wait_mysql_ready "$master_container"
+  wait_mysql_ready "$slave_container"
+
+  docker exec "$slave_container" mysql -uroot -p"$ROOT_PASS" <<SQL
+STOP REPLICA;
+RESET REPLICA ALL;
+RESET MASTER;
+SQL
+
+  docker exec "$master_container" sh -c 'exec mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" --single-transaction --routines --triggers --events --set-gtid-purged=ON --databases "$MYSQL_DATABASE"' \
+    | docker exec -i "$slave_container" sh -c 'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD"'
+
+  docker exec "$slave_container" mysql -uroot -p"$ROOT_PASS" <<SQL
+CHANGE REPLICATION SOURCE TO
+  SOURCE_HOST='${MASTER_HOST}',
+  SOURCE_USER='${REPL_USER}',
+  SOURCE_PASSWORD='${REPL_PASS}',
+  SOURCE_AUTO_POSITION=1,
+  SOURCE_CONNECT_RETRY=10,
+  SOURCE_RETRY_COUNT=8640,
+  GET_SOURCE_PUBLIC_KEY=1;
+START REPLICA;
+SET GLOBAL read_only = ON;
+SET GLOBAL super_read_only = ON;
+SQL
 }
 
 recreate_one() {
@@ -129,9 +189,7 @@ recreate_one() {
   local container
 
   volume="$(volume_name "$service")"
-  container="$(container_name "$service")"
-
-  if [[ -z "$volume" || -z "$container" ]]; then
+  if [[ -z "$volume" ]]; then
     echo "Erro: servico invalido: ${service}"
     exit 1
   fi
@@ -139,14 +197,28 @@ recreate_one() {
   echo "==> Recriando ${service}"
 
   compose stop "$service" || true
-  docker rm -f "$container" >/dev/null 2>&1 || true
+
+  container="$(service_container_id "$service")"
+  if [[ -n "$container" ]]; then
+    docker rm -f "$container" >/dev/null 2>&1 || true
+  fi
 
   # Volume com prefixo do projeto (name: gatuno) e fallback sem prefixo.
   docker volume rm "gatuno_${volume}" >/dev/null 2>&1 || docker volume rm "$volume" >/dev/null 2>&1 || true
 
   compose up -d "$service"
+
+  container="$(service_container_id "$service")"
+  if [[ -z "$container" ]]; then
+    echo "Erro: nao foi possivel localizar o container do servico ${service}."
+    exit 1
+  fi
+
+  reseed_slave "$service" "$container"
   wait_replica_ok "$container"
 }
+
+require_vars
 
 case "$target" in
   slave-1)
