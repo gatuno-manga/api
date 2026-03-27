@@ -89,47 +89,43 @@ export class FileCleanupService {
 	}
 
 	/**
-	 * Obtém todos os arquivos recursivamente, ignorando diretórios de sistema como 'cache'
+	 * Obtém todos os arquivos recursivamente usando um Generator para economizar memória
 	 * @private
 	 */
-	private async getAllFilesRecursive(
+	private async *getAllFilesGenerator(
 		dir: string,
 		baseDir?: string,
-	): Promise<
-		{ filename: string; fullPath: string; size: number; mtime: Date }[]
-	> {
+	): AsyncGenerator<{
+		filename: string;
+		fullPath: string;
+		size: number;
+		mtime: Date;
+	}> {
 		const effectiveBaseDir = baseDir || dir;
-		const entries = await fs.readdir(dir, { withFileTypes: true });
-		type FileInfo = {
-			filename: string;
-			fullPath: string;
-			size: number;
-			mtime: Date;
-		};
-		let files: FileInfo[] = [];
+		let entries: import('node:fs').Dirent[];
+		try {
+			entries = await fs.readdir(dir, { withFileTypes: true });
+		} catch (error) {
+			this.logger.error(`Error reading directory ${dir}:`, error);
+			return;
+		}
 
 		for (const entry of entries) {
 			const fullPath = path.join(dir, entry.name);
 			const relativePath = path.relative(effectiveBaseDir, fullPath);
 
 			if (entry.isDirectory()) {
-				// Ignora o diretório de cache
 				if (entry.name === 'cache') continue;
-
-				const subFiles = await this.getAllFilesRecursive(
-					fullPath,
-					effectiveBaseDir,
-				);
-				files = files.concat(subFiles);
+				yield* this.getAllFilesGenerator(fullPath, effectiveBaseDir);
 			} else {
 				try {
 					const stats = await fs.stat(fullPath);
-					files.push({
+					yield {
 						filename: relativePath,
 						fullPath,
 						size: stats.size,
 						mtime: stats.mtime,
-					});
+					};
 				} catch (error) {
 					this.logger.error(
 						`Error reading file stats for ${relativePath}:`,
@@ -138,16 +134,12 @@ export class FileCleanupService {
 				}
 			}
 		}
-
-		return files;
 	}
 
 	async findOrphanFiles(): Promise<OrphanFile[]> {
-		this.logger.log('Starting orphan file scan...');
+		this.logger.log('Starting orphan file scan (Memory-Safe mode)...');
 
 		try {
-			const allFiles = await this.getAllFilesRecursive(this.downloadDir);
-
 			const pages = await this.pageRepository.find({
 				select: ['path'],
 				withDeleted: true,
@@ -157,17 +149,16 @@ export class FileCleanupService {
 				withDeleted: true,
 			});
 
-			const pageFiles = new Set(
-				pages.map((p) => p.path.replace('/data/', '')),
-			);
-			const coverFiles = new Set(
-				covers.map((c) => c.url.replace('/data/', '')),
-			);
-			const allReferencedFiles = new Set([...pageFiles, ...coverFiles]);
+			const allReferencedFiles = new Set([
+				...pages.map((p) => p.path.replace('/data/', '')),
+				...covers.map((c) => c.url.replace('/data/', '')),
+			]);
 
 			const orphanFiles: OrphanFile[] = [];
 
-			for (const file of allFiles) {
+			for await (const file of this.getAllFilesGenerator(
+				this.downloadDir,
+			)) {
 				if (!allReferencedFiles.has(file.filename)) {
 					orphanFiles.push({
 						filename: file.filename,
@@ -176,6 +167,13 @@ export class FileCleanupService {
 						lastModified: file.mtime,
 						reason: 'no_page_reference',
 					});
+
+					if (orphanFiles.length >= 10000) {
+						this.logger.warn(
+							'Too many orphan files found, truncating list at 10k items for safety.',
+						);
+						break;
+					}
 				}
 			}
 
@@ -230,48 +228,78 @@ export class FileCleanupService {
 	}
 
 	async findMissingFiles(): Promise<MissingFile[]> {
-		this.logger.log('Starting missing file check...');
+		this.logger.log('Starting missing file check (Batch mode)...');
 
 		const missingFiles: MissingFile[] = [];
+		const batchSize = 1000;
 
-		const pages = await this.pageRepository.find({
-			relations: ['chapter', 'chapter.book'],
-		});
+		// Processa Pages em lotes
+		let offset = 0;
+		while (true) {
+			const pages = await this.pageRepository.find({
+				relations: ['chapter', 'chapter.book'],
+				take: batchSize,
+				skip: offset,
+			});
 
-		for (const page of pages) {
-			const filename = page.path.replace('/data/', '');
-			const fullPath = path.join(this.downloadDir, filename);
+			if (pages.length === 0) break;
 
-			try {
-				await fs.access(fullPath);
-			} catch {
-				missingFiles.push({
-					entityType: 'page',
-					entityId: page.id,
-					expectedPath: page.path,
-					chapterId: page.chapter?.id,
-					bookId: page.chapter?.book?.id,
-				});
+			for (const page of pages) {
+				const filename = page.path.replace('/data/', '');
+				const fullPath = path.join(this.downloadDir, filename);
+
+				try {
+					await fs.access(fullPath);
+				} catch {
+					missingFiles.push({
+						entityType: 'page',
+						entityId: page.id,
+						expectedPath: page.path,
+						chapterId: page.chapter?.id,
+						bookId: page.chapter?.book?.id,
+					});
+				}
+			}
+
+			offset += batchSize;
+			if (missingFiles.length >= 1000) {
+				this.logger.warn(
+					'Too many missing files found, truncating report at 1k items.',
+				);
+				break;
 			}
 		}
 
-		const covers = await this.coverRepository.find({
-			relations: ['book'],
-		});
-
-		for (const cover of covers) {
-			const filename = cover.url.replace('/data/', '');
-			const fullPath = path.join(this.downloadDir, filename);
-
-			try {
-				await fs.access(fullPath);
-			} catch {
-				missingFiles.push({
-					entityType: 'cover',
-					entityId: cover.id,
-					expectedPath: cover.url,
-					bookId: cover.book?.id,
+		// Processa Covers em lotes (se não atingiu o limite)
+		if (missingFiles.length < 1000) {
+			offset = 0;
+			while (true) {
+				const covers = await this.coverRepository.find({
+					relations: ['book'],
+					take: batchSize,
+					skip: offset,
 				});
+
+				if (covers.length === 0) break;
+
+				for (const cover of covers) {
+					const filename = cover.url.replace('/data/', '');
+					const fullPath = path.join(this.downloadDir, filename);
+
+					try {
+						await fs.access(fullPath);
+					} catch {
+						missingFiles.push({
+							entityType: 'cover',
+							entityId: cover.id,
+							expectedPath: cover.url,
+							bookId: cover.book?.id,
+						});
+					}
+				}
+
+				offset += batchSize;
+				if (missingFiles.length >= 1000) break;
 			}
 		}
 

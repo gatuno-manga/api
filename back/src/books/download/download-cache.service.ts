@@ -44,10 +44,22 @@ export class DownloadCacheService implements OnModuleInit {
 	}
 
 	/**
-	 * Gera o caminho completo do arquivo no cache
+	 * Gera o caminho completo do arquivo no cache com sharding (2 caracteres)
 	 */
 	public getCacheFilePath(cacheKey: string, extension: string): string {
-		return join(this.CACHE_DIR, `${cacheKey}.${extension}`);
+		const shard = cacheKey.substring(0, 2);
+		return join(this.CACHE_DIR, shard, `${cacheKey}.${extension}`);
+	}
+
+	/**
+	 * Garante que o diretório de shard existe
+	 * @private
+	 */
+	private async ensureShardDir(cacheKey: string): Promise<string> {
+		const shard = cacheKey.substring(0, 2);
+		const shardDir = join(this.CACHE_DIR, shard);
+		await fs.mkdir(shardDir, { recursive: true });
+		return shardDir;
 	}
 
 	/**
@@ -65,18 +77,14 @@ export class DownloadCacheService implements OnModuleInit {
 			// Verificar se a chave existe no Redis
 			const cachedPath = await this.redis.get(redisKey);
 			if (!cachedPath) {
-				this.logger.debug(`Cache miss for key: ${cacheKey}`);
 				return null;
 			}
 
-			// Verificar se o arquivo existe
+			// Verificar se o arquivo existe (usando sharding)
 			const filePath = this.getCacheFilePath(cacheKey, extension);
-			const fileExists = await fs
-				.access(filePath)
-				.then(() => true)
-				.catch(() => false);
-
-			if (!fileExists) {
+			try {
+				await fs.access(filePath);
+			} catch {
 				this.logger.warn(
 					`Cache file not found, removing Redis key: ${filePath}`,
 				);
@@ -85,7 +93,6 @@ export class DownloadCacheService implements OnModuleInit {
 			}
 
 			// Retornar stream do arquivo
-			this.logger.log(`Cache stream hit for key: ${cacheKey}`);
 			const { createReadStream } = await import('node:fs');
 			return createReadStream(filePath);
 		} catch (error) {
@@ -111,18 +118,14 @@ export class DownloadCacheService implements OnModuleInit {
 			// Verificar se a chave existe no Redis
 			const cachedPath = await this.redis.get(redisKey);
 			if (!cachedPath) {
-				this.logger.debug(`Cache miss for key: ${cacheKey}`);
 				return null;
 			}
 
 			// Verificar se o arquivo existe
 			const filePath = this.getCacheFilePath(cacheKey, extension);
-			const fileExists = await fs
-				.access(filePath)
-				.then(() => true)
-				.catch(() => false);
-
-			if (!fileExists) {
+			try {
+				await fs.access(filePath);
+			} catch {
 				this.logger.warn(
 					`Cache file not found, removing Redis key: ${filePath}`,
 				);
@@ -131,7 +134,6 @@ export class DownloadCacheService implements OnModuleInit {
 			}
 
 			// Ler e retornar o arquivo
-			this.logger.log(`Cache hit for key: ${cacheKey}`);
 			return await fs.readFile(filePath);
 		} catch (error) {
 			const errorMessage =
@@ -152,10 +154,12 @@ export class DownloadCacheService implements OnModuleInit {
 	): Promise<void> {
 		const cacheKey = this.generateCacheKey(chapterIds, format);
 		const redisKey = `${this.REDIS_PREFIX}${cacheKey}`;
-		const filePath = this.getCacheFilePath(cacheKey, extension);
-		const tempPath = `${filePath}.tmp`;
 
 		try {
+			await this.ensureShardDir(cacheKey);
+			const filePath = this.getCacheFilePath(cacheKey, extension);
+			const tempPath = `${filePath}.tmp`;
+
 			// Salvar em arquivo temporário primeiro
 			await fs.writeFile(tempPath, data);
 
@@ -165,15 +169,13 @@ export class DownloadCacheService implements OnModuleInit {
 			// Salvar referência no Redis com TTL
 			await this.redis.set(redisKey, filePath, 'EX', this.TTL_SECONDS);
 
-			this.logger.log(
+			this.logger.debug(
 				`Cached file: ${filePath} (TTL: ${this.TTL_SECONDS}s)`,
 			);
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : 'Unknown error';
 			this.logger.error(`Failed to set cache: ${errorMessage}`);
-			// Limpar arquivo temporário se existir
-			await fs.unlink(tempPath).catch(() => {});
 		}
 	}
 
@@ -223,35 +225,54 @@ export class DownloadCacheService implements OnModuleInit {
 	}
 
 	/**
-	 * Limpa arquivos de cache expirados (cron job diário)
+	 * Auxiliar recursivo para listar arquivos de cache (Generator para RAM)
+	 * @private
 	 */
-	@Cron(CronExpression.EVERY_DAY_AT_3AM)
+	private async *listCacheFiles(dir: string): AsyncGenerator<string> {
+		let entries: import('node:fs').Dirent[];
+		try {
+			entries = await fs.readdir(dir, { withFileTypes: true });
+		} catch (error) {
+			return;
+		}
+
+		for (const entry of entries) {
+			const res = join(dir, entry.name);
+			if (entry.isDirectory()) {
+				yield* this.listCacheFiles(res);
+			} else if (!entry.name.endsWith('.tmp')) {
+				yield res;
+			}
+		}
+	}
+
+	/**
+	 * Limpa arquivos de cache expirados (cron job diário às 03:30 para evitar conflito)
+	 */
+	@Cron('30 3 * * *')
 	async cleanExpiredCache(): Promise<void> {
-		this.logger.log('Starting cache cleanup job');
+		this.logger.log('Starting cache cleanup job (Memory-Safe)...');
 
 		try {
 			// Buscar todas as chaves no Redis
 			const pattern = `${this.REDIS_PREFIX}*`;
 			const keys = await this.redis.keys(pattern);
 
-			// Buscar todos os arquivos no diretório de cache
-			const files = await fs.readdir(this.CACHE_DIR);
-
-			// Criar set de caminhos válidos (que ainda estão no Redis)
+			// Criar set de caminhos válidos do Redis
 			const validPaths = new Set<string>();
-			for (const key of keys) {
-				const path = await this.redis.get(key);
-				if (path) validPaths.add(path);
+			if (keys.length > 0) {
+				const values = await this.redis.mget(...keys);
+				for (const val of values) {
+					if (val) validPaths.add(val);
+				}
 			}
 
-			// Deletar arquivos órfãos
+			// Deletar arquivos órfãos no disco
 			let deletedCount = 0;
-			for (const file of files) {
-				const filePath = join(this.CACHE_DIR, file);
+			for await (const filePath of this.listCacheFiles(this.CACHE_DIR)) {
 				if (!validPaths.has(filePath)) {
-					await fs.unlink(filePath);
+					await fs.unlink(filePath).catch(() => {});
 					deletedCount++;
-					this.logger.debug(`Deleted orphan cache file: ${file}`);
 				}
 			}
 
