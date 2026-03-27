@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Inject } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
 	DiskHealthIndicator,
@@ -7,6 +7,8 @@ import {
 	MemoryHealthIndicator,
 	TypeOrmHealthIndicator,
 } from '@nestjs/terminus';
+import { Redis } from 'ioredis';
+import { REDIS_CLIENT } from '../redis/redis.constants';
 import { AppConfigService } from '../app-config/app-config.service';
 
 @ApiTags('Health')
@@ -18,49 +20,59 @@ export class HealthController {
 		private memory: MemoryHealthIndicator,
 		private disk: DiskHealthIndicator,
 		private appConfig: AppConfigService,
+		@Inject(REDIS_CLIENT) private readonly redis: Redis,
 	) {}
 
 	@Get()
 	@HealthCheck()
 	@ApiOperation({
 		summary: 'Health check completo',
-		description: 'Verifica status do banco, memória e disco',
+		description:
+			'Verifica status do banco, Redis, memória detalhada e disco',
 	})
 	@ApiResponse({
 		status: 200,
 		description: 'Aplicação saudável',
-		schema: {
-			example: {
-				status: 'ok',
-				info: {
-					database: { status: 'up' },
-					memory_heap: { status: 'up' },
-					memory_rss: { status: 'up' },
-					storage: { status: 'up' },
-				},
-			},
-		},
-	})
-	@ApiResponse({
-		status: 503,
-		description: 'Aplicação com problemas',
 	})
 	check() {
 		return this.health.check([
 			() => this.db.pingCheck('database'),
+			// Redis Check
+			async () => {
+				try {
+					const status = await this.redis.ping();
+					return {
+						redis: { status: status === 'PONG' ? 'up' : 'down' },
+					};
+				} catch (e) {
+					return { redis: { status: 'down', message: e.message } };
+				}
+			},
+			// Memória Detalhada para diagnóstico
+			async () => {
+				const mem = process.memoryUsage();
+				const toMB = (bytes: number) =>
+					`${(bytes / 1024 / 1024).toFixed(2)} MB`;
+
+				return {
+					memory_detail: {
+						status: 'up',
+						heapUsed: toMB(mem.heapUsed),
+						heapTotal: toMB(mem.heapTotal),
+						external: toMB(mem.external), // Memória de módulos C++ (Sharp/Images)
+						rss: toMB(mem.rss), // Total ocupado no sistema
+						arrayBuffers: toMB(mem.arrayBuffers || 0),
+					},
+				};
+			},
 			() =>
 				this.memory.checkHeap(
 					'memory_heap',
 					this.appConfig.healthHeapLimitBytes,
 				),
 			() =>
-				this.memory.checkRSS(
-					'memory_rss',
-					this.appConfig.healthRssLimitBytes,
-				),
-			() =>
 				this.disk.checkStorage('storage', {
-					path: '/',
+					path: '/usr/src/app/data',
 					thresholdPercent: this.appConfig.healthDiskThresholdPercent,
 				}),
 		]);
@@ -100,7 +112,11 @@ export class HealthController {
 	readiness() {
 		return this.health.check([
 			() => this.db.pingCheck('database'),
-			() => this.memory.checkHeap('memory_heap', 400 * 1024 * 1024),
+			() =>
+				this.memory.checkHeap(
+					'memory_heap',
+					this.appConfig.healthHeapLimitBytes,
+				),
 		]);
 	}
 
