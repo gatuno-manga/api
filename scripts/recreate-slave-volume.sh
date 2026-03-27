@@ -159,16 +159,16 @@ reseed_slave() {
   wait_mysql_ready "$master_container"
   wait_mysql_ready "$slave_container"
 
-  docker exec "$slave_container" mysql -uroot -p"$ROOT_PASS" <<SQL
+  docker exec -i "$slave_container" mysql -uroot -p"$ROOT_PASS" <<SQL
 STOP REPLICA;
 RESET REPLICA ALL;
-RESET MASTER;
+RESET BINARY LOGS AND GTIDS;
 SQL
 
   docker exec "$master_container" sh -c 'exec mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" --single-transaction --routines --triggers --events --set-gtid-purged=ON --databases "$MYSQL_DATABASE"' \
     | docker exec -i "$slave_container" sh -c 'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD"'
 
-  docker exec "$slave_container" mysql -uroot -p"$ROOT_PASS" <<SQL
+  docker exec -i "$slave_container" mysql -uroot -p"$ROOT_PASS" <<SQL
 CHANGE REPLICATION SOURCE TO
   SOURCE_HOST='${MASTER_HOST}',
   SOURCE_USER='${REPL_USER}',
