@@ -20,35 +20,49 @@ echo "[1/3] Mapeando arquivos e criando estrutura de pastas..."
 # - Cria a pasta de 2 chars
 # - Move o arquivo
 # - Imprime o comando SQL de update (Plural: pages e covers)
-docker run --rm -v ${VOLUME_NAME}:${CONTAINER_DATA_PATH} bash:5.2 bash -c "
+docker run --rm -v ${VOLUME_NAME}:${CONTAINER_DATA_PATH} -i bash:5.2 bash <<'EOF_INSIDE' > ${TEMP_SQL_FILE}
     cd ${CONTAINER_DATA_PATH}
     echo 'SET FOREIGN_KEY_CHECKS = 0;' > /tmp/migration.sql
     
     count=0
+    
+    # 1. Processa arquivos que ainda estão na raiz
     for f in *; do
-        # Pula se não for arquivo ou se for diretório (como cache)
-        [ -f \"\$f\" ] || continue
+        [ -f "$f" ] || continue
         
         # Pega os 2 primeiros caracteres do UUID
-        shard=\${f:0:2}
+        shard=${f:0:2}
         
         # Cria diretório e move
-        mkdir -p \"\$shard\"
-        mv \"\$f\" \"\$shard/\"
+        mkdir -p "$shard"
+        mv "$f" "$shard/"
         
-        # Gera SQL para as duas tabelas principais (Plural!)
-        echo \"UPDATE pages SET path = '/data/\$shard/\$f' WHERE path = '/data/\$f';\" >> /tmp/migration.sql
-        echo \"UPDATE covers SET url = '/data/\$shard/\$f' WHERE url = '/data/\$f';\" >> /tmp/migration.sql
+        # Gera SQL para as duas tabelas principais
+        echo "UPDATE pages SET path = '/data/$shard/$f' WHERE path = '/data/$f';" >> /tmp/migration.sql
+        echo "UPDATE covers SET url = '/data/$shard/$f' WHERE url = '/data/$f';" >> /tmp/migration.sql
         
-        count=\$((count + 1))
-        if [ \$((count % 500)) -eq 0 ]; then
-            echo \"Processados \$count arquivos...\"
+        count=$((count + 1))
+        if [ $((count % 500)) -eq 0 ]; then
+            echo "Processados $count arquivos da raiz..." >&2
         fi
+    done
+
+    # 2. Gera SQL para arquivos que JÁ estão em shards (para recuperação em caso de falha no DB)
+    for d in [0-9a-f][0-9a-f]; do
+        [ -d "$d" ] || continue
+        for f in "$d"/*; do
+            [ -f "$f" ] || continue
+            fname=$(basename "$f")
+            # Se já está no shard, o SQL vai tentar atualizar de /data/f para /data/shard/f.
+            # Se o DB já estiver atualizado, o WHERE não vai bater, o que é seguro.
+            echo "UPDATE pages SET path = '/data/$f' WHERE path = '/data/$fname';" >> /tmp/migration.sql
+            echo "UPDATE covers SET url = '/data/$f' WHERE url = '/data/$fname';" >> /tmp/migration.sql
+        done
     done
     
     echo 'SET FOREIGN_KEY_CHECKS = 1;' >> /tmp/migration.sql
     cat /tmp/migration.sql
-" > ${TEMP_SQL_FILE}
+EOF_INSIDE
 
 echo "[2/3] Movimentação física concluída."
 echo "SQL gerado em: ${TEMP_SQL_FILE}"
