@@ -1,6 +1,11 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+
+export enum OrderDirection {
+	ASC = 'ASC',
+	DESC = 'DESC',
+}
 
 export class BookChaptersCursorOptionsDto {
 	@ApiPropertyOptional({
@@ -24,4 +29,13 @@ export class BookChaptersCursorOptionsDto {
 	@Min(1)
 	@Max(500)
 	limit = 200;
+
+	@ApiPropertyOptional({
+		description: 'Direção da ordenação',
+		enum: OrderDirection,
+		default: OrderDirection.ASC,
+	})
+	@IsOptional()
+	@IsEnum(OrderDirection)
+	order?: OrderDirection = OrderDirection.ASC;
 }

@@ -8,7 +8,10 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Queue } from 'bullmq';
 import { BookChaptersCursorPageDto } from '../dto/book-chapters-cursor-page.dto';
-import { BookChaptersCursorOptionsDto } from '../dto/book-chapters-cursor-options.dto';
+import {
+	BookChaptersCursorOptionsDto,
+	OrderDirection,
+} from '../dto/book-chapters-cursor-options.dto';
 import { QueueCoverProcessorDto } from '../dto/queue-cover-processor.dto';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { MetadataPageDto } from 'src/pages/metadata-page.dto';
@@ -312,6 +315,7 @@ export class BookQueryService {
 
 		const pageLimit = options.limit ?? 200;
 		const cursorIndex = this.decodeCursor(options.cursor);
+		const orderDirection = options.order || OrderDirection.ASC;
 
 		const chaptersQuery = this.chapterRepository
 			.createQueryBuilder('chapter')
@@ -322,13 +326,19 @@ export class BookQueryService {
 				'chapter.index',
 				'chapter.scrapingStatus',
 			])
-			.orderBy('chapter.index', 'ASC')
+			.orderBy('chapter.index', orderDirection)
 			.limit(pageLimit + 1);
 
 		if (cursorIndex !== null) {
-			chaptersQuery.andWhere('chapter.index > :cursorIndex', {
-				cursorIndex,
-			});
+			if (orderDirection === OrderDirection.ASC) {
+				chaptersQuery.andWhere('chapter.index > :cursorIndex', {
+					cursorIndex,
+				});
+			} else {
+				chaptersQuery.andWhere('chapter.index < :cursorIndex', {
+					cursorIndex,
+				});
+			}
 		}
 
 		if (!userid) {
