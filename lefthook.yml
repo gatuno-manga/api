@@ -11,3 +11,7 @@ pre-commit:
     check-code:
       glob: "*.{js,ts,cjs,mjs,json}"
       run: npx @biomejs/biome check --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files} && git add {staged_files}
+    check-app:
+      root: "app/"
+      glob: "**/*.dart"
+      run: dart format {staged_files} && git add {staged_files} && flutter analyze {staged_files}
