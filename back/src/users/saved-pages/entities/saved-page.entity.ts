@@ -45,6 +45,9 @@ export class SavedPage {
 	@Column({ type: 'text', nullable: true })
 	comment: string | null;
 
+	@Column({ default: false })
+	isPublic: boolean;
+
 	@CreateDateColumn()
 	createdAt: Date;
 

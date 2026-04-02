@@ -4,8 +4,10 @@ import {
 	Delete,
 	Get,
 	Param,
+	Patch,
 	Post,
 	UseGuards,
+	UseInterceptors,
 } from '@nestjs/common';
 import {
 	ApiBearerAuth,
@@ -17,13 +19,16 @@ import {
 import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
+import { DataEnvelopeInterceptor } from 'src/common/interceptors/data-envelope.interceptor';
 import { CollectionsBooksService } from './collections-books.service';
 import { AddBookCollectionDto } from './dto/add-book-collection.dto';
 import { CreateCollectionBookDto } from './dto/create-collection-book.dto';
+import { UpdateCollectionVisibilityDto } from '../dto/update-collection-visibility.dto';
 
 @ApiTags('Collections')
-@Controller('collections')
+@Controller('users/me/collections')
 @UseGuards(JwtAuthGuard)
+@UseInterceptors(DataEnvelopeInterceptor)
 export class CollectionsBooksController {
 	constructor(
 		private readonly collectionsBooksService: CollectionsBooksService,
@@ -186,6 +191,35 @@ export class CollectionsBooksController {
 		return this.collectionsBooksService.deleteCollection(
 			idCollection,
 			user.userId,
+		);
+	}
+
+	@Patch(':idCollection/visibility')
+	@ApiOperation({
+		summary: 'Update collection visibility',
+		description: 'Update whether a collection is public or private',
+	})
+	@ApiParam({
+		name: 'idCollection',
+		description: 'Collection unique identifier',
+		example: '550e8400-e29b-41d4-a716-446655440000',
+	})
+	@ApiResponse({
+		status: 200,
+		description: 'Visibility updated successfully',
+	})
+	@ApiResponse({ status: 404, description: 'Collection not found' })
+	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiBearerAuth('JWT-auth')
+	async updateVisibility(
+		@Param('idCollection') idCollection: string,
+		@Body() dto: UpdateCollectionVisibilityDto,
+		@CurrentUser() user: CurrentUserDto,
+	) {
+		return this.collectionsBooksService.updateCollectionVisibility(
+			idCollection,
+			user.userId,
+			dto.isPublic,
 		);
 	}
 }

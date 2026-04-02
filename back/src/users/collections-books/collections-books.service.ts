@@ -53,7 +53,20 @@ export class CollectionsBooksService {
 		await this.validateUser(userId);
 		const collections = await this.collectionBookRepository.find({
 			where: { user: { id: userId } },
+			relations: ['books'],
 		});
+		return collections;
+	}
+
+	async getPublicCollections(userId: string) {
+		const collections = await this.collectionBookRepository.find({
+			where: {
+				user: { id: userId },
+				isPublic: true,
+			},
+			relations: ['books'],
+		});
+
 		return collections;
 	}
 
@@ -70,8 +83,23 @@ export class CollectionsBooksService {
 		await this.validateUser(userId);
 		const collection = this.collectionBookRepository.create({
 			...dto,
+			isPublic: dto.isPublic ?? false,
 			user: { id: userId },
 		});
+		return this.collectionBookRepository.save(collection);
+	}
+
+	async updateCollectionVisibility(
+		idCollection: string,
+		userId: string,
+		isPublic: boolean,
+	) {
+		await this.validateUser(userId);
+		const collection = await this.findCollectionOrFail(
+			idCollection,
+			userId,
+		);
+		collection.isPublic = isPublic;
 		return this.collectionBookRepository.save(collection);
 	}
 

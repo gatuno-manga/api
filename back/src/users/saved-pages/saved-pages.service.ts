@@ -4,8 +4,8 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { AppConfigService } from 'src/app-config/app-config.service';
 import { Book } from 'src/books/entities/book.entity';
+import { UserResourcesMapper } from '../user-resources.mapper';
 import { Chapter } from 'src/books/entities/chapter.entity';
 import { Page } from 'src/books/entities/page.entity';
 import { Repository } from 'typeorm';
@@ -24,20 +24,8 @@ export class SavedPagesService {
 		private readonly chapterRepository: Repository<Chapter>,
 		@InjectRepository(Book)
 		private readonly bookRepository: Repository<Book>,
-		private readonly appConfig: AppConfigService,
+		private readonly userResourcesMapper: UserResourcesMapper,
 	) {}
-
-	private urlImage(url: string): string {
-		if (
-			!url ||
-			url.startsWith('null') ||
-			url.startsWith('undefined') ||
-			url.startsWith('http')
-		)
-			return url || '';
-		const appUrl = this.appConfig.apiUrl;
-		return `${appUrl}${url}`;
-	}
 
 	/**
 	 * Salva uma página para o usuário
@@ -86,6 +74,7 @@ export class SavedPagesService {
 			chapter: { id: dto.chapterId },
 			book: { id: dto.bookId },
 			comment: dto.comment || null,
+			isPublic: dto.isPublic ?? false,
 		});
 
 		return this.savedPageRepository.save(savedPage);
@@ -101,12 +90,37 @@ export class SavedPagesService {
 			order: { createdAt: 'DESC' },
 		});
 
-		return savedPages.map((savedPage) => {
-			if (savedPage.page) {
-				savedPage.page.path = this.urlImage(savedPage.page.path);
-			}
-			return savedPage;
+		return this.userResourcesMapper.toSavedPageList(savedPages);
+	}
+
+	async getPublicSavedPages(userId: string): Promise<SavedPage[]> {
+		const savedPages = await this.savedPageRepository.find({
+			where: {
+				user: { id: userId },
+				isPublic: true,
+			},
+			relations: ['page', 'chapter', 'book'],
+			order: { createdAt: 'DESC' },
 		});
+
+		return this.userResourcesMapper.toSavedPageList(savedPages);
+	}
+
+	async getPublicSavedPagesByBook(
+		userId: string,
+		bookId: string,
+	): Promise<SavedPage[]> {
+		const savedPages = await this.savedPageRepository.find({
+			where: {
+				user: { id: userId },
+				book: { id: bookId },
+				isPublic: true,
+			},
+			relations: ['page', 'chapter', 'book'],
+			order: { chapter: { index: 'ASC' }, page: { index: 'ASC' } },
+		});
+
+		return this.userResourcesMapper.toSavedPageList(savedPages);
 	}
 
 	/**
@@ -125,12 +139,7 @@ export class SavedPagesService {
 			order: { chapter: { index: 'ASC' }, page: { index: 'ASC' } },
 		});
 
-		return savedPages.map((savedPage) => {
-			if (savedPage.page) {
-				savedPage.page.path = this.urlImage(savedPage.page.path);
-			}
-			return savedPage;
-		});
+		return this.userResourcesMapper.toSavedPageList(savedPages);
 	}
 
 	/**
@@ -149,12 +158,7 @@ export class SavedPagesService {
 			order: { page: { index: 'ASC' } },
 		});
 
-		return savedPages.map((savedPage) => {
-			if (savedPage.page) {
-				savedPage.page.path = this.urlImage(savedPage.page.path);
-			}
-			return savedPage;
-		});
+		return this.userResourcesMapper.toSavedPageList(savedPages);
 	}
 
 	/**
@@ -170,11 +174,7 @@ export class SavedPagesService {
 			throw new NotFoundException('Saved page not found');
 		}
 
-		if (savedPage.page) {
-			savedPage.page.path = this.urlImage(savedPage.page.path);
-		}
-
-		return savedPage;
+		return this.userResourcesMapper.toSavedPage(savedPage);
 	}
 
 	/**
@@ -202,6 +202,20 @@ export class SavedPagesService {
 
 		savedPage.comment = dto.comment ?? null;
 
+		if (dto.isPublic !== undefined) {
+			savedPage.isPublic = dto.isPublic;
+		}
+
+		return this.savedPageRepository.save(savedPage);
+	}
+
+	async updateVisibility(
+		id: string,
+		isPublic: boolean,
+		userId: string,
+	): Promise<SavedPage> {
+		const savedPage = await this.getSavedPage(id, userId);
+		savedPage.isPublic = isPublic;
 		return this.savedPageRepository.save(savedPage);
 	}
 

@@ -22,6 +22,9 @@ export class CollectionBook {
 	@Column({ type: 'text', nullable: true })
 	description: string;
 
+	@Column({ default: false })
+	isPublic: boolean;
+
 	@ManyToOne(() => User, { onDelete: 'CASCADE' })
 	user: User;
 

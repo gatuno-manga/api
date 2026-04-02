@@ -5,6 +5,7 @@ import { AuthModule } from 'src/auth/auth.module';
 import { Book } from 'src/books/entities/book.entity';
 import { Chapter } from 'src/books/entities/chapter.entity';
 import { Page } from 'src/books/entities/page.entity';
+import { FilesModule } from 'src/files/files.module';
 import {
 	CollectionBook,
 	CollectionsBooksController,
@@ -23,11 +24,18 @@ import {
 } from './saved-pages';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
+import { HighestPageWinsStrategy } from './sync/highest-page-wins.strategy';
+import { LastWriteWinsStrategy } from './sync/last-write-wins.strategy';
+import { SyncStrategyResolver } from './sync/sync-strategy.resolver';
+import { UserPublicResourcesController } from './user-public-resources.controller';
+import { UserResourcesMapper } from './user-resources.mapper';
+import { UserBookSavedPagesController } from './user-book-saved-pages.controller';
 
 @Module({
 	imports: [
 		AuthModule,
 		AppConfigModule,
+		FilesModule,
 		TypeOrmModule.forFeature([
 			User,
 			Role,
@@ -41,6 +49,8 @@ import { UsersService } from './users.service';
 	],
 	controllers: [
 		UsersController,
+		UserPublicResourcesController,
+		UserBookSavedPagesController,
 		CollectionsBooksController,
 		ReadingProgressController,
 		SavedPagesController,
@@ -51,6 +61,10 @@ import { UsersService } from './users.service';
 		ReadingProgressService,
 		ReadingProgressGateway,
 		SavedPagesService,
+		UserResourcesMapper,
+		LastWriteWinsStrategy,
+		HighestPageWinsStrategy,
+		SyncStrategyResolver,
 	],
 })
 export class UsersModule {}

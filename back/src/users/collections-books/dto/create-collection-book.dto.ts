@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 export class CreateCollectionBookDto {
 	@ApiProperty({
@@ -19,4 +19,12 @@ export class CreateCollectionBookDto {
 	@IsString()
 	@IsOptional()
 	description?: string;
+
+	@ApiPropertyOptional({
+		description: 'Whether this collection is publicly visible',
+		example: false,
+	})
+	@IsBoolean()
+	@IsOptional()
+	isPublic?: boolean;
 }

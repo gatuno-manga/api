@@ -1,8 +1,16 @@
-import { Controller, Get, Logger } from '@nestjs/common';
+import { Controller, Get, Logger, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Roles } from './decorator/roles.decorator';
+import { JwtAuthGuard } from './guard/jwt-auth.guard';
 import { PasswordEncryption } from 'src/encryption/password-encryption.provider';
 import { PasswordMigrationService } from 'src/encryption/password-migration.service';
+import { RolesEnum } from 'src/users/enum/roles.enum';
 
+@ApiTags('Auth Password Migration')
 @Controller('auth/password-migration')
+@UseGuards(JwtAuthGuard)
+@Roles(RolesEnum.ADMIN)
+@ApiBearerAuth('JWT-auth')
 export class PasswordMigrationController {
 	private readonly logger = new Logger(PasswordMigrationController.name);
 

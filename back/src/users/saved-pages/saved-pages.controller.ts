@@ -8,6 +8,7 @@ import {
 	Patch,
 	Post,
 	UseGuards,
+	UseInterceptors,
 } from '@nestjs/common';
 import {
 	ApiBearerAuth,
@@ -19,14 +20,16 @@ import {
 import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
+import { DataEnvelopeInterceptor } from 'src/common/interceptors/data-envelope.interceptor';
 import { CreateSavedPageDto } from './dto/create-saved-page.dto';
 import { UpdateSavedPageDto } from './dto/update-saved-page.dto';
 import { SavedPagesService } from './saved-pages.service';
 
 @ApiTags('Saved Pages')
-@Controller('saved-pages')
+@Controller('users/me/saved-pages')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth('JWT-auth')
+@UseInterceptors(DataEnvelopeInterceptor)
 export class SavedPagesController {
 	constructor(private readonly savedPagesService: SavedPagesService) {}
 
@@ -241,5 +244,33 @@ export class SavedPagesController {
 	) {
 		await this.savedPagesService.unsavePageByPageId(pageId, user.userId);
 		return { message: 'Page unsaved successfully' };
+	}
+
+	@Patch(':id/visibility')
+	@ApiOperation({
+		summary: 'Update saved page visibility',
+		description: 'Update whether a saved page is public or private',
+	})
+	@ApiParam({
+		name: 'id',
+		description: 'Saved page unique identifier',
+		example: '550e8400-e29b-41d4-a716-446655440000',
+	})
+	@ApiResponse({
+		status: 200,
+		description: 'Visibility updated successfully',
+	})
+	@ApiResponse({ status: 404, description: 'Saved page not found' })
+	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	async updateVisibility(
+		@Param('id') id: string,
+		@Body() dto: UpdateSavedPageDto,
+		@CurrentUser() user: CurrentUserDto,
+	) {
+		return this.savedPagesService.updateVisibility(
+			id,
+			dto.isPublic ?? false,
+			user.userId,
+		);
 	}
 }

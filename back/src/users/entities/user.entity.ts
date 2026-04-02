@@ -31,6 +31,12 @@ export class User {
 	@Column({ default: 0 })
 	maxWeightSensitiveContent: number;
 
+	@Column({ type: 'varchar', length: 255, nullable: true })
+	profileImagePath: string | null;
+
+	@Column({ type: 'varchar', length: 255, nullable: true })
+	profileBannerPath: string | null;
+
 	@ManyToMany(() => Role, { eager: true })
 	@JoinTable({ name: 'users_roles' })
 	roles: Role[];

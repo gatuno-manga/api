@@ -54,7 +54,7 @@ interface BookProgressDeletePayload {
 		],
 		credentials: true,
 	},
-	namespace: '/reading-progress',
+	namespace: '/users/me/reading-progress',
 	transports: ['websocket', 'polling'],
 })
 export class ReadingProgressGateway
@@ -73,7 +73,7 @@ export class ReadingProgressGateway
 
 	afterInit(server: Server) {
 		this.logger.log(
-			'WebSocket Gateway initialized on namespace /reading-progress',
+			'WebSocket Gateway initialized on namespace /users/me/reading-progress',
 		);
 	}
 

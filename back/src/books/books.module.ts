@@ -9,17 +9,21 @@ import { FilesModule } from 'src/files/files.module';
 import { LoggingModule } from 'src/logging/logging.module';
 import { MetricsModule } from 'src/metrics/metrics.module';
 import { ScrapingModule } from 'src/scraping/scraping.module';
+import { User } from 'src/users/entities/user.entity';
 import { AdminBooksDashboardController } from './admin-books-dashboard.controller';
 import { AdminBooksUploadController } from './admin-books-upload.controller';
 import { AdminBooksController } from './admin-books.controller';
 import { BooksController } from './books.controller';
 import { BooksService } from './books.service';
 import { ChapterController } from './chapters/chapter.controller';
+import { ChapterCommentsController } from './chapters/chapter-comments.controller';
+import { ChapterCommentsService } from './chapters/chapter-comments.service';
 import { ChapterService } from './chapters/chapter.service';
 import { DownloadModule } from './download/download.module';
 import { Author } from './entities/author.entity';
 import { Book } from './entities/book.entity';
 import { Chapter } from './entities/chapter.entity';
+import { ChapterComment } from './entities/chapter-comment.entity';
 import { Cover } from './entities/cover.entity';
 import { Page } from './entities/page.entity';
 import { SensitiveContent } from './entities/sensitive-content.entity';
@@ -64,6 +68,8 @@ import { TagsService } from './tags/tags.service';
 			Book,
 			Page,
 			Chapter,
+			ChapterComment,
+			User,
 			Tag,
 			Author,
 			ChapterRead,
@@ -125,6 +131,7 @@ import { TagsService } from './tags/tags.service';
 	controllers: [
 		BooksController,
 		ChapterController,
+		ChapterCommentsController,
 		SensitiveContentController,
 		TagsController,
 		AdminBooksController,
@@ -136,6 +143,7 @@ import { TagsService } from './tags/tags.service';
 		BookScrapingEvents,
 		BookInitEvents,
 		ChapterService,
+		ChapterCommentsService,
 		SensitiveContentService,
 		TagsService,
 		ChapterScrapingJob,

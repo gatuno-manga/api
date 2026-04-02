@@ -10,6 +10,8 @@ import {
 	SyncResponseDto,
 } from './dto/reading-progress.dto';
 import { ReadingProgress } from './entities/reading-progress.entity';
+import { SyncStrategyResolver } from './sync/sync-strategy.resolver';
+import { UserResourcesMapper } from './user-resources.mapper';
 
 @Injectable()
 export class ReadingProgressService {
@@ -19,6 +21,8 @@ export class ReadingProgressService {
 		@InjectRepository(ReadingProgress)
 		private readonly progressRepository: Repository<ReadingProgress>,
 		private readonly eventEmitter: EventEmitter2,
+		private readonly syncStrategyResolver: SyncStrategyResolver,
+		private readonly userResourcesMapper: UserResourcesMapper,
 	) {}
 
 	/**
@@ -55,14 +59,14 @@ export class ReadingProgressService {
 		// Emite evento para sincronização via WebSocket
 		this.eventEmitter.emit('reading.progress.updated', {
 			userId,
-			progress: this.toResponseDto(saved),
+			progress: this.userResourcesMapper.toReadingProgressDto(saved),
 		});
 
 		this.logger.debug(
 			`Progresso salvo: user=${userId}, chapter=${dto.chapterId}, page=${dto.pageIndex}`,
 		);
 
-		return this.toResponseDto(saved);
+		return this.userResourcesMapper.toReadingProgressDto(saved);
 	}
 
 	/**
@@ -76,7 +80,9 @@ export class ReadingProgressService {
 			where: { userId, chapterId },
 		});
 
-		return progress ? this.toResponseDto(progress) : null;
+		return progress
+			? this.userResourcesMapper.toReadingProgressDto(progress)
+			: null;
 	}
 
 	/**
@@ -93,7 +99,8 @@ export class ReadingProgressService {
 
 		return {
 			bookId,
-			progress: progressList.map((p) => this.toResponseDto(p)),
+			progress:
+				this.userResourcesMapper.toReadingProgressDtoList(progressList),
 		};
 	}
 
@@ -108,7 +115,7 @@ export class ReadingProgressService {
 			order: { updatedAt: 'DESC' },
 		});
 
-		return progressList.map((p) => this.toResponseDto(p));
+		return this.userResourcesMapper.toReadingProgressDtoList(progressList);
 	}
 
 	/**
@@ -137,6 +144,9 @@ export class ReadingProgressService {
 		const remoteMap = new Map(
 			existingRemoteProgress.map((p) => [p.chapterId, p]),
 		);
+		const strategy = this.syncStrategyResolver.resolve({
+			lastSyncAt: dto.lastSyncAt ? new Date(dto.lastSyncAt) : undefined,
+		});
 
 		for (const localProgress of dto.progress) {
 			const remoteProgress = remoteMap.get(localProgress.chapterId);
@@ -145,40 +155,41 @@ export class ReadingProgressService {
 				// Não existe no servidor, salva
 				const saved = await this.saveProgress(userId, localProgress);
 				synced.push(saved);
-			} else if (dto.lastSyncAt) {
-				// Verifica conflito baseado na data de última sincronização
-				const remoteUpdatedAt = new Date(remoteProgress.updatedAt);
-				const lastSyncDate = new Date(dto.lastSyncAt);
-
-				if (remoteUpdatedAt > lastSyncDate) {
-					// Servidor foi atualizado após última sincronização do cliente
-					if (localProgress.pageIndex !== remoteProgress.pageIndex) {
-						conflicts.push({
-							local: localProgress,
-							remote: this.toResponseDto(remoteProgress),
-						});
-					} else {
-						synced.push(this.toResponseDto(remoteProgress));
-					}
-				} else {
-					// Cliente é mais recente ou igual
-					const saved = await this.saveProgress(
-						userId,
-						localProgress,
-					);
-					synced.push(saved);
-				}
 			} else {
-				// Sem data de última sincronização, usa "maior página vence"
-				if (localProgress.pageIndex >= remoteProgress.pageIndex) {
+				const resolution = strategy.resolve(
+					localProgress,
+					remoteProgress,
+					{
+						lastSyncAt: dto.lastSyncAt
+							? new Date(dto.lastSyncAt)
+							: undefined,
+					},
+				);
+
+				if (resolution === 'conflict') {
+					conflicts.push({
+						local: localProgress,
+						remote: this.userResourcesMapper.toReadingProgressDto(
+							remoteProgress,
+						),
+					});
+					continue;
+				}
+
+				if (resolution === 'local') {
 					const saved = await this.saveProgress(
 						userId,
 						localProgress,
 					);
 					synced.push(saved);
-				} else {
-					synced.push(this.toResponseDto(remoteProgress));
+					continue;
 				}
+
+				synced.push(
+					this.userResourcesMapper.toReadingProgressDto(
+						remoteProgress,
+					),
+				);
 			}
 		}
 
@@ -190,7 +201,9 @@ export class ReadingProgressService {
 			},
 		});
 
-		synced.push(...remoteOnly.map((r) => this.toResponseDto(r)));
+		synced.push(
+			...this.userResourcesMapper.toReadingProgressDtoList(remoteOnly),
+		);
 
 		this.logger.log(
 			`Sincronização concluída: user=${userId}, synced=${synced.length}, conflicts=${conflicts.length}`,
@@ -229,19 +242,5 @@ export class ReadingProgressService {
 		this.logger.debug(
 			`Progresso do livro removido: user=${userId}, book=${bookId}`,
 		);
-	}
-
-	private toResponseDto(
-		progress: ReadingProgress,
-	): ReadingProgressResponseDto {
-		return {
-			id: progress.id,
-			chapterId: progress.chapterId,
-			bookId: progress.bookId,
-			pageIndex: progress.pageIndex,
-			totalPages: progress.totalPages,
-			completed: progress.completed,
-			updatedAt: progress.updatedAt,
-		};
 	}
 }

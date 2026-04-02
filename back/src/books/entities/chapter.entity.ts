@@ -14,6 +14,7 @@ import { ContentType } from '../enum/content-type.enum';
 import { DocumentFormat } from '../enum/document-format.enum';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { Book } from './book.entity';
+import { ChapterComment } from './chapter-comment.entity';
 import { Page } from './page.entity';
 
 @Entity('chapters')
@@ -112,6 +113,12 @@ export class Chapter {
 		{ cascade: true },
 	)
 	pages: Relation<Page[]>;
+
+	@OneToMany(
+		() => ChapterComment,
+		(comment) => comment.chapter,
+	)
+	comments: Relation<ChapterComment[]>;
 
 	@Column({
 		type: 'boolean',

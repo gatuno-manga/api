@@ -7,10 +7,12 @@ import {
 	ParseUUIDPipe,
 	Post,
 	UseGuards,
+	UseInterceptors,
 } from '@nestjs/common';
 import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
+import { DataEnvelopeInterceptor } from 'src/common/interceptors/data-envelope.interceptor';
 import {
 	BulkReadingProgressDto,
 	ReadingProgressResponseDto,
@@ -20,8 +22,9 @@ import {
 } from './dto/reading-progress.dto';
 import { ReadingProgressService } from './reading-progress.service';
 
-@Controller('reading-progress')
+@Controller('users/me/reading-progress')
 @UseGuards(JwtAuthGuard)
+@UseInterceptors(DataEnvelopeInterceptor)
 export class ReadingProgressController {
 	constructor(private readonly progressService: ReadingProgressService) {}
 

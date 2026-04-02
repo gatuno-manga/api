@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+	IsBoolean,
 	IsInt,
 	IsOptional,
 	IsPositive,
@@ -40,4 +41,12 @@ export class CreateSavedPageDto {
 	@IsOptional()
 	@MaxLength(1000)
 	comment?: string;
+
+	@ApiPropertyOptional({
+		description: 'Whether this saved page is publicly visible',
+		example: false,
+	})
+	@IsBoolean()
+	@IsOptional()
+	isPublic?: boolean;
 }

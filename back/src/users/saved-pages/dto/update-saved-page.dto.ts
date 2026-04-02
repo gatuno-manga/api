@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class UpdateSavedPageDto {
 	@ApiPropertyOptional({
@@ -11,4 +11,12 @@ export class UpdateSavedPageDto {
 	@IsOptional()
 	@MaxLength(1000)
 	comment?: string | null;
+
+	@ApiPropertyOptional({
+		description: 'Whether this saved page is publicly visible',
+		example: true,
+	})
+	@IsBoolean()
+	@IsOptional()
+	isPublic?: boolean;
 }
