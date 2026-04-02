@@ -59,6 +59,17 @@ export class UserResourcesMapper {
 		};
 	}
 
+	toPublicUserProfile(user: User) {
+		return {
+			id: user.id,
+			userName: user.userName,
+			name: user.name,
+			profileImageUrl: this.toAbsoluteMediaUrl(user.profileImagePath),
+			profileBannerUrl: this.toAbsoluteMediaUrl(user.profileBannerPath),
+			createdAt: user.createdAt,
+		};
+	}
+
 	private toAbsoluteMediaUrl(url: string | null): string {
 		if (
 			!url ||

@@ -9,6 +9,7 @@ import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { DataEnvelopeInterceptor } from 'src/common/interceptors/data-envelope.interceptor';
 import { CollectionsBooksService } from './collections-books/collections-books.service';
 import { SavedPagesService } from './saved-pages/saved-pages.service';
+import { UsersService } from './users.service';
 
 @ApiTags('Public User Resources')
 @Controller('users/:userId/public')
@@ -17,7 +18,24 @@ export class UserPublicResourcesController {
 	constructor(
 		private readonly collectionsBooksService: CollectionsBooksService,
 		private readonly savedPagesService: SavedPagesService,
+		private readonly usersService: UsersService,
 	) {}
+
+	@Get('profile')
+	@ApiOperation({
+		summary: 'Get public profile of a user',
+		description: 'Retrieve public user profile information',
+	})
+	@ApiParam({
+		name: 'userId',
+		description: 'User unique identifier',
+		example: '550e8400-e29b-41d4-a716-446655440000',
+	})
+	@ApiResponse({ status: 200, description: 'Public profile retrieved' })
+	@ApiResponse({ status: 404, description: 'User not found' })
+	async getPublicProfile(@Param('userId', ParseUUIDPipe) userId: string) {
+		return this.usersService.getPublicUserProfile(userId);
+	}
 
 	@Get('collections')
 	@ApiOperation({

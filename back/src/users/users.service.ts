@@ -105,6 +105,18 @@ export class UsersService implements OnApplicationBootstrap {
 		return this.userResourcesMapper.toUserProfile(user);
 	}
 
+	async getPublicUserProfile(userId: string) {
+		const user = await this.userRepository.findOne({
+			where: { id: userId },
+		});
+
+		if (!user) {
+			throw new NotFoundException(`User with id ${userId} not found`);
+		}
+
+		return this.userResourcesMapper.toPublicUserProfile(user);
+	}
+
 	async uploadAvatar(file: Express.Multer.File, userId: string) {
 		const user = await this.findUserOrFail(userId);
 		const extension = await this.validateAndResolveImageExtension(
