@@ -19,6 +19,5 @@
 		"cspell": "^9.6.4",
 		"lefthook": "^1.10.10",
 		"secretlint": "^11.3.1"
-	},
-	"packageManager": "yarn@4.13.0"
+	}
 }
