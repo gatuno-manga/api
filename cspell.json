@@ -93,7 +93,14 @@
 		"REDISCOMMANDER",
 		"phpmyadmin",
 		"Keybinds",
-		"checkmark"
+		"checkmark",
+		"Inknut",
+		"Antiqua",
+		"pubspec",
+		"Rebranded",
+		"pbxproj",
+		"Bitwarden",
+		"Mocktail"
 	],
 	"ignorePaths": [
 		"**/node_modules/**",
