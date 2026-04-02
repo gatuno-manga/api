@@ -100,7 +100,12 @@
 		"Rebranded",
 		"pbxproj",
 		"Bitwarden",
-		"Mocktail"
+		"Mocktail",
+		"grey",
+		"cupertino",
+		"mocktail",
+		"APPBAR",
+		"l10n"
 	],
 	"ignorePaths": [
 		"**/node_modules/**",
