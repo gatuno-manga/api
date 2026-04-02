@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import {
+	IsBoolean,
+	IsNotEmpty,
+	IsOptional,
+	IsString,
+	MaxLength,
+} from 'class-validator';
 
 export class CreateChapterCommentDto {
 	@ApiProperty({
@@ -11,4 +17,13 @@ export class CreateChapterCommentDto {
 	@IsNotEmpty()
 	@MaxLength(2000)
 	content: string;
+
+	@ApiProperty({
+		description: 'Whether comment is publicly visible',
+		example: true,
+		required: false,
+	})
+	@IsBoolean()
+	@IsOptional()
+	isPublic?: boolean;
 }

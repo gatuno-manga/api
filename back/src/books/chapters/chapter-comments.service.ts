@@ -6,12 +6,13 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { InjectRepository } from '@nestjs/typeorm';
+import { AppConfigService } from 'src/app-config/app-config.service';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
 import { RolesEnum } from 'src/users/enum/roles.enum';
 import { User } from 'src/users/entities/user.entity';
 import { MetadataPageDto } from 'src/pages/metadata-page.dto';
 import { PageDto } from 'src/pages/page.dto';
-import { In, IsNull, Repository } from 'typeorm';
+import { Brackets, Repository, SelectQueryBuilder } from 'typeorm';
 import { ChapterComment } from '../entities/chapter-comment.entity';
 import { Chapter } from '../entities/chapter.entity';
 import { CreateChapterCommentDto } from './dto/create-chapter-comment.dto';
@@ -23,8 +24,10 @@ export type ChapterCommentNode = {
 	chapterId: string;
 	userId: string;
 	userName: string;
+	profileImageUrl: string;
 	parentId: string | null;
 	content: string;
+	isPublic: boolean;
 	isDeleted: boolean;
 	createdAt: Date;
 	updatedAt: Date;
@@ -40,35 +43,41 @@ export class ChapterCommentsService {
 		private readonly chapterRepository: Repository<Chapter>,
 		@InjectRepository(User)
 		private readonly userRepository: Repository<User>,
+		private readonly appConfig: AppConfigService,
 	) {}
 
 	async listChapterComments(
 		chapterId: string,
 		options: ChapterCommentsPageOptionsDto,
+		viewer?: CurrentUserDto,
 	): Promise<PageDto<ChapterCommentNode>> {
 		await this.ensureChapterExists(chapterId);
 
-		const total = await this.chapterCommentRepository.count({
-			where: {
-				chapter: { id: chapterId },
-				parent: IsNull(),
-			},
-			withDeleted: true,
-		});
+		const countQuery = this.chapterCommentRepository
+			.createQueryBuilder('comment')
+			.withDeleted()
+			.where('comment.chapter_id = :chapterId', { chapterId })
+			.andWhere('comment.parent_id IS NULL');
+
+		this.applyVisibilityFilter(countQuery, viewer, 'comment');
+		const total = await countQuery.getCount();
 
 		const page = options.page;
 		const limit = options.limit;
-		const roots = await this.chapterCommentRepository.find({
-			where: {
-				chapter: { id: chapterId },
-				parent: IsNull(),
-			},
-			relations: ['chapter', 'user', 'parent'],
-			order: { createdAt: 'DESC' },
-			skip: (page - 1) * limit,
-			take: limit,
-			withDeleted: true,
-		});
+		const rootsQuery = this.chapterCommentRepository
+			.createQueryBuilder('comment')
+			.leftJoinAndSelect('comment.chapter', 'chapter')
+			.leftJoinAndSelect('comment.user', 'user')
+			.leftJoinAndSelect('comment.parent', 'parent')
+			.withDeleted()
+			.where('comment.chapter_id = :chapterId', { chapterId })
+			.andWhere('comment.parent_id IS NULL')
+			.orderBy('comment.createdAt', 'DESC')
+			.skip((page - 1) * limit)
+			.take(limit);
+
+		this.applyVisibilityFilter(rootsQuery, viewer, 'comment');
+		const roots = await rootsQuery.getMany();
 
 		if (!roots.length) {
 			const metadata: MetadataPageDto = {
@@ -83,6 +92,7 @@ export class ChapterCommentsService {
 			chapterId,
 			roots.map((root) => root.id),
 			options.maxDepth,
+			viewer,
 		);
 
 		const nodesMap = new Map<string, ChapterCommentNode>();
@@ -124,23 +134,30 @@ export class ChapterCommentsService {
 		user: CurrentUserDto,
 	): Promise<ChapterCommentNode> {
 		await this.ensureChapterExists(chapterId);
+		const userIdentity = await this.resolveUserIdentity(
+			user.userId,
+			user.username,
+		);
 
 		const comment = this.chapterCommentRepository.create({
 			id: randomUUID(),
 			chapter: { id: chapterId },
 			user: { id: user.userId },
+			userName: userIdentity.userName,
 			content: dto.content.trim(),
+			isPublic: dto.isPublic ?? true,
 		});
 
 		const saved = await this.chapterCommentRepository.save(comment);
-		const userName = await this.resolveUserName(user.userId, user.username);
 		return {
 			id: saved.id,
 			chapterId,
 			userId: user.userId,
-			userName,
+			userName: userIdentity.userName,
+			profileImageUrl: userIdentity.profileImageUrl,
 			parentId: null,
 			content: saved.content,
+			isPublic: saved.isPublic,
 			isDeleted: false,
 			createdAt: saved.createdAt ?? new Date(),
 			updatedAt: saved.updatedAt ?? new Date(),
@@ -155,6 +172,10 @@ export class ChapterCommentsService {
 		user: CurrentUserDto,
 	): Promise<ChapterCommentNode> {
 		await this.ensureChapterExists(chapterId);
+		const userIdentity = await this.resolveUserIdentity(
+			user.userId,
+			user.username,
+		);
 
 		const parentComment = await this.chapterCommentRepository.findOne({
 			where: {
@@ -177,18 +198,21 @@ export class ChapterCommentsService {
 			chapter: { id: chapterId },
 			parent: { id: parentId },
 			user: { id: user.userId },
+			userName: userIdentity.userName,
 			content: dto.content.trim(),
+			isPublic: dto.isPublic ?? true,
 		});
 
 		const saved = await this.chapterCommentRepository.save(reply);
-		const userName = await this.resolveUserName(user.userId, user.username);
 		return {
 			id: saved.id,
 			chapterId,
 			userId: user.userId,
-			userName,
+			userName: userIdentity.userName,
+			profileImageUrl: userIdentity.profileImageUrl,
 			parentId,
 			content: saved.content,
+			isPublic: saved.isPublic,
 			isDeleted: false,
 			createdAt: saved.createdAt ?? new Date(),
 			updatedAt: saved.updatedAt ?? new Date(),
@@ -221,6 +245,9 @@ export class ChapterCommentsService {
 
 		this.assertCanManageComment(comment, user);
 		comment.content = dto.content.trim();
+		if (dto.isPublic !== undefined) {
+			comment.isPublic = dto.isPublic;
+		}
 
 		await this.chapterCommentRepository.save(comment);
 		return this.mapEntityToNode(comment);
@@ -305,9 +332,17 @@ export class ChapterCommentsService {
 			id: comment.id,
 			chapterId: comment.chapter.id,
 			userId: comment.user.id,
-			userName: comment.user.userName,
+			userName:
+				comment.userName ||
+				comment.user?.userName ||
+				comment.user?.id ||
+				'unknown-user',
+			profileImageUrl: this.toAbsoluteMediaUrl(
+				comment.user?.profileImagePath || null,
+			),
 			parentId: comment.parent?.id ?? null,
 			content: isDeleted ? '[comentario removido]' : comment.content,
+			isPublic: comment.isPublic,
 			isDeleted,
 			createdAt: comment.createdAt,
 			updatedAt: comment.updatedAt,
@@ -319,21 +354,25 @@ export class ChapterCommentsService {
 		chapterId: string,
 		rootIds: string[],
 		maxDepth: number,
+		viewer?: CurrentUserDto,
 	): Promise<ChapterComment[]> {
 		const descendants: ChapterComment[] = [];
 		let parentIds = [...rootIds];
 		let depth = 1;
 
 		while (parentIds.length > 0 && depth <= maxDepth) {
-			const batch = await this.chapterCommentRepository.find({
-				where: {
-					chapter: { id: chapterId },
-					parent: { id: In(parentIds) },
-				},
-				relations: ['chapter', 'user', 'parent'],
-				order: { createdAt: 'ASC' },
-				withDeleted: true,
-			});
+			const query = this.chapterCommentRepository
+				.createQueryBuilder('comment')
+				.leftJoinAndSelect('comment.chapter', 'chapter')
+				.leftJoinAndSelect('comment.user', 'user')
+				.leftJoinAndSelect('comment.parent', 'parent')
+				.withDeleted()
+				.where('comment.chapter_id = :chapterId', { chapterId })
+				.andWhere('comment.parent_id IN (:...parentIds)', { parentIds })
+				.orderBy('comment.createdAt', 'ASC');
+
+			this.applyVisibilityFilter(query, viewer, 'comment');
+			const batch = await query.getMany();
 
 			if (!batch.length) {
 				break;
@@ -347,18 +386,60 @@ export class ChapterCommentsService {
 		return descendants;
 	}
 
-	private async resolveUserName(
+	private async resolveUserIdentity(
 		userId: string,
 		fallback?: string,
-	): Promise<string> {
+	): Promise<{ userName: string; profileImageUrl: string }> {
 		const user = await this.userRepository.findOne({
 			where: { id: userId },
 		});
 
-		if (user?.userName?.trim()) {
-			return user.userName;
+		const userName = user?.userName?.trim() || fallback?.trim() || userId;
+		const profileImageUrl = this.toAbsoluteMediaUrl(
+			user?.profileImagePath || null,
+		);
+
+		return { userName, profileImageUrl };
+	}
+
+	private toAbsoluteMediaUrl(url: string | null): string {
+		if (
+			!url ||
+			url.startsWith('null') ||
+			url.startsWith('undefined') ||
+			url.startsWith('http')
+		) {
+			return url || '';
 		}
 
-		return fallback?.trim() || userId;
+		return `${this.appConfig.apiUrl}${url}`;
+	}
+
+	private applyVisibilityFilter(
+		query: SelectQueryBuilder<ChapterComment>,
+		viewer: CurrentUserDto | undefined,
+		alias: string,
+	): void {
+		const isAdmin = Boolean(viewer?.roles?.includes(RolesEnum.ADMIN));
+		if (isAdmin) {
+			return;
+		}
+
+		if (viewer?.userId) {
+			query.andWhere(
+				new Brackets((qb) => {
+					qb.where(`${alias}.isPublic = :isPublic`, {
+						isPublic: true,
+					}).orWhere(`${alias}.user_id = :viewerId`, {
+						viewerId: viewer.userId,
+					});
+				}),
+			);
+			return;
+		}
+
+		query.andWhere(`${alias}.isPublic = :isPublic`, {
+			isPublic: true,
+		});
 	}
 }

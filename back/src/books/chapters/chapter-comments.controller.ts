@@ -21,6 +21,7 @@ import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
+import { OptionalAuthGuard } from 'src/auth/guard/optional-auth.guard';
 import { ChapterCommentsService } from './chapter-comments.service';
 import { CreateChapterCommentDto } from './dto/create-chapter-comment.dto';
 import { ChapterCommentsPageOptionsDto } from './dto/chapter-comments-page-options.dto';
@@ -28,7 +29,6 @@ import { UpdateChapterCommentDto } from './dto/update-chapter-comment.dto';
 
 @ApiTags('Chapter Comments')
 @Controller('chapters/:chapterId/comments')
-@UseGuards(JwtAuthGuard)
 @ApiBearerAuth('JWT-auth')
 export class ChapterCommentsController {
 	constructor(
@@ -36,6 +36,7 @@ export class ChapterCommentsController {
 	) {}
 
 	@Get()
+	@UseGuards(OptionalAuthGuard)
 	@Throttle({ medium: { limit: 50, ttl: 60000 } })
 	@ApiOperation({
 		summary: 'List chapter comments',
@@ -49,14 +50,17 @@ export class ChapterCommentsController {
 	listChapterComments(
 		@Param('chapterId', ParseUUIDPipe) chapterId: string,
 		@Query() options: ChapterCommentsPageOptionsDto,
+		@CurrentUser() user?: CurrentUserDto,
 	) {
 		return this.chapterCommentsService.listChapterComments(
 			chapterId,
 			options,
+			user,
 		);
 	}
 
 	@Post()
+	@UseGuards(JwtAuthGuard)
 	@Throttle({ medium: { limit: 20, ttl: 60000 } })
 	@ApiOperation({
 		summary: 'Create chapter comment',
@@ -75,6 +79,7 @@ export class ChapterCommentsController {
 	}
 
 	@Post(':parentId/replies')
+	@UseGuards(JwtAuthGuard)
 	@Throttle({ medium: { limit: 20, ttl: 60000 } })
 	@ApiOperation({
 		summary: 'Reply to comment',
@@ -101,6 +106,7 @@ export class ChapterCommentsController {
 	}
 
 	@Patch(':commentId')
+	@UseGuards(JwtAuthGuard)
 	@Throttle({ medium: { limit: 20, ttl: 60000 } })
 	@ApiOperation({
 		summary: 'Update comment',
@@ -131,6 +137,7 @@ export class ChapterCommentsController {
 	}
 
 	@Delete(':commentId')
+	@UseGuards(JwtAuthGuard)
 	@Throttle({ medium: { limit: 20, ttl: 60000 } })
 	@ApiOperation({
 		summary: 'Delete comment',

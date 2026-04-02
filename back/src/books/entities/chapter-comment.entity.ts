@@ -26,6 +26,9 @@ export class ChapterComment {
 	@JoinColumn({ name: 'user_id' })
 	user: Relation<User>;
 
+	@Column({ name: 'user_name', type: 'varchar', length: 255 })
+	userName: string;
+
 	@ManyToOne(
 		() => ChapterComment,
 		(comment) => comment.replies,
@@ -45,6 +48,9 @@ export class ChapterComment {
 
 	@Column({ type: 'text' })
 	content: string;
+
+	@Column({ default: true })
+	isPublic: boolean;
 
 	@CreateDateColumn()
 	createdAt: Date;
