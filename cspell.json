@@ -93,7 +93,19 @@
 		"REDISCOMMANDER",
 		"phpmyadmin",
 		"Keybinds",
-		"checkmark"
+		"checkmark",
+		"Inknut",
+		"Antiqua",
+		"pubspec",
+		"Rebranded",
+		"pbxproj",
+		"Bitwarden",
+		"Mocktail",
+		"grey",
+		"cupertino",
+		"mocktail",
+		"APPBAR",
+		"l10n"
 	],
 	"ignorePaths": [
 		"**/node_modules/**",
