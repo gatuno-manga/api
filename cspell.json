@@ -105,7 +105,19 @@
 		"cupertino",
 		"mocktail",
 		"APPBAR",
-		"l10n"
+		"l10n",
+		"Ecchi",
+		"refetches",
+		"mysql",
+		"healthcheck",
+		"requirepass",
+		"keepalive",
+		"maxmemory",
+		"noeviction",
+		"mysqladmin",
+		"MYSQL",
+		"initdb",
+		"mysqld"
 	],
 	"ignorePaths": [
 		"**/node_modules/**",
