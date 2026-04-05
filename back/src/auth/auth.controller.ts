@@ -71,7 +71,10 @@ export class AuthController {
 	@ApiResponse({ status: 400, description: 'Invalid input data' })
 	@ApiResponse({ status: 409, description: 'Email already exists' })
 	@ApiResponse({ status: 429, description: 'Too many requests' })
-	async signUp(@Body() body: SignUpAuthDto) {
+	async signUp(
+		@Body() body: SignUpAuthDto,
+		@Res({ passthrough: true }) res: Response,
+	) {
 		const { email, password } = body;
 		const user = await this.authService.signUp(email, password);
 
@@ -79,13 +82,10 @@ export class AuthController {
 			throw new UnauthorizedException('Failed to create user');
 		}
 
-		const result = {
-			id: user.id,
-			email: user.email,
-			roles: user.roles,
-		};
+		const tokens = await this.authService.generateTokensForUser(user);
+		this.setRefreshTokenCookie(res, tokens.refreshToken);
 
-		return result;
+		return tokens;
 	}
 
 	@Post('signin')
