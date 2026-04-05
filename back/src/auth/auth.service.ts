@@ -54,20 +54,30 @@ export class AuthService {
 				`${roleName.charAt(0).toUpperCase() + roleName.slice(1)} role not found`,
 			);
 		}
-		const user = await this.userRepository.save({
-			userName: email.split('@')[0],
-			email,
-			password: result,
-			roles: [role],
-		});
+		const user = await this.userRepository.save(
+			this.userRepository.create({
+				userName: email.split('@')[0],
+				email,
+				password: result,
+				roles: [role],
+			}),
+		);
 
-		const userWithRoles = await this.userRepository.findOne({
-			where: { id: user.id },
-			relations: ['roles'],
-		});
+		// Carrega as roles explicitamente do objeto recém-salvo para garantir compatibilidade com o frontend e testes
+		// sem depender de um novo SELECT no banco de dados que poderia atingir um slave com lag.
+		user.roles = [role];
 
-		this.logger.log('User created', userWithRoles);
-		return userWithRoles;
+		this.logger.log('User created', user);
+		return user;
+	}
+
+	async generateTokensForUser(user: User) {
+		const tokens = await this.getTokens(user);
+		const hashedToken = await this.DataEncryption.encrypt(
+			tokens.refreshToken,
+		);
+		await this.tokenStore.addToken(user.id, hashedToken);
+		return tokens;
 	}
 
 	private async getTokens(
