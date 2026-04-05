@@ -8,15 +8,13 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Queue } from 'bullmq';
 import { BookChaptersCursorPageDto } from '../dto/book-chapters-cursor-page.dto';
-import {
-	BookChaptersCursorOptionsDto,
-	OrderDirection,
-} from '../dto/book-chapters-cursor-options.dto';
+import { BookChaptersCursorOptionsDto } from '../dto/book-chapters-cursor-options.dto';
 import { QueueCoverProcessorDto } from '../dto/queue-cover-processor.dto';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { MetadataPageDto } from 'src/pages/metadata-page.dto';
 import { PageDto } from 'src/pages/page.dto';
 import { Repository, SelectQueryBuilder } from 'typeorm';
+import { OrderDirection } from 'src/common/enum/order-direction.enum';
 import { BookPageOptionsDto } from '../dto/book-page-options.dto';
 import { Author } from '../entities/author.entity';
 import { Book } from '../entities/book.entity';
