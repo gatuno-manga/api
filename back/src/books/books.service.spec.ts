@@ -220,6 +220,7 @@ describe('BooksService', () => {
 			expect(mockBookQueryService.getAllBooks).toHaveBeenCalledWith(
 				options,
 				maxWeight,
+				undefined,
 				expect.any(Array),
 			);
 			expect(result).toEqual(mockResult);
@@ -237,6 +238,7 @@ describe('BooksService', () => {
 			expect(mockBookQueryService.getAllBooks).toHaveBeenCalledWith(
 				options,
 				0,
+				undefined,
 				expect.any(Array),
 			);
 		});
@@ -254,6 +256,7 @@ describe('BooksService', () => {
 			expect(mockBookQueryService.getOne).toHaveBeenCalledWith(
 				id,
 				maxWeight,
+				undefined,
 			);
 			expect(result).toEqual(mockBook);
 		});

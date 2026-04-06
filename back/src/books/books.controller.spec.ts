@@ -68,6 +68,7 @@ describe('BooksController', () => {
 			expect(booksService.getAllBooks).toHaveBeenCalledWith(
 				pageOptions,
 				undefined,
+				undefined,
 			);
 			expect(result).toEqual(mockResult);
 		});
@@ -83,6 +84,7 @@ describe('BooksController', () => {
 			expect(booksService.getAllBooks).toHaveBeenCalledWith(
 				pageOptions,
 				5,
+				undefined,
 			);
 		});
 	});
@@ -97,6 +99,7 @@ describe('BooksController', () => {
 
 			expect(booksService.getRandomBook).toHaveBeenCalledWith(
 				options,
+				undefined,
 				undefined,
 			);
 			expect(result).toEqual(mockBook);
@@ -144,7 +147,11 @@ describe('BooksController', () => {
 
 			const result = await controller.getBook(id);
 
-			expect(booksService.getOne).toHaveBeenCalledWith(id, undefined);
+			expect(booksService.getOne).toHaveBeenCalledWith(
+				id,
+				undefined,
+				undefined,
+			);
 			expect(result).toEqual(mockBook);
 		});
 
@@ -155,7 +162,7 @@ describe('BooksController', () => {
 
 			await controller.getBook(id, user);
 
-			expect(booksService.getOne).toHaveBeenCalledWith(id, 5);
+			expect(booksService.getOne).toHaveBeenCalledWith(id, 5, undefined);
 		});
 	});
 
@@ -209,7 +216,11 @@ describe('BooksController', () => {
 
 			const result = await controller.getBookCovers(id);
 
-			expect(booksService.getCovers).toHaveBeenCalledWith(id, undefined);
+			expect(booksService.getCovers).toHaveBeenCalledWith(
+				id,
+				undefined,
+				undefined,
+			);
 			expect(result).toEqual(mockCovers);
 		});
 	});
@@ -222,7 +233,11 @@ describe('BooksController', () => {
 
 			const result = await controller.getBookInfos(id);
 
-			expect(booksService.getInfos).toHaveBeenCalledWith(id, undefined);
+			expect(booksService.getInfos).toHaveBeenCalledWith(
+				id,
+				undefined,
+				undefined,
+			);
 			expect(result).toEqual(mockInfos);
 		});
 	});
