@@ -31,6 +31,12 @@
   - **Streaming:** Elements captured as screenshots are streamed to disk to minimize RAM spikes.
 - **Books & Content:**
   - **Management:** Comprehensive CRUD for books, authors, chapters, and tags.
+  - **Relationships:**
+    - Implemented a robust system for relationships between books (sequences, spin-offs, adaptations, etc.).
+    - Developed the `BookRelationship` entity with support for metadata (notes, weights), ordering, and bidirectionality flag.
+    - Implemented `AdminBookRelationshipsController` for administrative management (CRUD) of connections between works.
+    - Exposed public endpoint `GET /books/:idBook/relationships` with support for pagination, relationship type filters, and sensitive content limits via `OptionalAuthGuard`.
+    - Integrated event system (`BookEvents`) to track creation, update, and removal of relationships.
   - **Batch Operations:** Support for batch deletions and updates to improve administrative efficiency.
   - **Downloads:** Dynamic ZIP/PDF generation for chapters and books using `archiver` and `pdfkit`.
 - **Health & Monitoring:**
@@ -42,6 +48,7 @@
 - **Database:**
   - **Primary:** MySQL 8+ with TypeORM.
   - **Replication:** Configured with Master-Slave replication support.
+  - **Integrity:** Implemented composite uniqueness and database-level check constraints to ensure relationship consistency.
   - **Migrations:** Managed via raw SQL files in `database/migrations/` to ensure full control over schema changes.
 - **Caching & Queues:**
   - **Redis:** Used for BullMQ queues, rate limiting, and secure token storage.

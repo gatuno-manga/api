@@ -6,6 +6,7 @@ import { Book } from './entities/book.entity';
 import { SensitiveContent } from './entities/sensitive-content.entity';
 import { Tag } from './entities/tags.entity';
 import { BookCreationService } from './services/book-creation.service';
+import { BookBookRelationshipService } from './services/book-book-relationship.service';
 import { BookQueryService } from './services/book-query.service';
 import { BookRelationshipService } from './services/book-relationship.service';
 import { BookUpdateService } from './services/book-update.service';
@@ -69,6 +70,13 @@ describe('BooksService', () => {
 		addAuthors: jest.fn(),
 	};
 
+	const mockBookBookRelationshipService = {
+		createRelationship: jest.fn(),
+		updateRelationship: jest.fn(),
+		deleteRelationship: jest.fn(),
+		listRelationships: jest.fn(),
+	};
+
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -122,6 +130,10 @@ describe('BooksService', () => {
 				{
 					provide: BookRelationshipService,
 					useValue: mockBookRelationshipService,
+				},
+				{
+					provide: BookBookRelationshipService,
+					useValue: mockBookBookRelationshipService,
 				},
 			],
 		}).compile();
@@ -259,6 +271,29 @@ describe('BooksService', () => {
 				undefined,
 			);
 			expect(result).toEqual(mockBook);
+		});
+	});
+
+	describe('getBookRelationships', () => {
+		it('should call bookBookRelationshipService.listRelationships with user context', async () => {
+			const idBook = 'book-1';
+			const query = { types: ['spin-off'], limit: 10, offset: 0 } as any;
+			const mockResult = { total: 0, items: [] };
+			mockBookBookRelationshipService.listRelationships.mockResolvedValue(
+				mockResult,
+			);
+
+			const result = await service.getBookRelationships(
+				idBook,
+				query,
+				5,
+				'user-1',
+			);
+
+			expect(
+				mockBookBookRelationshipService.listRelationships,
+			).toHaveBeenCalledWith(idBook, query, 5, 'user-1');
+			expect(result).toEqual(mockResult);
 		});
 	});
 });
