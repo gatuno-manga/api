@@ -17,6 +17,7 @@ import {
 	ApiResponse,
 	ApiTags,
 } from '@nestjs/swagger';
+import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
@@ -28,7 +29,7 @@ import { SavedPagesService } from './saved-pages.service';
 @ApiTags('Saved Pages')
 @Controller('users/me/saved-pages')
 @UseGuards(JwtAuthGuard)
-@ApiBearerAuth('JWT-auth')
+@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 @UseInterceptors(DataEnvelopeInterceptor)
 export class SavedPagesController {
 	constructor(private readonly savedPagesService: SavedPagesService) {}

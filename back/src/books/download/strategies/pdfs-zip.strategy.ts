@@ -28,10 +28,7 @@ export class PdfsZipStrategy implements DownloadStrategy {
 		return 'zip';
 	}
 
-	async generate(
-		chapters: Chapter[],
-		fileName: string,
-	): Promise<StreamableFile> {
+	generate(chapters: Chapter[], fileName: string): Promise<StreamableFile> {
 		this.logger.log(
 			`Generating ZIP of PDFs for ${chapters.length} chapters: ${fileName} (parallel: ${PARALLEL_PDF_GENERATION})`,
 		);
@@ -166,8 +163,13 @@ export class PdfsZipStrategy implements DownloadStrategy {
 	}
 
 	private sanitizeFileName(name: string): string {
-		// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional sanitization of control characters
-		return name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').trim();
+		return name
+			.replace(
+				// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional sanitization of control characters
+				/[<>:"/\\|?*\x00-\x1F]/g,
+				'_',
+			)
+			.trim();
 	}
 
 	private async streamToBuffer(stream: Readable): Promise<Buffer> {

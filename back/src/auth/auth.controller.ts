@@ -15,8 +15,9 @@ import {
 	ApiResponse,
 	ApiTags,
 } from '@nestjs/swagger';
+import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Throttle } from '@nestjs/throttler';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorator/current-user.decorator';
@@ -119,14 +120,15 @@ export class AuthController {
 		description: 'Invalid or expired refresh token',
 	})
 	@ApiResponse({ status: 429, description: 'Too many requests' })
-	@ApiBearerAuth('JWT-auth')
+	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 	@UseGuards(RefreshTokenGuard)
 	async refreshTokens(
 		@CurrentUser() user: CurrentUserDto,
-		@Req() req,
+		@Req() req: Request,
 		@Res({ passthrough: true }) res: Response,
 	) {
-		const refreshToken = req.cookies?.refreshToken;
+		const refreshToken = (req.cookies as Record<string, string | undefined>)
+			?.refreshToken;
 		if (!refreshToken) {
 			throw new UnauthorizedException(
 				'Refresh token not found in cookies',
@@ -149,16 +151,17 @@ export class AuthController {
 	@ApiResponse({ status: 200, description: 'Successfully logged out' })
 	@ApiResponse({ status: 401, description: 'Unauthorized' })
 	@ApiResponse({ status: 429, description: 'Too many requests' })
-	@ApiBearerAuth('JWT-auth')
+	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 	@UseGuards(RefreshTokenGuard)
 	@UseGuards(JwtAuthGuard)
 	async logout(
 		@CurrentUser() user: CurrentUserDto,
-		@Req() req,
+		@Req() req: Request,
 		@Res({ passthrough: true }) res: Response,
 	) {
 		this.logger.log(`User ${user.userId} is logging out`);
-		const refreshToken = req.cookies?.refreshToken;
+		const refreshToken = (req.cookies as Record<string, string | undefined>)
+			?.refreshToken;
 		await this.authService.logout(user.userId, refreshToken);
 		this.clearRefreshTokenCookie(res);
 		return { message: 'Logged out successfully' };
@@ -176,7 +179,7 @@ export class AuthController {
 	})
 	@ApiResponse({ status: 401, description: 'Unauthorized' })
 	@ApiResponse({ status: 429, description: 'Too many requests' })
-	@ApiBearerAuth('JWT-auth')
+	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 	@UseGuards(JwtAuthGuard)
 	async logoutAll(
 		@CurrentUser() user: CurrentUserDto,

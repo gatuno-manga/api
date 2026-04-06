@@ -10,18 +10,13 @@ import {
 	Query,
 	UseGuards,
 } from '@nestjs/common';
-import {
-	ApiBearerAuth,
-	ApiOperation,
-	ApiParam,
-	ApiResponse,
-	ApiTags,
-} from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
-import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { OptionalAuthGuard } from 'src/auth/guard/optional-auth.guard';
+import { AuthenticatedApi } from 'src/common/swagger/auth-api.decorators';
+import { COMMON_RESPONSES } from 'src/common/swagger/common-responses';
 import { ChapterCommentsService } from './chapter-comments.service';
 import { CreateChapterCommentDto } from './dto/create-chapter-comment.dto';
 import { ChapterCommentsPageOptionsDto } from './dto/chapter-comments-page-options.dto';
@@ -29,7 +24,6 @@ import { UpdateChapterCommentDto } from './dto/update-chapter-comment.dto';
 
 @ApiTags('Chapter Comments')
 @Controller('chapters/:chapterId/comments')
-@ApiBearerAuth('JWT-auth')
 export class ChapterCommentsController {
 	constructor(
 		private readonly chapterCommentsService: ChapterCommentsService,
@@ -39,14 +33,17 @@ export class ChapterCommentsController {
 	@UseGuards(OptionalAuthGuard)
 	@Throttle({ medium: { limit: 50, ttl: 60000 } })
 	@ApiOperation({
-		summary: 'List chapter comments',
+		summary: 'Listar comentarios do capitulo',
 		description:
-			'List comments for a chapter with threaded replies and root pagination',
+			'Lista comentarios de um capitulo com respostas em arvore e paginacao dos comentarios raiz',
 	})
-	@ApiParam({ name: 'chapterId', description: 'Chapter UUID' })
-	@ApiResponse({ status: 200, description: 'Comments listed successfully' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiResponse({ status: 404, description: 'Chapter not found' })
+	@ApiParam({ name: 'chapterId', description: 'UUID do capitulo' })
+	@ApiResponse({
+		status: 200,
+		description: 'Comentarios listados com sucesso',
+	})
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
 	listChapterComments(
 		@Param('chapterId', ParseUUIDPipe) chapterId: string,
 		@Query() options: ChapterCommentsPageOptionsDto,
@@ -60,16 +57,16 @@ export class ChapterCommentsController {
 	}
 
 	@Post()
-	@UseGuards(JwtAuthGuard)
+	@AuthenticatedApi()
 	@Throttle({ medium: { limit: 20, ttl: 60000 } })
 	@ApiOperation({
-		summary: 'Create chapter comment',
-		description: 'Create a root comment for a chapter',
+		summary: 'Criar comentario no capitulo',
+		description: 'Cria um comentario raiz para o capitulo',
 	})
-	@ApiParam({ name: 'chapterId', description: 'Chapter UUID' })
-	@ApiResponse({ status: 201, description: 'Comment created successfully' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiResponse({ status: 404, description: 'Chapter not found' })
+	@ApiParam({ name: 'chapterId', description: 'UUID do capitulo' })
+	@ApiResponse({ status: 201, description: 'Comentario criado com sucesso' })
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
 	createComment(
 		@Param('chapterId', ParseUUIDPipe) chapterId: string,
 		@Body() dto: CreateChapterCommentDto,
@@ -79,18 +76,18 @@ export class ChapterCommentsController {
 	}
 
 	@Post(':parentId/replies')
-	@UseGuards(JwtAuthGuard)
+	@AuthenticatedApi()
 	@Throttle({ medium: { limit: 20, ttl: 60000 } })
 	@ApiOperation({
-		summary: 'Reply to comment',
-		description: 'Create a reply to any comment in the chapter thread',
+		summary: 'Responder comentario',
+		description: 'Cria uma resposta para qualquer comentario da discussao',
 	})
-	@ApiParam({ name: 'chapterId', description: 'Chapter UUID' })
-	@ApiParam({ name: 'parentId', description: 'Parent comment UUID' })
-	@ApiResponse({ status: 201, description: 'Reply created successfully' })
-	@ApiResponse({ status: 400, description: 'Invalid parent comment state' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiResponse({ status: 404, description: 'Chapter or parent not found' })
+	@ApiParam({ name: 'chapterId', description: 'UUID do capitulo' })
+	@ApiParam({ name: 'parentId', description: 'UUID do comentario pai' })
+	@ApiResponse({ status: 201, description: 'Resposta criada com sucesso' })
+	@ApiResponse(COMMON_RESPONSES.BAD_REQUEST)
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
 	createReply(
 		@Param('chapterId', ParseUUIDPipe) chapterId: string,
 		@Param('parentId', ParseUUIDPipe) parentId: string,
@@ -106,22 +103,25 @@ export class ChapterCommentsController {
 	}
 
 	@Patch(':commentId')
-	@UseGuards(JwtAuthGuard)
+	@AuthenticatedApi()
 	@Throttle({ medium: { limit: 20, ttl: 60000 } })
 	@ApiOperation({
-		summary: 'Update comment',
-		description: 'Update a chapter comment (owner or admin)',
+		summary: 'Atualizar comentario',
+		description: 'Atualiza um comentario do capitulo (autor ou admin)',
 	})
-	@ApiParam({ name: 'chapterId', description: 'Chapter UUID' })
-	@ApiParam({ name: 'commentId', description: 'Comment UUID' })
-	@ApiResponse({ status: 200, description: 'Comment updated successfully' })
+	@ApiParam({ name: 'chapterId', description: 'UUID do capitulo' })
+	@ApiParam({ name: 'commentId', description: 'UUID do comentario' })
+	@ApiResponse({
+		status: 200,
+		description: 'Comentario atualizado com sucesso',
+	})
 	@ApiResponse({
 		status: 400,
-		description: 'Deleted comments cannot be edited',
+		description: 'Comentarios removidos nao podem ser editados',
 	})
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiResponse({ status: 403, description: 'Forbidden' })
-	@ApiResponse({ status: 404, description: 'Comment not found' })
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
+	@ApiResponse({ status: 403, description: 'Proibido' })
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
 	updateComment(
 		@Param('chapterId', ParseUUIDPipe) chapterId: string,
 		@Param('commentId', ParseUUIDPipe) commentId: string,
@@ -137,19 +137,22 @@ export class ChapterCommentsController {
 	}
 
 	@Delete(':commentId')
-	@UseGuards(JwtAuthGuard)
+	@AuthenticatedApi()
 	@Throttle({ medium: { limit: 20, ttl: 60000 } })
 	@ApiOperation({
-		summary: 'Delete comment',
+		summary: 'Remover comentario',
 		description:
-			'Soft delete a chapter comment while preserving reply thread structure',
+			'Remove logicamente um comentario mantendo a estrutura de respostas',
 	})
-	@ApiParam({ name: 'chapterId', description: 'Chapter UUID' })
-	@ApiParam({ name: 'commentId', description: 'Comment UUID' })
-	@ApiResponse({ status: 200, description: 'Comment deleted successfully' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiResponse({ status: 403, description: 'Forbidden' })
-	@ApiResponse({ status: 404, description: 'Comment not found' })
+	@ApiParam({ name: 'chapterId', description: 'UUID do capitulo' })
+	@ApiParam({ name: 'commentId', description: 'UUID do comentario' })
+	@ApiResponse({
+		status: 200,
+		description: 'Comentario removido com sucesso',
+	})
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
+	@ApiResponse({ status: 403, description: 'Proibido' })
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
 	deleteComment(
 		@Param('chapterId', ParseUUIDPipe) chapterId: string,
 		@Param('commentId', ParseUUIDPipe) commentId: string,

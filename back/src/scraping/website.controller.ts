@@ -16,6 +16,7 @@ import {
 	ApiResponse,
 	ApiTags,
 } from '@nestjs/swagger';
+import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Throttle } from '@nestjs/throttler';
 import { Roles } from 'src/auth/decorator/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
@@ -27,7 +28,7 @@ import { WebsiteService } from './website.service';
 @ApiTags('Website Scraping')
 @Controller('website')
 @UseGuards(JwtAuthGuard)
-@ApiBearerAuth('JWT-auth')
+@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 export class WebsiteController {
 	constructor(private readonly websiteService: WebsiteService) {}
 

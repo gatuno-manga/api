@@ -10,36 +10,28 @@ import {
 	ParseUUIDPipe,
 	Patch,
 	Query,
-	UseGuards,
 } from '@nestjs/common';
-import {
-	ApiBearerAuth,
-	ApiOperation,
-	ApiQuery,
-	ApiResponse,
-	ApiTags,
-} from '@nestjs/swagger';
-import { Roles } from 'src/auth/decorator/roles.decorator';
+import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
-import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
+import { AdminApi } from 'src/common/swagger/auth-api.decorators';
+import { COMMON_RESPONSES } from 'src/common/swagger/common-responses';
 import { AdminUpdateUserDto } from './dto/admin-update-user.dto';
 import { SetUserModerationDto } from './dto/set-user-moderation.dto';
 import { UpdateUserRolesDto } from './dto/update-user-roles.dto';
-import { RolesEnum } from './enum/roles.enum';
 import { AdminUsersService } from './admin-users.service';
 
 @ApiTags('Admin Users')
 @Controller('admin/users')
-@UseGuards(JwtAuthGuard)
-@Roles(RolesEnum.ADMIN)
-@ApiBearerAuth('JWT-auth')
+@AdminApi()
 export class AdminUsersController {
 	constructor(private readonly adminUsersService: AdminUsersService) {}
 
 	@Get()
-	@ApiOperation({ summary: 'List users with admin filters' })
-	@ApiResponse({ status: 200, description: 'Users listed successfully' })
+	@ApiOperation({ summary: 'Listar usuarios com filtros administrativos' })
+	@ApiResponse({ status: 200, description: 'Usuarios listados com sucesso' })
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
+	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
 	@ApiQuery({ name: 'page', required: false })
 	@ApiQuery({ name: 'limit', required: false })
 	@ApiQuery({ name: 'search', required: false })
@@ -67,13 +59,24 @@ export class AdminUsersController {
 	}
 
 	@Get(':userId')
-	@ApiOperation({ summary: 'Get a user by id (admin)' })
+	@ApiOperation({ summary: 'Buscar usuario por id (admin)' })
+	@ApiResponse({ status: 200, description: 'Usuario retornado com sucesso' })
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
+	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
 	getUserById(@Param('userId', ParseUUIDPipe) userId: string) {
 		return this.adminUsersService.getUserById(userId);
 	}
 
 	@Patch(':userId')
-	@ApiOperation({ summary: 'Update user profile settings (admin)' })
+	@ApiOperation({
+		summary: 'Atualizar configuracoes de perfil do usuario (admin)',
+	})
+	@ApiResponse({ status: 200, description: 'Usuario atualizado com sucesso' })
+	@ApiResponse(COMMON_RESPONSES.BAD_REQUEST)
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
+	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
 	updateUser(
 		@Param('userId', ParseUUIDPipe) userId: string,
 		@Body() dto: AdminUpdateUserDto,
@@ -82,7 +85,12 @@ export class AdminUsersController {
 	}
 
 	@Patch(':userId/roles')
-	@ApiOperation({ summary: 'Replace roles from a user (admin)' })
+	@ApiOperation({ summary: 'Substituir roles de um usuario (admin)' })
+	@ApiResponse({ status: 200, description: 'Roles atualizadas com sucesso' })
+	@ApiResponse(COMMON_RESPONSES.BAD_REQUEST)
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
+	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
 	updateUserRoles(
 		@Param('userId', ParseUUIDPipe) userId: string,
 		@Body() dto: UpdateUserRolesDto,
@@ -96,7 +104,12 @@ export class AdminUsersController {
 	}
 
 	@Patch(':userId/moderation')
-	@ApiOperation({ summary: 'Apply ban/suspension settings to user' })
+	@ApiOperation({ summary: 'Aplicar banimento/suspensao ao usuario' })
+	@ApiResponse({ status: 200, description: 'Moderacao aplicada com sucesso' })
+	@ApiResponse(COMMON_RESPONSES.BAD_REQUEST)
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
+	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
 	setModeration(
 		@Param('userId', ParseUUIDPipe) userId: string,
 		@Body() dto: SetUserModerationDto,
@@ -110,7 +123,11 @@ export class AdminUsersController {
 	}
 
 	@Delete(':userId')
-	@ApiOperation({ summary: 'Delete user account (admin)' })
+	@ApiOperation({ summary: 'Excluir conta de usuario (admin)' })
+	@ApiResponse({ status: 200, description: 'Usuario excluido com sucesso' })
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
+	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
 	deleteUser(
 		@Param('userId', ParseUUIDPipe) userId: string,
 		@CurrentUser() currentUser: CurrentUserDto,

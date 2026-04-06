@@ -22,10 +22,7 @@ export class PdfStrategy implements DownloadStrategy {
 		return 'pdf';
 	}
 
-	async generate(
-		chapters: Chapter[],
-		fileName: string,
-	): Promise<StreamableFile> {
+	generate(chapters: Chapter[], fileName: string): Promise<StreamableFile> {
 		this.logger.log(
 			`Generating PDF for ${chapters.length} chapters: ${fileName}`,
 		);

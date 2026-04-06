@@ -7,7 +7,12 @@ import {
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { AuthGuard } from '@nestjs/passport';
+import { Request } from 'express';
 import { ROLES_KEY } from '../decorator/roles.decorator';
+
+interface JwtPayload {
+	roles?: string[];
+}
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
@@ -35,9 +40,10 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 			return true;
 		}
 
-		const request = context.switchToHttp().getRequest();
+		const request = context.switchToHttp().getRequest<Request>();
 
-		const token = request.headers.authorization?.split(' ')[1];
+		const authHeader = request.headers.authorization;
+		const token = authHeader?.split(' ')[1];
 		if (!token) {
 			throw new UnauthorizedException('No token provided');
 		}

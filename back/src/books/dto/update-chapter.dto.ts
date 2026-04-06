@@ -1,10 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
 	IsNumber,
 	IsOptional,
 	IsPositive,
 	IsString,
 	IsUrl,
+	MaxLength,
 } from 'class-validator';
 import { NormalizeUrl } from '../../common/decorators/normalize-url.decorator';
 
@@ -15,6 +17,7 @@ export class UpdateChapterDto {
 		maxLength: 200,
 	})
 	@IsString()
+	@MaxLength(200)
 	@IsOptional()
 	title?: string;
 
@@ -33,6 +36,7 @@ export class UpdateChapterDto {
 		example: 1,
 		minimum: 1,
 	})
+	@Type(() => Number)
 	@IsNumber()
 	@IsPositive()
 	index: number;

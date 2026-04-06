@@ -29,7 +29,13 @@ export class JwtRefreshStrategy extends PassportStrategy(
 	) {
 		super({
 			jwtFromRequest: ExtractJwt.fromExtractors([
-				(req: Request) => req?.cookies?.refreshToken || null,
+				(req: Request) => {
+					const cookies = req?.cookies as Record<
+						string,
+						string | undefined
+					>;
+					return cookies?.refreshToken || null;
+				},
 			]),
 			ignoreExpiration: false,
 			secretOrKey: configService.jwtRefreshSecret,
@@ -38,7 +44,8 @@ export class JwtRefreshStrategy extends PassportStrategy(
 	}
 
 	async validate(req: Request, payload: PayloadAuthDto) {
-		const refreshToken = req.cookies?.refreshToken;
+		const cookies = req.cookies as Record<string, string | undefined>;
+		const refreshToken = cookies?.refreshToken;
 		if (!refreshToken) {
 			throw new UnauthorizedException('No refresh token cookie');
 		}

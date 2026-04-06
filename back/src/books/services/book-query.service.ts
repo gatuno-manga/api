@@ -6,7 +6,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Queue } from 'bullmq';
+import { Job, Queue } from 'bullmq';
 import { BookChaptersCursorPageDto } from '../dto/book-chapters-cursor-page.dto';
 import { BookChaptersCursorOptionsDto } from '../dto/book-chapters-cursor-options.dto';
 import { QueueCoverProcessorDto } from '../dto/queue-cover-processor.dto';
@@ -26,6 +26,25 @@ import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { SensitiveContentService } from '../sensitive-content/sensitive-content.service';
 import { FilterStrategy } from '../strategies';
 import { AdminUsersService } from 'src/users/admin-users.service';
+import { BookOrderField } from '../enum/book-order-field.enum';
+
+interface RawChapterRow {
+	chapter_id: string;
+	chapter_title: string;
+	chapter_index: number;
+	chapter_scrapingStatus: string;
+	readCount: string;
+}
+
+interface ChapterPageCount {
+	chapterId: string;
+	total: string;
+}
+
+interface ChapterErrorPageCount {
+	chapterId: string;
+	cnt: string;
+}
 
 /**
  * Service responsável por consultas e buscas de livros
@@ -210,21 +229,21 @@ export class BookQueryService {
 			);
 		}
 
-		const orderByField = options.orderBy || 'createdAt';
+		const orderByField = options.orderBy || BookOrderField.CREATED_AT;
 		const orderDirection = options.order || 'DESC';
 
 		switch (orderByField) {
-			case 'title':
+			case BookOrderField.TITLE:
 				queryBuilder
 					.orderBy('book.title', orderDirection)
 					.addOrderBy('book.id', 'ASC');
 				break;
-			case 'publication':
+			case BookOrderField.PUBLICATION:
 				queryBuilder
 					.orderBy('book.publication', orderDirection)
 					.addOrderBy('book.id', 'ASC');
 				break;
-			case 'updatedAt':
+			case BookOrderField.UPDATED_AT:
 				queryBuilder
 					.orderBy('book.updatedAt', orderDirection)
 					.addOrderBy('book.id', 'ASC');
@@ -471,13 +490,7 @@ export class BookQueryService {
 			'readCount',
 		);
 
-		const rawChapters = await chaptersQuery.getRawMany<{
-			chapter_id: string;
-			chapter_title: string;
-			chapter_index: number;
-			chapter_scrapingStatus: string;
-			readCount: string;
-		}>();
+		const rawChapters = await chaptersQuery.getRawMany<RawChapterRow>();
 
 		const chapters = rawChapters.map((row) => ({
 			id: row.chapter_id,
@@ -662,7 +675,7 @@ export class BookQueryService {
 				.select('ch.id', 'chapterId')
 				.addSelect('COUNT(p.id)', 'total')
 				.groupBy('ch.id')
-				.getRawMany<{ chapterId: string; total: string }>(),
+				.getRawMany<ChapterPageCount>(),
 			this.pageRepository
 				.createQueryBuilder('p')
 				.innerJoin('p.chapter', 'ch')
@@ -673,7 +686,7 @@ export class BookQueryService {
 				.select('ch.id', 'chapterId')
 				.addSelect('COUNT(p.id)', 'cnt')
 				.groupBy('ch.id')
-				.getRawMany<{ chapterId: string; cnt: string }>(),
+				.getRawMany<ChapterErrorPageCount>(),
 		]);
 
 		const pageCountMap = new Map(
@@ -918,16 +931,16 @@ export class BookQueryService {
 				]),
 			);
 
-			const pendingMeta = (job: {
-				delay: number;
-				timestamp: number;
-			}) => ({
+			const pendingMeta = (job: Job) => ({
 				delayed: job.delay > 0,
 				processAt:
 					job.delay > 0 ? new Date(job.timestamp + job.delay) : null,
 			});
 
-			const mapBookJob = (job, pending = false) => ({
+			const mapBookJob = (
+				job: Job<{ bookId: string }>,
+				pending = false,
+			) => ({
 				id: job.id,
 				bookId: job.data.bookId,
 				bookTitle: bookMap.get(job.data.bookId) ?? 'Unknown',
@@ -936,13 +949,13 @@ export class BookQueryService {
 			});
 
 			const mapChapterJob = (
-				job,
+				job: Job<string | { chapterId: string }>,
 				isDirectString: boolean,
 				pending = false,
 			) => {
 				const chapterId = isDirectString
-					? (job.data as unknown as string)
-					: job.data.chapterId;
+					? (job.data as string)
+					: (job.data as { chapterId: string }).chapterId;
 				const info = chapterMap.get(chapterId);
 				return {
 					id: job.id,
@@ -955,7 +968,10 @@ export class BookQueryService {
 				};
 			};
 
-			const mapCoverJob = (job, pending = false) => ({
+			const mapCoverJob = (
+				job: Job<QueueCoverProcessorDto>,
+				pending = false,
+			) => ({
 				id: job.id,
 				bookId: job.data.bookId,
 				bookTitle: bookMap.get(job.data.bookId) ?? 'Unknown',

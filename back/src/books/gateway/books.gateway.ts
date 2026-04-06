@@ -17,6 +17,11 @@ import { BookEvents } from '../constants/events.constant';
 import { Book } from '../entities/book.entity';
 import { Chapter } from '../entities/chapter.entity';
 
+interface WsUser {
+	id: string;
+	roles: string[];
+}
+
 /**
  * Gateway WebSocket para comunicação em tempo real de eventos de livros
  * Implementa o padrão Observer para notificar clientes sobre mudanças
@@ -45,7 +50,7 @@ export class BooksGateway
 		{ bookIds: Set<string>; chapterIds: Set<string>; isAdmin: boolean }
 	>();
 
-	afterInit(server: Server) {
+	afterInit(_server: Server) {
 		this.logger.log('WebSocket Gateway initialized on namespace /books');
 		this.logger.log(
 			`CORS origin: ${process.env.ALLOWED_URL || 'localhost:4200'}`,
@@ -54,7 +59,7 @@ export class BooksGateway
 
 	handleConnection(client: Socket) {
 		try {
-			const user = client.data.user;
+			const user = client.data.user as WsUser;
 			const isAdmin = user?.roles?.includes(RolesEnum.ADMIN) || false;
 
 			this.logger.log(
@@ -73,8 +78,10 @@ export class BooksGateway
 				client.join('admin');
 				this.logger.debug(`Admin ${client.id} joined admin room`);
 			}
-		} catch (error) {
-			this.logger.error(`Error in handleConnection: ${error.message}`);
+		} catch (error: unknown) {
+			this.logger.error(
+				`Error in handleConnection: ${error instanceof Error ? error.message : String(error)}`,
+			);
 			client.disconnect();
 		}
 	}
@@ -86,8 +93,10 @@ export class BooksGateway
 				`Client disconnected: ${client.id} (Books: ${clientData?.bookIds.size || 0}, Chapters: ${clientData?.chapterIds.size || 0})`,
 			);
 			this.connectedClients.delete(client.id);
-		} catch (error) {
-			this.logger.error(`Error in handleDisconnect: ${error.message}`);
+		} catch (error: unknown) {
+			this.logger.error(
+				`Error in handleDisconnect: ${error instanceof Error ? error.message : String(error)}`,
+			);
 		}
 	}
 
@@ -110,8 +119,10 @@ export class BooksGateway
 				broadcastOperator = broadcastOperator.to(room);
 			}
 			broadcastOperator.emit(event, payload);
-		} catch (error) {
-			this.logger.error(`Failed to broadcast ${event}: ${error.message}`);
+		} catch (error: unknown) {
+			this.logger.error(
+				`Failed to broadcast ${event}: ${error instanceof Error ? error.message : String(error)}`,
+			);
 		}
 	}
 
@@ -139,15 +150,17 @@ export class BooksGateway
 				id: bookId,
 				success: true,
 			});
-		} catch (error) {
+		} catch (error: unknown) {
+			const message =
+				error instanceof Error ? error.message : String(error);
 			this.logger.error(
-				`Failed to subscribe client ${client.id} to book ${bookId}: ${error.message}`,
+				`Failed to subscribe client ${client.id} to book ${bookId}: ${message}`,
 			);
 			client.emit('subscribed', {
 				type: 'book',
 				id: bookId,
 				success: false,
-				error: error.message,
+				error: message,
 			});
 		}
 	}
@@ -174,15 +187,17 @@ export class BooksGateway
 				id: chapterId,
 				success: true,
 			});
-		} catch (error) {
+		} catch (error: unknown) {
+			const message =
+				error instanceof Error ? error.message : String(error);
 			this.logger.error(
-				`Failed to subscribe client ${client.id} to chapter ${chapterId}: ${error.message}`,
+				`Failed to subscribe client ${client.id} to chapter ${chapterId}: ${message}`,
 			);
 			client.emit('subscribed', {
 				type: 'chapter',
 				id: chapterId,
 				success: false,
-				error: error.message,
+				error: message,
 			});
 		}
 	}
@@ -204,9 +219,9 @@ export class BooksGateway
 				id: bookId,
 				success: true,
 			});
-		} catch (error) {
+		} catch (error: unknown) {
 			this.logger.error(
-				`Failed to unsubscribe client ${client.id} from book ${bookId}: ${error.message}`,
+				`Failed to unsubscribe client ${client.id} from book ${bookId}: ${error instanceof Error ? error.message : String(error)}`,
 			);
 		}
 	}
@@ -228,9 +243,9 @@ export class BooksGateway
 				id: chapterId,
 				success: true,
 			});
-		} catch (error) {
+		} catch (error: unknown) {
 			this.logger.error(
-				`Failed to unsubscribe client ${client.id} from chapter ${chapterId}: ${error.message}`,
+				`Failed to unsubscribe client ${client.id} from chapter ${chapterId}: ${error instanceof Error ? error.message : String(error)}`,
 			);
 		}
 	}
@@ -244,9 +259,9 @@ export class BooksGateway
 				chapters: Array.from(clientData?.chapterIds || []),
 				isAdmin: clientData?.isAdmin || false,
 			});
-		} catch (error) {
+		} catch (error: unknown) {
 			this.logger.error(
-				`Failed to list subscriptions for client ${client.id}: ${error.message}`,
+				`Failed to list subscriptions for client ${client.id}: ${error instanceof Error ? error.message : String(error)}`,
 			);
 		}
 	}

@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import { IsBoolean } from 'class-validator';
 
 export class ToggleAutoUpdateDto {
@@ -7,6 +8,7 @@ export class ToggleAutoUpdateDto {
 		example: true,
 		type: Boolean,
 	})
+	@Type(() => Boolean)
 	@IsBoolean()
 	enabled: boolean;
 }

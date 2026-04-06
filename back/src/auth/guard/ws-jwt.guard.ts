@@ -10,6 +10,12 @@ import { WsException } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
 import { ROLES_KEY } from '../decorator/roles.decorator';
 
+interface WsJwtPayload {
+	sub?: string;
+	roles?: string[];
+	[key: string]: unknown;
+}
+
 /**
  * Guard WebSocket para autenticação JWT
  * Valida token no handshake e verifica roles quando necessário
@@ -23,7 +29,7 @@ export class WsJwtGuard implements CanActivate {
 		private readonly reflector: Reflector,
 	) {}
 
-	async canActivate(context: ExecutionContext): Promise<boolean> {
+	canActivate(context: ExecutionContext): boolean {
 		try {
 			const client: Socket = context.switchToWs().getClient<Socket>();
 			const token = this.extractTokenFromHandshake(client);
@@ -32,7 +38,7 @@ export class WsJwtGuard implements CanActivate {
 				throw new WsException('Token not provided');
 			}
 
-			const payload = this.jwtService.verify(token);
+			const payload = this.jwtService.verify(token) as WsJwtPayload;
 
 			// Anexa o payload ao client para uso posterior
 			client.data.user = payload;
@@ -45,22 +51,22 @@ export class WsJwtGuard implements CanActivate {
 
 			if (requiredRoles) {
 				const userRoles: string[] = payload.roles || [];
-				const hasRole = requiredRoles.some((role) =>
+				const hasRole = requiredRoles.some((role: string) =>
 					userRoles.includes(role),
 				);
 
 				if (!hasRole) {
 					this.logger.warn(
-						`User ${payload.sub} lacks required roles: ${requiredRoles.join(', ')}`,
+						`User ${String(payload.sub)} lacks required roles: ${requiredRoles.join(', ')}`,
 					);
 					throw new WsException('Insufficient permissions');
 				}
 			}
 
 			return true;
-		} catch (error) {
+		} catch (error: unknown) {
 			this.logger.error(
-				`WebSocket authentication failed: ${error.message}`,
+				`WebSocket authentication failed: ${error instanceof Error ? error.message : String(error)}`,
 			);
 			throw new WsException('Authentication failed');
 		}
@@ -69,7 +75,8 @@ export class WsJwtGuard implements CanActivate {
 	private extractTokenFromHandshake(client: Socket): string | null {
 		// Tenta extrair token de várias fontes
 		const authHeader = client.handshake.headers.authorization;
-		const queryToken = client.handshake.auth?.token;
+		const queryToken = (client.handshake.auth as Record<string, unknown>)
+			?.token as string | undefined;
 		const queryParam = client.handshake.query?.token;
 
 		if (authHeader && typeof authHeader === 'string') {

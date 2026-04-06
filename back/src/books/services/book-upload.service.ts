@@ -31,6 +31,18 @@ import { ExportFormat } from '../enum/export-format.enum';
  */
 @Injectable()
 export class BookUploadService {
+	private getErrorMessage(error: unknown): string {
+		if (
+			typeof error === 'object' &&
+			error !== null &&
+			'message' in error &&
+			typeof (error as { message?: unknown }).message === 'string'
+		) {
+			return (error as { message: string }).message;
+		}
+		return error instanceof Error ? error.message : String(error);
+	}
+
 	constructor(
 		@InjectRepository(Book)
 		private readonly bookRepository: Repository<Book>,
@@ -144,15 +156,19 @@ export class BookUploadService {
 			});
 
 			return savedCover;
-		} catch (error) {
+		} catch (error: unknown) {
 			const duration = Date.now() - startTime;
 			this.uploadCounter.inc({ type: 'cover', status: 'error' });
 			this.uploadDuration.observe({ type: 'cover' }, duration / 1000);
 
-			this.logger.error(error, 'BookUploadService', {
-				bookId,
-				fileName: file.originalname,
-			});
+			this.logger.error(
+				this.getErrorMessage(error),
+				'BookUploadService',
+				{
+					bookId,
+					fileName: file.originalname,
+				},
+			);
 			throw error;
 		}
 	}
@@ -207,7 +223,7 @@ export class BookUploadService {
 			if (cover.url) {
 				try {
 					await this.filesService.deleteFile(cover.url);
-				} catch (deleteError) {
+				} catch {
 					this.logger.warn(
 						`Failed to delete old cover image: ${cover.url}`,
 						'BookUploadService',
@@ -256,7 +272,7 @@ export class BookUploadService {
 			});
 
 			return updatedCover;
-		} catch (error) {
+		} catch (error: unknown) {
 			const duration = Date.now() - startTime;
 			this.uploadCounter.inc({ type: 'cover_replace', status: 'error' });
 			this.uploadDuration.observe(
@@ -264,11 +280,15 @@ export class BookUploadService {
 				duration / 1000,
 			);
 
-			this.logger.error(error, 'BookUploadService', {
-				bookId,
-				coverId,
-				fileName: file.originalname,
-			});
+			this.logger.error(
+				this.getErrorMessage(error),
+				'BookUploadService',
+				{
+					bookId,
+					coverId,
+					fileName: file.originalname,
+				},
+			);
 			throw error;
 		}
 	}
@@ -368,25 +388,29 @@ export class BookUploadService {
 			});
 
 			return savedCovers;
-		} catch (error) {
+		} catch (error: unknown) {
 			if (savedPaths.length > 0) {
 				await Promise.all(
 					savedPaths.map((p) =>
 						this.filesService
 							.deleteFile(p)
-							.catch((e) =>
+							.catch((e: unknown) =>
 								this.logger.warn(
-									`Failed to clean up file ${p} after upload error: ${e.message}`,
+									`Failed to clean up file ${p} after upload error: ${this.getErrorMessage(e)}`,
 									'BookUploadService',
 								),
 							),
 					),
 				);
 			}
-			this.logger.error(error, 'BookUploadService', {
-				bookId,
-				filesCount: files.length,
-			});
+			this.logger.error(
+				this.getErrorMessage(error),
+				'BookUploadService',
+				{
+					bookId,
+					filesCount: files.length,
+				},
+			);
 			throw error;
 		}
 	}
@@ -509,11 +533,15 @@ export class BookUploadService {
 			});
 
 			return savedPages;
-		} catch (error) {
-			this.logger.error(error, 'BookUploadService', {
-				chapterId,
-				filesCount: files.length,
-			});
+		} catch (error: unknown) {
+			this.logger.error(
+				this.getErrorMessage(error),
+				'BookUploadService',
+				{
+					chapterId,
+					filesCount: files.length,
+				},
+			);
 			throw error;
 		}
 	}
@@ -572,7 +600,7 @@ export class BookUploadService {
 			if (chapter.documentPath) {
 				try {
 					await this.filesService.deleteFile(chapter.documentPath);
-				} catch (deleteError) {
+				} catch {
 					this.logger.warn(
 						`Falha ao deletar documento anterior: ${chapter.documentPath}`,
 						'BookUploadService',
@@ -633,15 +661,19 @@ export class BookUploadService {
 			});
 
 			return savedChapter;
-		} catch (error) {
+		} catch (error: unknown) {
 			const duration = Date.now() - startTime;
 			this.uploadCounter.inc({ type: 'document', status: 'error' });
 			this.uploadDuration.observe({ type: 'document' }, duration / 1000);
 
-			this.logger.error(error, 'BookUploadService', {
-				chapterId,
-				fileName: file.originalname,
-			});
+			this.logger.error(
+				this.getErrorMessage(error),
+				'BookUploadService',
+				{
+					chapterId,
+					fileName: file.originalname,
+				},
+			);
 			throw error;
 		}
 	}
@@ -687,7 +719,7 @@ export class BookUploadService {
 			if (chapter.documentPath) {
 				try {
 					await this.filesService.deleteFile(chapter.documentPath);
-				} catch (deleteError) {
+				} catch {
 					this.logger.warn(
 						`Falha ao deletar documento anterior: ${chapter.documentPath}`,
 						'BookUploadService',
@@ -734,11 +766,15 @@ export class BookUploadService {
 			});
 
 			return savedChapter;
-		} catch (error) {
-			this.logger.error(error, 'BookUploadService', {
-				chapterId,
-				contentFormat: dto.format,
-			});
+		} catch (error: unknown) {
+			this.logger.error(
+				this.getErrorMessage(error),
+				'BookUploadService',
+				{
+					chapterId,
+					contentFormat: dto.format,
+				},
+			);
 			throw error;
 		}
 	}

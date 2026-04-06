@@ -9,6 +9,10 @@ import { ContentType } from '../enum/content-type.enum';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { ChapterUpdatedEvent } from './events/chapter-updated.event';
 
+interface ChapterIndexRaw {
+	max: string | number | null;
+}
+
 @Injectable()
 export class ChapterService {
 	private readonly logger = new Logger(ChapterService.name);
@@ -26,6 +30,10 @@ export class ChapterService {
 			return '';
 		const appUrl = this.appConfig.apiUrl;
 		return `${appUrl}${url}`;
+	}
+
+	private getErrorMessage(error: unknown): string {
+		return error instanceof Error ? error.message : 'Unknown error';
 	}
 
 	async getChapter(idChapter: string, userId?: string) {
@@ -65,7 +73,7 @@ export class ChapterService {
 			.createQueryBuilder('chapter')
 			.where('chapter.bookId = :bookId', { bookId: chapter.book.id })
 			.select('MAX(chapter.index)', 'max')
-			.getRawOne();
+			.getRawOne<ChapterIndexRaw>();
 		const totalChapters = maxIndexChapter?.max
 			? Number(maxIndexChapter.max)
 			: 0;
@@ -205,14 +213,11 @@ export class ChapterService {
 			try {
 				const result = await this.markChapterAsRead(chapterId, userId);
 				results.push({ chapterId, success: true, result });
-			} catch (error) {
+			} catch (error: unknown) {
 				results.push({
 					chapterId,
 					success: false,
-					error:
-						error instanceof Error
-							? error.message
-							: 'Unknown error',
+					error: this.getErrorMessage(error),
 				});
 			}
 		}
@@ -236,14 +241,11 @@ export class ChapterService {
 					userId,
 				);
 				results.push({ chapterId, success: true, result });
-			} catch (error) {
+			} catch (error: unknown) {
 				results.push({
 					chapterId,
 					success: false,
-					error:
-						error instanceof Error
-							? error.message
-							: 'Unknown error',
+					error: this.getErrorMessage(error),
 				});
 			}
 		}
@@ -263,7 +265,8 @@ export class ChapterService {
 		return (chapters as Array<Chapter & { pageCount: number }>)
 			.filter((chapter) => chapter.pageCount < pages)
 			.map((chapter) => {
-				const { pages, ...rest } = chapter;
+				const rest = { ...chapter };
+				(rest as Partial<Chapter>).pages = undefined;
 				return { ...rest, pageCount: chapter.pageCount };
 			});
 	}

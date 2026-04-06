@@ -40,6 +40,30 @@ export class FileCleanupService {
 	private readonly downloadDir = path.resolve('/usr/src/app/data');
 	private readonly retentionDays: number;
 
+	private getErrorCode(error: unknown): string | undefined {
+		if (
+			typeof error === 'object' &&
+			error !== null &&
+			'code' in error &&
+			typeof (error as { code?: unknown }).code === 'string'
+		) {
+			return (error as { code: string }).code;
+		}
+		return undefined;
+	}
+
+	private getErrorMessage(error: unknown): string {
+		if (
+			typeof error === 'object' &&
+			error !== null &&
+			'message' in error &&
+			typeof (error as { message?: unknown }).message === 'string'
+		) {
+			return (error as { message: string }).message;
+		}
+		return error instanceof Error ? error.message : String(error);
+	}
+
 	constructor(
 		@InjectRepository(Page)
 		private readonly pageRepository: Repository<Page>,
@@ -68,8 +92,8 @@ export class FileCleanupService {
 					this.logger.warn(`Skipping directory: ${filename}`);
 					return;
 				}
-			} catch (statError) {
-				if (statError.code === 'ENOENT') {
+			} catch (statError: unknown) {
+				if (this.getErrorCode(statError) === 'ENOENT') {
 					this.logger.warn(
 						`File not found (already deleted?): ${filePath}`,
 					);
@@ -79,8 +103,8 @@ export class FileCleanupService {
 
 			await fs.unlink(fullPath);
 			this.logger.log(`File deleted: ${filename}`);
-		} catch (error) {
-			if (error.code !== 'ENOENT') {
+		} catch (error: unknown) {
+			if (this.getErrorCode(error) !== 'ENOENT') {
 				this.logger.error(`Error deleting file ${filePath}:`, error);
 				throw error;
 			}
@@ -209,8 +233,8 @@ export class FileCleanupService {
 				report.filesDeleted++;
 				report.spaceRecovered += file.size;
 				this.logger.log(`Deleted orphan file: ${file.filename}`);
-			} catch (error) {
-				const errorMsg = `Failed to delete ${file.filename}: ${error.message}`;
+			} catch (error: unknown) {
+				const errorMsg = `Failed to delete ${file.filename}: ${this.getErrorMessage(error)}`;
 				this.logger.error(errorMsg);
 				report.errors.push(errorMsg);
 			}
@@ -344,9 +368,9 @@ export class FileCleanupService {
 				await this.pageRepository.remove(page);
 
 				this.logger.log(`Deleted old page file: ${filename}`);
-			} catch (error) {
-				if (error.code !== 'ENOENT') {
-					const errorMsg = `Failed to delete page ${page.id}: ${error.message}`;
+			} catch (error: unknown) {
+				if (this.getErrorCode(error) !== 'ENOENT') {
+					const errorMsg = `Failed to delete page ${page.id}: ${this.getErrorMessage(error)}`;
 					this.logger.error(errorMsg);
 					report.errors.push(errorMsg);
 				}
@@ -373,9 +397,9 @@ export class FileCleanupService {
 				await this.coverRepository.remove(cover);
 
 				this.logger.log(`Deleted old cover file: ${filename}`);
-			} catch (error) {
-				if (error.code !== 'ENOENT') {
-					const errorMsg = `Failed to delete cover ${cover.id}: ${error.message}`;
+			} catch (error: unknown) {
+				if (this.getErrorCode(error) !== 'ENOENT') {
+					const errorMsg = `Failed to delete cover ${cover.id}: ${this.getErrorMessage(error)}`;
 					this.logger.error(errorMsg);
 					report.errors.push(errorMsg);
 				}

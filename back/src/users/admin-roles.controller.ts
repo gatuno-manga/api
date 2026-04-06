@@ -6,38 +6,46 @@ import {
 	ParseUUIDPipe,
 	Patch,
 	Post,
-	UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { Roles } from 'src/auth/decorator/roles.decorator';
-import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { AdminApi } from 'src/common/swagger/auth-api.decorators';
+import { COMMON_RESPONSES } from 'src/common/swagger/common-responses';
 import { AdminUsersService } from './admin-users.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
-import { RolesEnum } from './enum/roles.enum';
 
 @ApiTags('Admin Roles')
 @Controller('admin/roles')
-@UseGuards(JwtAuthGuard)
-@Roles(RolesEnum.ADMIN)
-@ApiBearerAuth('JWT-auth')
+@AdminApi()
 export class AdminRolesController {
 	constructor(private readonly adminUsersService: AdminUsersService) {}
 
 	@Get()
-	@ApiOperation({ summary: 'List all roles' })
+	@ApiOperation({ summary: 'Listar todas as roles' })
+	@ApiResponse({ status: 200, description: 'Roles listadas com sucesso' })
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
+	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
 	listRoles() {
 		return this.adminUsersService.listRoles();
 	}
 
 	@Post()
-	@ApiOperation({ summary: 'Create role' })
+	@ApiOperation({ summary: 'Criar role' })
+	@ApiResponse({ status: 201, description: 'Role criada com sucesso' })
+	@ApiResponse(COMMON_RESPONSES.BAD_REQUEST)
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
+	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
 	createRole(@Body() dto: CreateRoleDto) {
 		return this.adminUsersService.createRole(dto);
 	}
 
 	@Patch(':roleId')
-	@ApiOperation({ summary: 'Update role' })
+	@ApiOperation({ summary: 'Atualizar role' })
+	@ApiResponse({ status: 200, description: 'Role atualizada com sucesso' })
+	@ApiResponse(COMMON_RESPONSES.BAD_REQUEST)
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
+	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
 	updateRole(
 		@Param('roleId', ParseUUIDPipe) roleId: string,
 		@Body() dto: UpdateRoleDto,

@@ -7,39 +7,47 @@ import {
 	ParseUUIDPipe,
 	Patch,
 	Post,
-	UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { Roles } from 'src/auth/decorator/roles.decorator';
-import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { AdminApi } from 'src/common/swagger/auth-api.decorators';
+import { COMMON_RESPONSES } from 'src/common/swagger/common-responses';
 import { AdminUsersService } from './admin-users.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupMembersDto } from './dto/update-group-members.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
-import { RolesEnum } from './enum/roles.enum';
 
 @ApiTags('Admin Groups')
 @Controller('admin/groups')
-@UseGuards(JwtAuthGuard)
-@Roles(RolesEnum.ADMIN)
-@ApiBearerAuth('JWT-auth')
+@AdminApi()
 export class AdminGroupsController {
 	constructor(private readonly adminUsersService: AdminUsersService) {}
 
 	@Get()
-	@ApiOperation({ summary: 'List all groups' })
+	@ApiOperation({ summary: 'Listar todos os grupos' })
+	@ApiResponse({ status: 200, description: 'Grupos listados com sucesso' })
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
+	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
 	listGroups() {
 		return this.adminUsersService.listGroups();
 	}
 
 	@Post()
-	@ApiOperation({ summary: 'Create group' })
+	@ApiOperation({ summary: 'Criar grupo' })
+	@ApiResponse({ status: 201, description: 'Grupo criado com sucesso' })
+	@ApiResponse(COMMON_RESPONSES.BAD_REQUEST)
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
+	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
 	createGroup(@Body() dto: CreateGroupDto) {
 		return this.adminUsersService.createGroup(dto);
 	}
 
 	@Patch(':groupId')
-	@ApiOperation({ summary: 'Update group' })
+	@ApiOperation({ summary: 'Atualizar grupo' })
+	@ApiResponse({ status: 200, description: 'Grupo atualizado com sucesso' })
+	@ApiResponse(COMMON_RESPONSES.BAD_REQUEST)
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
+	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
 	updateGroup(
 		@Param('groupId', ParseUUIDPipe) groupId: string,
 		@Body() dto: UpdateGroupDto,
@@ -48,13 +56,25 @@ export class AdminGroupsController {
 	}
 
 	@Delete(':groupId')
-	@ApiOperation({ summary: 'Delete group' })
+	@ApiOperation({ summary: 'Excluir grupo' })
+	@ApiResponse({ status: 200, description: 'Grupo excluido com sucesso' })
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
+	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
 	deleteGroup(@Param('groupId', ParseUUIDPipe) groupId: string) {
 		return this.adminUsersService.deleteGroup(groupId);
 	}
 
 	@Post(':groupId/members')
-	@ApiOperation({ summary: 'Add members to group' })
+	@ApiOperation({ summary: 'Adicionar membros ao grupo' })
+	@ApiResponse({
+		status: 201,
+		description: 'Membros adicionados com sucesso',
+	})
+	@ApiResponse(COMMON_RESPONSES.BAD_REQUEST)
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
+	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
 	addMembers(
 		@Param('groupId', ParseUUIDPipe) groupId: string,
 		@Body() dto: UpdateGroupMembersDto,
@@ -63,7 +83,11 @@ export class AdminGroupsController {
 	}
 
 	@Delete(':groupId/members/:userId')
-	@ApiOperation({ summary: 'Remove member from group' })
+	@ApiOperation({ summary: 'Remover membro do grupo' })
+	@ApiResponse({ status: 200, description: 'Membro removido com sucesso' })
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
+	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
 	removeMember(
 		@Param('groupId', ParseUUIDPipe) groupId: string,
 		@Param('userId', ParseUUIDPipe) userId: string,

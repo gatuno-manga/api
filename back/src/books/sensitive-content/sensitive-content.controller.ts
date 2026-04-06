@@ -18,6 +18,7 @@ import {
 	ApiResponse,
 	ApiTags,
 } from '@nestjs/swagger';
+import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
@@ -72,7 +73,7 @@ export class SensitiveContentController {
 	@ApiResponse({ status: 404, description: 'Sensitive content not found' })
 	@ApiResponse({ status: 401, description: 'Unauthorized' })
 	@ApiResponse({ status: 429, description: 'Too many requests' })
-	@ApiBearerAuth('JWT-auth')
+	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 	@UseGuards(JwtAuthGuard)
 	getOne(@Param('id') id: string) {
 		return this.sensitiveContentService.getOne(id);
@@ -91,7 +92,7 @@ export class SensitiveContentController {
 	@ApiResponse({ status: 400, description: 'Invalid input data' })
 	@ApiResponse({ status: 401, description: 'Unauthorized' })
 	@ApiResponse({ status: 429, description: 'Too many requests' })
-	@ApiBearerAuth('JWT-auth')
+	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 	@UseGuards(JwtAuthGuard)
 	create(@Body() dto: CreateSensitiveContentDto) {
 		return this.sensitiveContentService.create(dto);
@@ -113,7 +114,7 @@ export class SensitiveContentController {
 	})
 	@ApiResponse({ status: 404, description: 'Sensitive content not found' })
 	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiBearerAuth('JWT-auth')
+	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 	@UseGuards(JwtAuthGuard)
 	update(@Param('id') id: string, @Body() dto: UpdateSensitiveContentDto) {
 		return this.sensitiveContentService.update(id, dto);
@@ -135,7 +136,7 @@ export class SensitiveContentController {
 	})
 	@ApiResponse({ status: 404, description: 'Sensitive content not found' })
 	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiBearerAuth('JWT-auth')
+	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 	@UseGuards(JwtAuthGuard)
 	remove(@Param('id') id: string) {
 		return this.sensitiveContentService.remove(id);
@@ -158,7 +159,7 @@ export class SensitiveContentController {
 	})
 	@ApiResponse({ status: 404, description: 'Sensitive content not found' })
 	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiBearerAuth('JWT-auth')
+	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 	@UseGuards(JwtAuthGuard)
 	mergeSensitiveContent(
 		@Param('contentId') contentId: string,

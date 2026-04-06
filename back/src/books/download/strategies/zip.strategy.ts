@@ -33,10 +33,7 @@ export class ZipStrategy implements DownloadStrategy {
 		return 'zip';
 	}
 
-	async generate(
-		chapters: Chapter[],
-		fileName: string,
-	): Promise<StreamableFile> {
+	generate(chapters: Chapter[], fileName: string): Promise<StreamableFile> {
 		this.logger.log(
 			`Generating ZIP for ${chapters.length} chapters: ${fileName} (parallel: ${PARALLEL_CHAPTERS} chapters, ${PARALLEL_PAGES} pages)`,
 		);
@@ -189,7 +186,12 @@ export class ZipStrategy implements DownloadStrategy {
 	}
 
 	private sanitizeFileName(name: string): string {
-		// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional sanitization of control characters
-		return name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').trim();
+		return name
+			.replace(
+				// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional sanitization of control characters
+				/[<>:"/\\|?*\x00-\x1F]/g,
+				'_',
+			)
+			.trim();
 	}
 }

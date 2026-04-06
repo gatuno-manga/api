@@ -5,9 +5,9 @@ import { IFileCompressor } from '../interfaces/file-compressor.interface';
 export class NoCompressionAdapter implements IFileCompressor {
 	private readonly logger = new Logger(NoCompressionAdapter.name);
 
-	async compress(buffer: Buffer): Promise<Buffer> {
+	compress(buffer: Buffer): Promise<Buffer> {
 		this.logger.debug('Arquivo sem compressão, retornando original');
-		return buffer;
+		return Promise.resolve(buffer);
 	}
 
 	supports(extension: string): boolean {

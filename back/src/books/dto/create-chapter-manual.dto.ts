@@ -1,8 +1,9 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
 	IsEnum,
+	IsInt,
 	IsNotEmpty,
-	IsNumber,
 	IsOptional,
 	IsPositive,
 	IsString,
@@ -27,7 +28,8 @@ export class CreateChapterManualDto {
 		example: 1,
 		minimum: 0,
 	})
-	@IsNumber()
+	@Type(() => Number)
+	@IsInt()
 	@IsPositive()
 	@IsOptional()
 	index?: number;

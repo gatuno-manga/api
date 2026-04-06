@@ -15,6 +15,7 @@ import {
 	ApiResponse,
 	ApiTags,
 } from '@nestjs/swagger';
+import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Roles } from 'src/auth/decorator/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { RolesEnum } from 'src/users/enum/roles.enum';
@@ -26,6 +27,7 @@ import { BookBookRelationshipService } from './services/book-book-relationship.s
 @Controller('books')
 @UseGuards(JwtAuthGuard)
 @Roles(RolesEnum.ADMIN)
+@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 export class AdminBookRelationshipsController {
 	constructor(
 		private readonly bookBookRelationshipService: BookBookRelationshipService,
@@ -84,7 +86,6 @@ export class AdminBookRelationshipsController {
 	})
 	@ApiResponse({ status: 404, description: 'Livro não encontrado' })
 	@ApiResponse({ status: 409, description: 'Relacionamento já existe' })
-	@ApiBearerAuth('JWT-auth')
 	createRelationship(
 		@Param('idBook') idBook: string,
 		@Body() dto: CreateBookRelationshipDto,
@@ -133,7 +134,6 @@ export class AdminBookRelationshipsController {
 	})
 	@ApiResponse({ status: 404, description: 'Relacionamento não encontrado' })
 	@ApiResponse({ status: 409, description: 'Conflito de relacionamento' })
-	@ApiBearerAuth('JWT-auth')
 	updateRelationship(
 		@Param('idBook') idBook: string,
 		@Param('idRelationship') idRelationship: string,
@@ -166,7 +166,6 @@ export class AdminBookRelationshipsController {
 		description: 'Relacionamento removido com sucesso',
 	})
 	@ApiResponse({ status: 404, description: 'Relacionamento não encontrado' })
-	@ApiBearerAuth('JWT-auth')
 	deleteRelationship(
 		@Param('idBook') idBook: string,
 		@Param('idRelationship') idRelationship: string,

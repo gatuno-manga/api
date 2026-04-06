@@ -19,6 +19,7 @@ import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
 import { OptionalAuthGuard } from 'src/auth/guard/optional-auth.guard';
 import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-cache.interceptor';
+import { COMMON_RESPONSES } from 'src/common/swagger/common-responses';
 import { BooksService } from './books.service';
 import { BookChaptersCursorPageDto } from './dto/book-chapters-cursor-page.dto';
 import { BookChaptersCursorOptionsDto } from './dto/book-chapters-cursor-options.dto';
@@ -36,11 +37,11 @@ export class BooksController {
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(180)
 	@ApiOperation({
-		summary: 'Get all books',
-		description: 'Retrieve a paginated list of books with filters',
+		summary: 'Listar livros',
+		description: 'Retorna uma lista paginada de livros com filtros',
 	})
-	@ApiResponse({ status: 200, description: 'Books retrieved successfully' })
-	@ApiResponse({ status: 429, description: 'Too many requests' })
+	@ApiResponse({ status: 200, description: 'Livros retornados com sucesso' })
+	@ApiResponse(COMMON_RESPONSES.TOO_MANY_REQUESTS)
 	@UseGuards(OptionalAuthGuard)
 	getAllBooks(
 		@Query() pageOptions: BookPageOptionsDto,
@@ -58,14 +59,14 @@ export class BooksController {
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(60)
 	@ApiOperation({
-		summary: 'Get random book',
-		description: 'Retrieve a random book based on filters',
+		summary: 'Obter livro aleatorio',
+		description: 'Retorna um livro aleatorio com base nos filtros',
 	})
 	@ApiResponse({
 		status: 200,
-		description: 'Random book retrieved successfully',
+		description: 'Livro aleatorio retornado com sucesso',
 	})
-	@ApiResponse({ status: 429, description: 'Too many requests' })
+	@ApiResponse(COMMON_RESPONSES.TOO_MANY_REQUESTS)
 	@UseGuards(OptionalAuthGuard)
 	getRandomBook(
 		@Query() options: BookPageOptionsDto,
@@ -81,18 +82,19 @@ export class BooksController {
 	@Get('check-title/:title')
 	@Throttle({ medium: { limit: 50, ttl: 60000 } })
 	@ApiOperation({
-		summary: 'Check if book title already exists',
+		summary: 'Verificar se titulo do livro ja existe',
 		description:
-			'Check if there is already a book with the given title or alternative titles before creating a new one. Returns all conflicting books.',
+			'Verifica se ja existe livro com o titulo informado ou titulos alternativos antes de criar um novo. Retorna todos os conflitos.',
 	})
 	@ApiParam({
 		name: 'title',
-		description: 'Book title to check',
+		description: 'Titulo do livro para verificacao',
 		example: 'One Piece',
 	})
 	@ApiQuery({
 		name: 'alternativeTitles',
-		description: 'Alternative titles to check (comma separated)',
+		description:
+			'Titulos alternativos para verificar (separados por virgula)',
 		required: false,
 		example: 'ワンピース,Wan Pīsu',
 	})
@@ -161,17 +163,17 @@ export class BooksController {
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(1800)
 	@ApiOperation({
-		summary: 'Get book by ID',
-		description: 'Retrieve detailed information about a specific book',
+		summary: 'Obter livro por ID',
+		description: 'Retorna informacoes detalhadas de um livro especifico',
 	})
 	@ApiParam({
 		name: 'idBook',
-		description: 'Book unique identifier',
+		description: 'Identificador unico do livro',
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
-	@ApiResponse({ status: 200, description: 'Book found' })
-	@ApiResponse({ status: 404, description: 'Book not found' })
-	@ApiResponse({ status: 429, description: 'Too many requests' })
+	@ApiResponse({ status: 200, description: 'Livro encontrado' })
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
+	@ApiResponse(COMMON_RESPONSES.TOO_MANY_REQUESTS)
 	@UseGuards(OptionalAuthGuard)
 	getBook(@Param('idBook') id: string, @CurrentUser() user?: CurrentUserDto) {
 		return this.booksService.getOne(
@@ -186,12 +188,12 @@ export class BooksController {
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(600)
 	@ApiOperation({
-		summary: 'Get book chapters',
-		description: 'Retrieve all chapters for a specific book',
+		summary: 'Obter capitulos do livro',
+		description: 'Retorna capitulos de um livro especifico',
 	})
 	@ApiParam({
 		name: 'idBook',
-		description: 'Book unique identifier',
+		description: 'Identificador unico do livro',
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
 	@ApiQuery({
@@ -208,11 +210,11 @@ export class BooksController {
 	})
 	@ApiResponse({
 		status: 200,
-		description: 'Chapters retrieved successfully',
+		description: 'Capitulos retornados com sucesso',
 		type: BookChaptersCursorPageDto,
 	})
-	@ApiResponse({ status: 404, description: 'Book not found' })
-	@ApiResponse({ status: 429, description: 'Too many requests' })
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
+	@ApiResponse(COMMON_RESPONSES.TOO_MANY_REQUESTS)
 	@UseGuards(OptionalAuthGuard)
 	getBookChapters(
 		@Param('idBook') id: string,
@@ -232,17 +234,17 @@ export class BooksController {
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(3600)
 	@ApiOperation({
-		summary: 'Get book covers',
-		description: 'Retrieve all available covers for a book',
+		summary: 'Obter capas do livro',
+		description: 'Retorna todas as capas disponiveis de um livro',
 	})
 	@ApiParam({
 		name: 'idBook',
-		description: 'Book unique identifier',
+		description: 'Identificador unico do livro',
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
-	@ApiResponse({ status: 200, description: 'Covers retrieved successfully' })
-	@ApiResponse({ status: 404, description: 'Book not found' })
-	@ApiResponse({ status: 429, description: 'Too many requests' })
+	@ApiResponse({ status: 200, description: 'Capas retornadas com sucesso' })
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
+	@ApiResponse(COMMON_RESPONSES.TOO_MANY_REQUESTS)
 	@UseGuards(OptionalAuthGuard)
 	getBookCovers(
 		@Param('idBook') id: string,
@@ -260,22 +262,22 @@ export class BooksController {
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(600)
 	@ApiOperation({
-		summary: 'Get book relationships',
+		summary: 'Obter relacionamentos do livro',
 		description:
-			'Retrieve related books for a specific book, applying user access policies and sensitive content limits',
+			'Retorna livros relacionados a um livro especifico, aplicando politicas de acesso e limites de conteudo sensivel',
 	})
 	@ApiParam({
 		name: 'idBook',
-		description: 'Book unique identifier',
+		description: 'Identificador unico do livro',
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
 	@ApiResponse({
 		status: 200,
-		description: 'Relationships retrieved successfully',
+		description: 'Relacionamentos retornados com sucesso',
 		type: BookRelationshipsPageDto,
 	})
-	@ApiResponse({ status: 404, description: 'Book not found' })
-	@ApiResponse({ status: 429, description: 'Too many requests' })
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
+	@ApiResponse(COMMON_RESPONSES.TOO_MANY_REQUESTS)
 	@UseGuards(OptionalAuthGuard)
 	getBookRelationships(
 		@Param('idBook') id: string,
@@ -295,21 +297,20 @@ export class BooksController {
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(1800)
 	@ApiOperation({
-		summary: 'Get book information',
-		description:
-			'Retrieve additional information and metadata about a book',
+		summary: 'Obter informacoes do livro',
+		description: 'Retorna informacoes adicionais e metadados de um livro',
 	})
 	@ApiParam({
 		name: 'idBook',
-		description: 'Book unique identifier',
+		description: 'Identificador unico do livro',
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
 	@ApiResponse({
 		status: 200,
-		description: 'Book information retrieved successfully',
+		description: 'Informacoes do livro retornadas com sucesso',
 	})
-	@ApiResponse({ status: 404, description: 'Book not found' })
-	@ApiResponse({ status: 429, description: 'Too many requests' })
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
+	@ApiResponse(COMMON_RESPONSES.TOO_MANY_REQUESTS)
 	@UseGuards(OptionalAuthGuard)
 	getBookInfos(
 		@Param('idBook') id: string,

@@ -34,6 +34,11 @@ interface BookProgressDeletePayload {
 	bookId: string;
 }
 
+interface WsUser {
+	id: string;
+	email: string;
+}
+
 /**
  * Gateway WebSocket para sincronização em tempo real do progresso de leitura
  *
@@ -71,15 +76,15 @@ export class ReadingProgressGateway
 
 	constructor(private readonly progressService: ReadingProgressService) {}
 
-	afterInit(server: Server) {
+	afterInit() {
 		this.logger.log(
 			'WebSocket Gateway initialized on namespace /users/me/reading-progress',
 		);
 	}
 
-	handleConnection(client: Socket) {
+	async handleConnection(client: Socket) {
 		try {
-			const user = client.data.user;
+			const user = (client.data as { user?: WsUser }).user;
 			if (!user?.id) {
 				this.logger.warn(
 					`Client ${client.id} connected without valid user`,
@@ -91,7 +96,7 @@ export class ReadingProgressGateway
 			const userId = user.id;
 
 			// Adiciona cliente à room do usuário
-			client.join(`user:${userId}`);
+			await client.join(`user:${userId}`);
 
 			// Rastreia conexão
 			if (!this.connectedClients.has(userId)) {
@@ -111,15 +116,17 @@ export class ReadingProgressGateway
 				message: 'Connected to reading progress sync',
 				userId,
 			});
-		} catch (error) {
-			this.logger.error(`Error in handleConnection: ${error.message}`);
+		} catch (error: unknown) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+			this.logger.error(`Error in handleConnection: ${errorMessage}`);
 			client.disconnect();
 		}
 	}
 
 	handleDisconnect(client: Socket) {
 		try {
-			const user = client.data.user;
+			const user = (client.data as { user?: WsUser }).user;
 			if (user?.id) {
 				const clientData = this.connectedClients.get(user.id);
 				if (clientData) {
@@ -132,8 +139,10 @@ export class ReadingProgressGateway
 					`Client disconnected: ${client.id} for user ${user.id}`,
 				);
 			}
-		} catch (error) {
-			this.logger.error(`Error in handleDisconnect: ${error.message}`);
+		} catch (error: unknown) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+			this.logger.error(`Error in handleDisconnect: ${errorMessage}`);
 		}
 	}
 
@@ -146,7 +155,8 @@ export class ReadingProgressGateway
 		@MessageBody() data: SaveReadingProgressDto,
 	) {
 		try {
-			const userId = client.data.user?.id;
+			const user = (client.data as { user?: WsUser }).user;
+			const userId = user?.id;
 			if (!userId) {
 				client.emit('error', { message: 'User not authenticated' });
 				return;
@@ -163,9 +173,11 @@ export class ReadingProgressGateway
 			this.logger.debug(
 				`Progress updated via WS: user=${userId}, chapter=${data.chapterId}, page=${data.pageIndex}`,
 			);
-		} catch (error) {
+		} catch (error: unknown) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
 			this.logger.error(
-				`Error handling progress update: ${error.message}`,
+				`Error handling progress update: ${errorMessage}`,
 			);
 			client.emit('error', { message: 'Failed to save progress' });
 		}
@@ -177,7 +189,8 @@ export class ReadingProgressGateway
 	@SubscribeMessage('progress:sync')
 	async handleSyncRequest(@ConnectedSocket() client: Socket) {
 		try {
-			const userId = client.data.user?.id;
+			const user = (client.data as { user?: WsUser }).user;
+			const userId = user?.id;
 			if (!userId) {
 				client.emit('error', { message: 'User not authenticated' });
 				return;
@@ -193,8 +206,10 @@ export class ReadingProgressGateway
 			this.logger.debug(
 				`Full sync sent to user ${userId}: ${allProgress.length} items`,
 			);
-		} catch (error) {
-			this.logger.error(`Error handling sync request: ${error.message}`);
+		} catch (error: unknown) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+			this.logger.error(`Error handling sync request: ${errorMessage}`);
 			client.emit('error', { message: 'Failed to sync progress' });
 		}
 	}
@@ -208,7 +223,8 @@ export class ReadingProgressGateway
 		@MessageBody() data: { bookId: string },
 	) {
 		try {
-			const userId = client.data.user?.id;
+			const user = (client.data as { user?: WsUser }).user;
+			const userId = user?.id;
 			if (!userId) {
 				client.emit('error', { message: 'User not authenticated' });
 				return;
@@ -219,9 +235,11 @@ export class ReadingProgressGateway
 				data.bookId,
 			);
 			client.emit('progress:book:response', bookProgress);
-		} catch (error) {
+		} catch (error: unknown) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
 			this.logger.error(
-				`Error handling book progress request: ${error.message}`,
+				`Error handling book progress request: ${errorMessage}`,
 			);
 			client.emit('error', { message: 'Failed to get book progress' });
 		}
@@ -236,7 +254,8 @@ export class ReadingProgressGateway
 		@MessageBody() data: { chapterId: string },
 	) {
 		try {
-			const userId = client.data.user?.id;
+			const user = (client.data as { user?: WsUser }).user;
+			const userId = user?.id;
 			if (!userId) {
 				client.emit('error', { message: 'User not authenticated' });
 				return;
@@ -250,9 +269,11 @@ export class ReadingProgressGateway
 				chapterId: data.chapterId,
 				progress,
 			});
-		} catch (error) {
+		} catch (error: unknown) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
 			this.logger.error(
-				`Error handling chapter progress request: ${error.message}`,
+				`Error handling chapter progress request: ${errorMessage}`,
 			);
 			client.emit('error', { message: 'Failed to get chapter progress' });
 		}
@@ -269,9 +290,11 @@ export class ReadingProgressGateway
 			this.server
 				.to(`user:${payload.userId}`)
 				.emit('progress:synced', payload.progress);
-		} catch (error) {
+		} catch (error: unknown) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
 			this.logger.error(
-				`Failed to broadcast progress update: ${error.message}`,
+				`Failed to broadcast progress update: ${errorMessage}`,
 			);
 		}
 	}
@@ -285,9 +308,11 @@ export class ReadingProgressGateway
 			this.server
 				.to(`user:${payload.userId}`)
 				.emit('progress:deleted', { chapterId: payload.chapterId });
-		} catch (error) {
+		} catch (error: unknown) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
 			this.logger.error(
-				`Failed to broadcast progress deletion: ${error.message}`,
+				`Failed to broadcast progress deletion: ${errorMessage}`,
 			);
 		}
 	}
@@ -301,9 +326,11 @@ export class ReadingProgressGateway
 			this.server
 				.to(`user:${payload.userId}`)
 				.emit('progress:book:deleted', { bookId: payload.bookId });
-		} catch (error) {
+		} catch (error: unknown) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
 			this.logger.error(
-				`Failed to broadcast book progress deletion: ${error.message}`,
+				`Failed to broadcast book progress deletion: ${errorMessage}`,
 			);
 		}
 	}

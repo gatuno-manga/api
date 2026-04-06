@@ -8,6 +8,7 @@ import {
 	IsString,
 	IsUUID,
 	Max,
+	MaxLength,
 	Min,
 } from 'class-validator';
 import { AccessPolicyEffectEnum } from '../enum/access-policy-effect.enum';
@@ -66,6 +67,7 @@ export class CreateAccessPolicyDto {
 
 	@IsOptional()
 	@IsString()
+	@MaxLength(255)
 	@ApiPropertyOptional({ example: 'Liberacao manual de moderacao' })
 	reason?: string;
 }

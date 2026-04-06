@@ -98,13 +98,13 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 		return this.waitForBrowser();
 	}
 
-	async release(pooledBrowser: PooledBrowser): Promise<void> {
+	release(pooledBrowser: PooledBrowser): Promise<void> {
 		const browser = this.pool.get(pooledBrowser.id);
 		if (!browser) {
 			this.logger.warn(
 				`Attempted to release unknown browser: ${pooledBrowser.id}`,
 			);
-			return;
+			return Promise.resolve();
 		}
 
 		browser.activeContexts = Math.max(0, browser.activeContexts - 1);
@@ -132,10 +132,11 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 			!browser.isRestarting
 		) {
 			void this.restartBrowser(browser.id);
-			return;
+			return Promise.resolve();
 		}
 
 		this.processWaitQueue();
+		return Promise.resolve();
 	}
 
 	incrementContextCount(pooledBrowser: PooledBrowser): void {

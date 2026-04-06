@@ -49,7 +49,7 @@ export class HealthController {
 				}
 			},
 			// Memória Detalhada para diagnóstico
-			async () => {
+			() => {
 				const mem = process.memoryUsage();
 				const toMB = (bytes: number) =>
 					`${(bytes / 1024 / 1024).toFixed(2)} MB`;

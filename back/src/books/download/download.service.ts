@@ -292,8 +292,13 @@ export class DownloadService {
 	 * Remove caracteres inválidos de nomes de arquivo
 	 */
 	private sanitizeFileName(name: string): string {
-		// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional sanitization of control characters
-		return name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').trim();
+		return name
+			.replace(
+				// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional sanitization of control characters
+				/[<>:"/\\|?*\x00-\x1F]/g,
+				'_',
+			)
+			.trim();
 	}
 
 	/**

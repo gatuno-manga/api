@@ -6,6 +6,7 @@ import {
 	ApiResponse,
 	ApiTags,
 } from '@nestjs/swagger';
+import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Roles } from 'src/auth/decorator/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { RolesEnum } from 'src/users/enum/roles.enum';
@@ -15,6 +16,7 @@ import { BooksService } from './books.service';
 @Controller('books')
 @UseGuards(JwtAuthGuard)
 @Roles(RolesEnum.ADMIN)
+@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 export class AdminBooksDashboardController {
 	constructor(private readonly booksService: BooksService) {}
 
@@ -27,7 +29,6 @@ export class AdminBooksDashboardController {
 		status: 200,
 		description: 'Dashboard data retrieved successfully',
 	})
-	@ApiBearerAuth('JWT-auth')
 	@UseInterceptors(CacheInterceptor)
 	@CacheTTL(60 * 60) // 1h
 	dashboard() {
@@ -43,7 +44,6 @@ export class AdminBooksDashboardController {
 		status: 200,
 		description: 'Processing status retrieved successfully',
 	})
-	@ApiBearerAuth('JWT-auth')
 	processBookDashboard() {
 		return this.booksService.getProcessBook();
 	}
@@ -145,7 +145,6 @@ export class AdminBooksDashboardController {
 			},
 		},
 	})
-	@ApiBearerAuth('JWT-auth')
 	async getQueueStats() {
 		return this.booksService.getQueueStats();
 	}

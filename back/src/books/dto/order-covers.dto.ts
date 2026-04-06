@@ -1,12 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsString, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsNumber, IsUUID, Min } from 'class-validator';
 
 export class OrderCoversDto {
 	@ApiProperty({
 		description: 'Cover unique identifier',
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
-	@IsString()
+	@IsUUID('4')
 	id: string;
 
 	@ApiProperty({
@@ -14,6 +15,7 @@ export class OrderCoversDto {
 		example: 0,
 		minimum: 0,
 	})
+	@Type(() => Number)
 	@IsNumber()
 	@Min(0)
 	index: number;

@@ -21,10 +21,7 @@ export class MarkdownDownloadStrategy implements DownloadStrategy {
 		return 'md';
 	}
 
-	async generate(
-		chapters: Chapter[],
-		fileName: string,
-	): Promise<StreamableFile> {
+	generate(chapters: Chapter[], fileName: string): Promise<StreamableFile> {
 		this.logger.log(
 			`Generating Markdown download for ${chapters.length} chapters: ${fileName}`,
 		);

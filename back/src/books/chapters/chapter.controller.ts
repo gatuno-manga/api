@@ -11,7 +11,6 @@ import {
 	UseInterceptors,
 } from '@nestjs/common';
 import {
-	ApiBearerAuth,
 	ApiBody,
 	ApiOperation,
 	ApiParam,
@@ -21,9 +20,10 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
-import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { OptionalAuthGuard } from 'src/auth/guard/optional-auth.guard';
 import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-cache.interceptor';
+import { AuthenticatedApi } from 'src/common/swagger/auth-api.decorators';
+import { COMMON_RESPONSES } from 'src/common/swagger/common-responses';
 import { ChapterService } from './chapter.service';
 
 @ApiTags('Chapters')
@@ -36,17 +36,17 @@ export class ChapterController {
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(600)
 	@ApiOperation({
-		summary: 'Get chapter by ID',
-		description: 'Retrieve chapter content and details',
+		summary: 'Obter capitulo por ID',
+		description: 'Retorna conteudo e detalhes do capitulo',
 	})
 	@ApiParam({
 		name: 'idChapter',
-		description: 'Chapter unique identifier',
+		description: 'Identificador unico do capitulo',
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
-	@ApiResponse({ status: 200, description: 'Chapter found' })
-	@ApiResponse({ status: 404, description: 'Chapter not found' })
-	@ApiResponse({ status: 429, description: 'Too many requests' })
+	@ApiResponse({ status: 200, description: 'Capitulo encontrado' })
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
+	@ApiResponse(COMMON_RESPONSES.TOO_MANY_REQUESTS)
 	@UseGuards(OptionalAuthGuard)
 	getChapter(
 		@Param('idChapter') idChapter: string,
@@ -56,54 +56,54 @@ export class ChapterController {
 	}
 
 	@Patch(':idChapter/reset/')
+	@AuthenticatedApi()
 	@ApiOperation({
-		summary: 'Reset chapter',
-		description: 'Reset chapter cache and data',
+		summary: 'Resetar capitulo',
+		description: 'Reseta cache e dados do capitulo',
 	})
 	@ApiParam({
 		name: 'idChapter',
-		description: 'Chapter unique identifier',
+		description: 'Identificador unico do capitulo',
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
-	@ApiResponse({ status: 200, description: 'Chapter reset successfully' })
-	@ApiResponse({ status: 404, description: 'Chapter not found' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiBearerAuth('JWT-auth')
-	@UseGuards(JwtAuthGuard)
+	@ApiResponse({ status: 200, description: 'Capitulo resetado com sucesso' })
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
 	resetChapter(@Param('idChapter') idChapter: string) {
 		return this.chapterService.resetChapter(idChapter);
 	}
 
 	@Patch('/reset')
+	@AuthenticatedApi()
 	@ApiOperation({
-		summary: 'Reset multiple chapters',
-		description: 'Reset cache and data for multiple chapters',
+		summary: 'Resetar multiplos capitulos',
+		description: 'Reseta cache e dados de varios capitulos',
 	})
-	@ApiResponse({ status: 200, description: 'Chapters reset successfully' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiBearerAuth('JWT-auth')
-	@UseGuards(JwtAuthGuard)
+	@ApiResponse({
+		status: 200,
+		description: 'Capitulos resetados com sucesso',
+	})
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
 	resetAllChapters(@Body() body: string[]) {
 		return this.chapterService.resetAllChapters(body);
 	}
 
 	@Get('/:idChapter/read/')
 	@Throttle({ medium: { limit: 50, ttl: 60000 } })
+	@AuthenticatedApi()
 	@ApiOperation({
-		summary: 'Mark chapter as read',
-		description: 'Mark a chapter as read for the current user',
+		summary: 'Marcar capitulo como lido',
+		description: 'Marca um capitulo como lido para o usuario atual',
 	})
 	@ApiParam({
 		name: 'idChapter',
-		description: 'Chapter unique identifier',
+		description: 'Identificador unico do capitulo',
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
-	@ApiResponse({ status: 200, description: 'Chapter marked as read' })
-	@ApiResponse({ status: 404, description: 'Chapter not found' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiResponse({ status: 429, description: 'Too many requests' })
-	@ApiBearerAuth('JWT-auth')
-	@UseGuards(JwtAuthGuard)
+	@ApiResponse({ status: 200, description: 'Capitulo marcado como lido' })
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
+	@ApiResponse(COMMON_RESPONSES.TOO_MANY_REQUESTS)
 	markChapterAsRead(
 		@Param('idChapter') idChapter: string,
 		@CurrentUser() user: CurrentUserDto,
@@ -113,21 +113,20 @@ export class ChapterController {
 
 	@Delete('/:idChapter/read/')
 	@Throttle({ medium: { limit: 50, ttl: 60000 } })
+	@AuthenticatedApi()
 	@ApiOperation({
-		summary: 'Mark chapter as unread',
-		description: 'Mark a chapter as unread for the current user',
+		summary: 'Marcar capitulo como nao lido',
+		description: 'Marca um capitulo como nao lido para o usuario atual',
 	})
 	@ApiParam({
 		name: 'idChapter',
-		description: 'Chapter unique identifier',
+		description: 'Identificador unico do capitulo',
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
-	@ApiResponse({ status: 200, description: 'Chapter marked as unread' })
-	@ApiResponse({ status: 404, description: 'Chapter not found' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiResponse({ status: 429, description: 'Too many requests' })
-	@ApiBearerAuth('JWT-auth')
-	@UseGuards(JwtAuthGuard)
+	@ApiResponse({ status: 200, description: 'Capitulo marcado como nao lido' })
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
+	@ApiResponse(COMMON_RESPONSES.TOO_MANY_REQUESTS)
 	markChapterAsUnread(
 		@Param('idChapter') idChapter: string,
 		@CurrentUser() user: CurrentUserDto,
@@ -137,14 +136,13 @@ export class ChapterController {
 
 	@Post('batch/read')
 	@Throttle({ medium: { limit: 20, ttl: 60000 } })
+	@AuthenticatedApi()
 	@ApiOperation({
-		summary: 'Mark multiple chapters as read',
-		description: 'Mark multiple chapters as read for the current user',
+		summary: 'Marcar multiplos capitulos como lidos',
+		description: 'Marca varios capitulos como lidos para o usuario atual',
 	})
-	@ApiResponse({ status: 200, description: 'Chapters marked as read' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiBearerAuth('JWT-auth')
-	@UseGuards(JwtAuthGuard)
+	@ApiResponse({ status: 200, description: 'Capitulos marcados como lidos' })
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
 	markChaptersAsRead(
 		@Body() chapterIds: string[],
 		@CurrentUser() user: CurrentUserDto,
@@ -154,14 +152,17 @@ export class ChapterController {
 
 	@Post('batch/unread')
 	@Throttle({ medium: { limit: 20, ttl: 60000 } })
+	@AuthenticatedApi()
 	@ApiOperation({
-		summary: 'Mark multiple chapters as unread',
-		description: 'Mark multiple chapters as unread for the current user',
+		summary: 'Marcar multiplos capitulos como nao lidos',
+		description:
+			'Marca varios capitulos como nao lidos para o usuario atual',
 	})
-	@ApiResponse({ status: 200, description: 'Chapters marked as unread' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiBearerAuth('JWT-auth')
-	@UseGuards(JwtAuthGuard)
+	@ApiResponse({
+		status: 200,
+		description: 'Capitulos marcados como nao lidos',
+	})
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
 	markChaptersAsUnread(
 		@Body() chapterIds: string[],
 		@CurrentUser() user: CurrentUserDto,
@@ -173,22 +174,21 @@ export class ChapterController {
 	}
 
 	@Get('less-pages/:pages')
+	@AuthenticatedApi()
 	@ApiOperation({
-		summary: 'Get chapters with few pages',
-		description: 'List chapters with less than specified number of pages',
+		summary: 'Listar capitulos com poucas paginas',
+		description: 'Lista capitulos com menos paginas que o valor informado',
 	})
 	@ApiParam({
 		name: 'pages',
-		description: 'Maximum number of pages',
+		description: 'Quantidade maxima de paginas',
 		example: 10,
 	})
 	@ApiResponse({
 		status: 200,
-		description: 'Chapters retrieved successfully',
+		description: 'Capitulos retornados com sucesso',
 	})
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiBearerAuth('JWT-auth')
-	@UseGuards(JwtAuthGuard)
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
 	getChaptersWithLessPages(@Param('pages') pages: number) {
 		return this.chapterService.listLessPages(pages);
 	}
@@ -196,17 +196,16 @@ export class ChapterController {
 	@Post('batch/data')
 	@Throttle({ long: { limit: 100, ttl: 60000 } })
 	@ApiOperation({
-		summary: 'Get multiple chapters data',
+		summary: 'Obter dados de multiplos capitulos',
 		description:
-			'Retrieve content and details for multiple chapters at once (Optimized for offline download)',
+			'Retorna conteudo e detalhes de varios capitulos de uma vez (otimizado para download offline)',
 	})
-	@ApiBody({ type: [String], description: 'Array of chapter IDs' })
+	@ApiBody({ type: [String], description: 'Array de IDs de capitulos' })
 	@ApiResponse({
 		status: 200,
-		description: 'Chapters data retrieved successfully',
+		description: 'Dados dos capitulos retornados com sucesso',
 	})
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiBearerAuth('JWT-auth')
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
 	@UseGuards(OptionalAuthGuard)
 	getChaptersBatch(@Body() chapterIds: string[]) {
 		return this.chapterService.getChaptersBatch(chapterIds);
