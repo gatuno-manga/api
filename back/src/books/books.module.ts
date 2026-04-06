@@ -9,6 +9,7 @@ import { FilesModule } from 'src/files/files.module';
 import { LoggingModule } from 'src/logging/logging.module';
 import { MetricsModule } from 'src/metrics/metrics.module';
 import { ScrapingModule } from 'src/scraping/scraping.module';
+import { UsersModule } from 'src/users/users.module';
 import { User } from 'src/users/entities/user.entity';
 import { AdminBooksDashboardController } from './admin-books-dashboard.controller';
 import { AdminBooksUploadController } from './admin-books-upload.controller';
@@ -64,6 +65,7 @@ import { TagsService } from './tags/tags.service';
 		MetricsModule,
 		ScheduleModule.forRoot(),
 		DownloadModule,
+		UsersModule,
 		TypeOrmModule.forFeature([
 			Book,
 			Page,
