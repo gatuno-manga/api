@@ -25,6 +25,7 @@ import { Tag } from '../entities/tags.entity';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { SensitiveContentService } from '../sensitive-content/sensitive-content.service';
 import { FilterStrategy } from '../strategies';
+import { AdminUsersService } from 'src/users/admin-users.service';
 
 /**
  * Service responsável por consultas e buscas de livros
@@ -56,11 +57,46 @@ export class BookQueryService {
 		private readonly coverImageQueue: Queue<QueueCoverProcessorDto>,
 		@InjectQueue('fix-chapter-queue')
 		private readonly fixChapterQueue: Queue<{ chapterId: string }>,
+		private readonly adminUsersService: AdminUsersService,
 	) {}
 
 	/** Cache de curto prazo para getQueueStats (TTL: 30s) */
 	private queueStatsCache: { data: unknown; expiresAt: number } | null = null;
 	private readonly QUEUE_STATS_TTL_MS = 30_000;
+
+	private async ensureUserCanAccessBook(
+		book: Pick<Book, 'id' | 'sensitiveContent' | 'tags'>,
+		maxWeightSensitiveContent: number,
+		userId?: string,
+	) {
+		const result = await this.adminUsersService.evaluateAccessForBook({
+			userId,
+			bookId: book.id,
+			bookTagIds: (book.tags || []).map((tag) => tag.id),
+			bookSensitiveContentIds: (book.sensitiveContent || []).map(
+				(sensitiveContent) => sensitiveContent.id,
+			),
+			baseMaxWeightSensitiveContent: maxWeightSensitiveContent,
+		});
+
+		if (result.blocked) {
+			throw new ForbiddenException(
+				`Book with id ${book.id} is blocked by access policy`,
+			);
+		}
+
+		const bookWeight = book.sensitiveContent.reduce(
+			(sum, sensitive) => sum + (sensitive.weight || 0),
+			0,
+		);
+
+		if (bookWeight > result.effectiveMaxWeightSensitiveContent) {
+			this.logger.warn(`Book with id ${book.id} exceeds max weight`);
+			throw new ForbiddenException(
+				`Book with id ${book.id} exceeds max weight`,
+			);
+		}
+	}
 
 	/**
 	 * Aplica filtros dinâmicos aos livros
@@ -90,8 +126,23 @@ export class BookQueryService {
 	async getAllBooks(
 		options: BookPageOptionsDto,
 		maxWeightSensitiveContent: number,
+		userId: string | undefined,
 		filterStrategies: FilterStrategy[],
 	): Promise<PageDto<Omit<Book, 'covers'> & { cover: string | null }>> {
+		const accessContext =
+			await this.adminUsersService.evaluateListAccessContext({
+				userId,
+				baseMaxWeightSensitiveContent: maxWeightSensitiveContent,
+			});
+
+		if (accessContext.blockedAll) {
+			const metadata = new MetadataPageDto();
+			metadata.total = 0;
+			metadata.page = options.page;
+			metadata.lastPage = 0;
+			return new PageDto([], metadata);
+		}
+
 		const queryBuilder = this.bookRepository
 			.createQueryBuilder('book')
 			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
@@ -124,9 +175,40 @@ export class BookQueryService {
 		await this.applyBookFilters(
 			queryBuilder,
 			options,
-			maxWeightSensitiveContent,
+			accessContext.effectiveMaxWeightSensitiveContent,
 			filterStrategies,
 		);
+
+		if (accessContext.denyBookIds.length > 0) {
+			queryBuilder.andWhere('book.id NOT IN (:...denyBookIds)', {
+				denyBookIds: accessContext.denyBookIds,
+			});
+		}
+
+		if (accessContext.denyTagIds.length > 0) {
+			queryBuilder.andWhere(
+				`book.id NOT IN (
+					SELECT bt.booksId
+					FROM books_tags_tags bt
+					WHERE bt.tagsId IN (:...denyTagIds)
+				)`,
+				{ denyTagIds: accessContext.denyTagIds },
+			);
+		}
+
+		if (accessContext.denySensitiveContentIds.length > 0) {
+			queryBuilder.andWhere(
+				`book.id NOT IN (
+					SELECT bs.booksId
+					FROM books_sensitive_content_sensitive_content bs
+					WHERE bs.sensitiveContentId IN (:...denySensitiveContentIds)
+				)`,
+				{
+					denySensitiveContentIds:
+						accessContext.denySensitiveContentIds,
+				},
+			);
+		}
 
 		const orderByField = options.orderBy || 'createdAt';
 		const orderDirection = options.order || 'DESC';
@@ -183,8 +265,20 @@ export class BookQueryService {
 	async getRandomBook(
 		options: BookPageOptionsDto,
 		maxWeightSensitiveContent: number,
+		userId: string | undefined,
 		filterStrategies: FilterStrategy[],
 	): Promise<{ id: string }> {
+		const accessContext =
+			await this.adminUsersService.evaluateListAccessContext({
+				userId,
+				baseMaxWeightSensitiveContent: maxWeightSensitiveContent,
+			});
+
+		if (accessContext.blockedAll) {
+			this.logger.warn('No books found: blocked by global deny policy');
+			throw new NotFoundException('No books found matching the filters');
+		}
+
 		const queryBuilder = this.bookRepository
 			.createQueryBuilder('book')
 			.leftJoin('book.sensitiveContent', 'sensitiveContent')
@@ -195,9 +289,40 @@ export class BookQueryService {
 		await this.applyBookFilters(
 			queryBuilder,
 			options,
-			maxWeightSensitiveContent,
+			accessContext.effectiveMaxWeightSensitiveContent,
 			filterStrategies,
 		);
+
+		if (accessContext.denyBookIds.length > 0) {
+			queryBuilder.andWhere('book.id NOT IN (:...denyBookIds)', {
+				denyBookIds: accessContext.denyBookIds,
+			});
+		}
+
+		if (accessContext.denyTagIds.length > 0) {
+			queryBuilder.andWhere(
+				`book.id NOT IN (
+					SELECT bt.booksId
+					FROM books_tags_tags bt
+					WHERE bt.tagsId IN (:...denyTagIds)
+				)`,
+				{ denyTagIds: accessContext.denyTagIds },
+			);
+		}
+
+		if (accessContext.denySensitiveContentIds.length > 0) {
+			queryBuilder.andWhere(
+				`book.id NOT IN (
+					SELECT bs.booksId
+					FROM books_sensitive_content_sensitive_content bs
+					WHERE bs.sensitiveContentId IN (:...denySensitiveContentIds)
+				)`,
+				{
+					denySensitiveContentIds:
+						accessContext.denySensitiveContentIds,
+				},
+			);
+		}
 
 		const count = await queryBuilder.getCount();
 
@@ -220,7 +345,7 @@ export class BookQueryService {
 	/**
 	 * Busca um livro por ID
 	 */
-	async getOne(id: string, maxWeightSensitiveContent = 0) {
+	async getOne(id: string, maxWeightSensitiveContent = 0, userId?: string) {
 		const book = await this.bookRepository
 			.createQueryBuilder('book')
 			.leftJoinAndSelect('book.tags', 'tags')
@@ -258,16 +383,11 @@ export class BookQueryService {
 			throw new NotFoundException(`Book with id ${id} not found`);
 		}
 
-		const maxWeight = book.sensitiveContent.reduce(
-			(sum, sc) => sum + (sc.weight || 0),
-			0,
+		await this.ensureUserCanAccessBook(
+			book,
+			maxWeightSensitiveContent,
+			userId,
 		);
-		if (maxWeight > maxWeightSensitiveContent) {
-			this.logger.warn(`Book with id ${id} exceeds max weight`);
-			throw new ForbiddenException(
-				`Book with id ${id} exceeds max weight`,
-			);
-		}
 
 		const coverUrl = book.covers?.[0]?.url || '';
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -291,8 +411,10 @@ export class BookQueryService {
 		const book = await this.bookRepository
 			.createQueryBuilder('book')
 			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
+			.leftJoinAndSelect('book.tags', 'tags')
 			.where('book.id = :id', { id })
-			.select(['book.id', 'sensitiveContent.weight'])
+			.select(['book.id', 'sensitiveContent.weight', 'tags.id'])
+			.addSelect('sensitiveContent.id')
 			.getOne();
 
 		if (!book) {
@@ -300,16 +422,11 @@ export class BookQueryService {
 			throw new NotFoundException(`Book with id ${id} not found`);
 		}
 
-		const maxWeight = book.sensitiveContent.reduce(
-			(sum, sc) => sum + (sc.weight || 0),
-			0,
+		await this.ensureUserCanAccessBook(
+			book,
+			maxWeightSensitiveContent,
+			userid,
 		);
-		if (maxWeight > maxWeightSensitiveContent) {
-			this.logger.warn(`Book with id ${id} exceeds max weight`);
-			throw new ForbiddenException(
-				`Book with id ${id} exceeds max weight`,
-			);
-		}
 
 		const pageLimit = options.limit ?? 200;
 		const cursorIndex = this.decodeCursor(options.cursor);
@@ -421,16 +538,23 @@ export class BookQueryService {
 	/**
 	 * Busca capas de um livro
 	 */
-	async getCovers(id: string, maxWeightSensitiveContent = 0) {
+	async getCovers(
+		id: string,
+		maxWeightSensitiveContent = 0,
+		userId?: string,
+	) {
 		const book = await this.bookRepository
 			.createQueryBuilder('book')
 			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
+			.leftJoinAndSelect('book.tags', 'tags')
 			.leftJoinAndSelect('book.covers', 'covers')
 			.where('book.id = :id', { id })
 			.orderBy('covers.index', 'ASC')
 			.select([
 				'book.id',
+				'sensitiveContent.id',
 				'sensitiveContent.weight',
+				'tags.id',
 				'covers.id',
 				'covers.url',
 				'covers.title',
@@ -444,16 +568,11 @@ export class BookQueryService {
 			throw new NotFoundException(`Book with id ${id} not found`);
 		}
 
-		const maxWeight = book.sensitiveContent.reduce(
-			(sum, sc) => sum + (sc.weight || 0),
-			0,
+		await this.ensureUserCanAccessBook(
+			book,
+			maxWeightSensitiveContent,
+			userId,
 		);
-		if (maxWeight > maxWeightSensitiveContent) {
-			this.logger.warn(`Book with id ${id} exceeds max weight`);
-			throw new ForbiddenException(
-				`Book with id ${id} exceeds max weight`,
-			);
-		}
 
 		return book.covers.map((cover) => ({
 			...cover,
@@ -464,10 +583,11 @@ export class BookQueryService {
 	/**
 	 * Busca informações detalhadas de um livro
 	 */
-	async getInfos(id: string, maxWeightSensitiveContent = 0) {
+	async getInfos(id: string, maxWeightSensitiveContent = 0, userId?: string) {
 		const book = await this.bookRepository
 			.createQueryBuilder('book')
 			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
+			.leftJoinAndSelect('book.tags', 'tags')
 			.leftJoinAndSelect('book.authors', 'authors')
 			.leftJoinAndSelect('book.covers', 'covers')
 			.where('book.id = :id', { id })
@@ -478,7 +598,9 @@ export class BookQueryService {
 				'book.scrapingStatus',
 				'book.createdAt',
 				'book.updatedAt',
+				'sensitiveContent.id',
 				'sensitiveContent.weight',
+				'tags.id',
 				'authors.id',
 				'authors.name',
 			])
@@ -489,16 +611,11 @@ export class BookQueryService {
 			throw new NotFoundException(`Book with id ${id} not found`);
 		}
 
-		const maxWeight = book.sensitiveContent.reduce(
-			(sum, sc) => sum + (sc.weight || 0),
-			0,
+		await this.ensureUserCanAccessBook(
+			book,
+			maxWeightSensitiveContent,
+			userId,
 		);
-		if (maxWeight > maxWeightSensitiveContent) {
-			this.logger.warn(`Book with id ${id} exceeds max weight`);
-			throw new ForbiddenException(
-				`Book with id ${id} exceeds max weight`,
-			);
-		}
 
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { sensitiveContent, ...rest } = book;

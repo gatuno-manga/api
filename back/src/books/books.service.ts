@@ -97,10 +97,12 @@ export class BooksService {
 	async getAllBooks(
 		options: BookPageOptionsDto,
 		maxWeightSensitiveContent = 0,
+		userId?: string,
 	): Promise<PageDto<Omit<Book, 'covers'> & { cover: string | null }>> {
 		return this.bookQueryService.getAllBooks(
 			options,
 			maxWeightSensitiveContent,
+			userId,
 			this.filterStrategies,
 		);
 	}
@@ -108,16 +110,22 @@ export class BooksService {
 	async getRandomBook(
 		options: BookPageOptionsDto,
 		maxWeightSensitiveContent = 0,
+		userId?: string,
 	): Promise<{ id: string }> {
 		return this.bookQueryService.getRandomBook(
 			options,
 			maxWeightSensitiveContent,
+			userId,
 			this.filterStrategies,
 		);
 	}
 
-	async getOne(id: string, maxWeightSensitiveContent = 0) {
-		return this.bookQueryService.getOne(id, maxWeightSensitiveContent);
+	async getOne(id: string, maxWeightSensitiveContent = 0, userId?: string) {
+		return this.bookQueryService.getOne(
+			id,
+			maxWeightSensitiveContent,
+			userId,
+		);
 	}
 
 	async getChapters(
@@ -134,12 +142,24 @@ export class BooksService {
 		);
 	}
 
-	async getCovers(id: string, maxWeightSensitiveContent = 0) {
-		return this.bookQueryService.getCovers(id, maxWeightSensitiveContent);
+	async getCovers(
+		id: string,
+		maxWeightSensitiveContent = 0,
+		userId?: string,
+	) {
+		return this.bookQueryService.getCovers(
+			id,
+			maxWeightSensitiveContent,
+			userId,
+		);
 	}
 
-	async getInfos(id: string, maxWeightSensitiveContent = 0) {
-		return this.bookQueryService.getInfos(id, maxWeightSensitiveContent);
+	async getInfos(id: string, maxWeightSensitiveContent = 0, userId?: string) {
+		return this.bookQueryService.getInfos(
+			id,
+			maxWeightSensitiveContent,
+			userId,
+		);
 	}
 
 	async verifyBook(idBook: string) {

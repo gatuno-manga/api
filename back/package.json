@@ -116,6 +116,8 @@
 		"moduleFileExtensions": ["js", "json", "ts"],
 		"rootDir": "src",
 		"testRegex": ".*\\.spec\\.ts$",
+		"silent": true,
+		"setupFilesAfterEnv": ["<rootDir>/../test/jest.setup.ts"],
 		"transform": {
 			"^.+\\.(t|j)s$": "ts-jest"
 		},

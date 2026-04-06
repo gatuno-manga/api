@@ -47,6 +47,7 @@ export class BooksController {
 		return this.booksService.getAllBooks(
 			pageOptions,
 			user?.maxWeightSensitiveContent,
+			user?.userId,
 		);
 	}
 
@@ -71,6 +72,7 @@ export class BooksController {
 		return this.booksService.getRandomBook(
 			options,
 			user?.maxWeightSensitiveContent,
+			user?.userId,
 		);
 	}
 
@@ -170,7 +172,11 @@ export class BooksController {
 	@ApiResponse({ status: 429, description: 'Too many requests' })
 	@UseGuards(OptionalAuthGuard)
 	getBook(@Param('idBook') id: string, @CurrentUser() user?: CurrentUserDto) {
-		return this.booksService.getOne(id, user?.maxWeightSensitiveContent);
+		return this.booksService.getOne(
+			id,
+			user?.maxWeightSensitiveContent,
+			user?.userId,
+		);
 	}
 
 	@Get(':idBook/chapters')
@@ -240,7 +246,11 @@ export class BooksController {
 		@Param('idBook') id: string,
 		@CurrentUser() user?: CurrentUserDto,
 	) {
-		return this.booksService.getCovers(id, user?.maxWeightSensitiveContent);
+		return this.booksService.getCovers(
+			id,
+			user?.maxWeightSensitiveContent,
+			user?.userId,
+		);
 	}
 
 	@Get(':idBook/infos')
@@ -268,6 +278,10 @@ export class BooksController {
 		@Param('idBook') id: string,
 		@CurrentUser() user?: CurrentUserDto,
 	) {
-		return this.booksService.getInfos(id, user?.maxWeightSensitiveContent);
+		return this.booksService.getInfos(
+			id,
+			user?.maxWeightSensitiveContent,
+			user?.userId,
+		);
 	}
 }
