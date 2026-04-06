@@ -14,6 +14,7 @@ describe('BooksController', () => {
 		getChapters: jest.fn(),
 		getCovers: jest.fn(),
 		getInfos: jest.fn(),
+		getBookRelationships: jest.fn(),
 		checkBookTitleConflict: jest.fn(),
 		findAll: jest.fn(),
 		findOne: jest.fn(),
@@ -239,6 +240,33 @@ describe('BooksController', () => {
 				undefined,
 			);
 			expect(result).toEqual(mockInfos);
+		});
+	});
+
+	describe('getBookRelationships', () => {
+		it('should call booksService.getBookRelationships with user context', async () => {
+			const id = 'book-id';
+			const query = { types: ['spin-off'], limit: 10, offset: 0 } as any;
+			const user = {
+				userId: 'user-1',
+				maxWeightSensitiveContent: 5,
+			} as any;
+			const mockResult = { total: 0, items: [] };
+			mockBooksService.getBookRelationships.mockResolvedValue(mockResult);
+
+			const result = await controller.getBookRelationships(
+				id,
+				query,
+				user,
+			);
+
+			expect(booksService.getBookRelationships).toHaveBeenCalledWith(
+				id,
+				query,
+				5,
+				'user-1',
+			);
+			expect(result).toEqual(mockResult);
 		});
 	});
 });

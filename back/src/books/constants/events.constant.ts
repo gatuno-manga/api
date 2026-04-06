@@ -14,6 +14,9 @@ export const BookEvents = {
 	UPDATE_STARTED: 'book.update.started',
 	UPDATE_COMPLETED: 'book.update.completed',
 	UPDATE_FAILED: 'book.update.failed',
+	RELATIONSHIP_CREATED: 'book.relationship.created',
+	RELATIONSHIP_UPDATED: 'book.relationship.updated',
+	RELATIONSHIP_DELETED: 'book.relationship.deleted',
 
 	// Chapter Events
 	CHAPTER_CREATED: 'chapter.created',

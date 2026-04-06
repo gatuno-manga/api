@@ -22,6 +22,8 @@ import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-ca
 import { BooksService } from './books.service';
 import { BookChaptersCursorPageDto } from './dto/book-chapters-cursor-page.dto';
 import { BookChaptersCursorOptionsDto } from './dto/book-chapters-cursor-options.dto';
+import { BookRelationshipsPageDto } from './dto/book-relationships-page.dto';
+import { BookRelationshipsQueryDto } from './dto/book-relationships-query.dto';
 import { BookPageOptionsDto } from './dto/book-page-options.dto';
 
 @ApiTags('Books')
@@ -248,6 +250,41 @@ export class BooksController {
 	) {
 		return this.booksService.getCovers(
 			id,
+			user?.maxWeightSensitiveContent,
+			user?.userId,
+		);
+	}
+
+	@Get(':idBook/relationships')
+	@Throttle({ long: { limit: 200, ttl: 60000 } })
+	@UseInterceptors(UserAwareCacheInterceptor)
+	@CacheTTL(600)
+	@ApiOperation({
+		summary: 'Get book relationships',
+		description:
+			'Retrieve related books for a specific book, applying user access policies and sensitive content limits',
+	})
+	@ApiParam({
+		name: 'idBook',
+		description: 'Book unique identifier',
+		example: '550e8400-e29b-41d4-a716-446655440000',
+	})
+	@ApiResponse({
+		status: 200,
+		description: 'Relationships retrieved successfully',
+		type: BookRelationshipsPageDto,
+	})
+	@ApiResponse({ status: 404, description: 'Book not found' })
+	@ApiResponse({ status: 429, description: 'Too many requests' })
+	@UseGuards(OptionalAuthGuard)
+	getBookRelationships(
+		@Param('idBook') id: string,
+		@Query() query: BookRelationshipsQueryDto,
+		@CurrentUser() user?: CurrentUserDto,
+	) {
+		return this.booksService.getBookRelationships(
+			id,
+			query,
 			user?.maxWeightSensitiveContent,
 			user?.userId,
 		);
