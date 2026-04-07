@@ -8,6 +8,7 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { WsException } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
+import { AppConfigService } from 'src/app-config/app-config.service';
 import { ROLES_KEY } from '../decorator/roles.decorator';
 
 interface WsJwtPayload {
@@ -27,6 +28,7 @@ export class WsJwtGuard implements CanActivate {
 	constructor(
 		private readonly jwtService: JwtService,
 		private readonly reflector: Reflector,
+		private readonly configService: AppConfigService,
 	) {}
 
 	canActivate(context: ExecutionContext): boolean {
@@ -38,7 +40,11 @@ export class WsJwtGuard implements CanActivate {
 				throw new WsException('Token not provided');
 			}
 
-			const payload = this.jwtService.verify(token) as WsJwtPayload;
+			const payload = this.jwtService.verify(token, {
+				secret: this.configService.jwtAccessSecret,
+				issuer: this.configService.jwtIssuer,
+				audience: this.configService.jwtAudience,
+			});
 
 			// Anexa o payload ao client para uso posterior
 			client.data.user = payload;

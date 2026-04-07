@@ -39,6 +39,11 @@ export class JwtPayloadBuilder {
 		return this;
 	}
 
+	setTokenId(jti: string): this {
+		this.payload.jti = jti;
+		return this;
+	}
+
 	setSessionId(sessionId: string): this {
 		this.payload.sessionId = sessionId;
 		return this;

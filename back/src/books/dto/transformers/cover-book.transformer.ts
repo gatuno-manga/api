@@ -19,7 +19,7 @@ export function transformCoverBookLegacyFormat({
 	if (val.urlImg && typeof val.urlImg === 'string') {
 		return CoverBookDto.fromLegacyFormat({
 			urlImg: val.urlImg,
-			urlOrigin: val.urlOrigin,
+			urlOrigin: val.urlOrigin ?? val.urlImg,
 		});
 	}
 

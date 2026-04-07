@@ -4,6 +4,7 @@ import {
 	Logger,
 	UnauthorizedException,
 } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AppConfigService } from 'src/app-config/app-config.service';
@@ -14,6 +15,7 @@ import { Role } from 'src/users/entities/role.entity';
 import { User } from 'src/users/entities/user.entity';
 import { Repository } from 'typeorm';
 import { JwtPayloadBuilder } from './builders/jwt-payload.builder';
+import { SessionAuditService } from './services/session-audit.service';
 import { TokenStoreService } from './services/token-store.service';
 
 @Injectable()
@@ -31,6 +33,7 @@ export class AuthService {
 		private readonly jwtService: JwtService,
 		private readonly configService: AppConfigService,
 		private readonly tokenStore: TokenStoreService,
+		private readonly sessionAudit: SessionAuditService,
 	) {
 		this.logger.log(
 			`🔐 Algoritmo de hashing ativo: ${this.passwordEncryption.getAlgorithm()}`,
@@ -76,36 +79,90 @@ export class AuthService {
 		const hashedToken = await this.DataEncryption.encrypt(
 			tokens.refreshToken,
 		);
-		await this.tokenStore.addToken(user.id, hashedToken);
-		return tokens;
+		await this.tokenStore.addToken(user.id, {
+			hash: hashedToken,
+			jti: tokens.refreshTokenId,
+			familyId: tokens.refreshTokenFamilyId,
+		});
+		this.sessionAudit.track(user.id, 'signup_success', {
+			refreshTokenId: tokens.refreshTokenId,
+			familyId: tokens.refreshTokenFamilyId,
+		});
+		return {
+			accessToken: tokens.accessToken,
+			refreshToken: tokens.refreshToken,
+		};
 	}
 
 	private async getTokens(
 		user: User,
-	): Promise<{ accessToken: string; refreshToken: string }> {
+		rotation?: { familyId?: string; parentJti?: string },
+	): Promise<{
+		accessToken: string;
+		refreshToken: string;
+		refreshTokenId: string;
+		refreshTokenFamilyId: string;
+	}> {
 		if (!user.roles || user.roles.length === 0) {
 			throw new BadRequestException('User has no roles assigned');
 		}
 
 		const payload = new JwtPayloadBuilder()
 			.fromUser(user)
-			.setIssuer('login')
+			.setIssuer(this.configService.jwtIssuer)
 			.build();
+
+		const refreshTokenId = randomUUID();
+		const refreshTokenFamilyId = rotation?.familyId ?? randomUUID();
+		const refreshPayload = {
+			...payload,
+			jti: refreshTokenId,
+			familyId: refreshTokenFamilyId,
+			parentJti: rotation?.parentJti,
+		};
 
 		const [accessToken, refreshToken] = await Promise.all([
 			this.jwtService.signAsync(payload, {
 				secret: this.configService.jwtAccessSecret,
 				expiresIn: this.configService.jwtAccessExpiration,
+				audience: this.configService.jwtAudience,
 			}),
-			this.jwtService.signAsync(payload, {
+			this.jwtService.signAsync(refreshPayload, {
 				secret: this.configService.jwtRefreshSecret,
 				expiresIn: this.configService.jwtRefreshExpiration,
+				audience: this.configService.jwtAudience,
 			}),
 		]);
 
 		return {
 			accessToken,
 			refreshToken,
+			refreshTokenId,
+			refreshTokenFamilyId,
+		};
+	}
+
+	private getRefreshTokenMetadata(refreshToken: string): {
+		jti: string | null;
+		familyId: string | null;
+	} {
+		const decoded = this.jwtService.decode(refreshToken);
+		if (!decoded || typeof decoded !== 'object') {
+			return { jti: null, familyId: null };
+		}
+
+		const tokenId = (decoded as { jti?: unknown }).jti;
+		const familyId = (decoded as { familyId?: unknown }).familyId;
+
+		return {
+			jti:
+				typeof tokenId === 'string' && tokenId.length > 0
+					? tokenId
+					: null,
+			familyId:
+				typeof familyId === 'string' && familyId.length > 0
+					? familyId
+					: null,
 		};
 	}
 
@@ -139,8 +196,19 @@ export class AuthService {
 		const hashedToken = await this.DataEncryption.encrypt(
 			tokens.refreshToken,
 		);
-		await this.tokenStore.addToken(user.id, hashedToken);
-		return tokens;
+		await this.tokenStore.addToken(user.id, {
+			hash: hashedToken,
+			jti: tokens.refreshTokenId,
+			familyId: tokens.refreshTokenFamilyId,
+		});
+		this.sessionAudit.track(user.id, 'login_success', {
+			refreshTokenId: tokens.refreshTokenId,
+			familyId: tokens.refreshTokenFamilyId,
+		});
+		return {
+			accessToken: tokens.accessToken,
+			refreshToken: tokens.refreshToken,
+		};
 	}
 
 	async logout(userId: string, refreshToken: string) {
@@ -155,16 +223,35 @@ export class AuthService {
 			throw new UnauthorizedException('No active sessions found');
 		}
 
+		const refreshTokenMeta = this.getRefreshTokenMetadata(refreshToken);
 		let indexToRemove = -1;
-		for (let i = 0; i < validTokens.length; i++) {
-			if (
-				await this.DataEncryption.compare(
-					validTokens[i].hash,
+
+		if (refreshTokenMeta.jti) {
+			indexToRemove = validTokens.findIndex(
+				(token) => token.jti === refreshTokenMeta.jti,
+			);
+
+			if (indexToRemove >= 0) {
+				const tokenMatch = await this.DataEncryption.compare(
+					validTokens[indexToRemove].hash,
 					refreshToken,
-				)
-			) {
-				indexToRemove = i;
-				break;
+				);
+
+				if (!tokenMatch) {
+					indexToRemove = -1;
+				}
+			}
+		} else {
+			for (let i = 0; i < validTokens.length; i++) {
+				if (
+					await this.DataEncryption.compare(
+						validTokens[i].hash,
+						refreshToken,
+					)
+				) {
+					indexToRemove = i;
+					break;
+				}
 			}
 		}
 
@@ -175,6 +262,9 @@ export class AuthService {
 
 		validTokens.splice(indexToRemove, 1);
 		await this.tokenStore.saveTokens(userId, validTokens);
+		this.sessionAudit.track(userId, 'logout_success', {
+			remainingSessions: validTokens.length,
+		});
 
 		this.logger.log(
 			`Token removed for user ${userId}. Remaining tokens: ${validTokens.length}`,
@@ -192,6 +282,9 @@ export class AuthService {
 		}
 
 		await this.tokenStore.removeAllTokens(userId);
+		this.sessionAudit.track(userId, 'logout_all_success', {
+			revokedSessions: validTokens.length,
+		});
 		this.logger.log(
 			`All sessions (${validTokens.length}) logged out for user ${userId}`,
 		);
@@ -203,56 +296,136 @@ export class AuthService {
 			throw new UnauthorizedException('Refresh token is required');
 		}
 
-		const validTokens = await this.tokenStore.getValidTokens(userId);
+		return this.tokenStore.runWithRefreshLock(userId, async () => {
+			const validTokens = await this.tokenStore.getValidTokens(userId);
 
-		if (validTokens.length === 0) {
-			this.logger.warn('No valid session found for user', { userId });
-			throw new UnauthorizedException('No valid session found');
-		}
-
-		let indexToRemove = -1;
-		for (let i = 0; i < validTokens.length; i++) {
-			if (
-				await this.DataEncryption.compare(
-					validTokens[i].hash,
-					oldRefreshToken,
-				)
-			) {
-				indexToRemove = i;
-				break;
+			if (validTokens.length === 0) {
+				this.logger.warn('No valid session found for user', { userId });
+				throw new UnauthorizedException('No valid session found');
 			}
-		}
 
-		if (indexToRemove === -1) {
-			this.logger.error('Invalid refresh token for user', { userId });
-			throw new UnauthorizedException('Invalid refresh token');
-		}
+			const refreshTokenMeta =
+				this.getRefreshTokenMetadata(oldRefreshToken);
+			if (!refreshTokenMeta.jti) {
+				throw new UnauthorizedException('Invalid refresh token');
+			}
 
-		validTokens.splice(indexToRemove, 1);
+			const indexToRemove = validTokens.findIndex(
+				(token) => token.jti === refreshTokenMeta.jti,
+			);
 
-		const user = await this.userRepository.findOne({
-			where: { id: userId },
-			relations: ['roles'],
-		});
+			if (indexToRemove === -1) {
+				this.logger.error('Refresh token reuse detected', {
+					userId,
+					refreshTokenId: refreshTokenMeta.jti,
+					familyId: refreshTokenMeta.familyId,
+				});
+				this.sessionAudit.track(userId, 'refresh_reuse_detected', {
+					refreshTokenId: refreshTokenMeta.jti,
+					familyId: refreshTokenMeta.familyId,
+				});
+				if (refreshTokenMeta.familyId) {
+					const revokedCount =
+						await this.tokenStore.revokeTokenFamily(
+							userId,
+							refreshTokenMeta.familyId,
+							validTokens,
+						);
+					this.sessionAudit.track(userId, 'refresh_family_revoked', {
+						familyId: refreshTokenMeta.familyId,
+						revokedCount,
+					});
+				} else {
+					await this.tokenStore.removeAllTokens(userId);
+				}
+				throw new UnauthorizedException('Refresh token reuse detected');
+			}
 
-		if (!user) {
-			this.logger.error('User not found during token refresh', {
-				userId,
+			const tokenMatch = await this.DataEncryption.compare(
+				validTokens[indexToRemove].hash,
+				oldRefreshToken,
+			);
+			if (!tokenMatch) {
+				this.logger.error('Refresh token hash mismatch detected', {
+					userId,
+					refreshTokenId: refreshTokenMeta.jti,
+					familyId: refreshTokenMeta.familyId,
+				});
+				this.sessionAudit.track(userId, 'refresh_reuse_detected', {
+					refreshTokenId: refreshTokenMeta.jti,
+					familyId: refreshTokenMeta.familyId,
+					reason: 'hash_mismatch',
+				});
+				if (refreshTokenMeta.familyId) {
+					const revokedCount =
+						await this.tokenStore.revokeTokenFamily(
+							userId,
+							refreshTokenMeta.familyId,
+							validTokens,
+						);
+					this.sessionAudit.track(userId, 'refresh_family_revoked', {
+						familyId: refreshTokenMeta.familyId,
+						revokedCount,
+					});
+				} else {
+					await this.tokenStore.removeAllTokens(userId);
+				}
+				throw new UnauthorizedException('Refresh token reuse detected');
+			}
+
+			const rotatedToken = validTokens[indexToRemove];
+			validTokens.splice(indexToRemove, 1);
+
+			const user = await this.userRepository.findOne({
+				where: { id: userId },
+				relations: ['roles'],
 			});
-			throw new UnauthorizedException('User not found');
-		}
 
-		const tokens = await this.getTokens(user);
+			if (!user) {
+				this.logger.error('User not found during token refresh', {
+					userId,
+				});
+				throw new UnauthorizedException('User not found');
+			}
 
-		const hashedToken = await this.DataEncryption.encrypt(
-			tokens.refreshToken,
-		);
+			const currentFamilyId =
+				rotatedToken?.familyId ??
+				refreshTokenMeta.familyId ??
+				randomUUID();
 
-		await this.tokenStore.addToken(userId, hashedToken, validTokens);
+			const tokens = await this.getTokens(user, {
+				familyId: currentFamilyId,
+				parentJti: refreshTokenMeta.jti,
+			});
 
-		this.logger.log(
-			`Tokens refreshed for user ${userId}. Total tokens: ${validTokens.length}`,
-		);
-		return tokens;
+			const hashedToken = await this.DataEncryption.encrypt(
+				tokens.refreshToken,
+			);
+
+			await this.tokenStore.addToken(
+				userId,
+				{
+					hash: hashedToken,
+					jti: tokens.refreshTokenId,
+					familyId: tokens.refreshTokenFamilyId,
+					parentJti: refreshTokenMeta.jti,
+				},
+				validTokens,
+			);
+
+			this.sessionAudit.track(userId, 'refresh_success', {
+				refreshTokenId: tokens.refreshTokenId,
+				familyId: tokens.refreshTokenFamilyId,
+				parentJti: refreshTokenMeta.jti,
+			});
+
+			this.logger.log(
+				`Tokens refreshed for user ${userId}. Total tokens: ${validTokens.length}`,
+			);
+			return {
+				accessToken: tokens.accessToken,
+				refreshToken: tokens.refreshToken,
+			};
+		});
 	}
 }

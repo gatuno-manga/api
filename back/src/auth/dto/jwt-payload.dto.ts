@@ -29,6 +29,21 @@ export class JwtPayloadDto {
 	maxWeightSensitiveContent: number;
 
 	/**
+	 * JWT ID - Identificador unico do token (opcional no access token)
+	 */
+	jti?: string;
+
+	/**
+	 * Identificador da familia de refresh tokens (opcional no access token)
+	 */
+	familyId?: string;
+
+	/**
+	 * JTI do token pai em rotacao de refresh (opcional)
+	 */
+	parentJti?: string;
+
+	/**
 	 * Timestamp de criação do token (opcional)
 	 */
 	iat?: number;

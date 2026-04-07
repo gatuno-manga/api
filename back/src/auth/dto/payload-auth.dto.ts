@@ -40,4 +40,28 @@ export class PayloadAuthDto {
 	@IsInt()
 	@Min(0)
 	maxWeightSensitiveContent: number;
+
+	@ApiProperty({
+		description: 'Refresh token unique identifier',
+		example: 'a2b1bca9-9e02-4202-84ea-7f5c7c455fa8',
+		required: false,
+	})
+	@IsString()
+	jti?: string;
+
+	@ApiProperty({
+		description: 'Refresh token family identifier',
+		example: '9f6f6754-7643-4972-9ea0-b367f1475663',
+		required: false,
+	})
+	@IsString()
+	familyId?: string;
+
+	@ApiProperty({
+		description: 'Refresh token parent identifier used in rotation',
+		example: 'a2b1bca9-9e02-4202-84ea-7f5c7c455fa8',
+		required: false,
+	})
+	@IsString()
+	parentJti?: string;
 }

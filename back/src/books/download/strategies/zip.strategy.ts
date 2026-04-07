@@ -33,7 +33,10 @@ export class ZipStrategy implements DownloadStrategy {
 		return 'zip';
 	}
 
-	generate(chapters: Chapter[], fileName: string): Promise<StreamableFile> {
+	async generate(
+		chapters: Chapter[],
+		fileName: string,
+	): Promise<StreamableFile> {
 		this.logger.log(
 			`Generating ZIP for ${chapters.length} chapters: ${fileName} (parallel: ${PARALLEL_CHAPTERS} chapters, ${PARALLEL_PAGES} pages)`,
 		);
