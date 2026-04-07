@@ -44,6 +44,14 @@ export class AppConfigService {
 		return this.config.get<string>('JWT_REFRESH_EXPIRATION') || '7d';
 	}
 
+	get jwtIssuer(): string {
+		return this.config.get<string>('JWT_ISSUER') || 'gatuno-auth';
+	}
+
+	get jwtAudience(): string {
+		return this.config.get<string>('JWT_AUDIENCE') || 'gatuno-api';
+	}
+
 	get saltLength(): number {
 		return this.config.get<number>('SALT_LENGTH') || 16;
 	}

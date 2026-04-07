@@ -28,7 +28,10 @@ export class PdfsZipStrategy implements DownloadStrategy {
 		return 'zip';
 	}
 
-	generate(chapters: Chapter[], fileName: string): Promise<StreamableFile> {
+	async generate(
+		chapters: Chapter[],
+		fileName: string,
+	): Promise<StreamableFile> {
 		this.logger.log(
 			`Generating ZIP of PDFs for ${chapters.length} chapters: ${fileName} (parallel: ${PARALLEL_PDF_GENERATION})`,
 		);

@@ -31,7 +31,8 @@ export class MetricsInterceptor implements NestInterceptor {
 		const request = httpContext.getRequest<Request>();
 		const response = httpContext.getResponse<Response>();
 
-		const { method, body } = request as unknown as Record<string, unknown>;
+		const method = request.method || 'UNKNOWN';
+		const body = request.body as unknown;
 		const routePath =
 			(request.route as { path?: string } | undefined)?.path ||
 			request.url;

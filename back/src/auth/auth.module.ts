@@ -6,6 +6,7 @@ import { AppConfigModule } from 'src/app-config/app-config.module';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { DataEncryptionProvider } from 'src/encryption/data-encryption.provider';
 import { EncryptionModule } from 'src/encryption/encryption.module';
+import { LoggingModule } from 'src/logging/logging.module';
 import { Role } from 'src/users/entities/role.entity';
 import { User } from 'src/users/entities/user.entity';
 import { AuthController } from './auth.controller';
@@ -14,6 +15,7 @@ import { CreateAdminEvent } from './events/create-admin.event';
 import { JwtAuthGuard } from './guard/jwt-auth.guard';
 import { WsJwtGuard } from './guard/ws-jwt.guard';
 import { PasswordMigrationController } from './password-migration.controller';
+import { SessionAuditService } from './services/session-audit.service';
 import { TokenStoreService } from './services/token-store.service';
 import { JwtRefreshStrategy } from './strategy/jwt-refresh.strategy';
 import { JwtStrategy } from './strategy/jwt.strategy';
@@ -21,6 +23,7 @@ import { JwtStrategy } from './strategy/jwt.strategy';
 @Module({
 	imports: [
 		EncryptionModule,
+		LoggingModule,
 		AppConfigModule,
 		PassportModule,
 		TypeOrmModule.forFeature([User, Role]),
@@ -39,6 +42,7 @@ import { JwtStrategy } from './strategy/jwt.strategy';
 	providers: [
 		CreateAdminEvent,
 		AuthService,
+		SessionAuditService,
 		TokenStoreService,
 		DataEncryptionProvider,
 		JwtStrategy,

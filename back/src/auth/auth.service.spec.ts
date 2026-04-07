@@ -9,6 +9,7 @@ import { PasswordMigrationService } from '../encryption/password-migration.servi
 import { Role } from '../users/entities/role.entity';
 import { User } from '../users/entities/user.entity';
 import { AuthService } from './auth.service';
+import { SessionAuditService } from './services/session-audit.service';
 import { TokenStoreService } from './services/token-store.service';
 
 describe('AuthService', () => {
@@ -21,6 +22,7 @@ describe('AuthService', () => {
 	let dataEncryption: any;
 	let appConfigService: any;
 	let tokenStore: any;
+	let sessionAudit: any;
 
 	beforeEach(async () => {
 		const mockUserRepository = {
@@ -65,6 +67,8 @@ describe('AuthService', () => {
 			jwtRefreshSecret: 'test-refresh-secret',
 			jwtAccessExpiration: '15m',
 			jwtRefreshExpiration: '7d',
+			jwtIssuer: 'gatuno-auth-test',
+			jwtAudience: 'gatuno-api-test',
 			refreshTokenTtl: 604800000,
 			saltLength: 16,
 			passwordKeyLength: 64,
@@ -75,6 +79,15 @@ describe('AuthService', () => {
 			saveTokens: jest.fn(),
 			addToken: jest.fn(),
 			removeAllTokens: jest.fn(),
+			revokeTokenFamily: jest.fn(),
+			runWithRefreshLock: jest.fn(
+				async (_userId: string, operation: () => Promise<unknown>) =>
+					operation(),
+			),
+		};
+
+		const mockSessionAudit = {
+			track: jest.fn(),
 		};
 
 		const module: TestingModule = await Test.createTestingModule({
@@ -112,6 +125,10 @@ describe('AuthService', () => {
 					provide: TokenStoreService,
 					useValue: mockTokenStore,
 				},
+				{
+					provide: SessionAuditService,
+					useValue: mockSessionAudit,
+				},
 			],
 		}).compile();
 
@@ -128,6 +145,7 @@ describe('AuthService', () => {
 		);
 		appConfigService = module.get<AppConfigService>(AppConfigService);
 		tokenStore = module.get<TokenStoreService>(TokenStoreService);
+		sessionAudit = module.get<SessionAuditService>(SessionAuditService);
 	});
 
 	it('should be defined', () => {
@@ -136,6 +154,10 @@ describe('AuthService', () => {
 
 	it('should have logger initialized', () => {
 		expect(service.logger).toBeDefined();
+	});
+
+	it('should have session audit service injected', () => {
+		expect(sessionAudit).toBeDefined();
 	});
 
 	describe('getAlgorithm', () => {
@@ -316,9 +338,14 @@ describe('AuthService', () => {
 			const userId = 'user123';
 			const refreshToken = 'refresh_token';
 			const storedTokens = [
-				{ hash: 'hashed_token', expiresAt: Date.now() + 100000 },
+				{
+					jti: 'refresh-jti',
+					hash: 'hashed_token',
+					expiresAt: Date.now() + 100000,
+				},
 			];
 
+			jwtService.decode.mockReturnValue({ jti: 'refresh-jti' });
 			tokenStore.getValidTokens.mockResolvedValue(storedTokens);
 			dataEncryption.compare.mockResolvedValue(true);
 			tokenStore.saveTokens.mockResolvedValue(undefined);
@@ -351,8 +378,13 @@ describe('AuthService', () => {
 
 		it('should throw UnauthorizedException if token not found in cache', async () => {
 			const storedTokens = [
-				{ hash: 'different_hash', expiresAt: Date.now() + 100000 },
+				{
+					jti: 'different-jti',
+					hash: 'different_hash',
+					expiresAt: Date.now() + 100000,
+				},
 			];
+			jwtService.decode.mockReturnValue({ jti: 'refresh-jti' });
 			tokenStore.getValidTokens.mockResolvedValue(storedTokens);
 			dataEncryption.compare.mockResolvedValue(false);
 
@@ -367,10 +399,19 @@ describe('AuthService', () => {
 		it('should keep other tokens when logging out one session', async () => {
 			const userId = 'user123';
 			const storedTokens = [
-				{ hash: 'token1', expiresAt: Date.now() + 100000 },
-				{ hash: 'token2', expiresAt: Date.now() + 200000 },
+				{
+					jti: 'jti-1',
+					hash: 'token1',
+					expiresAt: Date.now() + 100000,
+				},
+				{
+					jti: 'jti-2',
+					hash: 'token2',
+					expiresAt: Date.now() + 200000,
+				},
 			];
 
+			jwtService.decode.mockReturnValue({ jti: 'jti-1' });
 			tokenStore.getValidTokens.mockResolvedValue(storedTokens);
 			dataEncryption.compare.mockResolvedValueOnce(true);
 			tokenStore.saveTokens.mockResolvedValue(undefined);
@@ -387,8 +428,16 @@ describe('AuthService', () => {
 		it('should logout all sessions successfully', async () => {
 			const userId = 'user123';
 			const storedTokens = [
-				{ hash: 'token1', expiresAt: Date.now() + 100000 },
-				{ hash: 'token2', expiresAt: Date.now() + 200000 },
+				{
+					jti: 'jti-1',
+					hash: 'token1',
+					expiresAt: Date.now() + 100000,
+				},
+				{
+					jti: 'jti-2',
+					hash: 'token2',
+					expiresAt: Date.now() + 200000,
+				},
 			];
 
 			tokenStore.getValidTokens.mockResolvedValue(storedTokens);
@@ -424,15 +473,23 @@ describe('AuthService', () => {
 				roles: [{ id: '1', name: 'user' }],
 			};
 			const storedTokens = [
-				{ hash: 'hashed_token', expiresAt: Date.now() + 100000 },
+				{
+					jti: 'old-jti',
+					hash: 'hashed_token',
+					expiresAt: Date.now() + 100000,
+				},
 			];
 
+			jwtService.decode.mockReturnValue({ jti: 'old-jti' });
 			tokenStore.getValidTokens.mockResolvedValue(storedTokens);
 			dataEncryption.compare.mockResolvedValue(true);
 			userRepository.findOne.mockResolvedValue(user);
 			jwtService.signAsync
 				.mockResolvedValueOnce('new_access')
 				.mockResolvedValueOnce('new_refresh');
+			jwtService.decode
+				.mockReturnValueOnce({ jti: 'old-jti' })
+				.mockReturnValueOnce({ jti: 'new-jti' });
 			dataEncryption.encrypt.mockResolvedValue('new_hashed_token');
 			tokenStore.saveTokens.mockResolvedValue(undefined);
 
@@ -465,23 +522,65 @@ describe('AuthService', () => {
 
 		it('should throw UnauthorizedException if refresh token is invalid', async () => {
 			const storedTokens = [
-				{ hash: 'hashed', expiresAt: Date.now() + 100000 },
+				{
+					jti: 'old-jti',
+					hash: 'hashed',
+					expiresAt: Date.now() + 100000,
+				},
 			];
+			jwtService.decode.mockReturnValue({ jti: 'missing-jti' });
 			tokenStore.getValidTokens.mockResolvedValue(storedTokens);
-			dataEncryption.compare.mockResolvedValue(false);
 
 			await expect(
 				service.refreshTokens('user123', 'invalid_token'),
 			).rejects.toThrow(UnauthorizedException);
 			await expect(
 				service.refreshTokens('user123', 'invalid_token'),
-			).rejects.toThrow('Invalid refresh token');
+			).rejects.toThrow('Refresh token reuse detected');
+		});
+
+		it('should revoke only the token family when reuse is detected with familyId', async () => {
+			const storedTokens = [
+				{
+					jti: 'old-jti',
+					hash: 'hashed',
+					expiresAt: Date.now() + 100000,
+					familyId: 'family-a',
+				},
+				{
+					jti: 'other-jti',
+					hash: 'hashed-2',
+					expiresAt: Date.now() + 100000,
+					familyId: 'family-b',
+				},
+			];
+			jwtService.decode.mockReturnValue({
+				jti: 'missing-jti',
+				familyId: 'family-a',
+			});
+			tokenStore.getValidTokens.mockResolvedValue(storedTokens);
+
+			await expect(
+				service.refreshTokens('user123', 'invalid_token'),
+			).rejects.toThrow('Refresh token reuse detected');
+
+			expect(tokenStore.revokeTokenFamily).toHaveBeenCalledWith(
+				'user123',
+				'family-a',
+				storedTokens,
+			);
+			expect(tokenStore.removeAllTokens).not.toHaveBeenCalled();
 		});
 
 		it('should throw UnauthorizedException if user not found', async () => {
 			const storedTokens = [
-				{ hash: 'hashed', expiresAt: Date.now() + 100000 },
+				{
+					jti: 'old-jti',
+					hash: 'hashed',
+					expiresAt: Date.now() + 100000,
+				},
 			];
+			jwtService.decode.mockReturnValue({ jti: 'old-jti' });
 			tokenStore.getValidTokens.mockImplementation(() =>
 				Promise.resolve([...storedTokens]),
 			);
@@ -499,8 +598,16 @@ describe('AuthService', () => {
 		it('should remove old token and add new token', async () => {
 			const userId = 'user123';
 			const storedTokens = [
-				{ hash: 'old_token', expiresAt: Date.now() + 100000 },
-				{ hash: 'another_token', expiresAt: Date.now() + 200000 },
+				{
+					jti: 'old-jti',
+					hash: 'old_token',
+					expiresAt: Date.now() + 100000,
+				},
+				{
+					jti: 'other-jti',
+					hash: 'another_token',
+					expiresAt: Date.now() + 200000,
+				},
 			];
 			const user = {
 				id: userId,
@@ -508,6 +615,9 @@ describe('AuthService', () => {
 				roles: [{ id: '1', name: 'user' }],
 			};
 
+			jwtService.decode
+				.mockReturnValueOnce({ jti: 'old-jti' })
+				.mockReturnValueOnce({ jti: 'new-jti' });
 			tokenStore.getValidTokens.mockResolvedValue(storedTokens);
 			dataEncryption.compare.mockResolvedValueOnce(true);
 			userRepository.findOne.mockResolvedValue(user);
@@ -518,6 +628,16 @@ describe('AuthService', () => {
 
 			const calls = tokenStore.addToken.mock.calls;
 			expect(calls[0][2]).toHaveLength(1); // One token remains after removing the old one
+		});
+
+		it('should reject concurrent refresh attempts when lock is held', async () => {
+			tokenStore.runWithRefreshLock.mockRejectedValueOnce(
+				new UnauthorizedException('Refresh already in progress'),
+			);
+
+			await expect(
+				service.refreshTokens('user123', 'refresh_token'),
+			).rejects.toThrow('Refresh already in progress');
 		});
 	});
 });

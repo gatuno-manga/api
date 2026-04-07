@@ -105,7 +105,10 @@
 		"cupertino",
 		"mocktail",
 		"APPBAR",
-		"l10n"
+		"l10n",
+		"csrf",
+		"browserless",
+		"fulltext"
 	],
 	"ignorePaths": [
 		"**/node_modules/**",

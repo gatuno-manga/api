@@ -9,6 +9,7 @@ import {
 	UnauthorizedException,
 	UseGuards,
 } from '@nestjs/common';
+import { randomBytes } from 'node:crypto';
 import {
 	ApiBearerAuth,
 	ApiOperation,
@@ -31,6 +32,8 @@ import { RefreshTokenGuard } from './guard/jwt-refresh.guard';
 @Controller('auth')
 export class AuthController {
 	private readonly logger = new Logger(AuthController.name);
+	private readonly csrfCookieName = 'csrfToken';
+	private readonly csrfHeaderName = 'x-csrf-token';
 	constructor(
 		private readonly authService: AuthService,
 		private readonly configService: AppConfigService,
@@ -62,6 +65,67 @@ export class AuthController {
 		});
 	}
 
+	private generateCsrfToken(): string {
+		return randomBytes(32).toString('hex');
+	}
+
+	private setCsrfCookie(res: Response, csrfToken: string): void {
+		const isSecure = this.configService.apiUrl.startsWith('https');
+		res.cookie(this.csrfCookieName, csrfToken, {
+			httpOnly: false,
+			secure: isSecure,
+			sameSite: 'lax',
+			path: '/',
+			maxAge: this.configService.refreshTokenTtl,
+		});
+	}
+
+	private clearCsrfCookie(res: Response): void {
+		const isSecure = this.configService.apiUrl.startsWith('https');
+		res.clearCookie(this.csrfCookieName, {
+			httpOnly: false,
+			secure: isSecure,
+			sameSite: 'lax',
+			path: '/',
+		});
+	}
+
+	private validateCsrfForWeb(req: Request): void {
+		if (this.isMobileClient(req)) {
+			return;
+		}
+
+		const cookies = req.cookies as Record<string, string | undefined>;
+		const csrfCookie = cookies?.[this.csrfCookieName];
+		const csrfHeader = req.header(this.csrfHeaderName);
+
+		if (!csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
+			throw new UnauthorizedException('Invalid CSRF token');
+		}
+	}
+
+	private isMobileClient(req: Request): boolean {
+		const clientPlatform = req
+			.header('x-client-platform')
+			?.toLowerCase()
+			.trim();
+
+		return ['mobile', 'flutter', 'app', 'native'].includes(
+			clientPlatform ?? '',
+		);
+	}
+
+	private buildAuthResponse(
+		req: Request,
+		tokens: { accessToken: string; refreshToken: string },
+	): { accessToken: string; refreshToken?: string } {
+		if (this.isMobileClient(req)) {
+			return tokens;
+		}
+
+		return { accessToken: tokens.accessToken };
+	}
+
 	@Post('signup')
 	@Throttle({ short: { limit: 3, ttl: 60000 } })
 	@ApiOperation({
@@ -74,6 +138,7 @@ export class AuthController {
 	@ApiResponse({ status: 429, description: 'Too many requests' })
 	async signUp(
 		@Body() body: SignUpAuthDto,
+		@Req() req: Request,
 		@Res({ passthrough: true }) res: Response,
 	) {
 		const { email, password } = body;
@@ -85,8 +150,9 @@ export class AuthController {
 
 		const tokens = await this.authService.generateTokensForUser(user);
 		this.setRefreshTokenCookie(res, tokens.refreshToken);
+		this.setCsrfCookie(res, this.generateCsrfToken());
 
-		return tokens;
+		return this.buildAuthResponse(req, tokens);
 	}
 
 	@Post('signin')
@@ -100,15 +166,17 @@ export class AuthController {
 	@ApiResponse({ status: 429, description: 'Too many requests' })
 	async signIn(
 		@Body() body: SignInAuthDto,
+		@Req() req: Request,
 		@Res({ passthrough: true }) res: Response,
 	) {
 		const { email, password } = body;
 		const tokens = await this.authService.signIn(email, password);
 		this.setRefreshTokenCookie(res, tokens.refreshToken);
-		return tokens;
+		this.setCsrfCookie(res, this.generateCsrfToken());
+		return this.buildAuthResponse(req, tokens);
 	}
 
-	@Get('refresh')
+	@Post('refresh')
 	@Throttle({ medium: { limit: 20, ttl: 60000 } })
 	@ApiOperation({
 		summary: 'Refresh access token',
@@ -127,6 +195,7 @@ export class AuthController {
 		@Req() req: Request,
 		@Res({ passthrough: true }) res: Response,
 	) {
+		this.validateCsrfForWeb(req);
 		const refreshToken = (req.cookies as Record<string, string | undefined>)
 			?.refreshToken;
 		if (!refreshToken) {
@@ -139,7 +208,8 @@ export class AuthController {
 			refreshToken,
 		);
 		this.setRefreshTokenCookie(res, tokens.refreshToken);
-		return tokens;
+		this.setCsrfCookie(res, this.generateCsrfToken());
+		return this.buildAuthResponse(req, tokens);
 	}
 
 	@Get('logout')
@@ -159,11 +229,18 @@ export class AuthController {
 		@Req() req: Request,
 		@Res({ passthrough: true }) res: Response,
 	) {
+		this.validateCsrfForWeb(req);
 		this.logger.log(`User ${user.userId} is logging out`);
 		const refreshToken = (req.cookies as Record<string, string | undefined>)
 			?.refreshToken;
+		if (!refreshToken) {
+			throw new UnauthorizedException(
+				'Refresh token not found in cookies',
+			);
+		}
 		await this.authService.logout(user.userId, refreshToken);
 		this.clearRefreshTokenCookie(res);
+		this.clearCsrfCookie(res);
 		return { message: 'Logged out successfully' };
 	}
 
@@ -187,6 +264,7 @@ export class AuthController {
 	) {
 		const result = await this.authService.logoutAll(user.userId);
 		this.clearRefreshTokenCookie(res);
+		this.clearCsrfCookie(res);
 		return result;
 	}
 }

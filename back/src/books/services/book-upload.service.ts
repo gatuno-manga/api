@@ -161,14 +161,15 @@ export class BookUploadService {
 			this.uploadCounter.inc({ type: 'cover', status: 'error' });
 			this.uploadDuration.observe({ type: 'cover' }, duration / 1000);
 
-			this.logger.error(
-				this.getErrorMessage(error),
-				'BookUploadService',
-				{
-					bookId,
-					fileName: file.originalname,
-				},
-			);
+			const normalizedError =
+				error instanceof Error
+					? error
+					: new Error(this.getErrorMessage(error));
+
+			this.logger.error(normalizedError, 'BookUploadService', {
+				bookId,
+				fileName: file.originalname,
+			});
 			throw error;
 		}
 	}
@@ -280,15 +281,16 @@ export class BookUploadService {
 				duration / 1000,
 			);
 
-			this.logger.error(
-				this.getErrorMessage(error),
-				'BookUploadService',
-				{
-					bookId,
-					coverId,
-					fileName: file.originalname,
-				},
-			);
+			const normalizedError =
+				error instanceof Error
+					? error
+					: new Error(this.getErrorMessage(error));
+
+			this.logger.error(normalizedError, 'BookUploadService', {
+				bookId,
+				coverId,
+				fileName: file.originalname,
+			});
 			throw error;
 		}
 	}
@@ -403,14 +405,16 @@ export class BookUploadService {
 					),
 				);
 			}
-			this.logger.error(
-				this.getErrorMessage(error),
-				'BookUploadService',
-				{
-					bookId,
-					filesCount: files.length,
-				},
-			);
+
+			const normalizedError =
+				error instanceof Error
+					? error
+					: new Error(this.getErrorMessage(error));
+
+			this.logger.error(normalizedError, 'BookUploadService', {
+				bookId,
+				filesCount: files.length,
+			});
 			throw error;
 		}
 	}
@@ -534,14 +538,15 @@ export class BookUploadService {
 
 			return savedPages;
 		} catch (error: unknown) {
-			this.logger.error(
-				this.getErrorMessage(error),
-				'BookUploadService',
-				{
-					chapterId,
-					filesCount: files.length,
-				},
-			);
+			const normalizedError =
+				error instanceof Error
+					? error
+					: new Error(this.getErrorMessage(error));
+
+			this.logger.error(normalizedError, 'BookUploadService', {
+				chapterId,
+				filesCount: files.length,
+			});
 			throw error;
 		}
 	}
@@ -666,14 +671,15 @@ export class BookUploadService {
 			this.uploadCounter.inc({ type: 'document', status: 'error' });
 			this.uploadDuration.observe({ type: 'document' }, duration / 1000);
 
-			this.logger.error(
-				this.getErrorMessage(error),
-				'BookUploadService',
-				{
-					chapterId,
-					fileName: file.originalname,
-				},
-			);
+			const normalizedError =
+				error instanceof Error
+					? error
+					: new Error(this.getErrorMessage(error));
+
+			this.logger.error(normalizedError, 'BookUploadService', {
+				chapterId,
+				fileName: file.originalname,
+			});
 			throw error;
 		}
 	}
@@ -767,14 +773,15 @@ export class BookUploadService {
 
 			return savedChapter;
 		} catch (error: unknown) {
-			this.logger.error(
-				this.getErrorMessage(error),
-				'BookUploadService',
-				{
-					chapterId,
-					contentFormat: dto.format,
-				},
-			);
+			const normalizedError =
+				error instanceof Error
+					? error
+					: new Error(this.getErrorMessage(error));
+
+			this.logger.error(normalizedError, 'BookUploadService', {
+				chapterId,
+				contentFormat: dto.format,
+			});
 			throw error;
 		}
 	}

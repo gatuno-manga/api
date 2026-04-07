@@ -6,12 +6,26 @@ pre-commit:
   commands:
     check-secrets:
       run: npx secretlint {staged_files}
-    check-spell:
-      run: npx cspell {staged_files} || true
     check-code:
       glob: "*.{js,ts,cjs,mjs,json}"
       run: npx @biomejs/biome check --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files} && git add {staged_files}
     check-app:
       root: "app/"
       glob: "**/*.dart"
-      run: dart format {staged_files} && git add {staged_files} && flutter analyze {staged_files}
+      run: |
+        if command -v dart >/dev/null 2>&1; then
+          DART_CMD="dart"
+        elif command -v flutter >/dev/null 2>&1; then
+          DART_CMD="$(dirname "$(command -v flutter)")/cache/dart-sdk/bin/dart"
+        else
+          echo "check-app: dart/flutter not found, skipping"
+          exit 0
+        fi
+
+        "$DART_CMD" format {staged_files} && git add {staged_files}
+
+        if command -v flutter >/dev/null 2>&1; then
+          flutter analyze {staged_files}
+        else
+          echo "check-app: flutter not found, skipped analyze"
+        fi
