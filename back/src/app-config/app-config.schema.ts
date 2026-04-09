@@ -34,7 +34,12 @@ export const validationSchema = Joi.object({
 	JWT_AUDIENCE: Joi.string().default('gatuno-api'),
 	WEBAUTHN_RP_NAME: Joi.string().default('Gatuno'),
 	WEBAUTHN_RP_ID: Joi.string().optional().allow(''),
-	WEBAUTHN_ALLOWED_ORIGINS: Joi.string().optional().allow(''),
+	WEBAUTHN_ALLOWED_ORIGINS: Joi.string()
+		.optional()
+		.allow('')
+		.description(
+			'Comma-separated origins for WebAuthn. Falls back to ALLOWED_URL when empty',
+		),
 	WEBAUTHN_CHALLENGE_TTL_MS: Joi.number()
 		.min(1000)
 		.default(300000)
