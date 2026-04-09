@@ -16,10 +16,7 @@ async function bootstrap() {
 	configureBodyParser(app);
 	configureValidationPipe(app);
 
-	const allowedUrls = process.env.ALLOWED_URL?.split(',') || [
-		configService.appUrl,
-	];
-	configureCors(app, allowedUrls);
+	configureCors(app, configService.allowedUrls);
 
 	app.enableShutdownHooks();
 	app.use(cookieParser());

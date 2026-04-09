@@ -30,6 +30,31 @@ export const validationSchema = Joi.object({
 		.pattern(/^\d+\s*(s|m|h|d|w|y)$/)
 		.default('7d')
 		.description('Refresh token expiration (e.g. 60m, 7d, 30d)'),
+	JWT_ISSUER: Joi.string().default('gatuno-auth'),
+	JWT_AUDIENCE: Joi.string().default('gatuno-api'),
+	WEBAUTHN_RP_NAME: Joi.string().default('Gatuno'),
+	WEBAUTHN_RP_ID: Joi.string().optional().allow(''),
+	WEBAUTHN_ALLOWED_ORIGINS: Joi.string()
+		.optional()
+		.allow('')
+		.description(
+			'Comma-separated origins for WebAuthn. Falls back to ALLOWED_URL when empty',
+		),
+	WEBAUTHN_CHALLENGE_TTL_MS: Joi.number()
+		.min(1000)
+		.default(300000)
+		.description('TTL in ms for WebAuthn challenges'),
+	MFA_ISSUER_NAME: Joi.string().default('Gatuno'),
+	MFA_ENCRYPTION_SECRET: Joi.string()
+		.min(16)
+		.default('change-this-mfa-secret'),
+	MFA_STEP_UP_ENABLED: Joi.boolean()
+		.default(true)
+		.description('Enable MFA step-up verification for risky/new devices'),
+	MFA_CHALLENGE_EXPIRATION: Joi.string()
+		.pattern(/^\d+\s*(s|m|h|d)$/)
+		.default('5m')
+		.description('Short-lived MFA challenge token expiration'),
 	MAX_SESSIONS_PER_USER: Joi.number()
 		.min(0)
 		.default(0)

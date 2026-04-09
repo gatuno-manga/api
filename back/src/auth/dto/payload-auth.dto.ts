@@ -64,4 +64,12 @@ export class PayloadAuthDto {
 	})
 	@IsString()
 	parentJti?: string;
+
+	@ApiProperty({
+		description: 'Logical authentication session identifier',
+		example: 'b13e6b8d-b989-4f1f-bf9e-f0e8e2e84d13',
+		required: false,
+	})
+	@IsString()
+	sessionId?: string;
 }

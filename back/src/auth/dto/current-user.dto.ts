@@ -33,4 +33,12 @@ export class CurrentUserDto {
 	@IsInt()
 	@Min(0)
 	maxWeightSensitiveContent: number;
+
+	@ApiProperty({
+		description: 'Current logical session identifier',
+		example: 'b13e6b8d-b989-4f1f-bf9e-f0e8e2e84d13',
+		required: false,
+	})
+	@IsString()
+	sessionId?: string;
 }
