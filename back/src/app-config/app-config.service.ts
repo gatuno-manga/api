@@ -52,6 +52,62 @@ export class AppConfigService {
 		return this.config.get<string>('JWT_AUDIENCE') || 'gatuno-api';
 	}
 
+	private resolveHostFromUrl(url: string): string {
+		try {
+			return new URL(url).hostname;
+		} catch {
+			return 'localhost';
+		}
+	}
+
+	get webauthnRpName(): string {
+		return this.config.get<string>('WEBAUTHN_RP_NAME') || 'Gatuno';
+	}
+
+	get webauthnRpId(): string {
+		const configured = this.config.get<string>('WEBAUTHN_RP_ID');
+		if (configured && configured.trim().length > 0) {
+			return configured.trim();
+		}
+
+		return this.resolveHostFromUrl(this.appUrl);
+	}
+
+	get webauthnAllowedOrigins(): string[] {
+		const configured = this.config.get<string>('WEBAUTHN_ALLOWED_ORIGINS');
+		if (configured && configured.trim().length > 0) {
+			return configured
+				.split(',')
+				.map((origin) => origin.trim())
+				.filter(Boolean);
+		}
+
+		return [this.appUrl];
+	}
+
+	get webauthnChallengeTtlMs(): number {
+		return this.config.get<number>('WEBAUTHN_CHALLENGE_TTL_MS') ?? 300000;
+	}
+
+	get mfaIssuerName(): string {
+		return this.config.get<string>('MFA_ISSUER_NAME') || 'Gatuno';
+	}
+
+	get mfaEncryptionSecret(): string {
+		return (
+			this.config.get<string>('MFA_ENCRYPTION_SECRET') ||
+			this.jwtRefreshSecret
+		);
+	}
+
+	get mfaStepUpEnabled(): boolean {
+		return this.config.get<boolean>('MFA_STEP_UP_ENABLED') ?? true;
+	}
+
+	get mfaChallengeExpiration(): string {
+		return this.config.get<string>('MFA_CHALLENGE_EXPIRATION') || '5m';
+	}
+
 	get saltLength(): number {
 		return this.config.get<number>('SALT_LENGTH') || 16;
 	}

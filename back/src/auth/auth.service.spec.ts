@@ -9,7 +9,9 @@ import { PasswordMigrationService } from '../encryption/password-migration.servi
 import { Role } from '../users/entities/role.entity';
 import { User } from '../users/entities/user.entity';
 import { AuthService } from './auth.service';
+import { MfaService } from './services/mfa.service';
 import { SessionAuditService } from './services/session-audit.service';
+import { SessionManagementService } from './services/session-management.service';
 import { TokenStoreService } from './services/token-store.service';
 
 describe('AuthService', () => {
@@ -23,6 +25,8 @@ describe('AuthService', () => {
 	let appConfigService: any;
 	let tokenStore: any;
 	let sessionAudit: any;
+	let sessionManagement: any;
+	let mfaService: any;
 
 	beforeEach(async () => {
 		const mockUserRepository = {
@@ -69,6 +73,8 @@ describe('AuthService', () => {
 			jwtRefreshExpiration: '7d',
 			jwtIssuer: 'gatuno-auth-test',
 			jwtAudience: 'gatuno-api-test',
+			mfaChallengeExpiration: '5m',
+			mfaStepUpEnabled: true,
 			refreshTokenTtl: 604800000,
 			saltLength: 16,
 			passwordKeyLength: 64,
@@ -79,6 +85,8 @@ describe('AuthService', () => {
 			saveTokens: jest.fn(),
 			addToken: jest.fn(),
 			removeAllTokens: jest.fn(),
+			removeTokenByJti: jest.fn(),
+			removeTokensByJtis: jest.fn(),
 			revokeTokenFamily: jest.fn(),
 			runWithRefreshLock: jest.fn(
 				async (_userId: string, operation: () => Promise<unknown>) =>
@@ -88,6 +96,27 @@ describe('AuthService', () => {
 
 		const mockSessionAudit = {
 			track: jest.fn(),
+			listUserAuditHistory: jest.fn(),
+		};
+
+		const mockSessionManagement = {
+			hasKnownDevice: jest.fn().mockResolvedValue(true),
+			createSession: jest.fn(),
+			rotateSessionToken: jest.fn(),
+			revokeSessionByRefreshTokenJti: jest.fn(),
+			revokeSessionById: jest.fn(),
+			revokeAllSessions: jest.fn(),
+			revokeSessionsByFamily: jest.fn(),
+			listActiveSessions: jest.fn(),
+		};
+
+		const mockMfaService = {
+			isTotpEnabled: jest.fn().mockResolvedValue(false),
+			verifyLoginCode: jest.fn().mockResolvedValue(true),
+			getStatus: jest.fn(),
+			beginTotpSetup: jest.fn(),
+			verifyTotpSetup: jest.fn(),
+			disableTotp: jest.fn(),
 		};
 
 		const module: TestingModule = await Test.createTestingModule({
@@ -129,6 +158,14 @@ describe('AuthService', () => {
 					provide: SessionAuditService,
 					useValue: mockSessionAudit,
 				},
+				{
+					provide: SessionManagementService,
+					useValue: mockSessionManagement,
+				},
+				{
+					provide: MfaService,
+					useValue: mockMfaService,
+				},
 			],
 		}).compile();
 
@@ -146,6 +183,10 @@ describe('AuthService', () => {
 		appConfigService = module.get<AppConfigService>(AppConfigService);
 		tokenStore = module.get<TokenStoreService>(TokenStoreService);
 		sessionAudit = module.get<SessionAuditService>(SessionAuditService);
+		sessionManagement = module.get<SessionManagementService>(
+			SessionManagementService,
+		);
+		mfaService = module.get<MfaService>(MfaService);
 	});
 
 	it('should be defined', () => {

@@ -130,7 +130,7 @@ export class TokenStoreService {
 		userId: string,
 		tokenData: Pick<
 			StoredTokenDto,
-			'hash' | 'jti' | 'familyId' | 'parentJti'
+			'hash' | 'jti' | 'sessionId' | 'familyId' | 'parentJti'
 		>,
 		existingTokens?: StoredTokenDto[],
 	): Promise<void> {
@@ -141,6 +141,7 @@ export class TokenStoreService {
 		tokens.push({
 			hash: tokenData.hash,
 			jti: tokenData.jti,
+			sessionId: tokenData.sessionId,
 			familyId: tokenData.familyId,
 			parentJti: tokenData.parentJti,
 			expiresAt,
@@ -183,6 +184,33 @@ export class TokenStoreService {
 		);
 
 		return revokedCount;
+	}
+
+	async removeTokenByJti(userId: string, jti: string): Promise<number> {
+		const tokens = await this.getValidTokens(userId);
+		const filtered = tokens.filter((token) => token.jti !== jti);
+		if (filtered.length === tokens.length) {
+			return 0;
+		}
+
+		await this.saveTokens(userId, filtered);
+		return tokens.length - filtered.length;
+	}
+
+	async removeTokensByJtis(userId: string, jtis: string[]): Promise<number> {
+		if (jtis.length === 0) {
+			return 0;
+		}
+
+		const tokenSet = new Set(jtis);
+		const tokens = await this.getValidTokens(userId);
+		const filtered = tokens.filter((token) => !tokenSet.has(token.jti));
+		if (filtered.length === tokens.length) {
+			return 0;
+		}
+
+		await this.saveTokens(userId, filtered);
+		return tokens.length - filtered.length;
 	}
 
 	async removeAllTokens(userId: string): Promise<void> {
