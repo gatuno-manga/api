@@ -117,7 +117,10 @@
 		"mysqladmin",
 		"MYSQL",
 		"initdb",
-		"mysqld"
+		"mysqld",
+		"csrf",
+		"browserless",
+		"fulltext"
 	],
 	"ignorePaths": [
 		"**/node_modules/**",

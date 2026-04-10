@@ -1,12 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsPositive, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsNumber, IsPositive, IsUUID } from 'class-validator';
 
 export class OrderChaptersDto {
 	@ApiProperty({
 		description: 'Chapter unique identifier',
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
-	@IsString()
+	@IsUUID('4')
 	id: string;
 
 	@ApiProperty({
@@ -14,6 +15,7 @@ export class OrderChaptersDto {
 		example: 1,
 		minimum: 1,
 	})
+	@Type(() => Number)
 	@IsNumber()
 	@IsPositive()
 	index: number;

@@ -9,6 +9,13 @@ export class AppConfigService {
 	private readonly logger = new Logger(AppConfigService.name);
 	constructor(private readonly config: ConfigService) {}
 
+	private parseCsv(value?: string): string[] {
+		return (value || '')
+			.split(',')
+			.map((item) => item.trim())
+			.filter(Boolean);
+	}
+
 	get nodeEnv(): string {
 		return this.config.get<string>('NODE_ENV') || 'development';
 	}
@@ -23,6 +30,17 @@ export class AppConfigService {
 
 	get appUrl(): string {
 		return this.config.get<string>('APP_URL') || 'http://localhost:4200';
+	}
+
+	get allowedUrls(): string[] {
+		const configured = this.parseCsv(
+			this.config.get<string>('ALLOWED_URL'),
+		);
+		if (configured.length > 0) {
+			return configured;
+		}
+
+		return [this.appUrl];
 	}
 
 	get jwtAccessSecret(): string {
@@ -42,6 +60,69 @@ export class AppConfigService {
 
 	get jwtRefreshExpiration(): string {
 		return this.config.get<string>('JWT_REFRESH_EXPIRATION') || '7d';
+	}
+
+	get jwtIssuer(): string {
+		return this.config.get<string>('JWT_ISSUER') || 'gatuno-auth';
+	}
+
+	get jwtAudience(): string {
+		return this.config.get<string>('JWT_AUDIENCE') || 'gatuno-api';
+	}
+
+	private resolveHostFromUrl(url: string): string {
+		try {
+			return new URL(url).hostname;
+		} catch {
+			return 'localhost';
+		}
+	}
+
+	get webauthnRpName(): string {
+		return this.config.get<string>('WEBAUTHN_RP_NAME') || 'Gatuno';
+	}
+
+	get webauthnRpId(): string {
+		const configured = this.config.get<string>('WEBAUTHN_RP_ID');
+		if (configured && configured.trim().length > 0) {
+			return configured.trim();
+		}
+
+		return this.resolveHostFromUrl(this.appUrl);
+	}
+
+	get webauthnAllowedOrigins(): string[] {
+		const configured = this.parseCsv(
+			this.config.get<string>('WEBAUTHN_ALLOWED_ORIGINS'),
+		);
+		if (configured.length > 0) {
+			return configured;
+		}
+
+		return this.allowedUrls;
+	}
+
+	get webauthnChallengeTtlMs(): number {
+		return this.config.get<number>('WEBAUTHN_CHALLENGE_TTL_MS') ?? 300000;
+	}
+
+	get mfaIssuerName(): string {
+		return this.config.get<string>('MFA_ISSUER_NAME') || 'Gatuno';
+	}
+
+	get mfaEncryptionSecret(): string {
+		return (
+			this.config.get<string>('MFA_ENCRYPTION_SECRET') ||
+			this.jwtRefreshSecret
+		);
+	}
+
+	get mfaStepUpEnabled(): boolean {
+		return this.config.get<boolean>('MFA_STEP_UP_ENABLED') ?? true;
+	}
+
+	get mfaChallengeExpiration(): string {
+		return this.config.get<string>('MFA_CHALLENGE_EXPIRATION') || '5m';
 	}
 
 	get saltLength(): number {
@@ -67,10 +148,9 @@ export class AppConfigService {
 			port: this.config.get<number>('DB_PORT'),
 			username: this.config.get<string>('DB_USER'),
 			password: this.config.get<string>('DB_PASS'),
-			slaveHosts: (this.config.get<string>('DB_SLAVE_HOSTS') || '')
-				.split(',')
-				.map((h) => h.trim())
-				.filter(Boolean),
+			slaveHosts: this.parseCsv(
+				this.config.get<string>('DB_SLAVE_HOSTS'),
+			),
 		};
 	}
 

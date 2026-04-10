@@ -14,6 +14,7 @@ import {
 	ApiResponse,
 	ApiTags,
 } from '@nestjs/swagger';
+import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Throttle } from '@nestjs/throttler';
 import { Roles } from 'src/auth/decorator/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
@@ -24,7 +25,7 @@ import { FileCleanupService } from './file-cleanup.service';
 @Controller('admin/files')
 @UseGuards(JwtAuthGuard)
 @Roles(RolesEnum.ADMIN)
-@ApiBearerAuth('JWT-auth')
+@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 export class FileCleanupController {
 	constructor(private readonly fileCleanupService: FileCleanupService) {}
 

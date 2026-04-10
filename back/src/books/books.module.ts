@@ -9,8 +9,10 @@ import { FilesModule } from 'src/files/files.module';
 import { LoggingModule } from 'src/logging/logging.module';
 import { MetricsModule } from 'src/metrics/metrics.module';
 import { ScrapingModule } from 'src/scraping/scraping.module';
+import { UsersModule } from 'src/users/users.module';
 import { User } from 'src/users/entities/user.entity';
 import { AdminBooksDashboardController } from './admin-books-dashboard.controller';
+import { AdminBookRelationshipsController } from './admin-book-relationships.controller';
 import { AdminBooksUploadController } from './admin-books-upload.controller';
 import { AdminBooksController } from './admin-books.controller';
 import { BooksController } from './books.controller';
@@ -21,6 +23,7 @@ import { ChapterCommentsService } from './chapters/chapter-comments.service';
 import { ChapterService } from './chapters/chapter.service';
 import { DownloadModule } from './download/download.module';
 import { Author } from './entities/author.entity';
+import { BookRelationship } from './entities/book-relationship.entity';
 import { Book } from './entities/book.entity';
 import { Chapter } from './entities/chapter.entity';
 import { ChapterComment } from './entities/chapter-comment.entity';
@@ -47,6 +50,7 @@ import { SensitiveContentService } from './sensitive-content/sensitive-content.s
 import { BookContentUpdateService } from './services/book-content-update.service';
 import { BookCreationService } from './services/book-creation.service';
 import { BookDeletionService } from './services/book-deletion.service';
+import { BookBookRelationshipService } from './services/book-book-relationship.service';
 import { BookQueryService } from './services/book-query.service';
 import { BookRelationshipService } from './services/book-relationship.service';
 import { BookUpdateService } from './services/book-update.service';
@@ -64,8 +68,10 @@ import { TagsService } from './tags/tags.service';
 		MetricsModule,
 		ScheduleModule.forRoot(),
 		DownloadModule,
+		UsersModule,
 		TypeOrmModule.forFeature([
 			Book,
+			BookRelationship,
 			Page,
 			Chapter,
 			ChapterComment,
@@ -135,6 +141,7 @@ import { TagsService } from './tags/tags.service';
 		SensitiveContentController,
 		TagsController,
 		AdminBooksController,
+		AdminBookRelationshipsController,
 		AdminBooksUploadController,
 		AdminBooksDashboardController,
 	],
@@ -160,6 +167,7 @@ import { TagsService } from './tags/tags.service';
 		// serviços especializados
 		BookCreationService,
 		BookUpdateService,
+		BookBookRelationshipService,
 		BookContentUpdateService,
 		BookQueryService,
 		ChapterManagementService,

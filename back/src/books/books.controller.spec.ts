@@ -14,6 +14,7 @@ describe('BooksController', () => {
 		getChapters: jest.fn(),
 		getCovers: jest.fn(),
 		getInfos: jest.fn(),
+		getBookRelationships: jest.fn(),
 		checkBookTitleConflict: jest.fn(),
 		findAll: jest.fn(),
 		findOne: jest.fn(),
@@ -68,6 +69,7 @@ describe('BooksController', () => {
 			expect(booksService.getAllBooks).toHaveBeenCalledWith(
 				pageOptions,
 				undefined,
+				undefined,
 			);
 			expect(result).toEqual(mockResult);
 		});
@@ -83,6 +85,7 @@ describe('BooksController', () => {
 			expect(booksService.getAllBooks).toHaveBeenCalledWith(
 				pageOptions,
 				5,
+				undefined,
 			);
 		});
 	});
@@ -97,6 +100,7 @@ describe('BooksController', () => {
 
 			expect(booksService.getRandomBook).toHaveBeenCalledWith(
 				options,
+				undefined,
 				undefined,
 			);
 			expect(result).toEqual(mockBook);
@@ -144,7 +148,11 @@ describe('BooksController', () => {
 
 			const result = await controller.getBook(id);
 
-			expect(booksService.getOne).toHaveBeenCalledWith(id, undefined);
+			expect(booksService.getOne).toHaveBeenCalledWith(
+				id,
+				undefined,
+				undefined,
+			);
 			expect(result).toEqual(mockBook);
 		});
 
@@ -155,7 +163,7 @@ describe('BooksController', () => {
 
 			await controller.getBook(id, user);
 
-			expect(booksService.getOne).toHaveBeenCalledWith(id, 5);
+			expect(booksService.getOne).toHaveBeenCalledWith(id, 5, undefined);
 		});
 	});
 
@@ -209,7 +217,11 @@ describe('BooksController', () => {
 
 			const result = await controller.getBookCovers(id);
 
-			expect(booksService.getCovers).toHaveBeenCalledWith(id, undefined);
+			expect(booksService.getCovers).toHaveBeenCalledWith(
+				id,
+				undefined,
+				undefined,
+			);
 			expect(result).toEqual(mockCovers);
 		});
 	});
@@ -222,8 +234,39 @@ describe('BooksController', () => {
 
 			const result = await controller.getBookInfos(id);
 
-			expect(booksService.getInfos).toHaveBeenCalledWith(id, undefined);
+			expect(booksService.getInfos).toHaveBeenCalledWith(
+				id,
+				undefined,
+				undefined,
+			);
 			expect(result).toEqual(mockInfos);
+		});
+	});
+
+	describe('getBookRelationships', () => {
+		it('should call booksService.getBookRelationships with user context', async () => {
+			const id = 'book-id';
+			const query = { types: ['spin-off'], limit: 10, offset: 0 } as any;
+			const user = {
+				userId: 'user-1',
+				maxWeightSensitiveContent: 5,
+			} as any;
+			const mockResult = { total: 0, items: [] };
+			mockBooksService.getBookRelationships.mockResolvedValue(mockResult);
+
+			const result = await controller.getBookRelationships(
+				id,
+				query,
+				user,
+			);
+
+			expect(booksService.getBookRelationships).toHaveBeenCalledWith(
+				id,
+				query,
+				5,
+				'user-1',
+			);
+			expect(result).toEqual(mockResult);
 		});
 	});
 });

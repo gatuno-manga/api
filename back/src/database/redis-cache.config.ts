@@ -8,7 +8,7 @@ export const config: CacheModuleAsyncOptions = {
 	isGlobal: true,
 	imports: [AppConfigModule],
 	inject: [AppConfigService],
-	useFactory: async (configService: AppConfigService) => {
+	useFactory: (configService: AppConfigService) => {
 		const { host, port, password } = configService.redis;
 		const redisUrl = password
 			? `redis://:${password}@${host}:${port}`

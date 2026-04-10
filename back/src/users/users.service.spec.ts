@@ -4,6 +4,8 @@ import { DataSource } from 'typeorm';
 import { Role } from './entities/role.entity';
 import { User } from './entities/user.entity';
 import { UsersService } from './users.service';
+import { FilesService } from 'src/files/files.service';
+import { UserResourcesMapper } from './user-resources.mapper';
 
 describe('UsersService', () => {
 	let service: UsersService;
@@ -40,6 +42,16 @@ describe('UsersService', () => {
 		})),
 	};
 
+	const mockFilesService = {
+		saveBufferFile: jest.fn(),
+		deleteFile: jest.fn(),
+	};
+
+	const mockUserResourcesMapper = {
+		toUserProfile: jest.fn(),
+		toPublicUserProfile: jest.fn(),
+	};
+
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -55,6 +67,14 @@ describe('UsersService', () => {
 				{
 					provide: DataSource,
 					useValue: mockDataSource,
+				},
+				{
+					provide: FilesService,
+					useValue: mockFilesService,
+				},
+				{
+					provide: UserResourcesMapper,
+					useValue: mockUserResourcesMapper,
 				},
 			],
 		}).compile();

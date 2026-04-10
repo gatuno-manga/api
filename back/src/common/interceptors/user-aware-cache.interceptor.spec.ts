@@ -31,7 +31,9 @@ describe('UserAwareCacheInterceptor', () => {
 			(
 				mockExecutionContext.switchToHttp().getRequest as jest.Mock
 			).mockReturnValue(mockRequest);
-			jest.spyOn(reflector, 'get').mockReturnValue(undefined);
+			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(
+				undefined,
+			);
 
 			const result = interceptor.trackBy(mockExecutionContext);
 
@@ -47,7 +49,9 @@ describe('UserAwareCacheInterceptor', () => {
 			(
 				mockExecutionContext.switchToHttp().getRequest as jest.Mock
 			).mockReturnValue(mockRequest);
-			jest.spyOn(reflector, 'get').mockReturnValue(undefined);
+			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(
+				undefined,
+			);
 
 			const result = interceptor.trackBy(mockExecutionContext);
 
@@ -63,11 +67,13 @@ describe('UserAwareCacheInterceptor', () => {
 			(
 				mockExecutionContext.switchToHttp().getRequest as jest.Mock
 			).mockReturnValue(mockRequest);
-			jest.spyOn(reflector, 'get').mockReturnValue(undefined);
+			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(
+				undefined,
+			);
 
 			const result = interceptor.trackBy(mockExecutionContext);
 
-			expect(result).toBe('/api/books:level-0');
+			expect(result).toBe('/api/books:user-123:level-0');
 		});
 
 		it('deve criar chave com :level-4 para usuário menor (nível 4)', () => {
@@ -79,11 +85,13 @@ describe('UserAwareCacheInterceptor', () => {
 			(
 				mockExecutionContext.switchToHttp().getRequest as jest.Mock
 			).mockReturnValue(mockRequest);
-			jest.spyOn(reflector, 'get').mockReturnValue(undefined);
+			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(
+				undefined,
+			);
 
 			const result = interceptor.trackBy(mockExecutionContext);
 
-			expect(result).toBe('/api/books:level-4');
+			expect(result).toBe('/api/books:user-123:level-4');
 		});
 
 		it('deve criar chave com :level-99 para usuário adulto (nível 99)', () => {
@@ -95,11 +103,13 @@ describe('UserAwareCacheInterceptor', () => {
 			(
 				mockExecutionContext.switchToHttp().getRequest as jest.Mock
 			).mockReturnValue(mockRequest);
-			jest.spyOn(reflector, 'get').mockReturnValue(undefined);
+			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(
+				undefined,
+			);
 
 			const result = interceptor.trackBy(mockExecutionContext);
 
-			expect(result).toBe('/api/books:level-99');
+			expect(result).toBe('/api/books:user-123:level-99');
 		});
 
 		it('deve preservar query parameters na chave de cache', () => {
@@ -111,11 +121,15 @@ describe('UserAwareCacheInterceptor', () => {
 			(
 				mockExecutionContext.switchToHttp().getRequest as jest.Mock
 			).mockReturnValue(mockRequest);
-			jest.spyOn(reflector, 'get').mockReturnValue(undefined);
+			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(
+				undefined,
+			);
 
 			const result = interceptor.trackBy(mockExecutionContext);
 
-			expect(result).toBe('/api/books?page=1&take=10&order=ASC:level-4');
+			expect(result).toBe(
+				'/api/books?page=1&take=10&order=ASC:user-123:level-4',
+			);
 		});
 
 		it('deve usar CACHE_KEY_METADATA do handler se definido', () => {
@@ -127,20 +141,23 @@ describe('UserAwareCacheInterceptor', () => {
 			(
 				mockExecutionContext.switchToHttp().getRequest as jest.Mock
 			).mockReturnValue(mockRequest);
-			jest.spyOn(reflector, 'get').mockReturnValueOnce(
+			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValueOnce(
 				'custom-cache-key',
 			);
 
 			const result = interceptor.trackBy(mockExecutionContext);
 
-			expect(result).toBe('custom-cache-key:level-4');
-			expect(reflector.get).toHaveBeenCalledWith(
+			expect(result).toBe('custom-cache-key:user-123:level-4');
+			expect(reflector.getAllAndOverride).toHaveBeenCalledWith(
 				CACHE_KEY_METADATA,
-				mockExecutionContext.getHandler(),
+				[
+					mockExecutionContext.getHandler(),
+					mockExecutionContext.getClass(),
+				],
 			);
 		});
 
-		it('deve usar CACHE_KEY_METADATA da classe se não estiver no handler', () => {
+		it('deve usar fallback da URL quando não houver CACHE_KEY_METADATA', () => {
 			const mockRequest = {
 				url: '/api/books',
 				user: { userId: '123', maxWeightSensitiveContent: 4 },
@@ -149,13 +166,13 @@ describe('UserAwareCacheInterceptor', () => {
 			(
 				mockExecutionContext.switchToHttp().getRequest as jest.Mock
 			).mockReturnValue(mockRequest);
-			jest.spyOn(reflector, 'get')
-				.mockReturnValueOnce(undefined) // handler
-				.mockReturnValueOnce('class-cache-key'); // class
+			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(
+				undefined,
+			);
 
 			const result = interceptor.trackBy(mockExecutionContext);
 
-			expect(result).toBe('class-cache-key:level-4');
+			expect(result).toBe('/api/books:user-123:level-4');
 		});
 
 		it('deve retornar undefined se não houver chave base', () => {
@@ -167,7 +184,9 @@ describe('UserAwareCacheInterceptor', () => {
 			(
 				mockExecutionContext.switchToHttp().getRequest as jest.Mock
 			).mockReturnValue(mockRequest);
-			jest.spyOn(reflector, 'get').mockReturnValue(undefined);
+			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(
+				undefined,
+			);
 
 			const result = interceptor.trackBy(mockExecutionContext);
 
@@ -190,7 +209,9 @@ describe('UserAwareCacheInterceptor', () => {
 				user: null,
 			};
 
-			jest.spyOn(reflector, 'get').mockReturnValue(undefined);
+			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(
+				undefined,
+			);
 
 			// Simula requisição do adulto
 			(
@@ -211,15 +232,15 @@ describe('UserAwareCacheInterceptor', () => {
 			const chavePublic = interceptor.trackBy(mockExecutionContext);
 
 			// Todas devem ser diferentes
-			expect(chaveAdulto).toBe('/api/books/abc-123:level-99');
-			expect(chaveMenor).toBe('/api/books/abc-123:level-4');
+			expect(chaveAdulto).toBe('/api/books/abc-123:user-1:level-99');
+			expect(chaveMenor).toBe('/api/books/abc-123:user-2:level-4');
 			expect(chavePublic).toBe('/api/books/abc-123:public');
 			expect(chaveAdulto).not.toBe(chaveMenor);
 			expect(chaveMenor).not.toBe(chavePublic);
 			expect(chaveAdulto).not.toBe(chavePublic);
 		});
 
-		it('deve permitir compartilhamento: mesmo nível gera mesma chave', () => {
+		it('deve isolar cache: mesmo nível com usuários diferentes gera chaves diferentes', () => {
 			const mockRequestUsuario1 = {
 				url: '/api/books',
 				user: { userId: '1', maxWeightSensitiveContent: 4 },
@@ -230,7 +251,9 @@ describe('UserAwareCacheInterceptor', () => {
 				user: { userId: '2', maxWeightSensitiveContent: 4 },
 			};
 
-			jest.spyOn(reflector, 'get').mockReturnValue(undefined);
+			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(
+				undefined,
+			);
 
 			// Simula requisição do usuário 1
 			(
@@ -244,9 +267,9 @@ describe('UserAwareCacheInterceptor', () => {
 			).mockReturnValue(mockRequestUsuario2);
 			const chave2 = interceptor.trackBy(mockExecutionContext);
 
-			// Devem ser iguais (compartilham cache)
-			expect(chave1).toBe(chave2);
-			expect(chave1).toBe('/api/books:level-4');
+			expect(chave1).toBe('/api/books:user-1:level-4');
+			expect(chave2).toBe('/api/books:user-2:level-4');
+			expect(chave1).not.toBe(chave2);
 		});
 	});
 });

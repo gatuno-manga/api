@@ -9,6 +9,16 @@ import { SensitiveContent } from '../books/entities/sensitive-content.entity';
 import { Tag } from '../books/entities/tags.entity';
 import { User } from '../users/entities/user.entity';
 
+interface RawStatusCount {
+	status: string | null;
+	count: string;
+}
+
+interface RawNameCount {
+	name: string;
+	count: string;
+}
+
 @Injectable()
 export class DashboardService {
 	constructor(
@@ -44,7 +54,7 @@ export class DashboardService {
 			.select('book.scrapingStatus', 'status')
 			.addSelect('COUNT(book.id)', 'count')
 			.groupBy('book.scrapingStatus')
-			.getRawMany();
+			.getRawMany<RawStatusCount>();
 
 		// Agrupar status de scraping dos capítulos
 		const chaptersByStatus = await this.chapterRepository
@@ -52,7 +62,7 @@ export class DashboardService {
 			.select('chapter.scrapingStatus', 'status')
 			.addSelect('COUNT(chapter.id)', 'count')
 			.groupBy('chapter.scrapingStatus')
-			.getRawMany();
+			.getRawMany<RawStatusCount>();
 
 		// Agrupar livros por conteúdo sensível
 		const sensitiveContentDistribution = await this.bookRepository
@@ -62,7 +72,7 @@ export class DashboardService {
 			.addSelect('COUNT(book.id)', 'count')
 			.where('sc.id IS NOT NULL')
 			.groupBy('sc.name')
-			.getRawMany();
+			.getRawMany<RawNameCount>();
 
 		// Agrupar livros por tags (Top 10)
 		const tagsDistribution = await this.bookRepository
@@ -74,7 +84,7 @@ export class DashboardService {
 			.groupBy('tag.name')
 			.orderBy('count', 'DESC')
 			.limit(10)
-			.getRawMany();
+			.getRawMany<RawNameCount>();
 
 		return {
 			counts: {
@@ -87,20 +97,22 @@ export class DashboardService {
 				sensitiveContent: totalSensitiveContent,
 			},
 			status: {
-				books: booksByStatus.map((item) => ({
+				books: booksByStatus.map((item: RawStatusCount) => ({
 					status: item.status || 'UNKNOWN',
 					count: Number.parseInt(item.count),
 				})),
-				chapters: chaptersByStatus.map((item) => ({
+				chapters: chaptersByStatus.map((item: RawStatusCount) => ({
 					status: item.status || 'UNKNOWN',
 					count: Number.parseInt(item.count),
 				})),
 			},
-			sensitiveContent: sensitiveContentDistribution.map((item) => ({
-				name: item.name,
-				count: Number.parseInt(item.count),
-			})),
-			tags: tagsDistribution.map((item) => ({
+			sensitiveContent: sensitiveContentDistribution.map(
+				(item: RawNameCount) => ({
+					name: item.name,
+					count: Number.parseInt(item.count),
+				}),
+			),
+			tags: tagsDistribution.map((item: RawNameCount) => ({
 				name: item.name,
 				count: Number.parseInt(item.count),
 			})),

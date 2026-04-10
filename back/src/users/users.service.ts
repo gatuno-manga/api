@@ -47,17 +47,13 @@ export class UsersService implements OnApplicationBootstrap {
 			},
 		];
 
-		const queryRunner = this.dataSource.createQueryRunner('master');
-
 		for (const role of roles) {
 			try {
-				const exists = await queryRunner.connect().then(() => {
-					return this.roleRepository.manager.find(Role, {
-						where: { name: role.name },
-					});
+				const exists = await this.roleRepository.findOne({
+					where: { name: role.name },
 				});
 
-				if (!exists || exists.length === 0) {
+				if (!exists) {
 					await this.roleRepository.save(
 						this.roleRepository.create(role),
 					);

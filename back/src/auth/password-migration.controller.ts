@@ -1,5 +1,6 @@
 import { Controller, Get, Logger, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Roles } from './decorator/roles.decorator';
 import { JwtAuthGuard } from './guard/jwt-auth.guard';
 import { PasswordEncryption } from 'src/encryption/password-encryption.provider';
@@ -10,7 +11,7 @@ import { RolesEnum } from 'src/users/enum/roles.enum';
 @Controller('auth/password-migration')
 @UseGuards(JwtAuthGuard)
 @Roles(RolesEnum.ADMIN)
-@ApiBearerAuth('JWT-auth')
+@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 export class PasswordMigrationController {
 	private readonly logger = new Logger(PasswordMigrationController.name);
 
@@ -83,7 +84,7 @@ export class PasswordMigrationController {
 	}
 
 	@Get('current-algorithm')
-	async getCurrentAlgorithm() {
+	getCurrentAlgorithm() {
 		const algorithm = this.passwordEncryption.getAlgorithm();
 
 		const algorithmInfo = {

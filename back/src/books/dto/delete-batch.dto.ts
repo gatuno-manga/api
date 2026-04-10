@@ -1,5 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ArrayMaxSize, IsArray, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+	ArrayMaxSize,
+	ArrayMinSize,
+	IsArray,
+	IsInt,
+	IsUUID,
+	Min,
+} from 'class-validator';
 
 export class DeleteBooksDto {
 	@ApiProperty({
@@ -11,8 +19,9 @@ export class DeleteBooksDto {
 		type: [String],
 	})
 	@IsArray()
-	@IsString({ each: true })
+	@ArrayMinSize(1)
 	@ArrayMaxSize(100)
+	@IsUUID('4', { each: true })
 	bookIds: string[];
 }
 
@@ -23,8 +32,9 @@ export class DeleteChaptersDto {
 		type: [String],
 	})
 	@IsArray()
-	@IsString({ each: true })
+	@ArrayMinSize(1)
 	@ArrayMaxSize(100)
+	@IsUUID('4', { each: true })
 	chapterIds: string[];
 }
 
@@ -35,7 +45,9 @@ export class DeleteCoversDto {
 		type: [String],
 	})
 	@IsArray()
-	@IsString({ each: true })
+	@ArrayMinSize(1)
+	@ArrayMaxSize(100)
+	@IsUUID('4', { each: true })
 	coverIds: string[];
 }
 
@@ -46,5 +58,10 @@ export class DeletePagesDto {
 		type: [Number],
 	})
 	@IsArray()
+	@ArrayMinSize(1)
+	@ArrayMaxSize(100)
+	@Type(() => Number)
+	@IsInt({ each: true })
+	@Min(1, { each: true })
 	pageIndices: number[];
 }

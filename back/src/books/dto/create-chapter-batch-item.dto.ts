@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
 	IsEnum,
 	IsNotEmpty,
@@ -18,7 +19,7 @@ export class CreateChapterBatchItemDto {
 		description: 'Book ID that will receive the chapter',
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
-	@IsUUID()
+	@IsUUID('4')
 	bookId: string;
 
 	@ApiPropertyOptional({
@@ -36,6 +37,7 @@ export class CreateChapterBatchItemDto {
 		example: 1,
 		minimum: 1,
 	})
+	@Type(() => Number)
 	@IsNumber()
 	@IsPositive()
 	@IsOptional()

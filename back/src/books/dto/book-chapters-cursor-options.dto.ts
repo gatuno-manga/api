@@ -1,11 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
-
-export enum OrderDirection {
-	ASC = 'ASC',
-	DESC = 'DESC',
-}
+import { OrderDirection } from 'src/common/enum/order-direction.enum';
 
 export class BookChaptersCursorOptionsDto {
 	@ApiPropertyOptional({

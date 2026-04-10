@@ -6,17 +6,20 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Queue } from 'bullmq';
+import { Job, Queue } from 'bullmq';
 import { BookChaptersCursorPageDto } from '../dto/book-chapters-cursor-page.dto';
-import {
-	BookChaptersCursorOptionsDto,
-	OrderDirection,
-} from '../dto/book-chapters-cursor-options.dto';
+import { BookChaptersCursorOptionsDto } from '../dto/book-chapters-cursor-options.dto';
 import { QueueCoverProcessorDto } from '../dto/queue-cover-processor.dto';
 import { AppConfigService } from 'src/app-config/app-config.service';
+import { CursorPageDto } from 'src/pages/cursor-page.dto';
+import {
+	decodeCursorPayload,
+	encodeCursorPayload,
+} from 'src/pages/cursor.utils';
 import { MetadataPageDto } from 'src/pages/metadata-page.dto';
 import { PageDto } from 'src/pages/page.dto';
 import { Repository, SelectQueryBuilder } from 'typeorm';
+import { OrderDirection } from 'src/common/enum/order-direction.enum';
 import { BookPageOptionsDto } from '../dto/book-page-options.dto';
 import { Author } from '../entities/author.entity';
 import { Book } from '../entities/book.entity';
@@ -27,6 +30,35 @@ import { Tag } from '../entities/tags.entity';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { SensitiveContentService } from '../sensitive-content/sensitive-content.service';
 import { FilterStrategy } from '../strategies';
+import { AdminUsersService } from 'src/users/admin-users.service';
+import { BookOrderField } from '../enum/book-order-field.enum';
+
+interface RawChapterRow {
+	chapter_id: string;
+	chapter_title: string;
+	chapter_index: number;
+	chapter_scrapingStatus: string;
+	readCount: string;
+}
+
+interface ChapterPageCount {
+	chapterId: string;
+	total: string;
+}
+
+interface ChapterErrorPageCount {
+	chapterId: string;
+	cnt: string;
+}
+
+interface BookListCursorPayload {
+	orderBy: BookOrderField;
+	order: OrderDirection;
+	value: string | number;
+	id: string;
+}
+
+type BookListItem = Omit<Book, 'covers'> & { cover: string | null };
 
 /**
  * Service responsável por consultas e buscas de livros
@@ -34,6 +66,7 @@ import { FilterStrategy } from '../strategies';
 @Injectable()
 export class BookQueryService {
 	private readonly logger = new Logger(BookQueryService.name);
+	private readonly publicationCursorNullValue = -1;
 
 	constructor(
 		@InjectRepository(Book)
@@ -58,11 +91,46 @@ export class BookQueryService {
 		private readonly coverImageQueue: Queue<QueueCoverProcessorDto>,
 		@InjectQueue('fix-chapter-queue')
 		private readonly fixChapterQueue: Queue<{ chapterId: string }>,
+		private readonly adminUsersService: AdminUsersService,
 	) {}
 
 	/** Cache de curto prazo para getQueueStats (TTL: 30s) */
 	private queueStatsCache: { data: unknown; expiresAt: number } | null = null;
 	private readonly QUEUE_STATS_TTL_MS = 30_000;
+
+	private async ensureUserCanAccessBook(
+		book: Pick<Book, 'id' | 'sensitiveContent' | 'tags'>,
+		maxWeightSensitiveContent: number,
+		userId?: string,
+	) {
+		const result = await this.adminUsersService.evaluateAccessForBook({
+			userId,
+			bookId: book.id,
+			bookTagIds: (book.tags || []).map((tag) => tag.id),
+			bookSensitiveContentIds: (book.sensitiveContent || []).map(
+				(sensitiveContent) => sensitiveContent.id,
+			),
+			baseMaxWeightSensitiveContent: maxWeightSensitiveContent,
+		});
+
+		if (result.blocked) {
+			throw new ForbiddenException(
+				`Book with id ${book.id} is blocked by access policy`,
+			);
+		}
+
+		const bookWeight = book.sensitiveContent.reduce(
+			(sum, sensitive) => sum + (sensitive.weight || 0),
+			0,
+		);
+
+		if (bookWeight > result.effectiveMaxWeightSensitiveContent) {
+			this.logger.warn(`Book with id ${book.id} exceeds max weight`);
+			throw new ForbiddenException(
+				`Book with id ${book.id} exceeds max weight`,
+			);
+		}
+	}
 
 	/**
 	 * Aplica filtros dinâmicos aos livros
@@ -86,14 +154,136 @@ export class BookQueryService {
 		}
 	}
 
+	private mapBooksWithCover(books: Book[]): BookListItem[] {
+		return books.map((book) => {
+			const { covers, ...rest } = book;
+			const coverUrl = covers?.[0]?.url || null;
+
+			return {
+				...rest,
+				cover: coverUrl ? this.urlImage(coverUrl) : null,
+			};
+		});
+	}
+
+	private getOrderExpressionForBooks(orderByField: BookOrderField): string {
+		switch (orderByField) {
+			case BookOrderField.TITLE:
+				return 'book.title';
+			case BookOrderField.PUBLICATION:
+				return `COALESCE(book.publication, ${this.publicationCursorNullValue})`;
+			case BookOrderField.UPDATED_AT:
+				return 'book.updatedAt';
+			default:
+				return 'book.createdAt';
+		}
+	}
+
+	private getCursorValueForBook(
+		book: Book,
+		orderByField: BookOrderField,
+	): string | number {
+		switch (orderByField) {
+			case BookOrderField.TITLE:
+				return book.title;
+			case BookOrderField.PUBLICATION:
+				return book.publication ?? this.publicationCursorNullValue;
+			case BookOrderField.UPDATED_AT:
+				return book.updatedAt.toISOString();
+			default:
+				return book.createdAt.toISOString();
+		}
+	}
+
+	private applyBookCursorFilter(
+		queryBuilder: SelectQueryBuilder<Book>,
+		cursor: string,
+		orderByField: BookOrderField,
+		orderDirection: OrderDirection,
+	): void {
+		const decodedCursor =
+			decodeCursorPayload<BookListCursorPayload>(cursor);
+
+		if (
+			!decodedCursor ||
+			decodedCursor.orderBy !== orderByField ||
+			decodedCursor.order !== orderDirection ||
+			typeof decodedCursor.id !== 'string'
+		) {
+			return;
+		}
+
+		let cursorValue: string | number | Date = decodedCursor.value;
+		if (
+			orderByField === BookOrderField.CREATED_AT ||
+			orderByField === BookOrderField.UPDATED_AT
+		) {
+			if (typeof decodedCursor.value !== 'string') {
+				return;
+			}
+			const parsedDate = new Date(decodedCursor.value);
+			if (Number.isNaN(parsedDate.getTime())) {
+				return;
+			}
+			cursorValue = parsedDate;
+		}
+
+		if (orderByField === BookOrderField.PUBLICATION) {
+			if (typeof decodedCursor.value !== 'number') {
+				return;
+			}
+			cursorValue = decodedCursor.value;
+		}
+
+		if (
+			orderByField === BookOrderField.TITLE &&
+			typeof decodedCursor.value !== 'string'
+		) {
+			return;
+		}
+
+		const orderExpression = this.getOrderExpressionForBooks(orderByField);
+		const comparisonOperator =
+			orderDirection === OrderDirection.ASC ? '>' : '<';
+
+		queryBuilder.andWhere(
+			`(
+				${orderExpression} ${comparisonOperator} :cursorValue
+				OR (${orderExpression} = :cursorValue AND book.id > :cursorId)
+			)`,
+			{
+				cursorValue,
+				cursorId: decodedCursor.id,
+			},
+		);
+	}
+
 	/**
 	 * Busca todos os livros com paginação e filtros
 	 */
 	async getAllBooks(
 		options: BookPageOptionsDto,
 		maxWeightSensitiveContent: number,
+		userId: string | undefined,
 		filterStrategies: FilterStrategy[],
-	): Promise<PageDto<Omit<Book, 'covers'> & { cover: string | null }>> {
+	): Promise<PageDto<BookListItem> | CursorPageDto<BookListItem>> {
+		const accessContext =
+			await this.adminUsersService.evaluateListAccessContext({
+				userId,
+				baseMaxWeightSensitiveContent: maxWeightSensitiveContent,
+			});
+
+		if (accessContext.blockedAll) {
+			if (options.cursor) {
+				return new CursorPageDto([], null, false);
+			}
+			const metadata = new MetadataPageDto();
+			metadata.total = 0;
+			metadata.page = options.page;
+			metadata.lastPage = 0;
+			return new PageDto([], metadata);
+		}
+
 		const queryBuilder = this.bookRepository
 			.createQueryBuilder('book')
 			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
@@ -126,25 +316,59 @@ export class BookQueryService {
 		await this.applyBookFilters(
 			queryBuilder,
 			options,
-			maxWeightSensitiveContent,
+			accessContext.effectiveMaxWeightSensitiveContent,
 			filterStrategies,
 		);
 
-		const orderByField = options.orderBy || 'createdAt';
-		const orderDirection = options.order || 'DESC';
+		if (accessContext.denyBookIds.length > 0) {
+			queryBuilder.andWhere('book.id NOT IN (:...denyBookIds)', {
+				denyBookIds: accessContext.denyBookIds,
+			});
+		}
+
+		if (accessContext.denyTagIds.length > 0) {
+			queryBuilder.andWhere(
+				`book.id NOT IN (
+					SELECT bt.booksId
+					FROM books_tags_tags bt
+					WHERE bt.tagsId IN (:...denyTagIds)
+				)`,
+				{ denyTagIds: accessContext.denyTagIds },
+			);
+		}
+
+		if (accessContext.denySensitiveContentIds.length > 0) {
+			queryBuilder.andWhere(
+				`book.id NOT IN (
+					SELECT bs.booksId
+					FROM books_sensitive_content_sensitive_content bs
+					WHERE bs.sensitiveContentId IN (:...denySensitiveContentIds)
+				)`,
+				{
+					denySensitiveContentIds:
+						accessContext.denySensitiveContentIds,
+				},
+			);
+		}
+
+		const orderByField = options.orderBy || BookOrderField.CREATED_AT;
+		const orderDirection = options.order || OrderDirection.DESC;
 
 		switch (orderByField) {
-			case 'title':
+			case BookOrderField.TITLE:
 				queryBuilder
 					.orderBy('book.title', orderDirection)
 					.addOrderBy('book.id', 'ASC');
 				break;
-			case 'publication':
+			case BookOrderField.PUBLICATION:
 				queryBuilder
-					.orderBy('book.publication', orderDirection)
+					.orderBy(
+						`COALESCE(book.publication, ${this.publicationCursorNullValue})`,
+						orderDirection,
+					)
 					.addOrderBy('book.id', 'ASC');
 				break;
-			case 'updatedAt':
+			case BookOrderField.UPDATED_AT:
 				queryBuilder
 					.orderBy('book.updatedAt', orderDirection)
 					.addOrderBy('book.id', 'ASC');
@@ -156,20 +380,45 @@ export class BookQueryService {
 				break;
 		}
 
+		if (options.cursor) {
+			this.applyBookCursorFilter(
+				queryBuilder,
+				options.cursor,
+				orderByField,
+				orderDirection,
+			);
+
+			queryBuilder.take(options.limit + 1);
+			const books = await queryBuilder.getMany();
+			const hasNextPage = books.length > options.limit;
+			const currentPageBooks = hasNextPage
+				? books.slice(0, options.limit)
+				: books;
+			const data = this.mapBooksWithCover(currentPageBooks);
+			const lastBook = currentPageBooks[currentPageBooks.length - 1];
+
+			const nextCursor =
+				hasNextPage && lastBook
+					? encodeCursorPayload({
+							orderBy: orderByField,
+							order: orderDirection,
+							value: this.getCursorValueForBook(
+								lastBook,
+								orderByField,
+							),
+							id: lastBook.id,
+						})
+					: null;
+
+			return new CursorPageDto(data, nextCursor, hasNextPage);
+		}
+
 		queryBuilder
 			.skip((options.page - 1) * options.limit)
 			.take(options.limit);
 
 		const [books, total] = await queryBuilder.getManyAndCount();
-		const data = books.map((book) => {
-			const { covers, ...rest } = book;
-			const coverUrl = covers?.[0]?.url || null;
-
-			return {
-				...rest,
-				cover: coverUrl ? this.urlImage(coverUrl) : null,
-			};
-		});
+		const data = this.mapBooksWithCover(books);
 
 		const metadata = new MetadataPageDto();
 		metadata.total = total;
@@ -185,8 +434,20 @@ export class BookQueryService {
 	async getRandomBook(
 		options: BookPageOptionsDto,
 		maxWeightSensitiveContent: number,
+		userId: string | undefined,
 		filterStrategies: FilterStrategy[],
 	): Promise<{ id: string }> {
+		const accessContext =
+			await this.adminUsersService.evaluateListAccessContext({
+				userId,
+				baseMaxWeightSensitiveContent: maxWeightSensitiveContent,
+			});
+
+		if (accessContext.blockedAll) {
+			this.logger.warn('No books found: blocked by global deny policy');
+			throw new NotFoundException('No books found matching the filters');
+		}
+
 		const queryBuilder = this.bookRepository
 			.createQueryBuilder('book')
 			.leftJoin('book.sensitiveContent', 'sensitiveContent')
@@ -197,9 +458,40 @@ export class BookQueryService {
 		await this.applyBookFilters(
 			queryBuilder,
 			options,
-			maxWeightSensitiveContent,
+			accessContext.effectiveMaxWeightSensitiveContent,
 			filterStrategies,
 		);
+
+		if (accessContext.denyBookIds.length > 0) {
+			queryBuilder.andWhere('book.id NOT IN (:...denyBookIds)', {
+				denyBookIds: accessContext.denyBookIds,
+			});
+		}
+
+		if (accessContext.denyTagIds.length > 0) {
+			queryBuilder.andWhere(
+				`book.id NOT IN (
+					SELECT bt.booksId
+					FROM books_tags_tags bt
+					WHERE bt.tagsId IN (:...denyTagIds)
+				)`,
+				{ denyTagIds: accessContext.denyTagIds },
+			);
+		}
+
+		if (accessContext.denySensitiveContentIds.length > 0) {
+			queryBuilder.andWhere(
+				`book.id NOT IN (
+					SELECT bs.booksId
+					FROM books_sensitive_content_sensitive_content bs
+					WHERE bs.sensitiveContentId IN (:...denySensitiveContentIds)
+				)`,
+				{
+					denySensitiveContentIds:
+						accessContext.denySensitiveContentIds,
+				},
+			);
+		}
 
 		const count = await queryBuilder.getCount();
 
@@ -222,7 +514,7 @@ export class BookQueryService {
 	/**
 	 * Busca um livro por ID
 	 */
-	async getOne(id: string, maxWeightSensitiveContent = 0) {
+	async getOne(id: string, maxWeightSensitiveContent = 0, userId?: string) {
 		const book = await this.bookRepository
 			.createQueryBuilder('book')
 			.leftJoinAndSelect('book.tags', 'tags')
@@ -260,16 +552,11 @@ export class BookQueryService {
 			throw new NotFoundException(`Book with id ${id} not found`);
 		}
 
-		const maxWeight = book.sensitiveContent.reduce(
-			(sum, sc) => sum + (sc.weight || 0),
-			0,
+		await this.ensureUserCanAccessBook(
+			book,
+			maxWeightSensitiveContent,
+			userId,
 		);
-		if (maxWeight > maxWeightSensitiveContent) {
-			this.logger.warn(`Book with id ${id} exceeds max weight`);
-			throw new ForbiddenException(
-				`Book with id ${id} exceeds max weight`,
-			);
-		}
 
 		const coverUrl = book.covers?.[0]?.url || '';
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -293,8 +580,10 @@ export class BookQueryService {
 		const book = await this.bookRepository
 			.createQueryBuilder('book')
 			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
+			.leftJoinAndSelect('book.tags', 'tags')
 			.where('book.id = :id', { id })
-			.select(['book.id', 'sensitiveContent.weight'])
+			.select(['book.id', 'sensitiveContent.weight', 'tags.id'])
+			.addSelect('sensitiveContent.id')
 			.getOne();
 
 		if (!book) {
@@ -302,16 +591,11 @@ export class BookQueryService {
 			throw new NotFoundException(`Book with id ${id} not found`);
 		}
 
-		const maxWeight = book.sensitiveContent.reduce(
-			(sum, sc) => sum + (sc.weight || 0),
-			0,
+		await this.ensureUserCanAccessBook(
+			book,
+			maxWeightSensitiveContent,
+			userid,
 		);
-		if (maxWeight > maxWeightSensitiveContent) {
-			this.logger.warn(`Book with id ${id} exceeds max weight`);
-			throw new ForbiddenException(
-				`Book with id ${id} exceeds max weight`,
-			);
-		}
 
 		const pageLimit = options.limit ?? 200;
 		const cursorIndex = this.decodeCursor(options.cursor);
@@ -356,13 +640,7 @@ export class BookQueryService {
 			'readCount',
 		);
 
-		const rawChapters = await chaptersQuery.getRawMany<{
-			chapter_id: string;
-			chapter_title: string;
-			chapter_index: number;
-			chapter_scrapingStatus: string;
-			readCount: string;
-		}>();
+		const rawChapters = await chaptersQuery.getRawMany<RawChapterRow>();
 
 		const chapters = rawChapters.map((row) => ({
 			id: row.chapter_id,
@@ -389,14 +667,13 @@ export class BookQueryService {
 		const data = hasNextPage ? chapters.slice(0, limit) : chapters;
 		const lastItem = data[data.length - 1];
 
-		return {
+		return new BookChaptersCursorPageDto(
 			data,
-			nextCursor:
-				hasNextPage && lastItem
-					? Buffer.from(String(lastItem.index)).toString('base64')
-					: null,
+			hasNextPage && lastItem
+				? Buffer.from(String(lastItem.index)).toString('base64')
+				: null,
 			hasNextPage,
-		};
+		);
 	}
 
 	private decodeCursor(cursor?: string): number | null {
@@ -423,16 +700,23 @@ export class BookQueryService {
 	/**
 	 * Busca capas de um livro
 	 */
-	async getCovers(id: string, maxWeightSensitiveContent = 0) {
+	async getCovers(
+		id: string,
+		maxWeightSensitiveContent = 0,
+		userId?: string,
+	) {
 		const book = await this.bookRepository
 			.createQueryBuilder('book')
 			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
+			.leftJoinAndSelect('book.tags', 'tags')
 			.leftJoinAndSelect('book.covers', 'covers')
 			.where('book.id = :id', { id })
 			.orderBy('covers.index', 'ASC')
 			.select([
 				'book.id',
+				'sensitiveContent.id',
 				'sensitiveContent.weight',
+				'tags.id',
 				'covers.id',
 				'covers.url',
 				'covers.title',
@@ -446,16 +730,11 @@ export class BookQueryService {
 			throw new NotFoundException(`Book with id ${id} not found`);
 		}
 
-		const maxWeight = book.sensitiveContent.reduce(
-			(sum, sc) => sum + (sc.weight || 0),
-			0,
+		await this.ensureUserCanAccessBook(
+			book,
+			maxWeightSensitiveContent,
+			userId,
 		);
-		if (maxWeight > maxWeightSensitiveContent) {
-			this.logger.warn(`Book with id ${id} exceeds max weight`);
-			throw new ForbiddenException(
-				`Book with id ${id} exceeds max weight`,
-			);
-		}
 
 		return book.covers.map((cover) => ({
 			...cover,
@@ -466,10 +745,11 @@ export class BookQueryService {
 	/**
 	 * Busca informações detalhadas de um livro
 	 */
-	async getInfos(id: string, maxWeightSensitiveContent = 0) {
+	async getInfos(id: string, maxWeightSensitiveContent = 0, userId?: string) {
 		const book = await this.bookRepository
 			.createQueryBuilder('book')
 			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
+			.leftJoinAndSelect('book.tags', 'tags')
 			.leftJoinAndSelect('book.authors', 'authors')
 			.leftJoinAndSelect('book.covers', 'covers')
 			.where('book.id = :id', { id })
@@ -480,7 +760,9 @@ export class BookQueryService {
 				'book.scrapingStatus',
 				'book.createdAt',
 				'book.updatedAt',
+				'sensitiveContent.id',
 				'sensitiveContent.weight',
+				'tags.id',
 				'authors.id',
 				'authors.name',
 			])
@@ -491,16 +773,11 @@ export class BookQueryService {
 			throw new NotFoundException(`Book with id ${id} not found`);
 		}
 
-		const maxWeight = book.sensitiveContent.reduce(
-			(sum, sc) => sum + (sc.weight || 0),
-			0,
+		await this.ensureUserCanAccessBook(
+			book,
+			maxWeightSensitiveContent,
+			userId,
 		);
-		if (maxWeight > maxWeightSensitiveContent) {
-			this.logger.warn(`Book with id ${id} exceeds max weight`);
-			throw new ForbiddenException(
-				`Book with id ${id} exceeds max weight`,
-			);
-		}
 
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { sensitiveContent, ...rest } = book;
@@ -547,7 +824,7 @@ export class BookQueryService {
 				.select('ch.id', 'chapterId')
 				.addSelect('COUNT(p.id)', 'total')
 				.groupBy('ch.id')
-				.getRawMany<{ chapterId: string; total: string }>(),
+				.getRawMany<ChapterPageCount>(),
 			this.pageRepository
 				.createQueryBuilder('p')
 				.innerJoin('p.chapter', 'ch')
@@ -558,7 +835,7 @@ export class BookQueryService {
 				.select('ch.id', 'chapterId')
 				.addSelect('COUNT(p.id)', 'cnt')
 				.groupBy('ch.id')
-				.getRawMany<{ chapterId: string; cnt: string }>(),
+				.getRawMany<ChapterErrorPageCount>(),
 		]);
 
 		const pageCountMap = new Map(
@@ -803,16 +1080,16 @@ export class BookQueryService {
 				]),
 			);
 
-			const pendingMeta = (job: {
-				delay: number;
-				timestamp: number;
-			}) => ({
+			const pendingMeta = (job: Job) => ({
 				delayed: job.delay > 0,
 				processAt:
 					job.delay > 0 ? new Date(job.timestamp + job.delay) : null,
 			});
 
-			const mapBookJob = (job, pending = false) => ({
+			const mapBookJob = (
+				job: Job<{ bookId: string }>,
+				pending = false,
+			) => ({
 				id: job.id,
 				bookId: job.data.bookId,
 				bookTitle: bookMap.get(job.data.bookId) ?? 'Unknown',
@@ -821,13 +1098,13 @@ export class BookQueryService {
 			});
 
 			const mapChapterJob = (
-				job,
+				job: Job<string | { chapterId: string }>,
 				isDirectString: boolean,
 				pending = false,
 			) => {
 				const chapterId = isDirectString
-					? (job.data as unknown as string)
-					: job.data.chapterId;
+					? (job.data as string)
+					: (job.data as { chapterId: string }).chapterId;
 				const info = chapterMap.get(chapterId);
 				return {
 					id: job.id,
@@ -840,7 +1117,10 @@ export class BookQueryService {
 				};
 			};
 
-			const mapCoverJob = (job, pending = false) => ({
+			const mapCoverJob = (
+				job: Job<QueueCoverProcessorDto>,
+				pending = false,
+			) => ({
 				id: job.id,
 				bookId: job.data.bookId,
 				bookTitle: bookMap.get(job.data.bookId) ?? 'Unknown',

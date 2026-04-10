@@ -4,17 +4,38 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guard/jwt-auth.guard';
 import { RefreshTokenGuard } from './guard/jwt-refresh.guard';
+import { WebauthnService } from './services/webauthn.service';
 
 describe('AuthController', () => {
 	let controller: AuthController;
 	let authService: AuthService;
 
 	const mockAuthService = {
-		login: jest.fn(),
-		register: jest.fn(),
-		refreshToken: jest.fn(),
+		signIn: jest.fn(),
+		signUp: jest.fn(),
+		refreshTokens: jest.fn(),
 		logout: jest.fn(),
-		validateUser: jest.fn(),
+		logoutAll: jest.fn(),
+		verifyMfaAndCompleteSignIn: jest.fn(),
+		getMfaStatus: jest.fn(),
+		beginTotpSetup: jest.fn(),
+		verifyTotpSetup: jest.fn(),
+		disableTotp: jest.fn(),
+		listActiveSessions: jest.fn(),
+		revokeSession: jest.fn(),
+		revokeOtherSessions: jest.fn(),
+		getAuditHistory: jest.fn(),
+		generateTokensForUser: jest.fn(),
+		completePasskeySignIn: jest.fn(),
+	};
+
+	const mockWebauthnService = {
+		beginAuthentication: jest.fn(),
+		verifyAuthentication: jest.fn(),
+		listUserPasskeys: jest.fn(),
+		beginRegistration: jest.fn(),
+		verifyRegistration: jest.fn(),
+		deleteUserPasskey: jest.fn(),
 	};
 
 	const mockGuard = {
@@ -35,6 +56,10 @@ describe('AuthController', () => {
 						apiUrl: 'http://localhost:3000',
 						refreshTokenTtl: 604800000,
 					},
+				},
+				{
+					provide: WebauthnService,
+					useValue: mockWebauthnService,
 				},
 			],
 		})

@@ -273,7 +273,7 @@ export class NetworkInterceptor {
 	/**
 	 * Ensure there's enough space in the cache by evicting LRU entries.
 	 */
-	private async ensureCacheSpace(requiredBytes: number): Promise<void> {
+	private ensureCacheSpace(requiredBytes: number): Promise<void> {
 		while (
 			this.currentCacheSize + requiredBytes >
 			this.memoryLimits.maxCacheSize
@@ -286,6 +286,7 @@ export class NetworkInterceptor {
 				break;
 			}
 		}
+		return Promise.resolve();
 	}
 
 	/**
@@ -493,12 +494,13 @@ export class NetworkInterceptor {
 	 * Start intercepting network traffic.
 	 * Call this BEFORE navigating to the page.
 	 */
-	async startInterception(): Promise<void> {
-		if (this.isIntercepting) return;
+	startInterception(): Promise<void> {
+		if (this.isIntercepting) return Promise.resolve();
 
 		this.page.on('response', this.responseHandler);
 		this.isIntercepting = true;
 		this.logger.debug('Network interception started');
+		return Promise.resolve();
 	}
 
 	/**

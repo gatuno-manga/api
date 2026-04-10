@@ -15,6 +15,7 @@ import {
 	ApiResponse,
 	ApiTags,
 } from '@nestjs/swagger';
+import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
@@ -24,7 +25,7 @@ import { DownloadChapterQueryDto } from './dto/download-chapter-query.dto';
 @ApiTags('Downloads')
 @Controller('chapters')
 @UseGuards(JwtAuthGuard)
-@ApiBearerAuth('JWT-auth')
+@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 export class ChapterDownloadController {
 	private readonly logger = new Logger(ChapterDownloadController.name);
 

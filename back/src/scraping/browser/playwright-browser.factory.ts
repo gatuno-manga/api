@@ -262,10 +262,11 @@ export class PlaywrightBrowserFactory implements IBrowserFactory {
 	 * Shutdown the factory and release all resources.
 	 * Called during application shutdown.
 	 */
-	async shutdown(): Promise<void> {
+	shutdown(): Promise<void> {
 		this.logger.log('Shutting down browser factory...');
 		// The pool will handle its own shutdown via onModuleDestroy
 		this.logger.log('Browser factory shutdown complete');
+		return Promise.resolve();
 	}
 
 	getConfig(): Required<BrowserConfig> {

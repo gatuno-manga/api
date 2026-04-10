@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { CursorPageDto } from 'src/pages/cursor-page.dto';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 
 export class BookChapterCursorItemDto {
@@ -22,18 +23,7 @@ export class BookChapterCursorItemDto {
 	read?: boolean;
 }
 
-export class BookChaptersCursorPageDto {
+export class BookChaptersCursorPageDto extends CursorPageDto<BookChapterCursorItemDto> {
 	@ApiProperty({ type: [BookChapterCursorItemDto] })
-	data: BookChapterCursorItemDto[];
-
-	@ApiProperty({
-		nullable: true,
-		required: false,
-		example: 'MjAwLjA=',
-		description: 'Cursor da próxima página. Nulo quando não há mais itens.',
-	})
-	nextCursor: string | null;
-
-	@ApiProperty({ example: true })
-	hasNextPage: boolean;
+	declare data: BookChapterCursorItemDto[];
 }

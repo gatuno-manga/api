@@ -15,6 +15,7 @@ import {
 	ApiResponse,
 	ApiTags,
 } from '@nestjs/swagger';
+import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
 import { Roles } from 'src/auth/decorator/roles.decorator';
@@ -73,7 +74,7 @@ export class AuthorsController {
 		description: 'Forbidden - Admin role required',
 	})
 	@ApiResponse({ status: 429, description: 'Too many requests' })
-	@ApiBearerAuth('JWT-auth')
+	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 	mergeAuthors(@Param('authorId') authorId: string, @Query() dto: string[]) {
 		return this.authorsService.mergeAuthors(authorId, dto);
 	}

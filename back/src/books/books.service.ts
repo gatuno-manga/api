@@ -1,8 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { CursorPageDto } from 'src/pages/cursor-page.dto';
 import { PageDto } from 'src/pages/page.dto';
+import { BookRelationshipsQueryDto } from './dto/book-relationships-query.dto';
 import { BookChaptersCursorPageDto } from './dto/book-chapters-cursor-page.dto';
 import { BookChaptersCursorOptionsDto } from './dto/book-chapters-cursor-options.dto';
 import { BookPageOptionsDto } from './dto/book-page-options.dto';
+import { CreateBookRelationshipDto } from './dto/create-book-relationship.dto';
+import { UpdateBookRelationshipDto } from './dto/update-book-relationship.dto';
 import { Book } from './entities/book.entity';
 import { CreateBookDto } from './dto/create-book.dto';
 import { OrderChaptersDto } from './dto/order-chapters.dto';
@@ -10,6 +14,7 @@ import { OrderCoversDto } from './dto/order-covers.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
 import { UpdateChapterDto } from './dto/update-chapter.dto';
 import { BookCreationService } from './services/book-creation.service';
+import { BookBookRelationshipService } from './services/book-book-relationship.service';
 import { BookQueryService } from './services/book-query.service';
 import { BookRelationshipService } from './services/book-relationship.service';
 import { BookUpdateService } from './services/book-update.service';
@@ -39,6 +44,7 @@ export class BooksService {
 		private readonly bookQueryService: BookQueryService,
 		private readonly chapterManagementService: ChapterManagementService,
 		private readonly bookRelationshipService: BookRelationshipService,
+		private readonly bookBookRelationshipService: BookBookRelationshipService,
 	) {
 		this.filterStrategies = [
 			new TypeFilterStrategy(),
@@ -97,10 +103,15 @@ export class BooksService {
 	async getAllBooks(
 		options: BookPageOptionsDto,
 		maxWeightSensitiveContent = 0,
-	): Promise<PageDto<Omit<Book, 'covers'> & { cover: string | null }>> {
+		userId?: string,
+	): Promise<
+		| PageDto<Omit<Book, 'covers'> & { cover: string | null }>
+		| CursorPageDto<Omit<Book, 'covers'> & { cover: string | null }>
+	> {
 		return this.bookQueryService.getAllBooks(
 			options,
 			maxWeightSensitiveContent,
+			userId,
 			this.filterStrategies,
 		);
 	}
@@ -108,16 +119,22 @@ export class BooksService {
 	async getRandomBook(
 		options: BookPageOptionsDto,
 		maxWeightSensitiveContent = 0,
+		userId?: string,
 	): Promise<{ id: string }> {
 		return this.bookQueryService.getRandomBook(
 			options,
 			maxWeightSensitiveContent,
+			userId,
 			this.filterStrategies,
 		);
 	}
 
-	async getOne(id: string, maxWeightSensitiveContent = 0) {
-		return this.bookQueryService.getOne(id, maxWeightSensitiveContent);
+	async getOne(id: string, maxWeightSensitiveContent = 0, userId?: string) {
+		return this.bookQueryService.getOne(
+			id,
+			maxWeightSensitiveContent,
+			userId,
+		);
 	}
 
 	async getChapters(
@@ -134,12 +151,24 @@ export class BooksService {
 		);
 	}
 
-	async getCovers(id: string, maxWeightSensitiveContent = 0) {
-		return this.bookQueryService.getCovers(id, maxWeightSensitiveContent);
+	async getCovers(
+		id: string,
+		maxWeightSensitiveContent = 0,
+		userId?: string,
+	) {
+		return this.bookQueryService.getCovers(
+			id,
+			maxWeightSensitiveContent,
+			userId,
+		);
 	}
 
-	async getInfos(id: string, maxWeightSensitiveContent = 0) {
-		return this.bookQueryService.getInfos(id, maxWeightSensitiveContent);
+	async getInfos(id: string, maxWeightSensitiveContent = 0, userId?: string) {
+		return this.bookQueryService.getInfos(
+			id,
+			maxWeightSensitiveContent,
+			userId,
+		);
 	}
 
 	async verifyBook(idBook: string) {
@@ -177,6 +206,46 @@ export class BooksService {
 	}
 
 	// ==================== RELACIONAMENTOS ====================
+
+	async createBookRelationship(
+		idBook: string,
+		dto: CreateBookRelationshipDto,
+	) {
+		return this.bookBookRelationshipService.createRelationship(idBook, dto);
+	}
+
+	async updateBookRelationship(
+		idBook: string,
+		idRelationship: string,
+		dto: UpdateBookRelationshipDto,
+	) {
+		return this.bookBookRelationshipService.updateRelationship(
+			idBook,
+			idRelationship,
+			dto,
+		);
+	}
+
+	async deleteBookRelationship(idBook: string, idRelationship: string) {
+		return this.bookBookRelationshipService.deleteRelationship(
+			idBook,
+			idRelationship,
+		);
+	}
+
+	async getBookRelationships(
+		idBook: string,
+		query: BookRelationshipsQueryDto,
+		maxWeightSensitiveContent = 0,
+		userId?: string,
+	) {
+		return this.bookBookRelationshipService.listRelationships(
+			idBook,
+			query,
+			maxWeightSensitiveContent,
+			userId,
+		);
+	}
 
 	async findOrCreateSensitiveContent(sensitiveContentNames: string[]) {
 		return this.bookRelationshipService.findOrCreateSensitiveContent(

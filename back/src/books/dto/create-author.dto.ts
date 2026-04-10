@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class CreateAuthorDto {
 	@ApiProperty({
@@ -8,6 +8,8 @@ export class CreateAuthorDto {
 		maxLength: 200,
 	})
 	@IsString()
+	@MinLength(2)
+	@MaxLength(200)
 	name: string;
 
 	@ApiPropertyOptional({
@@ -17,5 +19,6 @@ export class CreateAuthorDto {
 	})
 	@IsString()
 	@IsOptional()
+	@MaxLength(1000)
 	biography?: string;
 }

@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
-	IsIn,
+	IsEnum,
 	IsNumber,
 	IsOptional,
 	IsPositive,
@@ -10,16 +10,21 @@ import {
 } from 'class-validator';
 import { ToArray } from 'src/pages/decorator/to-array.decorator';
 import { PageOptionsDto } from 'src/pages/page-options.dto';
+import { FilterLogic } from 'src/common/enum/filter-logic.enum';
+import { FilterOperator } from 'src/common/enum/filter-operator.enum';
+import { OrderDirection } from 'src/common/enum/order-direction.enum';
+import { BookOrderField } from '../enum/book-order-field.enum';
 import { BookType } from '../enum/book-type.enum';
 
 export class BookPageOptionsDto extends PageOptionsDto {
 	@ApiPropertyOptional({
-		description: 'Filter by book types',
-		example: [BookType.MANGA, BookType.MANHWA],
-		enum: BookType,
-		isArray: true,
-		default: Object.values(BookType),
+		description: 'Cursor para navegação por cursor',
+		example: 'eyJ2YWx1ZSI6IjIwMjYtMDEtMDEiLCJpZCI6IjU1MGU4NDAwIn0=',
 	})
+	@IsOptional()
+	@IsString()
+	cursor?: string;
+
 	@ApiPropertyOptional({
 		description: 'Filter by book types',
 		example: [BookType.MANGA, BookType.MANHWA],
@@ -62,14 +67,13 @@ export class BookPageOptionsDto extends PageOptionsDto {
 
 	@ApiPropertyOptional({
 		description: 'Logical operator for tags filter (and/or)',
-		example: 'and',
-		enum: ['and', 'or'],
-		default: 'and',
+		example: FilterLogic.AND,
+		enum: FilterLogic,
+		default: FilterLogic.AND,
 	})
 	@IsOptional()
-	@IsString()
-	@IsIn(['and', 'or'])
-	tagsLogic?: 'and' | 'or' = 'and';
+	@IsEnum(FilterLogic)
+	tagsLogic?: FilterLogic = FilterLogic.AND;
 
 	@ApiPropertyOptional({
 		description: 'Exclude books with these tag IDs',
@@ -84,14 +88,13 @@ export class BookPageOptionsDto extends PageOptionsDto {
 
 	@ApiPropertyOptional({
 		description: 'Logical operator for exclude tags filter (and/or)',
-		example: 'or',
-		enum: ['and', 'or'],
-		default: 'or',
+		example: FilterLogic.OR,
+		enum: FilterLogic,
+		default: FilterLogic.OR,
 	})
 	@IsOptional()
-	@IsString()
-	@IsIn(['and', 'or'])
-	excludeTagsLogic?: 'and' | 'or' = 'or';
+	@IsEnum(FilterLogic)
+	excludeTagsLogic?: FilterLogic = FilterLogic.OR;
 
 	@ApiPropertyOptional({
 		description: 'Filter by publication year',
@@ -106,14 +109,13 @@ export class BookPageOptionsDto extends PageOptionsDto {
 
 	@ApiPropertyOptional({
 		description: 'Comparison operator for publication year',
-		example: 'gte',
-		enum: ['eq', 'gt', 'lt', 'gte', 'lte'],
-		default: 'eq',
+		example: FilterOperator.GTE,
+		enum: FilterOperator,
+		default: FilterOperator.EQ,
 	})
 	@IsOptional()
-	@IsString()
-	@IsIn(['eq', 'gt', 'lt', 'gte', 'lte'])
-	publicationOperator?: 'eq' | 'gt' | 'lt' | 'gte' | 'lte' = 'eq';
+	@IsEnum(FilterOperator)
+	publicationOperator?: FilterOperator = FilterOperator.EQ;
 
 	@ApiPropertyOptional({
 		description: 'Filter by author IDs',
@@ -128,31 +130,30 @@ export class BookPageOptionsDto extends PageOptionsDto {
 
 	@ApiPropertyOptional({
 		description: 'Logical operator for authors filter (and/or)',
-		example: 'and',
-		enum: ['and', 'or'],
-		default: 'and',
+		example: FilterLogic.AND,
+		enum: FilterLogic,
+		default: FilterLogic.AND,
 	})
 	@IsOptional()
-	@IsString()
-	@IsIn(['and', 'or'])
-	authorsLogic?: 'and' | 'or' = 'and';
+	@IsEnum(FilterLogic)
+	authorsLogic?: FilterLogic = FilterLogic.AND;
 
 	@ApiPropertyOptional({
 		description: 'Field to order results by',
-		example: 'createdAt',
-		enum: ['title', 'createdAt', 'updatedAt', 'publication'],
-		default: 'createdAt',
+		example: BookOrderField.CREATED_AT,
+		enum: BookOrderField,
+		default: BookOrderField.CREATED_AT,
 	})
 	@IsOptional()
-	@IsString()
-	orderBy?: 'title' | 'createdAt' | 'updatedAt' | 'publication' = 'createdAt';
+	@IsEnum(BookOrderField)
+	orderBy?: BookOrderField = BookOrderField.CREATED_AT;
 
 	@ApiPropertyOptional({
 		description: 'Order direction (ascending or descending)',
-		example: 'DESC',
-		enum: ['ASC', 'DESC'],
+		example: OrderDirection.DESC,
+		enum: OrderDirection,
 	})
 	@IsOptional()
-	@IsString()
-	order?: 'ASC' | 'DESC';
+	@IsEnum(OrderDirection)
+	order?: OrderDirection;
 }

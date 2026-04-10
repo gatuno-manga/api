@@ -19,6 +19,7 @@ import {
 	ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Roles } from 'src/auth/decorator/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { RolesEnum } from 'src/users/enum/roles.enum';
@@ -40,6 +41,7 @@ import { ChapterManagementService } from './services/chapter-management.service'
 @Controller('books')
 @UseGuards(JwtAuthGuard)
 @Roles(RolesEnum.ADMIN)
+@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 export class AdminBooksController {
 	constructor(
 		private readonly booksService: BooksService,
@@ -62,7 +64,6 @@ export class AdminBooksController {
 		description: 'Forbidden - Admin role required',
 	})
 	@ApiResponse({ status: 429, description: 'Too many requests' })
-	@ApiBearerAuth('JWT-auth')
 	createBook(@Body() dto: CreateBookDto) {
 		return this.booksService.createBook(dto);
 	}
@@ -79,7 +80,6 @@ export class AdminBooksController {
 	})
 	@ApiResponse({ status: 200, description: 'Book fixed successfully' })
 	@ApiResponse({ status: 404, description: 'Book not found' })
-	@ApiBearerAuth('JWT-auth')
 	fixBook(@Param('idBook') idBook: string) {
 		return this.booksService.fixBook(idBook);
 	}
@@ -96,7 +96,6 @@ export class AdminBooksController {
 	})
 	@ApiResponse({ status: 200, description: 'Book verification completed' })
 	@ApiResponse({ status: 404, description: 'Book not found' })
-	@ApiBearerAuth('JWT-auth')
 	verifyBook(@Param('idBook') idBook: string) {
 		return this.booksService.verifyBook(idBook);
 	}
@@ -113,7 +112,6 @@ export class AdminBooksController {
 	})
 	@ApiResponse({ status: 200, description: 'Book reset successfully' })
 	@ApiResponse({ status: 404, description: 'Book not found' })
-	@ApiBearerAuth('JWT-auth')
 	resetBook(@Param('idBook') idBook: string) {
 		return this.booksService.resetBook(idBook);
 	}
@@ -131,7 +129,6 @@ export class AdminBooksController {
 	})
 	@ApiResponse({ status: 200, description: 'Update check scheduled' })
 	@ApiResponse({ status: 404, description: 'Book not found' })
-	@ApiBearerAuth('JWT-auth')
 	async checkBookUpdates(@Param('idBook') idBook: string) {
 		await this.bookUpdateScheduler.forceUpdateBook(idBook);
 		return { message: 'Update check scheduled', bookId: idBook };
@@ -146,7 +143,6 @@ export class AdminBooksController {
 		status: 200,
 		description: 'Update check scheduled for all books',
 	})
-	@ApiBearerAuth('JWT-auth')
 	async checkAllBooksUpdates() {
 		await this.bookUpdateScheduler.forceUpdateAllBooks();
 		return { message: 'Update check scheduled for all books' };
@@ -190,7 +186,6 @@ export class AdminBooksController {
 		},
 	})
 	@ApiResponse({ status: 404, description: 'Book not found' })
-	@ApiBearerAuth('JWT-auth')
 	async toggleAutoUpdate(
 		@Param('idBook') idBook: string,
 		@Body() dto: ToggleAutoUpdateDto,
@@ -211,7 +206,6 @@ export class AdminBooksController {
 	@ApiResponse({ status: 200, description: 'Book updated successfully' })
 	@ApiResponse({ status: 404, description: 'Book not found' })
 	@ApiResponse({ status: 400, description: 'Invalid input data' })
-	@ApiBearerAuth('JWT-auth')
 	updateBook(@Param('idBook') id: string, @Body() dto: UpdateBookDto) {
 		return this.booksService.updateBook(id, dto);
 	}
@@ -229,7 +223,6 @@ export class AdminBooksController {
 	@ApiResponse({ status: 200, description: 'Chapters updated successfully' })
 	@ApiResponse({ status: 404, description: 'Book not found' })
 	@ApiResponse({ status: 400, description: 'Invalid input data' })
-	@ApiBearerAuth('JWT-auth')
 	updateChapter(
 		@Param('idBook') idBook: string,
 		@Body() dto: UpdateChapterDto[],
@@ -253,7 +246,6 @@ export class AdminBooksController {
 	})
 	@ApiResponse({ status: 404, description: 'Book not found' })
 	@ApiResponse({ status: 400, description: 'Invalid input data' })
-	@ApiBearerAuth('JWT-auth')
 	orderChapters(
 		@Param('idBook') idBook: string,
 		@Body() dto: OrderChaptersDto[],
@@ -279,7 +271,6 @@ export class AdminBooksController {
 	})
 	@ApiResponse({ status: 200, description: 'Cover selected successfully' })
 	@ApiResponse({ status: 404, description: 'Book or cover not found' })
-	@ApiBearerAuth('JWT-auth')
 	selectCover(
 		@Param('idBook') idBook: string,
 		@Param('idCover') idCover: string,
@@ -303,7 +294,6 @@ export class AdminBooksController {
 	})
 	@ApiResponse({ status: 404, description: 'Book not found' })
 	@ApiResponse({ status: 400, description: 'Invalid input data' })
-	@ApiBearerAuth('JWT-auth')
 	orderCovers(
 		@Param('idBook') idBook: string,
 		@Body() dto: OrderCoversDto[],
@@ -328,7 +318,6 @@ export class AdminBooksController {
 	})
 	@ApiResponse({ status: 200, description: 'Cover updated successfully' })
 	@ApiResponse({ status: 404, description: 'Book or cover not found' })
-	@ApiBearerAuth('JWT-auth')
 	updateCover(
 		@Param('idBook') idBook: string,
 		@Param('idCover') idCover: string,
@@ -351,7 +340,6 @@ export class AdminBooksController {
 	@ApiResponse({ status: 201, description: 'Chapter created successfully' })
 	@ApiResponse({ status: 400, description: 'Invalid input data' })
 	@ApiResponse({ status: 404, description: 'Book not found' })
-	@ApiBearerAuth('JWT-auth')
 	createManualChapter(
 		@Param('idBook') idBook: string,
 		@Body() dto: CreateChapterManualDto,
@@ -379,7 +367,6 @@ export class AdminBooksController {
 	@ApiResponse({ status: 201, description: 'Chapter created successfully' })
 	@ApiResponse({ status: 400, description: 'Invalid input data' })
 	@ApiResponse({ status: 404, description: 'Book not found' })
-	@ApiBearerAuth('JWT-auth')
 	createManualChapterWithContent(
 		@Param('idBook') idBook: string,
 		@Body() dto: CreateChapterManualDto,
@@ -408,7 +395,6 @@ export class AdminBooksController {
 		description: 'Batch processed with per-item status',
 	})
 	@ApiResponse({ status: 400, description: 'Invalid input data' })
-	@ApiBearerAuth('JWT-auth')
 	createChaptersInBatch(
 		@Body(
 			new ParseArrayPipe({
@@ -449,7 +435,6 @@ export class AdminBooksController {
 		status: 403,
 		description: 'Forbidden - Admin role required',
 	})
-	@ApiBearerAuth('JWT-auth')
 	deleteBook(@Param('idBook') idBook: string) {
 		return this.bookDeletionService.deleteBook(idBook);
 	}
@@ -488,7 +473,6 @@ export class AdminBooksController {
 		status: 403,
 		description: 'Forbidden - Admin role required',
 	})
-	@ApiBearerAuth('JWT-auth')
 	deleteBooksInBatch(@Body('bookIds') bookIds: string[]) {
 		return this.bookDeletionService.deleteBooks(bookIds);
 	}
@@ -512,7 +496,6 @@ export class AdminBooksController {
 		status: 403,
 		description: 'Forbidden - Admin role required',
 	})
-	@ApiBearerAuth('JWT-auth')
 	deleteChapter(@Param('idChapter') idChapter: string) {
 		return this.bookDeletionService.deleteChapter(idChapter);
 	}
@@ -548,7 +531,6 @@ export class AdminBooksController {
 		status: 403,
 		description: 'Forbidden - Admin role required',
 	})
-	@ApiBearerAuth('JWT-auth')
 	deleteChaptersInBatch(@Body('chapterIds') chapterIds: string[]) {
 		return this.bookDeletionService.deleteChapters(chapterIds);
 	}
@@ -576,7 +558,6 @@ export class AdminBooksController {
 		status: 403,
 		description: 'Forbidden - Admin role required',
 	})
-	@ApiBearerAuth('JWT-auth')
 	deleteCover(
 		@Param('idBook') idBook: string,
 		@Param('idCover') idCover: string,
@@ -611,7 +592,6 @@ export class AdminBooksController {
 		status: 403,
 		description: 'Forbidden - Admin role required',
 	})
-	@ApiBearerAuth('JWT-auth')
 	deleteCoversInBatch(@Body('coverIds') coverIds: string[]) {
 		return this.bookDeletionService.deleteCovers(coverIds);
 	}
@@ -649,7 +629,6 @@ export class AdminBooksController {
 		status: 403,
 		description: 'Forbidden - Admin role required',
 	})
-	@ApiBearerAuth('JWT-auth')
 	deletePages(
 		@Param('idChapter') idChapter: string,
 		@Body('pageIndices') pageIndices: number[],
@@ -674,7 +653,6 @@ export class AdminBooksController {
 		status: 403,
 		description: 'Forbidden - Admin role required',
 	})
-	@ApiBearerAuth('JWT-auth')
 	listDeletedBooks() {
 		return this.bookDeletionService.listDeletedBooks();
 	}
@@ -694,7 +672,6 @@ export class AdminBooksController {
 		status: 403,
 		description: 'Forbidden - Admin role required',
 	})
-	@ApiBearerAuth('JWT-auth')
 	listDeletedChapters() {
 		return this.bookDeletionService.listDeletedChapters();
 	}
@@ -714,7 +691,6 @@ export class AdminBooksController {
 		status: 403,
 		description: 'Forbidden - Admin role required',
 	})
-	@ApiBearerAuth('JWT-auth')
 	listDeletedCovers() {
 		return this.bookDeletionService.listDeletedCovers();
 	}
@@ -734,7 +710,6 @@ export class AdminBooksController {
 		status: 403,
 		description: 'Forbidden - Admin role required',
 	})
-	@ApiBearerAuth('JWT-auth')
 	listDeletedPages() {
 		return this.bookDeletionService.listDeletedPages();
 	}

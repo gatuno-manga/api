@@ -4,6 +4,7 @@ import {
 	Injectable,
 	NestInterceptor,
 } from '@nestjs/common';
+import { Request, Response } from 'express';
 import { InjectMetric } from '@willsoto/nestjs-prometheus';
 import { Counter, Histogram } from 'prom-client';
 import { Observable, throwError } from 'rxjs';
@@ -27,11 +28,14 @@ export class MetricsInterceptor implements NestInterceptor {
 		next: CallHandler,
 	): Observable<unknown> {
 		const httpContext = context.switchToHttp();
-		const request = httpContext.getRequest();
-		const response = httpContext.getResponse();
+		const request = httpContext.getRequest<Request>();
+		const response = httpContext.getResponse<Response>();
 
-		const { method, route, body } = request;
-		const routePath = route?.path || request.url;
+		const method = request.method || 'UNKNOWN';
+		const body = request.body as unknown;
+		const routePath =
+			(request.route as { path?: string } | undefined)?.path ||
+			request.url;
 		const startTime = Date.now();
 
 		// Tamanho da requisição
@@ -47,7 +51,7 @@ export class MetricsInterceptor implements NestInterceptor {
 		}
 
 		return next.handle().pipe(
-			tap((data) => {
+			tap((data: unknown) => {
 				const duration = (Date.now() - startTime) / 1000;
 				const { statusCode } = response;
 
@@ -87,7 +91,7 @@ export class MetricsInterceptor implements NestInterceptor {
 					);
 				}
 			}),
-			catchError((error) => {
+			catchError((error: { status?: number }) => {
 				const duration = (Date.now() - startTime) / 1000;
 				const statusCode = error.status || 500;
 

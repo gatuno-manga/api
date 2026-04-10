@@ -16,6 +16,7 @@ import {
 	ApiResponse,
 	ApiTags,
 } from '@nestjs/swagger';
+import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
@@ -28,6 +29,7 @@ import { TagsService } from './tags.service';
 @ApiTags('Tags')
 @Controller('tags')
 @UseGuards(JwtAuthGuard)
+@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 export class TagsController {
 	constructor(private readonly tagsService: TagsService) {}
 
@@ -42,7 +44,6 @@ export class TagsController {
 	@ApiResponse({ status: 200, description: 'Tags retrieved successfully' })
 	@ApiResponse({ status: 401, description: 'Unauthorized' })
 	@ApiResponse({ status: 429, description: 'Too many requests' })
-	@ApiBearerAuth('JWT-auth')
 	@UseGuards(OptionalAuthGuard)
 	getAll(
 		@Query() options: TagsOptions,
@@ -66,7 +67,6 @@ export class TagsController {
 	@ApiResponse({ status: 404, description: 'Tag not found' })
 	@ApiResponse({ status: 401, description: 'Unauthorized' })
 	@ApiResponse({ status: 429, description: 'Too many requests' })
-	@ApiBearerAuth('JWT-auth')
 	mergeTags(@Param('tagId') tagId: string, @Body() dto: string[]) {
 		return this.tagsService.mergeTags(tagId, dto);
 	}

@@ -1,19 +1,27 @@
 import { TransformFnParams } from 'class-transformer';
 import { CoverBookDto } from '../cover-book.dto';
 
+interface LegacyCoverBook {
+	urlImg?: string;
+	urlOrigin?: string;
+	urlImgs?: unknown;
+}
+
 export function transformCoverBookLegacyFormat({
 	value,
 }: TransformFnParams): CoverBookDto | undefined {
-	if (!value || value.urlImgs !== undefined) {
-		return value;
+	const val = value as LegacyCoverBook | undefined;
+
+	if (!val || val.urlImgs !== undefined) {
+		return value as CoverBookDto | undefined;
 	}
 
-	if (value.urlImg && typeof value.urlImg === 'string') {
+	if (val.urlImg && typeof val.urlImg === 'string') {
 		return CoverBookDto.fromLegacyFormat({
-			urlImg: value.urlImg,
-			urlOrigin: value.urlOrigin,
+			urlImg: val.urlImg,
+			urlOrigin: val.urlOrigin ?? val.urlImg,
 		});
 	}
 
-	return value;
+	return value as CoverBookDto | undefined;
 }

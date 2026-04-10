@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Prometheus - Coleta de métricas
   prometheus:
@@ -31,15 +29,50 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_SERVER_ROOT_URL=http://localhost:3002
-      - GF_INSTALL_PLUGINS=grafana-piechart-panel
     volumes:
       - grafana-data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
-      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+      - ./monitoring/grafana/dashboards:/etc/grafana/dashboards
     ports:
       - '3002:3000'
     depends_on:
       - prometheus
+      - loki
+    networks:
+      - gatuno-network
+    restart: unless-stopped
+
+  # Loki - Armazenamento e indexação de logs
+  loki:
+    image: grafana/loki:2.9.8
+    container_name: gatuno-loki
+    command:
+      - '-config.file=/etc/loki/config.yml'
+    volumes:
+      - ./monitoring/loki-config.yml:/etc/loki/config.yml:ro
+      - loki-data:/loki
+    ports:
+      - '3100:3100'
+    networks:
+      - gatuno-network
+    restart: unless-stopped
+
+  # Promtail - Coleta de logs Docker e envio para Loki
+  promtail:
+    image: grafana/promtail:2.9.8
+    container_name: gatuno-promtail
+    command:
+      - '-config.file=/etc/promtail/config.yml'
+      - '-config.expand-env=true'
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+    volumes:
+      - ./monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - promtail-positions:/tmp
+    depends_on:
+      - loki
     networks:
       - gatuno-network
     restart: unless-stopped
@@ -67,8 +100,12 @@ volumes:
     driver: local
   alertmanager-data:
     driver: local
+  loki-data:
+    driver: local
+  promtail-positions:
+    driver: local
 
 networks:
   gatuno-network:
-    name: gatuno_default
+    name: gatuno_gatuno-net
     external: true

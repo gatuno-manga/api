@@ -1,5 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 
 export function configureSwagger(app: INestApplication) {
 	const config = new DocumentBuilder()
@@ -15,7 +16,7 @@ export function configureSwagger(app: INestApplication) {
 				description: 'Enter JWT token',
 				in: 'header',
 			},
-			'JWT-auth',
+			SWAGGER_AUTH_SCHEME,
 		)
 		.addTag(
 			'Authentication',

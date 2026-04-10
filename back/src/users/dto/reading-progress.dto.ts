@@ -6,21 +6,25 @@ import {
 	IsInt,
 	IsOptional,
 	IsUUID,
+	ArrayMaxSize,
+	ArrayMinSize,
 	Min,
 	ValidateNested,
 } from 'class-validator';
 
 export class SaveReadingProgressDto {
-	@IsUUID()
+	@IsUUID('4')
 	chapterId: string;
 
-	@IsUUID()
+	@IsUUID('4')
 	bookId: string;
 
+	@Type(() => Number)
 	@IsInt()
 	@Min(0)
 	pageIndex: number;
 
+	@Type(() => Number)
 	@IsInt()
 	@Min(0)
 	@IsOptional()
@@ -43,6 +47,8 @@ export class ReadingProgressResponseDto {
 
 export class SyncReadingProgressDto {
 	@IsArray()
+	@ArrayMinSize(1)
+	@ArrayMaxSize(500)
 	@ValidateNested({ each: true })
 	@Type(() => SaveReadingProgressDto)
 	progress: SaveReadingProgressDto[];

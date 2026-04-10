@@ -1,0 +1,80 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: docker-api-logs
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: name
+            values:
+              - gatuno-api
+    relabel_configs:
+      - target_label: container
+        replacement: gatuno-api
+      - target_label: service
+        replacement: api
+      - target_label: app
+        replacement: gatuno
+      - target_label: environment
+        replacement: ${NODE_ENV}
+      - target_label: job
+        replacement: gatuno-api
+    pipeline_stages:
+      - docker: {}
+      - static_labels:
+          service: api
+          app: gatuno
+          environment: ${NODE_ENV}
+          job: gatuno-api
+      - json:
+          expressions:
+            level: level
+            context: context
+      - labels:
+          level:
+          context:
+
+  - job_name: docker-system-logs
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      - source_labels: [__meta_docker_container_label_com_docker_compose_project]
+        regex: gatuno
+        action: keep
+      - source_labels: [__meta_docker_container_name]
+        regex: '/gatuno-api'
+        action: drop
+      - source_labels: [__meta_docker_container_name]
+        regex: '/(.*)'
+        target_label: container
+      - source_labels: [__meta_docker_container_label_com_docker_compose_service]
+        target_label: service
+      - target_label: app
+        replacement: gatuno
+      - target_label: environment
+        replacement: ${NODE_ENV}
+      - target_label: job
+        replacement: gatuno-system
+    pipeline_stages:
+      - docker: {}
+      - static_labels:
+          app: gatuno
+          environment: ${NODE_ENV}
+          job: gatuno-system
+      - json:
+          expressions:
+            level: level
+            context: context
+      - labels:
+          level:
+          context:

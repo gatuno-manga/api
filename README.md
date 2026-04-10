@@ -40,9 +40,9 @@ Vivemos em uma era onde o acesso à informação digital é fundamental, porém 
 
 ### Requisitos
 
--   Habilitar a virtualização no BIOS do seu computador
--   Ter o Docker instalado
--   Ter o Docker Compose instalado
+- Habilitar a virtualização no BIOS do seu computador
+- Ter o Docker instalado
+- Ter o Docker Compose instalado
 
 ### Instalação do Docker
 
@@ -140,15 +140,15 @@ docker compose -f docker-compose.dev.yml ps
 
 3. A replicação MySQL (Master-Slave) é configurada automaticamente pelos scripts de inicialização:
 
--   `database/master/init.sh`
--   `database/slave/init.sh`
+- `database/master/init.sh`
+- `database/slave/init.sh`
 
 Não é necessário executar script manual `init-slave.sh`.
 
 4. Acesse os serviços:
 
--   **Aplicação Frontend**: http://localhost:4200
--   **API Backend**: http://localhost:3000
+- **Aplicação Frontend**: http://localhost:4200
+- **API Backend**: http://localhost:3000
 
 Ferramentas opcionais (executadas separadamente):
 
@@ -156,9 +156,9 @@ Ferramentas opcionais (executadas separadamente):
 docker compose -f docker-compose.tools.yml up -d --build
 ```
 
--   **PhpMyAdmin**: http://localhost:8080
--   **Redis Commander**: http://localhost:8081
--   **Playwright Debug (browser remoto)**: http://localhost:3001
+- **PhpMyAdmin**: http://localhost:8080
+- **Redis Commander**: http://localhost:8081
+- **Playwright Debug (browser remoto)**: http://localhost:3001
 
 ### Executando o ambiente de produção
 
@@ -191,6 +191,59 @@ docker compose -f docker-compose.common.yml -f docker-compose.prod.yml up -d --b
 ```bash
 docker exec gatuno-database-slave-1 mysql -uroot -p"${DB_PASS}" -e "SHOW REPLICA STATUS\\G"
 docker exec gatuno-database-slave-2 mysql -uroot -p"${DB_PASS}" -e "SHOW REPLICA STATUS\\G"
+```
+
+### Observabilidade de logs da API (PLG Stack)
+
+O projeto possui stack de observabilidade com Prometheus + Grafana + Alertmanager e agora inclui Loki + Promtail para logs da API.
+
+Fluxo de logs:
+
+- Promtail coleta logs Docker do container `gatuno-api`
+- Loki armazena os logs com retenção inicial de 30 dias
+- Grafana consulta métricas (Prometheus) e logs (Loki)
+
+Subir apenas monitoramento:
+
+```bash
+docker compose -f docker-compose.monitoring.yml up -d
+```
+
+Subir ambiente de desenvolvimento + monitoramento:
+
+```bash
+docker compose -f docker-compose.common.yml -f docker-compose.dev.yml up -d --build
+docker compose -f docker-compose.monitoring.yml up -d
+```
+
+Subir ambiente de produção + monitoramento:
+
+```bash
+docker compose -f docker-compose.common.yml -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.monitoring.yml up -d
+```
+
+Validação rápida:
+
+```bash
+# Estado dos serviços de monitoramento
+docker compose -f docker-compose.monitoring.yml ps
+
+# Verificar envio de logs pelo Promtail
+docker compose -f docker-compose.monitoring.yml logs -f promtail
+```
+
+Endpoints úteis:
+
+- Grafana: http://localhost:3002
+- Prometheus: http://localhost:9090
+- Loki: http://localhost:3100/ready
+
+No Grafana, use o datasource `Loki` no Explore e consulte por labels da API, por exemplo:
+
+```text
+{job="gatuno-api"}
+{service="api", container="gatuno-api"}
 ```
 
 ### Comandos úteis
@@ -230,22 +283,22 @@ docker exec gatuno-database-slave-2 mysql -uroot -p"${DB_PASS}" -e "SHOW REPLICA
 
 O projeto utiliza os seguintes serviços:
 
--   **api**: Backend NestJS (porta 3000)
--   **app (dev)**: Frontend Angular (porta 4200)
--   **app (prod)**: Frontend Angular (porta 4000)
--   **database-master**: MySQL Master (porta 3306)
--   **database-slave-1**: MySQL Slave 1 (porta 3307)
--   **database-slave-2**: MySQL Slave 2 (porta 3308)
--   **redis**: Cache Redis (porta 6379)
+- **api**: Backend NestJS (porta 3000)
+- **app (dev)**: Frontend Angular (porta 4200)
+- **app (prod)**: Frontend Angular (porta 4000)
+- **database-master**: MySQL Master (porta 3306)
+- **database-slave-1**: MySQL Slave 1 (porta 3307)
+- **database-slave-2**: MySQL Slave 2 (porta 3308)
+- **redis**: Cache Redis (porta 6379)
 
 Serviços opcionais de ferramentas (`docker-compose.tools.yml`):
 
--   **redis-commander**: Interface web para Redis (porta 8081)
--   **phpmyadmin**: Interface web para MySQL (porta 8080)
+- **redis-commander**: Interface web para Redis (porta 8081)
+- **phpmyadmin**: Interface web para MySQL (porta 8080)
 
 Serviço opcional de debug browser (`docker-compose.dev.yml`):
 
--   **playwright-debug**: Browser remoto para scraping/debug (porta 3001)
+- **playwright-debug**: Browser remoto para scraping/debug (porta 3001)
 
 # 🤝 Contribuidores
 
@@ -277,4 +330,3 @@ Serviço opcional de debug browser (`docker-compose.dev.yml`):
 [Selenium.io]: https://img.shields.io/badge/Selenium-43B02A?style=for-the-badge&logo=selenium&logoColor=white
 [BullMQ.io]: https://img.shields.io/badge/BullMQ-339933?style=for-the-badge&logo=node.js&logoColor=white
 [TypeORM.io]: https://img.shields.io/badge/TypeORM-FE0803?logo=typeorm&logoColor=fff&style=for-the-badge
-

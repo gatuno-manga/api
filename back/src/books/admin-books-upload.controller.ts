@@ -2,18 +2,15 @@ import {
 	BadRequestException,
 	Body,
 	Controller,
-	Get,
 	Param,
 	Patch,
 	Post,
 	UploadedFile,
 	UploadedFiles,
-	UseGuards,
 	UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import {
-	ApiBearerAuth,
 	ApiBody,
 	ApiConsumes,
 	ApiOperation,
@@ -23,15 +20,14 @@ import {
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
-import { Roles } from 'src/auth/decorator/roles.decorator';
-import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
-import { RolesEnum } from 'src/users/enum/roles.enum';
+import { AdminApi } from 'src/common/swagger/auth-api.decorators';
+import { COMMON_RESPONSES } from 'src/common/swagger/common-responses';
+import { MULTIPART_SCHEMAS } from 'src/common/swagger/multipart-schemas';
 import {
 	ALLOWED_DOCUMENT_MIMETYPES,
 	MAX_DOCUMENT_SIZE,
 } from './constants/content-types.constants';
 import { UploadCoverDto } from './dto/upload-cover.dto';
-import { UploadDocumentDto } from './dto/upload-document.dto';
 import { UploadTextContentDto } from './dto/upload-text-content.dto';
 import { BookUploadService } from './services/book-upload.service';
 
@@ -51,53 +47,36 @@ const IMAGE_FILE_FILTER = (
 
 @ApiTags('Books Admin Upload')
 @Controller('books')
-@UseGuards(JwtAuthGuard)
-@Roles(RolesEnum.ADMIN)
+@AdminApi()
 export class AdminBooksUploadController {
 	constructor(private readonly bookUploadService: BookUploadService) {}
 
 	@Patch(':idBook/covers/:idCover/image')
 	@Throttle({ short: { limit: 10, ttl: 60000 } }) // 10 req/min
 	@ApiOperation({
-		summary: 'Replace cover image',
-		description: 'Replace the image of an existing cover (Admin only)',
+		summary: 'Substituir imagem da capa',
+		description: 'Substitui a imagem de uma capa existente (somente admin)',
 	})
 	@ApiConsumes('multipart/form-data')
 	@ApiParam({
 		name: 'idBook',
-		description: 'Book unique identifier',
+		description: 'Identificador unico do livro',
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
 	@ApiParam({
 		name: 'idCover',
-		description: 'Cover unique identifier',
+		description: 'Identificador unico da capa',
 		example: '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
 	})
 	@ApiBody({
-		schema: {
-			type: 'object',
-			properties: {
-				file: {
-					type: 'string',
-					format: 'binary',
-					description: 'New cover image file (JPG, PNG, WEBP)',
-				},
-				title: {
-					type: 'string',
-					description: 'Optional new cover title',
-					maxLength: 200,
-				},
-			},
-			required: ['file'],
-		},
+		schema: MULTIPART_SCHEMAS.IMAGE_FILE_WITH_OPTIONAL_TITLE,
 	})
 	@ApiResponse({
 		status: 200,
-		description: 'Cover image replaced successfully',
+		description: 'Imagem da capa substituida com sucesso',
 	})
-	@ApiResponse({ status: 400, description: 'Invalid file or data' })
-	@ApiResponse({ status: 404, description: 'Book or cover not found' })
-	@ApiBearerAuth('JWT-auth')
+	@ApiResponse(COMMON_RESPONSES.BAD_REQUEST)
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
 	@UseInterceptors(
 		FileInterceptor('file', {
 			limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
@@ -126,37 +105,22 @@ export class AdminBooksUploadController {
 	@Post(':idBook/covers/upload')
 	@Throttle({ short: { limit: 10, ttl: 60000 } }) // 10 req/min
 	@ApiOperation({
-		summary: 'Upload book cover',
-		description: 'Upload a single cover image for a book (Admin only)',
+		summary: 'Enviar capa do livro',
+		description:
+			'Envia uma unica imagem de capa para um livro (somente admin)',
 	})
 	@ApiConsumes('multipart/form-data')
 	@ApiParam({
 		name: 'idBook',
-		description: 'Book unique identifier',
+		description: 'Identificador unico do livro',
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
 	@ApiBody({
-		schema: {
-			type: 'object',
-			properties: {
-				file: {
-					type: 'string',
-					format: 'binary',
-					description: 'Cover image file (JPG, PNG, WEBP)',
-				},
-				title: {
-					type: 'string',
-					description: 'Optional cover title',
-					maxLength: 200,
-				},
-			},
-			required: ['file'],
-		},
+		schema: MULTIPART_SCHEMAS.IMAGE_FILE_WITH_OPTIONAL_TITLE,
 	})
-	@ApiResponse({ status: 201, description: 'Cover uploaded successfully' })
-	@ApiResponse({ status: 400, description: 'Invalid file or data' })
-	@ApiResponse({ status: 404, description: 'Book not found' })
-	@ApiBearerAuth('JWT-auth')
+	@ApiResponse({ status: 201, description: 'Capa enviada com sucesso' })
+	@ApiResponse(COMMON_RESPONSES.BAD_REQUEST)
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
 	@UseInterceptors(
 		FileInterceptor('file', {
 			limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
@@ -177,36 +141,21 @@ export class AdminBooksUploadController {
 	@Post(':idBook/covers/upload-multiple')
 	@Throttle({ short: { limit: 3, ttl: 60000 } }) // 3 req/min
 	@ApiOperation({
-		summary: 'Upload multiple book covers',
-		description:
-			'Upload multiple cover images for a book at once (Admin only)',
+		summary: 'Enviar multiplas capas do livro',
+		description: 'Envia varias imagens de capa de uma vez (somente admin)',
 	})
 	@ApiConsumes('multipart/form-data')
 	@ApiParam({
 		name: 'idBook',
-		description: 'Book unique identifier',
+		description: 'Identificador unico do livro',
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
 	@ApiBody({
-		schema: {
-			type: 'object',
-			properties: {
-				files: {
-					type: 'array',
-					items: {
-						type: 'string',
-						format: 'binary',
-					},
-					description: 'Multiple cover image files (max 10)',
-				},
-			},
-			required: ['files'],
-		},
+		schema: MULTIPART_SCHEMAS.MULTIPLE_IMAGE_FILES,
 	})
-	@ApiResponse({ status: 201, description: 'Covers uploaded successfully' })
-	@ApiResponse({ status: 400, description: 'Invalid files or data' })
-	@ApiResponse({ status: 404, description: 'Book not found' })
-	@ApiBearerAuth('JWT-auth')
+	@ApiResponse({ status: 201, description: 'Capas enviadas com sucesso' })
+	@ApiResponse(COMMON_RESPONSES.BAD_REQUEST)
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
 	@UseInterceptors(
 		FilesInterceptor('files', 10, {
 			limits: { fileSize: 10 * 1024 * 1024 },
@@ -226,41 +175,22 @@ export class AdminBooksUploadController {
 	@Post('chapters/:idChapter/pages/upload')
 	@Throttle({ short: { limit: 2, ttl: 60000 } }) // 2 req/min - até 100 arquivos por vez
 	@ApiOperation({
-		summary: 'Upload chapter pages',
-		description: 'Upload multiple page images for a chapter (Admin only)',
+		summary: 'Enviar paginas do capitulo',
+		description:
+			'Envia varias imagens de pagina para um capitulo (somente admin)',
 	})
 	@ApiConsumes('multipart/form-data')
 	@ApiParam({
 		name: 'idChapter',
-		description: 'Chapter unique identifier',
+		description: 'Identificador unico do capitulo',
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
 	@ApiBody({
-		schema: {
-			type: 'object',
-			properties: {
-				pages: {
-					type: 'array',
-					items: {
-						type: 'string',
-						format: 'binary',
-					},
-					description: 'Page image files (max 100)',
-				},
-				indices: {
-					type: 'string',
-					description:
-						'JSON array of page indices (e.g., "[1,2,3,4,5]")',
-					example: '[1,2,3,4,5]',
-				},
-			},
-			required: ['pages', 'indices'],
-		},
+		schema: MULTIPART_SCHEMAS.CHAPTER_PAGES_UPLOAD,
 	})
-	@ApiResponse({ status: 201, description: 'Pages uploaded successfully' })
-	@ApiResponse({ status: 400, description: 'Invalid files or data' })
-	@ApiResponse({ status: 404, description: 'Chapter not found' })
-	@ApiBearerAuth('JWT-auth')
+	@ApiResponse({ status: 201, description: 'Paginas enviadas com sucesso' })
+	@ApiResponse(COMMON_RESPONSES.BAD_REQUEST)
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
 	@UseInterceptors(
 		FilesInterceptor('pages', 100, {
 			limits: { fileSize: 10 * 1024 * 1024 },
@@ -295,8 +225,17 @@ export class AdminBooksUploadController {
 
 	private parseIndices(indicesStr: string): number[] {
 		try {
-			return JSON.parse(indicesStr);
-		} catch (_error) {
+			const parsed: unknown = JSON.parse(indicesStr);
+			if (!Array.isArray(parsed)) {
+				throw new BadRequestException('Indices must be an array');
+			}
+			if (!parsed.every((value) => typeof value === 'number')) {
+				throw new BadRequestException(
+					'Indices must contain only numbers',
+				);
+			}
+			return parsed;
+		} catch {
 			throw new BadRequestException(
 				'Invalid indices format. Must be a JSON array of numbers',
 			);
@@ -308,40 +247,25 @@ export class AdminBooksUploadController {
 	@Post('chapters/:idChapter/document')
 	@Throttle({ short: { limit: 5, ttl: 60000 } }) // 5 req/min
 	@ApiOperation({
-		summary: 'Upload chapter document',
-		description: 'Upload a PDF or EPUB document for a chapter (Admin only)',
+		summary: 'Enviar documento do capitulo',
+		description:
+			'Envia um documento PDF ou EPUB para um capitulo (somente admin)',
 	})
 	@ApiConsumes('multipart/form-data')
 	@ApiParam({
 		name: 'idChapter',
-		description: 'Chapter unique identifier',
+		description: 'Identificador unico do capitulo',
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
 	@ApiBody({
-		schema: {
-			type: 'object',
-			properties: {
-				file: {
-					type: 'string',
-					format: 'binary',
-					description: 'Document file (PDF or EPUB, max 50MB)',
-				},
-				title: {
-					type: 'string',
-					description: 'Optional chapter title',
-					maxLength: 500,
-				},
-			},
-			required: ['file'],
-		},
+		schema: MULTIPART_SCHEMAS.DOCUMENT_FILE_WITH_OPTIONAL_TITLE,
 	})
 	@ApiResponse({
 		status: 201,
-		description: 'Document uploaded successfully',
+		description: 'Documento enviado com sucesso',
 	})
-	@ApiResponse({ status: 400, description: 'Invalid file or data' })
-	@ApiResponse({ status: 404, description: 'Chapter not found' })
-	@ApiBearerAuth('JWT-auth')
+	@ApiResponse(COMMON_RESPONSES.BAD_REQUEST)
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
 	@UseInterceptors(
 		FileInterceptor('file', {
 			limits: { fileSize: MAX_DOCUMENT_SIZE },
@@ -379,26 +303,25 @@ export class AdminBooksUploadController {
 	@Post('chapters/:idChapter/content')
 	@Throttle({ short: { limit: 10, ttl: 60000 } }) // 10 req/min
 	@ApiOperation({
-		summary: 'Upload chapter text content',
+		summary: 'Enviar conteudo textual do capitulo',
 		description:
-			'Upload text content (Markdown/HTML/Plain) for a chapter (Admin only)',
+			'Envia conteudo textual (Markdown/HTML/Plain) para um capitulo (somente admin)',
 	})
 	@ApiParam({
 		name: 'idChapter',
-		description: 'Chapter unique identifier',
+		description: 'Identificador unico do capitulo',
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
 	@ApiBody({
 		type: UploadTextContentDto,
-		description: 'Text content and format',
+		description: 'Conteudo textual e formato',
 	})
 	@ApiResponse({
 		status: 201,
-		description: 'Text content uploaded successfully',
+		description: 'Conteudo textual enviado com sucesso',
 	})
-	@ApiResponse({ status: 400, description: 'Invalid content or format' })
-	@ApiResponse({ status: 404, description: 'Chapter not found' })
-	@ApiBearerAuth('JWT-auth')
+	@ApiResponse(COMMON_RESPONSES.BAD_REQUEST)
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
 	uploadChapterTextContent(
 		@Param('idChapter') idChapter: string,
 		@Body() dto: UploadTextContentDto,

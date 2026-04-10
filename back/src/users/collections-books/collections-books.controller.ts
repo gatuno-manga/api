@@ -16,6 +16,7 @@ import {
 	ApiResponse,
 	ApiTags,
 } from '@nestjs/swagger';
+import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
@@ -29,6 +30,7 @@ import { UpdateCollectionVisibilityDto } from '../dto/update-collection-visibili
 @Controller('users/me/collections')
 @UseGuards(JwtAuthGuard)
 @UseInterceptors(DataEnvelopeInterceptor)
+@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 export class CollectionsBooksController {
 	constructor(
 		private readonly collectionsBooksService: CollectionsBooksService,
@@ -44,7 +46,6 @@ export class CollectionsBooksController {
 		description: 'Collections retrieved successfully',
 	})
 	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiBearerAuth('JWT-auth')
 	async getCollectionBooks(@CurrentUser() user: CurrentUserDto) {
 		return this.collectionsBooksService.getCollections(user.userId);
 	}
@@ -59,7 +60,6 @@ export class CollectionsBooksController {
 		description: 'Collection names retrieved successfully',
 	})
 	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiBearerAuth('JWT-auth')
 	async getNameCollectionBooks(@CurrentUser() user: CurrentUserDto) {
 		return this.collectionsBooksService.getNameCollectionBooks(user.userId);
 	}
@@ -77,7 +77,6 @@ export class CollectionsBooksController {
 	@ApiResponse({ status: 200, description: 'Collection found' })
 	@ApiResponse({ status: 404, description: 'Collection not found' })
 	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiBearerAuth('JWT-auth')
 	async getCollectionById(
 		@Param('idCollection') idCollection: string,
 		@CurrentUser() user: CurrentUserDto,
@@ -99,7 +98,6 @@ export class CollectionsBooksController {
 	})
 	@ApiResponse({ status: 400, description: 'Invalid input data' })
 	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiBearerAuth('JWT-auth')
 	async createCollectionBook(
 		@Body() dto: CreateCollectionBookDto,
 		@CurrentUser() user: CurrentUserDto,
@@ -123,7 +121,6 @@ export class CollectionsBooksController {
 	@ApiResponse({ status: 200, description: 'Books added successfully' })
 	@ApiResponse({ status: 404, description: 'Collection not found' })
 	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiBearerAuth('JWT-auth')
 	async addBookToCollection(
 		@Body() dto: AddBookCollectionDto,
 		@Param('idCollection') idCollection: string,
@@ -154,7 +151,6 @@ export class CollectionsBooksController {
 	@ApiResponse({ status: 200, description: 'Book removed successfully' })
 	@ApiResponse({ status: 404, description: 'Collection or book not found' })
 	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiBearerAuth('JWT-auth')
 	async removeBookFromCollection(
 		@Param('idCollection') idCollection: string,
 		@Param('idBook') idBook: string,
@@ -183,7 +179,6 @@ export class CollectionsBooksController {
 	})
 	@ApiResponse({ status: 404, description: 'Collection not found' })
 	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiBearerAuth('JWT-auth')
 	async deleteCollection(
 		@Param('idCollection') idCollection: string,
 		@CurrentUser() user: CurrentUserDto,
@@ -210,7 +205,6 @@ export class CollectionsBooksController {
 	})
 	@ApiResponse({ status: 404, description: 'Collection not found' })
 	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiBearerAuth('JWT-auth')
 	async updateVisibility(
 		@Param('idCollection') idCollection: string,
 		@Body() dto: UpdateCollectionVisibilityDto,
