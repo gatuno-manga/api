@@ -11,6 +11,11 @@ import { BookChaptersCursorPageDto } from '../dto/book-chapters-cursor-page.dto'
 import { BookChaptersCursorOptionsDto } from '../dto/book-chapters-cursor-options.dto';
 import { QueueCoverProcessorDto } from '../dto/queue-cover-processor.dto';
 import { AppConfigService } from 'src/app-config/app-config.service';
+import { CursorPageDto } from 'src/pages/cursor-page.dto';
+import {
+	decodeCursorPayload,
+	encodeCursorPayload,
+} from 'src/pages/cursor.utils';
 import { MetadataPageDto } from 'src/pages/metadata-page.dto';
 import { PageDto } from 'src/pages/page.dto';
 import { Repository, SelectQueryBuilder } from 'typeorm';
@@ -46,12 +51,22 @@ interface ChapterErrorPageCount {
 	cnt: string;
 }
 
+interface BookListCursorPayload {
+	orderBy: BookOrderField;
+	order: OrderDirection;
+	value: string | number;
+	id: string;
+}
+
+type BookListItem = Omit<Book, 'covers'> & { cover: string | null };
+
 /**
  * Service responsável por consultas e buscas de livros
  */
 @Injectable()
 export class BookQueryService {
 	private readonly logger = new Logger(BookQueryService.name);
+	private readonly publicationCursorNullValue = -1;
 
 	constructor(
 		@InjectRepository(Book)
@@ -139,6 +154,110 @@ export class BookQueryService {
 		}
 	}
 
+	private mapBooksWithCover(books: Book[]): BookListItem[] {
+		return books.map((book) => {
+			const { covers, ...rest } = book;
+			const coverUrl = covers?.[0]?.url || null;
+
+			return {
+				...rest,
+				cover: coverUrl ? this.urlImage(coverUrl) : null,
+			};
+		});
+	}
+
+	private getOrderExpressionForBooks(orderByField: BookOrderField): string {
+		switch (orderByField) {
+			case BookOrderField.TITLE:
+				return 'book.title';
+			case BookOrderField.PUBLICATION:
+				return `COALESCE(book.publication, ${this.publicationCursorNullValue})`;
+			case BookOrderField.UPDATED_AT:
+				return 'book.updatedAt';
+			default:
+				return 'book.createdAt';
+		}
+	}
+
+	private getCursorValueForBook(
+		book: Book,
+		orderByField: BookOrderField,
+	): string | number {
+		switch (orderByField) {
+			case BookOrderField.TITLE:
+				return book.title;
+			case BookOrderField.PUBLICATION:
+				return book.publication ?? this.publicationCursorNullValue;
+			case BookOrderField.UPDATED_AT:
+				return book.updatedAt.toISOString();
+			default:
+				return book.createdAt.toISOString();
+		}
+	}
+
+	private applyBookCursorFilter(
+		queryBuilder: SelectQueryBuilder<Book>,
+		cursor: string,
+		orderByField: BookOrderField,
+		orderDirection: OrderDirection,
+	): void {
+		const decodedCursor =
+			decodeCursorPayload<BookListCursorPayload>(cursor);
+
+		if (
+			!decodedCursor ||
+			decodedCursor.orderBy !== orderByField ||
+			decodedCursor.order !== orderDirection ||
+			typeof decodedCursor.id !== 'string'
+		) {
+			return;
+		}
+
+		let cursorValue: string | number | Date = decodedCursor.value;
+		if (
+			orderByField === BookOrderField.CREATED_AT ||
+			orderByField === BookOrderField.UPDATED_AT
+		) {
+			if (typeof decodedCursor.value !== 'string') {
+				return;
+			}
+			const parsedDate = new Date(decodedCursor.value);
+			if (Number.isNaN(parsedDate.getTime())) {
+				return;
+			}
+			cursorValue = parsedDate;
+		}
+
+		if (orderByField === BookOrderField.PUBLICATION) {
+			if (typeof decodedCursor.value !== 'number') {
+				return;
+			}
+			cursorValue = decodedCursor.value;
+		}
+
+		if (
+			orderByField === BookOrderField.TITLE &&
+			typeof decodedCursor.value !== 'string'
+		) {
+			return;
+		}
+
+		const orderExpression = this.getOrderExpressionForBooks(orderByField);
+		const comparisonOperator =
+			orderDirection === OrderDirection.ASC ? '>' : '<';
+
+		queryBuilder.andWhere(
+			`(
+				${orderExpression} ${comparisonOperator} :cursorValue
+				OR (${orderExpression} = :cursorValue AND book.id > :cursorId)
+			)`,
+			{
+				cursorValue,
+				cursorId: decodedCursor.id,
+			},
+		);
+	}
+
 	/**
 	 * Busca todos os livros com paginação e filtros
 	 */
@@ -147,7 +266,7 @@ export class BookQueryService {
 		maxWeightSensitiveContent: number,
 		userId: string | undefined,
 		filterStrategies: FilterStrategy[],
-	): Promise<PageDto<Omit<Book, 'covers'> & { cover: string | null }>> {
+	): Promise<PageDto<BookListItem> | CursorPageDto<BookListItem>> {
 		const accessContext =
 			await this.adminUsersService.evaluateListAccessContext({
 				userId,
@@ -155,6 +274,9 @@ export class BookQueryService {
 			});
 
 		if (accessContext.blockedAll) {
+			if (options.cursor) {
+				return new CursorPageDto([], null, false);
+			}
 			const metadata = new MetadataPageDto();
 			metadata.total = 0;
 			metadata.page = options.page;
@@ -230,7 +352,7 @@ export class BookQueryService {
 		}
 
 		const orderByField = options.orderBy || BookOrderField.CREATED_AT;
-		const orderDirection = options.order || 'DESC';
+		const orderDirection = options.order || OrderDirection.DESC;
 
 		switch (orderByField) {
 			case BookOrderField.TITLE:
@@ -240,7 +362,10 @@ export class BookQueryService {
 				break;
 			case BookOrderField.PUBLICATION:
 				queryBuilder
-					.orderBy('book.publication', orderDirection)
+					.orderBy(
+						`COALESCE(book.publication, ${this.publicationCursorNullValue})`,
+						orderDirection,
+					)
 					.addOrderBy('book.id', 'ASC');
 				break;
 			case BookOrderField.UPDATED_AT:
@@ -255,20 +380,45 @@ export class BookQueryService {
 				break;
 		}
 
+		if (options.cursor) {
+			this.applyBookCursorFilter(
+				queryBuilder,
+				options.cursor,
+				orderByField,
+				orderDirection,
+			);
+
+			queryBuilder.take(options.limit + 1);
+			const books = await queryBuilder.getMany();
+			const hasNextPage = books.length > options.limit;
+			const currentPageBooks = hasNextPage
+				? books.slice(0, options.limit)
+				: books;
+			const data = this.mapBooksWithCover(currentPageBooks);
+			const lastBook = currentPageBooks[currentPageBooks.length - 1];
+
+			const nextCursor =
+				hasNextPage && lastBook
+					? encodeCursorPayload({
+							orderBy: orderByField,
+							order: orderDirection,
+							value: this.getCursorValueForBook(
+								lastBook,
+								orderByField,
+							),
+							id: lastBook.id,
+						})
+					: null;
+
+			return new CursorPageDto(data, nextCursor, hasNextPage);
+		}
+
 		queryBuilder
 			.skip((options.page - 1) * options.limit)
 			.take(options.limit);
 
 		const [books, total] = await queryBuilder.getManyAndCount();
-		const data = books.map((book) => {
-			const { covers, ...rest } = book;
-			const coverUrl = covers?.[0]?.url || null;
-
-			return {
-				...rest,
-				cover: coverUrl ? this.urlImage(coverUrl) : null,
-			};
-		});
+		const data = this.mapBooksWithCover(books);
 
 		const metadata = new MetadataPageDto();
 		metadata.total = total;
@@ -517,14 +667,13 @@ export class BookQueryService {
 		const data = hasNextPage ? chapters.slice(0, limit) : chapters;
 		const lastItem = data[data.length - 1];
 
-		return {
+		return new BookChaptersCursorPageDto(
 			data,
-			nextCursor:
-				hasNextPage && lastItem
-					? Buffer.from(String(lastItem.index)).toString('base64')
-					: null,
+			hasNextPage && lastItem
+				? Buffer.from(String(lastItem.index)).toString('base64')
+				: null,
 			hasNextPage,
-		};
+		);
 	}
 
 	private decodeCursor(cursor?: string): number | null {

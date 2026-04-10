@@ -10,6 +10,11 @@ import { AppConfigService } from 'src/app-config/app-config.service';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
 import { RolesEnum } from 'src/users/enum/roles.enum';
 import { User } from 'src/users/entities/user.entity';
+import { CursorPageDto } from 'src/pages/cursor-page.dto';
+import {
+	decodeCursorPayload,
+	encodeCursorPayload,
+} from 'src/pages/cursor.utils';
 import { MetadataPageDto } from 'src/pages/metadata-page.dto';
 import { PageDto } from 'src/pages/page.dto';
 import { Brackets, Repository, SelectQueryBuilder } from 'typeorm';
@@ -34,6 +39,11 @@ export type ChapterCommentNode = {
 	replies: ChapterCommentNode[];
 };
 
+type ChapterCommentsCursorPayload = {
+	createdAt: string;
+	id: string;
+};
+
 @Injectable()
 export class ChapterCommentsService {
 	constructor(
@@ -50,9 +60,23 @@ export class ChapterCommentsService {
 		chapterId: string,
 		options: ChapterCommentsPageOptionsDto,
 		viewer?: CurrentUserDto,
-	): Promise<PageDto<ChapterCommentNode>> {
+	): Promise<
+		PageDto<ChapterCommentNode> | CursorPageDto<ChapterCommentNode>
+	> {
 		await this.ensureChapterExists(chapterId);
 
+		if (options.cursor) {
+			return this.listChapterCommentsByCursor(chapterId, options, viewer);
+		}
+
+		return this.listChapterCommentsByPage(chapterId, options, viewer);
+	}
+
+	private async listChapterCommentsByPage(
+		chapterId: string,
+		options: ChapterCommentsPageOptionsDto,
+		viewer?: CurrentUserDto,
+	): Promise<PageDto<ChapterCommentNode>> {
 		const countQuery = this.chapterCommentRepository
 			.createQueryBuilder('comment')
 			.withDeleted()
@@ -73,6 +97,7 @@ export class ChapterCommentsService {
 			.where('comment.chapter_id = :chapterId', { chapterId })
 			.andWhere('comment.parent_id IS NULL')
 			.orderBy('comment.createdAt', 'DESC')
+			.addOrderBy('comment.id', 'DESC')
 			.skip((page - 1) * limit)
 			.take(limit);
 
@@ -126,6 +151,101 @@ export class ChapterCommentsService {
 			lastPage: Math.max(1, Math.ceil(total / limit)),
 		};
 		return new PageDto(data, metadata);
+	}
+
+	private async listChapterCommentsByCursor(
+		chapterId: string,
+		options: ChapterCommentsPageOptionsDto,
+		viewer?: CurrentUserDto,
+	): Promise<CursorPageDto<ChapterCommentNode>> {
+		const limit = options.limit;
+		const rootsQuery = this.chapterCommentRepository
+			.createQueryBuilder('comment')
+			.leftJoinAndSelect('comment.chapter', 'chapter')
+			.leftJoinAndSelect('comment.user', 'user')
+			.leftJoinAndSelect('comment.parent', 'parent')
+			.withDeleted()
+			.where('comment.chapter_id = :chapterId', { chapterId })
+			.andWhere('comment.parent_id IS NULL')
+			.orderBy('comment.createdAt', 'DESC')
+			.addOrderBy('comment.id', 'DESC')
+			.take(limit + 1);
+
+		this.applyVisibilityFilter(rootsQuery, viewer, 'comment');
+
+		const decodedCursor = decodeCursorPayload<ChapterCommentsCursorPayload>(
+			options.cursor,
+		);
+
+		if (
+			decodedCursor &&
+			typeof decodedCursor.createdAt === 'string' &&
+			typeof decodedCursor.id === 'string'
+		) {
+			const parsedDate = new Date(decodedCursor.createdAt);
+			if (!Number.isNaN(parsedDate.getTime())) {
+				rootsQuery.andWhere(
+					`(
+						comment.createdAt < :cursorCreatedAt
+						OR (comment.createdAt = :cursorCreatedAt AND comment.id < :cursorId)
+					)`,
+					{
+						cursorCreatedAt: parsedDate,
+						cursorId: decodedCursor.id,
+					},
+				);
+			}
+		}
+
+		const roots = await rootsQuery.getMany();
+		const hasNextPage = roots.length > limit;
+		const currentRoots = hasNextPage ? roots.slice(0, limit) : roots;
+
+		if (!currentRoots.length) {
+			return new CursorPageDto([], null, false);
+		}
+
+		const descendants = await this.loadDescendantsByRoots(
+			chapterId,
+			currentRoots.map((root) => root.id),
+			options.maxDepth,
+			viewer,
+		);
+
+		const nodesMap = new Map<string, ChapterCommentNode>();
+		for (const comment of [...currentRoots, ...descendants]) {
+			nodesMap.set(comment.id, this.mapEntityToNode(comment));
+		}
+
+		for (const node of nodesMap.values()) {
+			if (!node.parentId) {
+				continue;
+			}
+			const parentNode = nodesMap.get(node.parentId);
+			if (parentNode) {
+				parentNode.replies.push(node);
+			}
+		}
+
+		for (const node of nodesMap.values()) {
+			node.replies.sort(
+				(a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+			);
+		}
+
+		const data = currentRoots
+			.map((root) => nodesMap.get(root.id))
+			.filter((root): root is ChapterCommentNode => Boolean(root));
+		const lastRoot = currentRoots[currentRoots.length - 1];
+		const nextCursor =
+			hasNextPage && lastRoot
+				? encodeCursorPayload({
+						createdAt: lastRoot.createdAt.toISOString(),
+						id: lastRoot.id,
+					})
+				: null;
+
+		return new CursorPageDto(data, nextCursor, hasNextPage);
 	}
 
 	async createComment(

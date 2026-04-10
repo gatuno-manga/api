@@ -38,7 +38,8 @@ export class BooksController {
 	@CacheTTL(180)
 	@ApiOperation({
 		summary: 'Listar livros',
-		description: 'Retorna uma lista paginada de livros com filtros',
+		description:
+			'Retorna uma lista paginada de livros com filtros (page/limit ou cursor)',
 	})
 	@ApiResponse({ status: 200, description: 'Livros retornados com sucesso' })
 	@ApiResponse(COMMON_RESPONSES.TOO_MANY_REQUESTS)
@@ -264,7 +265,7 @@ export class BooksController {
 	@ApiOperation({
 		summary: 'Obter relacionamentos do livro',
 		description:
-			'Retorna livros relacionados a um livro especifico, aplicando politicas de acesso e limites de conteudo sensivel',
+			'Retorna livros relacionados a um livro especifico, aplicando politicas de acesso e limites de conteudo sensivel (offset/limit ou cursor)',
 	})
 	@ApiParam({
 		name: 'idBook',

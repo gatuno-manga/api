@@ -2,6 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, Repository } from 'typeorm';
 import { CustomLogger } from 'src/custom.logger';
+import { CursorPageDto } from 'src/pages/cursor-page.dto';
+import {
+	decodeCursorPayload,
+	encodeCursorPayload,
+} from 'src/pages/cursor.utils';
 import { AuthAuditLog } from '../entities/auth-audit-log.entity';
 import {
 	AuthMethod,
@@ -45,6 +50,11 @@ interface SessionAuditTrackPayload {
 	metadata?: Record<string, unknown>;
 	context?: SessionAuditTrackContext;
 }
+
+type AuditHistoryCursorPayload = {
+	createdAt: string;
+	id: string;
+};
 
 @Injectable()
 export class SessionAuditService {
@@ -118,15 +128,75 @@ export class SessionAuditService {
 
 	async listUserAuditHistory(
 		userId: string,
-		options?: { page?: number; limit?: number; event?: string },
-	): Promise<{
-		items: AuthAuditLog[];
-		total: number;
-		page: number;
-		limit: number;
-	}> {
+		options?: {
+			page?: number;
+			limit?: number;
+			event?: string;
+			cursor?: string;
+		},
+	): Promise<
+		| {
+				items: AuthAuditLog[];
+				total: number;
+				page: number;
+				limit: number;
+		  }
+		| CursorPageDto<AuthAuditLog>
+	> {
 		const page = Math.max(options?.page ?? 1, 1);
 		const limit = Math.min(Math.max(options?.limit ?? 20, 1), 100);
+
+		if (options?.cursor) {
+			const queryBuilder = this.auditLogRepository
+				.createQueryBuilder('audit')
+				.where('audit.userId = :userId', { userId })
+				.orderBy('audit.createdAt', 'DESC')
+				.addOrderBy('audit.id', 'DESC')
+				.take(limit + 1);
+
+			if (options.event) {
+				queryBuilder.andWhere('audit.event = :event', {
+					event: options.event,
+				});
+			}
+
+			const decodedCursor =
+				decodeCursorPayload<AuditHistoryCursorPayload>(options.cursor);
+			if (
+				decodedCursor &&
+				typeof decodedCursor.createdAt === 'string' &&
+				typeof decodedCursor.id === 'string'
+			) {
+				const parsedDate = new Date(decodedCursor.createdAt);
+				if (!Number.isNaN(parsedDate.getTime())) {
+					queryBuilder.andWhere(
+						`(
+							audit.createdAt < :cursorCreatedAt
+							OR (audit.createdAt = :cursorCreatedAt AND audit.id < :cursorId)
+						)`,
+						{
+							cursorCreatedAt: parsedDate,
+							cursorId: decodedCursor.id,
+						},
+					);
+				}
+			}
+
+			const logs = await queryBuilder.getMany();
+			const hasNextPage = logs.length > limit;
+			const data = hasNextPage ? logs.slice(0, limit) : logs;
+			const lastLog = data[data.length - 1];
+			const nextCursor =
+				hasNextPage && lastLog
+					? encodeCursorPayload({
+							createdAt: lastLog.createdAt.toISOString(),
+							id: lastLog.id,
+						})
+					: null;
+
+			return new CursorPageDto(data, nextCursor, hasNextPage);
+		}
+
 		const where: FindOptionsWhere<AuthAuditLog> = {
 			userId,
 		};
@@ -139,6 +209,7 @@ export class SessionAuditService {
 			where,
 			order: {
 				createdAt: 'DESC',
+				id: 'DESC',
 			},
 			skip: (page - 1) * limit,
 			take: limit,

@@ -86,6 +86,7 @@ describe('BookBookRelationshipService', () => {
 					isBidirectional: false,
 					order: null,
 					metadata: null,
+					createdAt: new Date('2026-01-01T00:00:00.000Z'),
 				},
 			],
 			1,
@@ -102,12 +103,12 @@ describe('BookBookRelationshipService', () => {
 			effectiveMaxWeightSensitiveContent: 0,
 		});
 
-		const result = await service.listRelationships(
+		const result = (await service.listRelationships(
 			sourceBookId,
 			{},
 			0,
 			'user-1',
-		);
+		)) as { items: unknown[]; total: number };
 
 		expect(result.items).toEqual([]);
 		expect(result.total).toBe(0);
@@ -136,6 +137,7 @@ describe('BookBookRelationshipService', () => {
 					isBidirectional: false,
 					order: null,
 					metadata: null,
+					createdAt: new Date('2026-01-02T00:00:00.000Z'),
 				},
 			],
 			1,
@@ -152,12 +154,12 @@ describe('BookBookRelationshipService', () => {
 			effectiveMaxWeightSensitiveContent: 10,
 		});
 
-		const result = await service.listRelationships(
+		const result = (await service.listRelationships(
 			sourceBookId,
 			{},
 			10,
 			'user-2',
-		);
+		)) as { items: unknown[]; total: number };
 
 		expect(result.items).toEqual([]);
 		expect(result.total).toBe(0);
@@ -177,6 +179,7 @@ describe('BookBookRelationshipService', () => {
 					isBidirectional: false,
 					order: 1,
 					metadata: { note: 'Parte 2' },
+					createdAt: new Date('2026-01-03T00:00:00.000Z'),
 				},
 			],
 			1,
@@ -193,12 +196,12 @@ describe('BookBookRelationshipService', () => {
 			effectiveMaxWeightSensitiveContent: 20,
 		});
 
-		const result = await service.listRelationships(
+		const result = (await service.listRelationships(
 			sourceBookId,
 			{},
 			20,
 			'user-3',
-		);
+		)) as { items: unknown[]; total: number };
 
 		expect(result.items).toHaveLength(1);
 		expect(result.items[0]).toEqual(

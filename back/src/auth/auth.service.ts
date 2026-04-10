@@ -998,6 +998,7 @@ export class AuthService {
 			page: query.page,
 			limit: query.limit,
 			event: query.event,
+			cursor: query.cursor,
 		});
 	}
 }

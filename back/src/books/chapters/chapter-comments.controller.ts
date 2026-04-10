@@ -35,7 +35,7 @@ export class ChapterCommentsController {
 	@ApiOperation({
 		summary: 'Listar comentarios do capitulo',
 		description:
-			'Lista comentarios de um capitulo com respostas em arvore e paginacao dos comentarios raiz',
+			'Lista comentarios de um capitulo com respostas em arvore e paginacao dos comentarios raiz (page/limit ou cursor)',
 	})
 	@ApiParam({ name: 'chapterId', description: 'UUID do capitulo' })
 	@ApiResponse({

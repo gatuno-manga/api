@@ -1,10 +1,19 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import { ToArray } from 'src/pages/decorator/to-array.decorator';
 import { BookRelationType } from '../enum/book-relation-type.enum';
 
 export class BookRelationshipsQueryDto {
+	@ApiPropertyOptional({
+		description: 'Cursor para paginação por cursor',
+		example:
+			'eyJvcmRlciI6MSwiY3JlYXRlZEF0IjoiMjAyNi0wNC0xMFQwMDowMDowMC4wMDBaIiwiaWQiOiI1NTBlODQwMCJ9',
+	})
+	@IsOptional()
+	@IsString()
+	cursor?: string;
+
 	@ApiPropertyOptional({
 		description: 'Filtra por tipos de relacionamento',
 		enum: BookRelationType,
