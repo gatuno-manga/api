@@ -28,12 +28,16 @@ export class AdminUsersController {
 	constructor(private readonly adminUsersService: AdminUsersService) {}
 
 	@Get()
-	@ApiOperation({ summary: 'Listar usuarios com filtros administrativos' })
+	@ApiOperation({
+		summary: 'Listar usuarios com filtros administrativos',
+		description: 'Suporta paginação por page/limit e por cursor',
+	})
 	@ApiResponse({ status: 200, description: 'Usuarios listados com sucesso' })
 	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
 	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
 	@ApiQuery({ name: 'page', required: false })
 	@ApiQuery({ name: 'limit', required: false })
+	@ApiQuery({ name: 'cursor', required: false })
 	@ApiQuery({ name: 'search', required: false })
 	@ApiQuery({ name: 'role', required: false })
 	@ApiQuery({ name: 'isBanned', required: false })
@@ -41,6 +45,7 @@ export class AdminUsersController {
 	listUsers(
 		@Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
 		@Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+		@Query('cursor') cursor?: string,
 		@Query('search') search?: string,
 		@Query('role') role?: string,
 		@Query('isBanned', new ParseBoolPipe({ optional: true }))
@@ -51,6 +56,7 @@ export class AdminUsersController {
 		return this.adminUsersService.listUsers({
 			page,
 			limit,
+			cursor,
 			search,
 			role,
 			isBanned,

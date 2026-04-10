@@ -11,6 +11,15 @@ import {
 
 export class ListAuthAuditQueryDto {
 	@ApiPropertyOptional({
+		description: 'Cursor para paginação por cursor',
+		example:
+			'eyJjcmVhdGVkQXQiOiIyMDI2LTA0LTEwVDAwOjAwOjAwLjAwMFoiLCJpZCI6IjU1MGU4NDAwIn0=',
+	})
+	@IsOptional()
+	@IsString()
+	cursor?: string;
+
+	@ApiPropertyOptional({
 		description: 'Page number (1-based)',
 		default: 1,
 	})

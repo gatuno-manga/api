@@ -18,6 +18,14 @@ import { BookType } from '../enum/book-type.enum';
 
 export class BookPageOptionsDto extends PageOptionsDto {
 	@ApiPropertyOptional({
+		description: 'Cursor para navegação por cursor',
+		example: 'eyJ2YWx1ZSI6IjIwMjYtMDEtMDEiLCJpZCI6IjU1MGU4NDAwIn0=',
+	})
+	@IsOptional()
+	@IsString()
+	cursor?: string;
+
+	@ApiPropertyOptional({
 		description: 'Filter by book types',
 		example: [BookType.MANGA, BookType.MANHWA],
 		enum: BookType,

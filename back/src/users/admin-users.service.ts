@@ -6,6 +6,11 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, In, Repository } from 'typeorm';
+import { CursorPageDto } from 'src/pages/cursor-page.dto';
+import {
+	decodeCursorPayload,
+	encodeCursorPayload,
+} from 'src/pages/cursor.utils';
 import { CreateAccessPolicyDto } from './dto/create-access-policy.dto';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { CreateRoleDto } from './dto/create-role.dto';
@@ -21,6 +26,11 @@ import { User } from './entities/user.entity';
 import { AccessPolicyEffectEnum } from './enum/access-policy-effect.enum';
 import { AccessPolicyScopeEnum } from './enum/access-policy-scope.enum';
 import { RolesEnum } from './enum/roles.enum';
+
+type AdminUsersCursorPayload = {
+	createdAt: string;
+	id: string;
+};
 
 @Injectable()
 export class AdminUsersService {
@@ -38,6 +48,7 @@ export class AdminUsersService {
 	async listUsers(params: {
 		page: number;
 		limit: number;
+		cursor?: string;
 		search?: string;
 		role?: string;
 		isBanned?: boolean;
@@ -97,9 +108,49 @@ export class AdminUsersService {
 			}
 		}
 
-		qb.orderBy('user.createdAt', 'DESC')
-			.skip((page - 1) * limit)
-			.take(limit);
+		qb.orderBy('user.createdAt', 'DESC').addOrderBy('user.id', 'DESC');
+
+		if (params.cursor) {
+			const decodedCursor = decodeCursorPayload<AdminUsersCursorPayload>(
+				params.cursor,
+			);
+			if (
+				decodedCursor &&
+				typeof decodedCursor.createdAt === 'string' &&
+				typeof decodedCursor.id === 'string'
+			) {
+				const parsedDate = new Date(decodedCursor.createdAt);
+				if (!Number.isNaN(parsedDate.getTime())) {
+					qb.andWhere(
+						`(
+							user.createdAt < :cursorCreatedAt
+							OR (user.createdAt = :cursorCreatedAt AND user.id < :cursorId)
+						)`,
+						{
+							cursorCreatedAt: parsedDate,
+							cursorId: decodedCursor.id,
+						},
+					);
+				}
+			}
+
+			qb.take(limit + 1);
+			const users = await qb.getMany();
+			const hasNextPage = users.length > limit;
+			const data = hasNextPage ? users.slice(0, limit) : users;
+			const lastUser = data[data.length - 1];
+			const nextCursor =
+				hasNextPage && lastUser
+					? encodeCursorPayload({
+							createdAt: lastUser.createdAt.toISOString(),
+							id: lastUser.id,
+						})
+					: null;
+
+			return new CursorPageDto(data, nextCursor, hasNextPage);
+		}
+
+		qb.skip((page - 1) * limit).take(limit);
 
 		const [users, total] = await qb.getManyAndCount();
 		return {
@@ -175,7 +226,7 @@ export class AdminUsersService {
 
 		if (
 			targetUserId === currentAdminId &&
-			!roles.some((role) => role.name === RolesEnum.ADMIN)
+			!roles.some((role) => role.name === (RolesEnum.ADMIN as string))
 		) {
 			throw new BadRequestException(
 				'You cannot remove your own admin role',

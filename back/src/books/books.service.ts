@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { CursorPageDto } from 'src/pages/cursor-page.dto';
 import { PageDto } from 'src/pages/page.dto';
 import { BookRelationshipsQueryDto } from './dto/book-relationships-query.dto';
 import { BookChaptersCursorPageDto } from './dto/book-chapters-cursor-page.dto';
@@ -103,7 +104,10 @@ export class BooksService {
 		options: BookPageOptionsDto,
 		maxWeightSensitiveContent = 0,
 		userId?: string,
-	): Promise<PageDto<Omit<Book, 'covers'> & { cover: string | null }>> {
+	): Promise<
+		| PageDto<Omit<Book, 'covers'> & { cover: string | null }>
+		| CursorPageDto<Omit<Book, 'covers'> & { cover: string | null }>
+	> {
 		return this.bookQueryService.getAllBooks(
 			options,
 			maxWeightSensitiveContent,

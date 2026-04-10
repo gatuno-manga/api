@@ -6,7 +6,12 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AdminUsersService } from 'src/users/admin-users.service';
-import { In, IsNull, Repository } from 'typeorm';
+import { In, IsNull, Repository, SelectQueryBuilder } from 'typeorm';
+import { CursorPageDto } from 'src/pages/cursor-page.dto';
+import {
+	decodeCursorPayload,
+	encodeCursorPayload,
+} from 'src/pages/cursor.utils';
 import { BookRelationshipsQueryDto } from '../dto/book-relationships-query.dto';
 import { CreateBookRelationshipDto } from '../dto/create-book-relationship.dto';
 import { UpdateBookRelationshipDto } from '../dto/update-book-relationship.dto';
@@ -26,8 +31,21 @@ export type RelatedBookItem = {
 	relatedBook: Book;
 };
 
+type BookRelationshipsCursorPayload = {
+	order: number | null;
+	createdAt: string;
+	id: string;
+};
+
+type RelatedBookCursorItem = {
+	item: RelatedBookItem;
+	cursor: BookRelationshipsCursorPayload;
+};
+
 @Injectable()
 export class BookBookRelationshipService {
+	private readonly relationshipNullOrderValue = 2147483647;
+
 	constructor(
 		@InjectRepository(BookRelationship)
 		private readonly bookRelationshipRepository: Repository<BookRelationship>,
@@ -158,8 +176,111 @@ export class BookBookRelationshipService {
 
 		const limit = query.limit ?? 20;
 		const offset = query.offset ?? 0;
+		const batchSize = Math.min(Math.max(limit * 2, 20), 200);
 
-		const qb = this.bookRelationshipRepository
+		if (query.cursor) {
+			let rawCursor = decodeCursorPayload<BookRelationshipsCursorPayload>(
+				query.cursor,
+			);
+			const collectedItems: RelatedBookCursorItem[] = [];
+
+			while (collectedItems.length < limit + 1) {
+				const cursorQueryBuilder = this.buildRelationshipsQuery(
+					idBook,
+					query,
+				);
+				if (
+					rawCursor &&
+					typeof rawCursor.createdAt === 'string' &&
+					typeof rawCursor.id === 'string' &&
+					(typeof rawCursor.order === 'number' ||
+						rawCursor.order === null ||
+						typeof rawCursor.order === 'undefined')
+				) {
+					const cursorDate = new Date(rawCursor.createdAt);
+					if (!Number.isNaN(cursorDate.getTime())) {
+						this.applyRelationshipsCursorFilter(
+							cursorQueryBuilder,
+							{
+								order: rawCursor.order ?? null,
+								createdAt: cursorDate,
+								id: rawCursor.id,
+							},
+						);
+					}
+				}
+
+				cursorQueryBuilder.take(batchSize);
+				const batchRelationships = await cursorQueryBuilder.getMany();
+
+				if (!batchRelationships.length) {
+					break;
+				}
+
+				const accessibleItems =
+					await this.buildAccessibleRelationshipItems(
+						batchRelationships,
+						idBook,
+						maxWeightSensitiveContent,
+						userId,
+					);
+				collectedItems.push(...accessibleItems);
+
+				if (batchRelationships.length < batchSize) {
+					break;
+				}
+
+				const lastBatchRelationship =
+					batchRelationships[batchRelationships.length - 1];
+				rawCursor = {
+					order: lastBatchRelationship.order ?? null,
+					createdAt: lastBatchRelationship.createdAt.toISOString(),
+					id: lastBatchRelationship.id,
+				};
+			}
+
+			const hasNextPage = collectedItems.length > limit;
+			const data = hasNextPage
+				? collectedItems.slice(0, limit)
+				: collectedItems;
+			const lastVisibleItem = data[data.length - 1];
+			const nextCursor =
+				hasNextPage && lastVisibleItem
+					? encodeCursorPayload(lastVisibleItem.cursor)
+					: null;
+
+			return new CursorPageDto(
+				data.map((entry) => entry.item),
+				nextCursor,
+				hasNextPage,
+			);
+		}
+
+		const queryBuilder = this.buildRelationshipsQuery(idBook, query)
+			.take(limit)
+			.skip(offset);
+		const [relationships] = await queryBuilder.getManyAndCount();
+		const accessibleItems = await this.buildAccessibleRelationshipItems(
+			relationships,
+			idBook,
+			maxWeightSensitiveContent,
+			userId,
+		);
+		const items = accessibleItems.map((entry) => entry.item);
+
+		return {
+			total: items.length,
+			limit,
+			offset,
+			items,
+		};
+	}
+
+	private buildRelationshipsQuery(
+		idBook: string,
+		query: BookRelationshipsQueryDto,
+	) {
+		const queryBuilder = this.bookRelationshipRepository
 			.createQueryBuilder('relationship')
 			.leftJoinAndSelect('relationship.sourceBook', 'sourceBook')
 			.leftJoinAndSelect('relationship.targetBook', 'targetBook')
@@ -168,18 +289,53 @@ export class BookBookRelationshipService {
 				'(relationship.sourceBookId = :idBook OR relationship.targetBookId = :idBook)',
 				{ idBook },
 			)
-			.orderBy('relationship.order', 'ASC')
+			.orderBy(
+				`COALESCE(relationship.order, ${this.relationshipNullOrderValue})`,
+				'ASC',
+			)
 			.addOrderBy('relationship.createdAt', 'DESC')
-			.take(limit)
-			.skip(offset);
+			.addOrderBy('relationship.id', 'DESC');
 
 		if (query.types && query.types.length > 0) {
-			qb.andWhere('relationship.relationType IN (:...types)', {
+			queryBuilder.andWhere('relationship.relationType IN (:...types)', {
 				types: query.types,
 			});
 		}
 
-		const [relationships] = await qb.getManyAndCount();
+		return queryBuilder;
+	}
+
+	private applyRelationshipsCursorFilter(
+		queryBuilder: SelectQueryBuilder<BookRelationship>,
+		cursor: { order: number | null; createdAt: Date; id: string },
+	): void {
+		const normalizedOrder = cursor.order ?? this.relationshipNullOrderValue;
+
+		queryBuilder.andWhere(
+			`(
+				COALESCE(relationship.order, ${this.relationshipNullOrderValue}) > :cursorOrder
+				OR (
+					COALESCE(relationship.order, ${this.relationshipNullOrderValue}) = :cursorOrder
+					AND (
+						relationship.createdAt < :cursorCreatedAt
+						OR (relationship.createdAt = :cursorCreatedAt AND relationship.id < :cursorId)
+					)
+				)
+			)`,
+			{
+				cursorOrder: normalizedOrder,
+				cursorCreatedAt: cursor.createdAt,
+				cursorId: cursor.id,
+			},
+		);
+	}
+
+	private async buildAccessibleRelationshipItems(
+		relationships: BookRelationship[],
+		idBook: string,
+		maxWeightSensitiveContent: number,
+		userId?: string,
+	): Promise<RelatedBookCursorItem[]> {
 		const relatedBookIds = Array.from(
 			new Set(
 				relationships.flatMap((relationship) => [
@@ -206,8 +362,7 @@ export class BookBookRelationshipService {
 		const relatedBookById = new Map(
 			relatedBooks.map((relatedBook) => [relatedBook.id, relatedBook]),
 		);
-
-		const items: RelatedBookItem[] = [];
+		const items: RelatedBookCursorItem[] = [];
 
 		for (const relationship of relationships) {
 			const isOutgoing = relationship.sourceBookId === idBook;
@@ -251,22 +406,24 @@ export class BookBookRelationshipService {
 			}
 
 			items.push({
-				relationId: relationship.id,
-				relationType: relationship.relationType,
-				isBidirectional: relationship.isBidirectional,
-				order: relationship.order,
-				metadata: relationship.metadata,
-				direction: isOutgoing ? 'outgoing' : 'incoming',
-				relatedBook,
+				item: {
+					relationId: relationship.id,
+					relationType: relationship.relationType,
+					isBidirectional: relationship.isBidirectional,
+					order: relationship.order,
+					metadata: relationship.metadata,
+					direction: isOutgoing ? 'outgoing' : 'incoming',
+					relatedBook,
+				},
+				cursor: {
+					order: relationship.order ?? null,
+					createdAt: relationship.createdAt.toISOString(),
+					id: relationship.id,
+				},
 			});
 		}
 
-		return {
-			total: items.length,
-			limit,
-			offset,
-			items,
-		};
+		return items;
 	}
 
 	private normalizePair(
