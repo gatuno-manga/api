@@ -6,8 +6,8 @@ services:
     shm_size: 2g
     environment:
       - NODE_ENV=${NODE_ENV}
-      - API_URL=https://${API_HOST}
-      - APP_URL=https://${APP_HOST}
+      - API_URL=${API_SCHEME:-https}://${API_HOST}
+      - APP_URL=${APP_SCHEME:-https}://${APP_HOST}
       - ALLOWED_URL=http://${APP_HOST},https://${APP_HOST}
       - DB_TYPE=mysql
       - DB_PORT=3306
@@ -23,9 +23,9 @@ services:
     healthcheck:
       test:
         [
-          "CMD",
-          "node",
-          "-e",
+          'CMD',
+          'node',
+          '-e',
           "const http=require('http');const req=http.get('http://localhost:3000/api/health',(res)=>{process.exit(res.statusCode===200?0:1)});req.on('error',()=>process.exit(1));req.setTimeout(5000,()=>{req.destroy();process.exit(1);});",
         ]
       interval: 30s
@@ -33,10 +33,10 @@ services:
       retries: 3
       start_period: 40s
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: '10m'
+        max-file: '3'
     volumes:
       - api-data:/usr/src/app/data
     depends_on:
@@ -52,7 +52,7 @@ services:
       - gatuno-net
 
   redis:
-    image: "redis:7.4-alpine"
+    image: 'redis:7.4-alpine'
     container_name: gatuno-redis
     command: >
       redis-server
@@ -62,7 +62,7 @@ services:
       --maxmemory-policy noeviction
       --maxmemory 512mb
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -76,7 +76,16 @@ services:
     image: mysql:8.4
     container_name: gatuno-database
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u${DB_USER}", "-p${DB_PASS}"]
+      test:
+        [
+          'CMD',
+          'mysqladmin',
+          'ping',
+          '-h',
+          'localhost',
+          '-u${DB_USER}',
+          '-p${DB_PASS}',
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -108,7 +117,7 @@ services:
         database-master:
           condition: service_healthy
       healthcheck:
-        test: ["CMD", "/usr/local/bin/healthcheck-replica.sh"]
+        test: ['CMD', '/usr/local/bin/healthcheck-replica.sh']
         interval: 10s
         timeout: 5s
         retries: 5
@@ -121,7 +130,7 @@ services:
       - ./database/slave/my.cnf:/etc/mysql/conf.d/my.cnf
       - ./database/slave/init.sh:/docker-entrypoint-initdb.d/init.sh
       - ./database/slave/healthcheck-replica.sh:/usr/local/bin/healthcheck-replica.sh:ro
-    command: ["mysqld", "--server-id=2"]
+    command: ['mysqld', '--server-id=2']
 
   database-slave-2:
     <<: *mysql-slave-base
@@ -131,7 +140,7 @@ services:
       - ./database/slave/my.cnf:/etc/mysql/conf.d/my.cnf
       - ./database/slave/init.sh:/docker-entrypoint-initdb.d/init.sh
       - ./database/slave/healthcheck-replica.sh:/usr/local/bin/healthcheck-replica.sh:ro
-    command: ["mysqld", "--server-id=3"]
+    command: ['mysqld', '--server-id=3']
 
   app:
     image: gatuno-app
