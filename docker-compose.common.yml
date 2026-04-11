@@ -6,8 +6,8 @@ services:
     shm_size: 2g
     environment:
       - NODE_ENV=${NODE_ENV}
-      - API_URL=http://${API_HOST}
-      - APP_URL=http://${APP_HOST}
+      - API_URL=${API_SCHEME:-https}://${API_HOST}
+      - APP_URL=${APP_SCHEME:-https}://${APP_HOST}
       - ALLOWED_URL=http://${APP_HOST},https://${APP_HOST}
       - DB_TYPE=mysql
       - DB_PORT=3306
