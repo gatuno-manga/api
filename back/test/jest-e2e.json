@@ -8,6 +8,7 @@
 	"transform": {
 		"^.+\\.(t|j)s$": "ts-jest"
 	},
+	"transformIgnorePatterns": ["node_modules/(?!(p-limit|yocto-queue)/)"],
 	"moduleNameMapper": {
 		"^src/(.*)$": "<rootDir>/../src/$1"
 	}
