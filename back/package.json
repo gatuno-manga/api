@@ -7,6 +7,7 @@
 	"license": "UNLICENSED",
 	"scripts": {
 		"build": "nest build",
+		"chromium:cache": "PLAYWRIGHT_BROWSERS_PATH=.playwright-cache PLAYWRIGHT_CACHE_FALLBACK_PATH=.playwright-cache bash ./scripts/install-chromium-with-fallback.sh",
 		"format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
 		"start": "nest start",
 		"start:dev": "nest start --watch --builder swc",

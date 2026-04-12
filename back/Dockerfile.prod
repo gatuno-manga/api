@@ -29,6 +29,7 @@ WORKDIR /usr/src/app
 
 # Path onde o Playwright armazenará os browsers instalados
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV PLAYWRIGHT_CACHE_FALLBACK_PATH=/usr/src/app/.playwright-cache
 
 # Criar grupo/usuário não-root com UID/GID determinísticos (1001)
 RUN groupadd -r -g 1001 appgroup && \
@@ -39,9 +40,12 @@ RUN groupadd -r -g 1001 appgroup && \
 # Copiar dependências antes de qualquer instalação de browser
 COPY --from=builder /usr/src/app/node_modules ./node_modules
 COPY --from=builder /usr/src/app/package.json ./package.json
+COPY scripts/install-chromium-with-fallback.sh ./scripts/install-chromium-with-fallback.sh
+COPY .playwright-cache/ ./.playwright-cache/
 
-# Instalar dependências do OS + Chromium como root (necessário para apt-get)
-RUN npx playwright install --with-deps chromium && \
+# Usar cache se revisão requerida já existir; senão tentar instalar com fallback
+RUN chmod +x ./scripts/install-chromium-with-fallback.sh && \
+    ./scripts/install-chromium-with-fallback.sh --with-deps && \
     rm -rf /var/lib/apt/lists/* /root/.npm
 
 # Copiar código compilado com ownership correto
@@ -49,7 +53,7 @@ RUN npx playwright install --with-deps chromium && \
 COPY --from=builder --chown=appuser:appgroup /usr/src/app/dist ./dist
 
 # Corrigir ownership do node_modules copiado como root
-RUN chown -R appuser:appgroup ./node_modules /usr/src/app
+RUN chown -R appuser:appgroup ./node_modules /usr/src/app /ms-playwright
 
 USER appuser
 

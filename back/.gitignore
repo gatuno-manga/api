@@ -46,6 +46,10 @@ lerna-debug.log*
 .temp
 .tmp
 
+# Playwright browser cache used for offline Docker fallback
+.playwright-cache/*
+!.playwright-cache/.gitkeep
+
 # Runtime data
 pids
 *.pid

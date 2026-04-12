@@ -7,6 +7,8 @@ FROM mcr.microsoft.com/playwright:${PLAYWRIGHT_VERSION}-noble AS development
 # Instalar jemalloc para melhor gerenciamento de memória
 RUN apt-get update && apt-get install -y libjemalloc2 && rm -rf /var/lib/apt/lists/*
 ENV LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libjemalloc.so.2"
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV PLAYWRIGHT_CACHE_FALLBACK_PATH=/usr/src/app/.playwright-cache
 
 WORKDIR /usr/src/app
 
@@ -15,7 +17,8 @@ RUN npm ci
 
 COPY . .
 
-# Instalar apenas Chromium para desenvolvimento
-RUN npx playwright install chromium
+# Reutilizar cache quando a revisão requerida já existir; fallback offline habilitado
+RUN chmod +x ./scripts/install-chromium-with-fallback.sh && \
+    ./scripts/install-chromium-with-fallback.sh
 
 CMD ["npm", "run", "start:dev"]
