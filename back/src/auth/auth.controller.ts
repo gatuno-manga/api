@@ -129,9 +129,9 @@ export class AuthController {
 			?.toLowerCase()
 			.trim();
 
-		return ['mobile', 'flutter', 'app', 'native'].includes(
-			clientPlatform ?? '',
-		);
+		if (clientPlatform === undefined || clientPlatform === '') return false;
+
+		return ['mobile', 'flutter', 'app', 'native'].includes(clientPlatform);
 	}
 
 	private buildRequestContext(req: Request): AuthRequestContext {
