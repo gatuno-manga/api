@@ -119,6 +119,9 @@ export class AuthController {
 		const csrfHeader = req.header(this.csrfHeaderName);
 
 		if (!csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
+			this.logger.warn(
+				`CSRF validation failed for web auth request (cookie=${Boolean(csrfCookie)}, header=${Boolean(csrfHeader)})`,
+			);
 			throw new UnauthorizedException('Invalid CSRF token');
 		}
 	}
@@ -256,6 +259,9 @@ export class AuthController {
 		const refreshToken = (req.cookies as Record<string, string | undefined>)
 			?.refreshToken;
 		if (!refreshToken) {
+			this.logger.warn(
+				'Refresh endpoint called without refresh token cookie',
+			);
 			throw new UnauthorizedException(
 				'Refresh token not found in cookies',
 			);
@@ -292,6 +298,9 @@ export class AuthController {
 		const refreshToken = (req.cookies as Record<string, string | undefined>)
 			?.refreshToken;
 		if (!refreshToken) {
+			this.logger.warn(
+				'Logout endpoint called without refresh token cookie',
+			);
 			throw new UnauthorizedException(
 				'Refresh token not found in cookies',
 			);
