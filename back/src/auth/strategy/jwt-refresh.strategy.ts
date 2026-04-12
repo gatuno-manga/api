@@ -21,10 +21,9 @@ export class JwtRefreshStrategy extends PassportStrategy(
 		super({
 			jwtFromRequest: ExtractJwt.fromExtractors([
 				(req: Request) => {
-					const cookies = req?.cookies as Record<
-						string,
-						string | undefined
-					>;
+					const cookies = req?.cookies as
+						| Record<string, string | undefined>
+						| undefined;
 					return cookies?.refreshToken || null;
 				},
 			]),

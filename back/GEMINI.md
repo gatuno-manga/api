@@ -72,8 +72,29 @@
 - **Adaptive Scraping:**
   - Introduced complexity detection for pages to automatically adjust timeouts and scrolling behavior based on the amount of content.
 
-## Integration
+## Social & Synchronization Features
 
-- **API Base:** All endpoints are prefixed with `/api`.
-- **Documentation:** Swagger UI available at `/api/docs` in development mode.
-- **Frontend Sync:** Shared DTO structures and error response formats (`AppExceptions`) ensure consistent communication with the Flutter application.
+- **Social Interaction:**
+  - Implemented **Chapter Comments** with support for threaded replies and visibility controls.
+  - Added moderation features for administrative oversight.
+- **Data Synchronization:**
+  - Robust **Reading Progress** synchronization across multiple devices.
+  - Implemented **Saved Pages** functionality with public/private visibility and custom collections.
+- **Enhanced Book Discovery:**
+  - Integrated sophisticated relationship management between books (sequences, spin-offs, adaptations).
+  - Improved search with full-text indexing and advanced filtering capabilities.
+
+## Advanced Scraping & Infrastructure
+
+- **Scraping Engine:**
+  - Built a resilient engine using Playwright with advanced anti-bot evasion techniques.
+  - Implemented automated resource management (BrowserPool) and error recovery.
+- **Queueing & Async Tasks:**
+  - Integrated **BullMQ** for background tasks (scraping, content processing, maintenance).
+  - Configured exponential backoff and job persistence in Redis.
+- **Database High Availability:**
+  - Transitioned to **MySQL 8.4** with Master-Slave replication.
+  - Optimized migrations and schema management with DB-level constraints.
+- **Observability Stack:**
+  - Full metrics collection with Prometheus and custom NestJS metrics.
+  - Integrated logging with Loki and Promtail for real-time monitoring and alerting.
