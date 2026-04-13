@@ -24,12 +24,16 @@ import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { AppConfigService } from 'src/app-config/app-config.service';
+import { RolesEnum } from 'src/users/enum/roles.enum';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorator/current-user.decorator';
+import { Roles } from './decorator/roles.decorator';
 import { BeginPasskeyAuthDto } from './dto/begin-passkey-auth.dto';
+import { CreateLoginApiKeyDto } from './dto/create-login-api-key.dto';
 import { CurrentUserDto } from './dto/current-user.dto';
 import { ListAuthAuditQueryDto } from './dto/list-auth-audit-query.dto';
 import { RevokeSessionDto } from './dto/revoke-session.dto';
+import { SignInApiKeyAuthDto } from './dto/signin-api-key-auth.dto';
 import { SignInAuthDto } from './dto/signin-auth.dto';
 import { SignUpAuthDto } from './dto/signup-auth.dto';
 import { VerifyMfaLoginDto } from './dto/verify-mfa-login.dto';
@@ -231,6 +235,63 @@ export class AuthController {
 			return result;
 		}
 
+		this.setRefreshTokenCookie(res, result.refreshToken);
+		this.setCsrfCookie(res, this.generateCsrfToken());
+		return this.buildAuthResponse(req, result);
+	}
+
+	@Post('api-keys')
+	@Throttle({ short: { limit: 5, ttl: 60000 } })
+	@ApiOperation({
+		summary: 'Create temporary login API key',
+		description:
+			'Create a temporary API key for admin self-login replacement',
+	})
+	@ApiResponse({
+		status: 201,
+		description: 'Login API key created successfully',
+	})
+	@ApiResponse({
+		status: 401,
+		description: 'Unauthorized',
+	})
+	@ApiResponse({
+		status: 403,
+		description: 'Forbidden',
+	})
+	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
+	@UseGuards(JwtAuthGuard)
+	@Roles(RolesEnum.ADMIN)
+	async createLoginApiKey(
+		@CurrentUser() user: CurrentUserDto,
+		@Body() body: CreateLoginApiKeyDto,
+		@Req() req: Request,
+	) {
+		return this.authService.createLoginApiKeyForAdminSelf(user.userId, {
+			expiresIn: body.expiresIn,
+			singleUse: body.singleUse,
+			context: this.buildRequestContext(req),
+		});
+	}
+
+	@Post('signin/api-key')
+	@Throttle({ short: { limit: 10, ttl: 60000 } })
+	@ApiOperation({
+		summary: 'Sign in using a temporary API key',
+		description: 'Authenticate user with API key and return tokens',
+	})
+	@ApiResponse({ status: 200, description: 'Successfully authenticated' })
+	@ApiResponse({ status: 401, description: 'Invalid API key' })
+	@ApiResponse({ status: 429, description: 'Too many requests' })
+	async signInWithApiKey(
+		@Body() body: SignInApiKeyAuthDto,
+		@Req() req: Request,
+		@Res({ passthrough: true }) res: Response,
+	) {
+		const result = await this.authService.signInWithApiKey(
+			body.apiKey,
+			this.buildRequestContext(req),
+		);
 		this.setRefreshTokenCookie(res, result.refreshToken);
 		this.setCsrfCookie(res, this.generateCsrfToken());
 		return this.buildAuthResponse(req, result);

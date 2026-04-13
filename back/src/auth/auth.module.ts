@@ -14,6 +14,7 @@ import { AuthService } from './auth.service';
 import { CreateAdminEvent } from './events/create-admin.event';
 import { AuthAuditLog } from './entities/auth-audit-log.entity';
 import { AuthSession } from './entities/auth-session.entity';
+import { LoginApiKey } from './entities/login-api-key.entity';
 import { UserMfa } from './entities/user-mfa.entity';
 import { WebAuthnCredential } from './entities/webauthn-credential.entity';
 import { JwtAuthGuard } from './guard/jwt-auth.guard';
@@ -38,6 +39,7 @@ import { JwtStrategy } from './strategy/jwt.strategy';
 			Role,
 			AuthSession,
 			AuthAuditLog,
+			LoginApiKey,
 			WebAuthnCredential,
 			UserMfa,
 		]),

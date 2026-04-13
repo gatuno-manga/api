@@ -29,6 +29,8 @@ describe('AuthController', () => {
 		getAuditHistory: jest.fn(),
 		generateTokensForUser: jest.fn(),
 		completePasskeySignIn: jest.fn(),
+		createLoginApiKeyForAdminSelf: jest.fn(),
+		signInWithApiKey: jest.fn(),
 	};
 
 	const mockWebauthnService = {
@@ -238,6 +240,147 @@ describe('AuthController', () => {
 					{
 						email: 'user@example.com',
 						password: 'wrong-password',
+					},
+					req,
+					res,
+				),
+			).rejects.toThrow(error);
+		});
+	});
+	describe('createLoginApiKey', () => {
+		it('creates login API key for current admin user', async () => {
+			const req = createRequest({
+				'x-client-platform': 'web',
+				'x-device-id': 'admin-device',
+				'x-device-name': 'Admin Browser',
+			});
+			const currentUser = {
+				userId: '550e8400-e29b-41d4-a716-446655440000',
+				username: 'admin',
+				roles: ['admin'],
+				maxWeightSensitiveContent: 99,
+			};
+			const responsePayload = {
+				apiKey: 'api-key-id.secret',
+				expiresAt: new Date('2030-01-01T00:00:00.000Z'),
+				singleUse: true,
+			};
+			mockAuthService.createLoginApiKeyForAdminSelf.mockResolvedValue(
+				responsePayload,
+			);
+
+			const result = await controller.createLoginApiKey(
+				currentUser,
+				{
+					expiresIn: '2h',
+					singleUse: true,
+				},
+				req,
+			);
+
+			expect(
+				mockAuthService.createLoginApiKeyForAdminSelf,
+			).toHaveBeenCalledWith(
+				currentUser.userId,
+				expect.objectContaining({
+					expiresIn: '2h',
+					singleUse: true,
+					context: expect.objectContaining({
+						clientPlatform: 'web',
+						deviceId: 'admin-device',
+						deviceLabel: 'Admin Browser',
+					}),
+				}),
+			);
+			expect(result).toEqual(responsePayload);
+		});
+	});
+
+	describe('signInWithApiKey', () => {
+		it('returns web payload without refreshToken in body and sets cookies', async () => {
+			const req = createRequest({
+				'x-client-platform': 'web',
+				'x-device-id': 'web-device',
+				'x-device-name': 'Web Device',
+			});
+			const res = createResponse();
+
+			mockAuthService.signInWithApiKey.mockResolvedValue({
+				accessToken: 'access-token',
+				refreshToken: 'refresh-token',
+				sessionId: 'session-1',
+			});
+
+			const result = await controller.signInWithApiKey(
+				{
+					apiKey: 'api-key-id.secret',
+				},
+				req,
+				res,
+			);
+
+			expect(mockAuthService.signInWithApiKey).toHaveBeenCalledWith(
+				'api-key-id.secret',
+				expect.objectContaining({
+					clientPlatform: 'web',
+					deviceId: 'web-device',
+					deviceLabel: 'Web Device',
+				}),
+			);
+			expect(result).toEqual({
+				accessToken: 'access-token',
+				sessionId: 'session-1',
+			});
+			expect(res.cookie).toHaveBeenCalledWith(
+				'refreshToken',
+				'refresh-token',
+				expect.objectContaining({ httpOnly: true, path: '/api/auth' }),
+			);
+			expect(res.cookie).toHaveBeenCalledWith(
+				'csrfToken',
+				expect.any(String),
+				expect.objectContaining({ httpOnly: false, path: '/' }),
+			);
+		});
+
+		it('returns mobile payload with refreshToken in body', async () => {
+			const req = createRequest({
+				'x-client-platform': 'mobile',
+			});
+			const res = createResponse();
+
+			mockAuthService.signInWithApiKey.mockResolvedValue({
+				accessToken: 'access-token',
+				refreshToken: 'refresh-token',
+				sessionId: 'session-1',
+			});
+
+			const result = await controller.signInWithApiKey(
+				{
+					apiKey: 'api-key-id.secret',
+				},
+				req,
+				res,
+			);
+
+			expect(result).toEqual({
+				accessToken: 'access-token',
+				refreshToken: 'refresh-token',
+				sessionId: 'session-1',
+			});
+		});
+
+		it('propagates auth service errors', async () => {
+			const req = createRequest();
+			const res = createResponse();
+			const error = new UnauthorizedException('Invalid API key');
+
+			mockAuthService.signInWithApiKey.mockRejectedValue(error);
+
+			await expect(
+				controller.signInWithApiKey(
+					{
+						apiKey: 'invalid-api-key',
 					},
 					req,
 					res,

@@ -1,4 +1,4 @@
-export type AuthMethod = 'password' | 'passkey';
+export type AuthMethod = 'password' | 'passkey' | 'api_key';
 
 export type AuthRiskLevel = 'low' | 'high';
 

@@ -30,6 +30,14 @@ export const validationSchema = Joi.object({
 		.pattern(/^\d+\s*(s|m|h|d|w|y)$/)
 		.default('7d')
 		.description('Refresh token expiration (e.g. 60m, 7d, 30d)'),
+	AUTH_API_KEY_DEFAULT_EXPIRATION: Joi.string()
+		.pattern(/^\d+\s*(s|m|h|d|w)$/)
+		.default('1h')
+		.description('Default login API key expiration (e.g. 30m, 1h, 1d)'),
+	AUTH_API_KEY_MAX_EXPIRATION: Joi.string()
+		.pattern(/^\d+\s*(s|m|h|d|w)$/)
+		.default('30d')
+		.description('Maximum allowed login API key expiration'),
 	JWT_ISSUER: Joi.string().default('gatuno-auth'),
 	JWT_AUDIENCE: Joi.string().default('gatuno-api'),
 	WEBAUTHN_RP_NAME: Joi.string().default('Gatuno'),
