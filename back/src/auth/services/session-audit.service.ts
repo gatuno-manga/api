@@ -17,6 +17,7 @@ import {
 export type SessionAuditEvent =
 	| 'login_success'
 	| 'login_failed'
+	| 'api_key_created'
 	| 'signup_success'
 	| 'passkey_login_success'
 	| 'passkey_registration_success'

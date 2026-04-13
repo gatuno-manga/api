@@ -84,6 +84,7 @@ import { LoggerRuleEngine } from './logger-rule-engine';
 								'req.headers.authorization',
 								'req.headers.cookie',
 								'req.body.password',
+								'req.body.apiKey',
 								'req.body.token',
 								'res.headers["set-cookie"]',
 							],
