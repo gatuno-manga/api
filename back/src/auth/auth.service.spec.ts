@@ -9,6 +9,7 @@ import { PasswordMigrationService } from '../encryption/password-migration.servi
 import { Role } from '../users/entities/role.entity';
 import { User } from '../users/entities/user.entity';
 import { AuthService } from './auth.service';
+import { LoginApiKey } from './entities/login-api-key.entity';
 import { MfaService } from './services/mfa.service';
 import { SessionAuditService } from './services/session-audit.service';
 import { SessionManagementService } from './services/session-management.service';
@@ -18,6 +19,7 @@ describe('AuthService', () => {
 	let service: AuthService;
 	let userRepository: any;
 	let roleRepository: any;
+	let loginApiKeyRepository: any;
 	let jwtService: any;
 	let passwordEncryption: any;
 	let passwordMigration: any;
@@ -40,6 +42,12 @@ describe('AuthService', () => {
 		const mockRoleRepository = {
 			findOne: jest.fn(),
 			find: jest.fn(),
+		};
+
+		const mockLoginApiKeyRepository = {
+			findOne: jest.fn(),
+			save: jest.fn(),
+			create: jest.fn((value) => value),
 		};
 
 		const mockJwtService = {
@@ -71,6 +79,10 @@ describe('AuthService', () => {
 			jwtRefreshSecret: 'test-refresh-secret',
 			jwtAccessExpiration: '15m',
 			jwtRefreshExpiration: '7d',
+			authApiKeyDefaultExpiration: '1h',
+			authApiKeyMaxExpiration: '30d',
+			authApiKeyDefaultTtl: 3600000,
+			authApiKeyMaxTtl: 2592000000,
 			jwtIssuer: 'gatuno-auth-test',
 			jwtAudience: 'gatuno-api-test',
 			mfaChallengeExpiration: '5m',
@@ -131,6 +143,10 @@ describe('AuthService', () => {
 					useValue: mockRoleRepository,
 				},
 				{
+					provide: getRepositoryToken(LoginApiKey),
+					useValue: mockLoginApiKeyRepository,
+				},
+				{
 					provide: JwtService,
 					useValue: mockJwtService,
 				},
@@ -172,6 +188,7 @@ describe('AuthService', () => {
 		service = module.get<AuthService>(AuthService);
 		userRepository = module.get(getRepositoryToken(User));
 		roleRepository = module.get(getRepositoryToken(Role));
+		loginApiKeyRepository = module.get(getRepositoryToken(LoginApiKey));
 		jwtService = module.get<JwtService>(JwtService);
 		passwordEncryption = module.get<PasswordEncryption>(PasswordEncryption);
 		passwordMigration = module.get<PasswordMigrationService>(
@@ -371,6 +388,184 @@ describe('AuthService', () => {
 			expect(
 				passwordMigration.migratePasswordOnLogin,
 			).toHaveBeenCalledWith(user, 'password');
+		});
+	});
+
+	describe('createLoginApiKeyForAdminSelf', () => {
+		it('should create API key for current admin user', async () => {
+			const userId = 'admin-id';
+			const expiresAt = new Date('2030-01-01T00:00:00.000Z');
+			userRepository.findOne.mockResolvedValue({
+				id: userId,
+				email: 'admin@example.com',
+				roles: [{ name: 'admin' }],
+			});
+			dataEncryption.encrypt.mockResolvedValue('hashed-api-key-secret');
+			loginApiKeyRepository.save.mockResolvedValue({
+				id: 'api-key-id',
+				expiresAt,
+				singleUse: true,
+			});
+
+			const result = await service.createLoginApiKeyForAdminSelf(userId, {
+				expiresIn: '2h',
+				singleUse: true,
+			});
+
+			expect(userRepository.findOne).toHaveBeenCalledWith({
+				where: { id: userId },
+				relations: ['roles'],
+			});
+			expect(dataEncryption.encrypt).toHaveBeenCalled();
+			expect(loginApiKeyRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({
+					userId,
+					singleUse: true,
+					createdByUserId: userId,
+				}),
+			);
+			expect(result.singleUse).toBe(true);
+			expect(result.expiresAt).toEqual(expiresAt);
+			expect(result.apiKey).toMatch(/^api-key-id\.[a-f0-9]+$/);
+			expect(sessionAudit.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					userId,
+					event: 'api_key_created',
+					success: true,
+				}),
+			);
+		});
+
+		it('should reject creation when user is not admin', async () => {
+			userRepository.findOne.mockResolvedValue({
+				id: 'user-id',
+				email: 'user@example.com',
+				roles: [{ name: 'user' }],
+			});
+
+			await expect(
+				service.createLoginApiKeyForAdminSelf('user-id'),
+			).rejects.toThrow(UnauthorizedException);
+			await expect(
+				service.createLoginApiKeyForAdminSelf('user-id'),
+			).rejects.toThrow('Only admins can create login API keys');
+		});
+	});
+
+	describe('signInWithApiKey', () => {
+		it('should sign in with single-use API key and mark it as used', async () => {
+			const apiKeyRecord = {
+				id: 'api-key-id',
+				userId: 'user-1',
+				keyHash: 'stored-hash',
+				singleUse: true,
+				usedAt: null,
+				lastUsedAt: null,
+				revokedAt: null,
+				expiresAt: new Date(Date.now() + 60_000),
+			};
+			const user = {
+				id: 'user-1',
+				email: 'user@example.com',
+				roles: [{ id: 'role-1', name: 'user' }],
+			};
+			loginApiKeyRepository.findOne.mockResolvedValue(apiKeyRecord);
+			dataEncryption.compare.mockResolvedValue(true);
+			userRepository.findOne.mockResolvedValue(user);
+			jwtService.signAsync
+				.mockResolvedValueOnce('access-token')
+				.mockResolvedValueOnce('refresh-token');
+			dataEncryption.encrypt.mockResolvedValue('encrypted-refresh-token');
+			tokenStore.addToken.mockResolvedValue(undefined);
+
+			const result = await service.signInWithApiKey(
+				'api-key-id.super-secret',
+				{
+					clientPlatform: 'mobile',
+				},
+			);
+
+			expect(result).toHaveProperty('accessToken', 'access-token');
+			expect(result).toHaveProperty('refreshToken', 'refresh-token');
+			expect(loginApiKeyRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: 'api-key-id',
+					usedAt: expect.any(Date),
+					lastUsedAt: expect.any(Date),
+				}),
+			);
+			expect(sessionAudit.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					event: 'login_success',
+					context: expect.objectContaining({
+						authMethod: 'api_key',
+					}),
+				}),
+			);
+		});
+
+		it('should keep usedAt null for reusable API key', async () => {
+			const apiKeyRecord = {
+				id: 'api-key-id',
+				userId: 'user-1',
+				keyHash: 'stored-hash',
+				singleUse: false,
+				usedAt: null,
+				lastUsedAt: null,
+				revokedAt: null,
+				expiresAt: new Date(Date.now() + 60_000),
+			};
+			const user = {
+				id: 'user-1',
+				email: 'user@example.com',
+				roles: [{ id: 'role-1', name: 'user' }],
+			};
+			loginApiKeyRepository.findOne.mockResolvedValue(apiKeyRecord);
+			dataEncryption.compare.mockResolvedValue(true);
+			userRepository.findOne.mockResolvedValue(user);
+			jwtService.signAsync
+				.mockResolvedValueOnce('access-token')
+				.mockResolvedValueOnce('refresh-token');
+			dataEncryption.encrypt.mockResolvedValue('encrypted-refresh-token');
+			tokenStore.addToken.mockResolvedValue(undefined);
+
+			await service.signInWithApiKey('api-key-id.reusable-secret');
+
+			expect(loginApiKeyRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: 'api-key-id',
+					usedAt: null,
+					lastUsedAt: expect.any(Date),
+				}),
+			);
+		});
+
+		it('should reject already used single-use API key', async () => {
+			loginApiKeyRepository.findOne.mockResolvedValue({
+				id: 'api-key-id',
+				userId: 'user-1',
+				keyHash: 'stored-hash',
+				singleUse: true,
+				usedAt: new Date(),
+				lastUsedAt: new Date(),
+				revokedAt: null,
+				expiresAt: new Date(Date.now() + 60_000),
+			});
+			dataEncryption.compare.mockResolvedValue(true);
+
+			await expect(
+				service.signInWithApiKey('api-key-id.reused-secret'),
+			).rejects.toThrow('API key already used');
+			expect(tokenStore.addToken).not.toHaveBeenCalled();
+			expect(sessionAudit.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					event: 'login_failed',
+					success: false,
+					metadata: expect.objectContaining({
+						reason: 'api_key_already_used',
+					}),
+				}),
+			);
 		});
 	});
 

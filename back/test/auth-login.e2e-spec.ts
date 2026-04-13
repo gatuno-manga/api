@@ -1,14 +1,26 @@
-import { INestApplication } from '@nestjs/common';
+import { BadRequestException, INestApplication } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
+import { AuthService } from 'src/auth/auth.service';
 import { createE2EApp } from './helpers/e2e-app.helper';
 
 jest.setTimeout(120000);
+
+const ADMIN_EMAIL = `e2e-admin-${randomUUID()}@example.com`;
+const ADMIN_PASSWORD = 'AdminP@ssw0rd!';
+process.env.USERADMIN_EMAIL = ADMIN_EMAIL;
+process.env.USERADMIN_PASSWORD = ADMIN_PASSWORD;
 
 interface AuthResultPayload {
 	accessToken: string;
 	refreshToken?: string;
 	sessionId: string;
+}
+
+interface CreateLoginApiKeyPayload {
+	apiKey: string;
+	expiresAt: string;
+	singleUse: boolean;
 }
 
 function extractPayload<T>(body: unknown): T {
@@ -39,9 +51,18 @@ function hasCookie(
 
 describe('Auth login API (e2e)', () => {
 	let app: INestApplication;
+	let cachedAdminSession: AuthResultPayload | null = null;
 
 	beforeAll(async () => {
 		app = await createE2EApp();
+		const authService = app.get(AuthService);
+		try {
+			await authService.signUp(ADMIN_EMAIL, ADMIN_PASSWORD, true);
+		} catch (error) {
+			if (!(error instanceof BadRequestException)) {
+				throw error;
+			}
+		}
 	});
 
 	afterAll(async () => {
@@ -64,6 +85,23 @@ describe('Auth login API (e2e)', () => {
 		expect([200, 201]).toContain(signupResponse.status);
 
 		return { email, password };
+	};
+
+	const signInAsAdmin = async (): Promise<AuthResultPayload> => {
+		if (cachedAdminSession) {
+			return cachedAdminSession;
+		}
+
+		const response = await request(app.getHttpServer())
+			.post('/api/auth/signin')
+			.set('x-client-platform', 'mobile')
+			.set('x-device-id', `admin-${randomUUID()}`)
+			.set('x-device-name', 'Jest Admin Device')
+			.send({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+
+		expect([200, 201]).toContain(response.status);
+		cachedAdminSession = extractPayload<AuthResultPayload>(response.body);
+		return cachedAdminSession;
 	};
 
 	it('returns web login payload without refreshToken in body and sets auth cookies', async () => {
@@ -107,6 +145,67 @@ describe('Auth login API (e2e)', () => {
 		expect(payload.accessToken).toEqual(expect.any(String));
 		expect(payload.sessionId).toEqual(expect.any(String));
 		expect(payload.refreshToken).toEqual(expect.any(String));
+	});
+
+	it('supports single-use API key login and blocks reuse', async () => {
+		const adminSession = await signInAsAdmin();
+		const createApiKeyResponse = await request(app.getHttpServer())
+			.post('/api/auth/api-keys')
+			.set('authorization', `Bearer ${adminSession.accessToken}`)
+			.set('x-client-platform', 'mobile')
+			.send({ expiresIn: '1h', singleUse: true });
+
+		expect([200, 201]).toContain(createApiKeyResponse.status);
+		const createdApiKey = extractPayload<CreateLoginApiKeyPayload>(
+			createApiKeyResponse.body,
+		);
+		expect(createdApiKey.apiKey).toEqual(expect.any(String));
+		expect(createdApiKey.singleUse).toBe(true);
+
+		const firstLogin = await request(app.getHttpServer())
+			.post('/api/auth/signin/api-key')
+			.set('x-client-platform', 'mobile')
+			.send({ apiKey: createdApiKey.apiKey });
+
+		expect([200, 201]).toContain(firstLogin.status);
+		const firstPayload = extractPayload<AuthResultPayload>(firstLogin.body);
+		expect(firstPayload.accessToken).toEqual(expect.any(String));
+		expect(firstPayload.refreshToken).toEqual(expect.any(String));
+
+		const secondLogin = await request(app.getHttpServer())
+			.post('/api/auth/signin/api-key')
+			.set('x-client-platform', 'mobile')
+			.send({ apiKey: createdApiKey.apiKey });
+
+		expect(secondLogin.status).toBe(401);
+	});
+
+	it('supports reusable API key login', async () => {
+		const adminSession = await signInAsAdmin();
+		const createApiKeyResponse = await request(app.getHttpServer())
+			.post('/api/auth/api-keys')
+			.set('authorization', `Bearer ${adminSession.accessToken}`)
+			.set('x-client-platform', 'mobile')
+			.send({ expiresIn: '1h', singleUse: false });
+
+		expect([200, 201]).toContain(createApiKeyResponse.status);
+		const createdApiKey = extractPayload<CreateLoginApiKeyPayload>(
+			createApiKeyResponse.body,
+		);
+		expect(createdApiKey.apiKey).toEqual(expect.any(String));
+		expect(createdApiKey.singleUse).toBe(false);
+
+		const firstLogin = await request(app.getHttpServer())
+			.post('/api/auth/signin/api-key')
+			.set('x-client-platform', 'mobile')
+			.send({ apiKey: createdApiKey.apiKey });
+		const secondLogin = await request(app.getHttpServer())
+			.post('/api/auth/signin/api-key')
+			.set('x-client-platform', 'mobile')
+			.send({ apiKey: createdApiKey.apiKey });
+
+		expect([200, 201]).toContain(firstLogin.status);
+		expect([200, 201]).toContain(secondLogin.status);
 	});
 
 	it('rejects invalid credentials', async () => {

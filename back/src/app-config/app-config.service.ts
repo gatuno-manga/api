@@ -62,6 +62,16 @@ export class AppConfigService {
 		return this.config.get<string>('JWT_REFRESH_EXPIRATION') || '7d';
 	}
 
+	get authApiKeyDefaultExpiration(): string {
+		return (
+			this.config.get<string>('AUTH_API_KEY_DEFAULT_EXPIRATION') || '1h'
+		);
+	}
+
+	get authApiKeyMaxExpiration(): string {
+		return this.config.get<string>('AUTH_API_KEY_MAX_EXPIRATION') || '30d';
+	}
+
 	get jwtIssuer(): string {
 		return this.config.get<string>('JWT_ISSUER') || 'gatuno-auth';
 	}
@@ -237,6 +247,16 @@ export class AppConfigService {
 	get refreshTokenTtl(): number {
 		const duration = this.jwtRefreshExpiration;
 		return this.parseDurationToMilliseconds(duration);
+	}
+
+	get authApiKeyDefaultTtl(): number {
+		return this.parseDurationToMilliseconds(
+			this.authApiKeyDefaultExpiration,
+		);
+	}
+
+	get authApiKeyMaxTtl(): number {
+		return this.parseDurationToMilliseconds(this.authApiKeyMaxExpiration);
 	}
 
 	/** 0 = unlimited sessions */

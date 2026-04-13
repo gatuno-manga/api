@@ -5,9 +5,10 @@ import {
 	NotFoundException,
 	UnauthorizedException,
 } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
+import ms from 'ms';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { DataEncryptionProvider } from 'src/encryption/data-encryption.provider';
 import { PasswordEncryption } from 'src/encryption/password-encryption.provider';
@@ -18,6 +19,7 @@ import { Repository } from 'typeorm';
 import { JwtPayloadBuilder } from './builders/jwt-payload.builder';
 import { ListAuthAuditQueryDto } from './dto/list-auth-audit-query.dto';
 import { StoredTokenDto } from './dto/stored-token.dto';
+import { LoginApiKey } from './entities/login-api-key.entity';
 import {
 	SessionAuditEvent,
 	SessionAuditService,
@@ -69,6 +71,12 @@ interface MfaChallengePayload {
 	context: AuthRequestContext;
 }
 
+interface CreateLoginApiKeyOptions {
+	expiresIn?: string;
+	singleUse?: boolean;
+	context?: AuthRequestContext;
+}
+
 @Injectable()
 export class AuthService {
 	public readonly logger = new Logger(AuthService.name);
@@ -78,6 +86,8 @@ export class AuthService {
 		private readonly userRepository: Repository<User>,
 		@InjectRepository(Role)
 		private readonly roleRepository: Repository<Role>,
+		@InjectRepository(LoginApiKey)
+		private readonly loginApiKeyRepository: Repository<LoginApiKey>,
 		private readonly passwordEncryption: PasswordEncryption,
 		private readonly passwordMigration: PasswordMigrationService,
 		private readonly dataEncryption: DataEncryptionProvider,
@@ -109,6 +119,75 @@ export class AuthService {
 	private isMobileContext(context?: AuthRequestContext): boolean {
 		const platform = context?.clientPlatform?.toLowerCase().trim();
 		return ['mobile', 'flutter', 'app', 'native'].includes(platform ?? '');
+	}
+
+	private resolveLoginApiKeyTtl(expiresIn?: string): number {
+		const configuredMaxTtl = this.configService.authApiKeyMaxTtl;
+		const configuredDefaultTtl = this.configService.authApiKeyDefaultTtl;
+		const defaultTtl = Math.min(configuredDefaultTtl, configuredMaxTtl);
+
+		if (!expiresIn || expiresIn.trim().length === 0) {
+			return defaultTtl;
+		}
+
+		let parsedDuration: number | undefined;
+		try {
+			parsedDuration = ms(expiresIn.trim() as ms.StringValue);
+		} catch {
+			parsedDuration = undefined;
+		}
+
+		if (parsedDuration === undefined || parsedDuration <= 0) {
+			throw new BadRequestException('Invalid API key expiration');
+		}
+
+		if (parsedDuration > configuredMaxTtl) {
+			throw new BadRequestException(
+				`API key expiration exceeds maximum allowed value (${this.configService.authApiKeyMaxExpiration})`,
+			);
+		}
+
+		return parsedDuration;
+	}
+
+	private parseLoginApiKey(apiKey: string): {
+		keyId: string;
+		secret: string;
+	} {
+		const trimmedApiKey = apiKey.trim();
+		const separatorIndex = trimmedApiKey.indexOf('.');
+		if (
+			separatorIndex <= 0 ||
+			separatorIndex === trimmedApiKey.length - 1
+		) {
+			throw new UnauthorizedException('Invalid API key');
+		}
+
+		return {
+			keyId: trimmedApiKey.slice(0, separatorIndex),
+			secret: trimmedApiKey.slice(separatorIndex + 1),
+		};
+	}
+
+	private trackApiKeyLoginFailure(
+		reason: string,
+		context: AuthRequestContext,
+		metadata?: Record<string, unknown>,
+		userId?: string,
+	): void {
+		this.sessionAudit.track({
+			userId,
+			event: 'login_failed',
+			success: false,
+			context: {
+				...context,
+				authMethod: 'api_key',
+			},
+			metadata: {
+				reason,
+				...(metadata ?? {}),
+			},
+		});
 	}
 
 	async signUp(email: string, password: string, isAdmin = false) {
@@ -292,6 +371,184 @@ export class AuthService {
 		return this.issueAuthFlowForUser(user, {
 			authMethod: 'password',
 			context: normalizedContext,
+		});
+	}
+
+	async createLoginApiKeyForAdminSelf(
+		userId: string,
+		options?: CreateLoginApiKeyOptions,
+	): Promise<{
+		apiKey: string;
+		expiresAt: Date;
+		singleUse: boolean;
+	}> {
+		const normalizedContext = this.normalizeRequestContext(
+			options?.context,
+		);
+		const user = await this.userRepository.findOne({
+			where: { id: userId },
+			relations: ['roles'],
+		});
+
+		if (!user) {
+			throw new UnauthorizedException('User not found');
+		}
+
+		const isAdmin = user.roles.some((role) => role.name === 'admin');
+		if (!isAdmin) {
+			throw new UnauthorizedException(
+				'Only admins can create login API keys',
+			);
+		}
+
+		const ttl = this.resolveLoginApiKeyTtl(options?.expiresIn);
+		const expiresAt = new Date(Date.now() + ttl);
+		const keySecret = randomBytes(32).toString('hex');
+		const keyHash = await this.dataEncryption.encrypt(keySecret);
+
+		const createdApiKey = await this.loginApiKeyRepository.save(
+			this.loginApiKeyRepository.create({
+				userId,
+				keyHash,
+				singleUse: options?.singleUse ?? false,
+				expiresAt,
+				usedAt: null,
+				lastUsedAt: null,
+				revokedAt: null,
+				createdByUserId: userId,
+			}),
+		);
+
+		this.sessionAudit.track({
+			userId,
+			event: 'api_key_created',
+			success: true,
+			context: {
+				...normalizedContext,
+				authMethod: 'api_key',
+				riskLevel: 'low',
+			},
+			metadata: {
+				apiKeyId: createdApiKey.id,
+				singleUse: createdApiKey.singleUse,
+				expiresAt: createdApiKey.expiresAt.toISOString(),
+			},
+		});
+
+		return {
+			apiKey: `${createdApiKey.id}.${keySecret}`,
+			expiresAt: createdApiKey.expiresAt,
+			singleUse: createdApiKey.singleUse,
+		};
+	}
+
+	async signInWithApiKey(
+		apiKey: string,
+		context?: AuthRequestContext,
+	): Promise<SuccessfulAuthResult> {
+		const normalizedContext = this.normalizeRequestContext(context);
+		const { keyId, secret } = this.parseLoginApiKey(apiKey);
+		const loginApiKey = await this.loginApiKeyRepository.findOne({
+			where: { id: keyId },
+		});
+
+		if (!loginApiKey) {
+			this.trackApiKeyLoginFailure(
+				'api_key_not_found',
+				normalizedContext,
+				{
+					apiKeyId: keyId,
+				},
+			);
+			throw new UnauthorizedException('Invalid API key');
+		}
+
+		if (loginApiKey.revokedAt) {
+			this.trackApiKeyLoginFailure(
+				'api_key_revoked',
+				normalizedContext,
+				{
+					apiKeyId: keyId,
+				},
+				loginApiKey.userId,
+			);
+			throw new UnauthorizedException('Invalid API key');
+		}
+
+		if (loginApiKey.expiresAt.getTime() <= Date.now()) {
+			this.trackApiKeyLoginFailure(
+				'api_key_expired',
+				normalizedContext,
+				{
+					apiKeyId: keyId,
+				},
+				loginApiKey.userId,
+			);
+			throw new UnauthorizedException('API key expired');
+		}
+
+		const isSecretValid = await this.dataEncryption.compare(
+			loginApiKey.keyHash,
+			secret,
+		);
+		if (!isSecretValid) {
+			this.trackApiKeyLoginFailure(
+				'api_key_secret_mismatch',
+				normalizedContext,
+				{
+					apiKeyId: keyId,
+				},
+				loginApiKey.userId,
+			);
+			throw new UnauthorizedException('Invalid API key');
+		}
+
+		if (loginApiKey.singleUse && loginApiKey.usedAt) {
+			this.trackApiKeyLoginFailure(
+				'api_key_already_used',
+				normalizedContext,
+				{
+					apiKeyId: keyId,
+				},
+				loginApiKey.userId,
+			);
+			throw new UnauthorizedException('API key already used');
+		}
+
+		const user = await this.userRepository.findOne({
+			where: { id: loginApiKey.userId },
+			relations: ['roles'],
+		});
+
+		if (!user) {
+			this.trackApiKeyLoginFailure(
+				'api_key_user_not_found',
+				normalizedContext,
+				{
+					apiKeyId: keyId,
+				},
+				loginApiKey.userId,
+			);
+			throw new UnauthorizedException('User not found');
+		}
+
+		const now = new Date();
+		loginApiKey.lastUsedAt = now;
+		if (loginApiKey.singleUse) {
+			loginApiKey.usedAt = now;
+		}
+		await this.loginApiKeyRepository.save(loginApiKey);
+
+		const riskLevel = await this.resolveRiskLevel(
+			user.id,
+			normalizedContext,
+		);
+		return this.generateTokensForUser(user, {
+			authMethod: 'api_key',
+			context: normalizedContext,
+			mfaVerified: true,
+			riskLevel,
+			auditEvent: 'login_success',
 		});
 	}
 
