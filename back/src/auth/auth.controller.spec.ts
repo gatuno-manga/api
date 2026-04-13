@@ -87,7 +87,10 @@ describe('AuthController', () => {
 		expect(authService).toBeDefined();
 	});
 
-	const createRequest = (headers: Record<string, string> = {}): Request => {
+	const createRequest = (
+		headers: Record<string, string> = {},
+		cookies: Record<string, string> = {},
+	): Request => {
 		const normalizedHeaders = Object.fromEntries(
 			Object.entries(headers).map(([key, value]) => [
 				key.toLowerCase(),
@@ -98,6 +101,7 @@ describe('AuthController', () => {
 		return {
 			header: (name: string) =>
 				normalizedHeaders[name.toLowerCase()] ?? undefined,
+			cookies,
 			ip: '127.0.0.1',
 			socket: {
 				remoteAddress: '127.0.0.1',
