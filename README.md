@@ -123,19 +123,15 @@ FIX_CHAPTER_CONCURRENCY=2
 1. No diretório raiz do projeto, inicie os containers:
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d --build
-```
-
-Ou usando o arquivo combinado (equivalente ao comando acima):
-
-```bash
 docker compose -f docker-compose.common.yml -f docker-compose.dev.yml up -d --build
 ```
+
+`docker-compose.dev.yml` é um override e deve ser usado em conjunto com `docker-compose.common.yml`.
 
 2. Aguarde todos os serviços iniciarem. Você pode verificar o status com:
 
 ```bash
-docker compose -f docker-compose.dev.yml ps
+docker compose -f docker-compose.common.yml -f docker-compose.dev.yml ps
 ```
 
 3. A replicação MySQL (Master-Slave) é configurada automaticamente pelos scripts de inicialização:
@@ -177,14 +173,9 @@ APP_PORT=4000
 2. Inicie os containers de produção:
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d --build
-```
-
-Ou usando os arquivos combinados:
-
-```bash
 docker compose -f docker-compose.common.yml -f docker-compose.prod.yml up -d --build
 ```
+`docker-compose.prod.yml` também é override e deve ser usado em conjunto com `docker-compose.common.yml`.
 
 3. Verifique saúde da replicação:
 
@@ -192,6 +183,31 @@ docker compose -f docker-compose.common.yml -f docker-compose.prod.yml up -d --b
 docker exec gatuno-database-slave-1 mysql -uroot -p"${DB_PASS}" -e "SHOW REPLICA STATUS\\G"
 docker exec gatuno-database-slave-2 mysql -uroot -p"${DB_PASS}" -e "SHOW REPLICA STATUS\\G"
 ```
+
+### Build offline do backend (fallback de Chromium)
+
+No build do backend, a revisão de Chromium exigida pelo Playwright é verificada primeiro no cache local.
+
+- Se a mesma revisão já estiver no cache, o build reutiliza o cache e não baixa novamente.
+- Se a revisão não estiver no cache, o build tenta baixar.
+- Se não for possível verificar/atualizar pela rede, o build usa o cache disponível.
+
+1. Popule o cache uma vez (com internet):
+
+```bash
+cd back
+npm run chromium:cache
+```
+
+2. Execute o build normalmente (inclusive offline):
+
+```bash
+docker compose -f docker-compose.common.yml -f docker-compose.prod.yml up -d --build
+```
+
+Cache local usado no fallback: `back/.playwright-cache/`.
+
+Se o download falhar e não houver cache válido, o build falha com erro explícito.
 
 ### Observabilidade de logs da API (PLG Stack)
 
@@ -251,25 +267,25 @@ No Grafana, use o datasource `Loki` no Explore e consulte por labels da API, por
 **Parar os containers:**
 
 ```bash
-docker compose -f docker-compose.dev.yml down
+docker compose -f docker-compose.common.yml -f docker-compose.dev.yml down
 ```
 
 **Ver logs dos serviços:**
 
 ```bash
-docker compose -f docker-compose.dev.yml logs -f [nome_do_serviço]
+docker compose -f docker-compose.common.yml -f docker-compose.dev.yml logs -f [nome_do_serviço]
 ```
 
 **Reiniciar um serviço específico:**
 
 ```bash
-docker compose -f docker-compose.dev.yml restart [nome_do_serviço]
+docker compose -f docker-compose.common.yml -f docker-compose.dev.yml restart [nome_do_serviço]
 ```
 
 **Remover volumes (atenção: apaga os dados):**
 
 ```bash
-docker compose -f docker-compose.dev.yml down -v
+docker compose -f docker-compose.common.yml -f docker-compose.dev.yml down -v
 ```
 
 **Verificar status da replicação:**
