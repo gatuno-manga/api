@@ -101,11 +101,11 @@ describe('AuthController', () => {
 		return {
 			header: (name: string) =>
 				normalizedHeaders[name.toLowerCase()] ?? undefined,
-			cookies,
 			ip: '127.0.0.1',
 			socket: {
 				remoteAddress: '127.0.0.1',
 			},
+			cookies,
 		} as unknown as Request;
 	};
 
@@ -247,7 +247,6 @@ describe('AuthController', () => {
 			).rejects.toThrow(error);
 		});
 	});
-
 	describe('createLoginApiKey', () => {
 		it('creates login API key for current admin user', async () => {
 			const req = createRequest({
