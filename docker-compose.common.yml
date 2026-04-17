@@ -142,17 +142,6 @@ services:
       - ./database/slave/healthcheck-replica.sh:/usr/local/bin/healthcheck-replica.sh:ro
     command: ['mysqld', '--server-id=3']
 
-  app:
-    image: gatuno-app
-    container_name: gatuno-app
-    environment:
-      - NODE_ENV=${NODE_ENV}
-    depends_on:
-      api:
-        condition: service_healthy
-    networks:
-      - gatuno-net
-
 volumes:
   database-data:
   database-slave-1-data:

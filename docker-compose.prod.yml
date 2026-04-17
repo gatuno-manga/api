@@ -2,23 +2,12 @@
 services:
   api:
     build:
-      context: ./back
+      context: .
       dockerfile: Dockerfile.prod
     env_file:
-      - ./back/.env
+      - ./.env
     ports:
       - "${API_PORT}:3000"
-    restart: always
-
-  app:
-    build:
-      context: ./front
-      dockerfile: Dockerfile.prod
-      args:
-        - API_URL=https://${API_HOST}
-        - API_URL_SERVER=http://api:3000
-    ports:
-      - "${APP_PORT}:4000"
     restart: always
 
   database-master:

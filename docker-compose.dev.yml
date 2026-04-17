@@ -2,7 +2,7 @@
 services:
   api:
     build:
-      context: ./back
+      context: .
       dockerfile: Dockerfile.dev
     ports:
       - "${API_PORT}:3000"
@@ -11,8 +11,8 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true
       - NODE_OPTIONS=--max-old-space-size=3072
-      - ALLOWED_URL=http://${APP_HOST},http://localhost:${APP_PORT}
-      - APP_URL=http://localhost:${APP_PORT}
+      - ALLOWED_URL=${ALLOWED_URL:-http://localhost:4200}
+      - APP_URL=${APP_URL:-http://localhost:4200}
       - API_URL=http://localhost:${API_PORT}
       - PLAYWRIGHT_WS_ENDPOINT=${PLAYWRIGHT_WS_ENDPOINT:-ws://playwright-debug:3000}
       - PLAYWRIGHT_DEBUG=${PLAYWRIGHT_DEBUG:-true}
@@ -26,36 +26,15 @@ services:
     develop:
       watch:
         - action: sync
-          path: ./back/src
+          path: ./src
           target: /usr/src/app/src
           ignore:
             - node_modules/
         - action: rebuild
-          path: ./back/package.json
+          path: ./package.json
 
     volumes:
-      - ./back/.env:/usr/src/app/.env
-
-  app:
-    build:
-      context: ./front
-      dockerfile: Dockerfile.dev
-    ports:
-      - "${APP_PORT}:4200"
-    environment:
-      - API_URL=http://localhost:${API_PORT}
-      - API_URL_SERVER=http://api:3000
-    develop:
-      watch:
-        - action: sync
-          path: ./front/src
-          target: /usr/src/app/src
-          ignore:
-            - node_modules/
-        - action: rebuild
-          path: ./front/package.json
-    volumes:
-      - ./front/public:/usr/src/app/public
+      - ./.env:/usr/src/app/.env
 
   playwright-debug:
     image: browserless/chrome:latest

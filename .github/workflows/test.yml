@@ -1,136 +1,59 @@
 name: Run Tests
 
 on:
-    push:
-        branches:
-            - main
-    pull_request:
-        branches:
-            - main
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-    test-backend:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
+  test-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-            - name: Create LFS file list
-              run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
+      - name: Create LFS file list
+        run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
 
-            - name: LFS Cache
-              uses: actions/cache@v4
-              with:
-                  path: .git/lfs
-                  key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
-                  restore-keys: |
-                      ${{ runner.os }}-lfs-
+      - name: LFS Cache
+        uses: actions/cache@v4
+        with:
+          path: .git/lfs
+          key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
+          restore-keys: |
+            ${{ runner.os }}-lfs-
 
-            - name: Git LFS Pull
-              run: git lfs pull
+      - name: Git LFS Pull
+        run: git lfs pull
 
-            - name: Set up Backend
-              uses: actions/setup-node@v4
-              with:
-                  node-version: '24.11.1'
-                  cache: 'npm'
-                  cache-dependency-path: ./back/package-lock.json
+      - name: Set up Backend
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.11.1'
+          cache: 'npm'
+          cache-dependency-path: ./package-lock.json
 
-            - name: Install Backend Dependencies
-              run: npm ci
-              working-directory: ./back
+      - name: Install Backend Dependencies
+        run: npm ci
 
-            - name: Run Backend Tests
-              run: npm run test
-              working-directory: ./back
+      - name: Run Backend Tests
+        run: npm run test
 
-            - name: Build Backend
-              run: npm run build
-              working-directory: ./back
+      - name: Build Backend
+        run: npm run build
 
-    test-frontend:
-        runs-on: ubuntu-latest
-        env:
-            CHROME_BIN: /usr/bin/google-chrome-stable
-        steps:
-            - uses: actions/checkout@v4
-
-            - name: Create LFS file list
-              run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
-
-            - name: LFS Cache
-              uses: actions/cache@v4
-              with:
-                  path: .git/lfs
-                  key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
-                  restore-keys: |
-                      ${{ runner.os }}-lfs-
-
-            - name: Git LFS Pull
-              run: git lfs pull
-
-            - name: Set up Frontend
-              uses: actions/setup-node@v4
-              with:
-                  node-version: '24.11.1'
-                  cache: 'npm'
-                  cache-dependency-path: ./front/package-lock.json
-
-            - name: Install Google Chrome for Headless Tests
-              run: |
-                  sudo apt-get update
-                  # Add Google Chrome repo and install stable
-                  wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-                  echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
-                  sudo apt-get update
-                  sudo apt-get install -y google-chrome-stable
-              env:
-                  DEBIAN_FRONTEND: noninteractive
-
-            - name: Install Frontend Dependencies
-              run: npm ci
-              working-directory: ./front
-
-            - name: Run Frontend Tests
-              run: npm run test:headless
-              working-directory: ./front
-
-            - name: Build Frontend
-              run: npm run build
-              working-directory: ./front
-
-    test-app:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-
-            - name: Create LFS file list
-              run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
-
-            - name: LFS Cache
-              uses: actions/cache@v4
-              with:
-                  path: .git/lfs
-                  key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
-                  restore-keys: |
-                      ${{ runner.os }}-lfs-
-
-            - name: Git LFS Pull
-              run: git lfs pull
-
-            - name: Set up Flutter
-              uses: subosito/flutter-action@v2
-              with:
-                  channel: 'stable'
-                  cache: true
-
-            - name: Install App Dependencies
-              run: flutter pub get
-              working-directory: ./app
-
-            - name: Run App Static Analysis
-              run: flutter analyze
-              working-directory: ./app
-
-            - name: Run App Tests
-              run: flutter test
-              working-directory: ./app
+  build-and-publish:
+    name: call-registry
+    needs: test-backend
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: gatuno-manga/workflows/.github/workflows/registry.yml@main
+    with:
+      image_name: gatuno-api
+      build_context: .
+      dockerfile_path: Dockerfile.prod
+      dockerfile_candidates: Dockerfile,Dockerfile.prod,docker/Dockerfile,build/Dockerfile
+      runner_labels_json: '["self-hosted","linux","x64"]'
+      build_platform: linux/amd64
+    secrets: inherit

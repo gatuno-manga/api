@@ -16,12 +16,9 @@ describe('AppController (e2e)', () => {
 	});
 
 	it('/ (GET)', () => {
-		return request(app.getHttpServer())
-			.get('/')
-			.expect(200)
-			.expect({
-				message: 'Welcome to Gatuno API',
-				documentation: '/docs',
-			});
+		return request(app.getHttpServer()).get('/').expect(200).expect({
+			message: 'Welcome to Gatuno API',
+			documentation: '/docs',
+		});
 	});
 });
