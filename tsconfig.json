@@ -14,7 +14,7 @@
 		"paths": {
 			"@/*": ["src/*"],
 			"@src/*": ["src/*"],
-			"@back/*": ["src/*"],
+			"@api/*": ["src/*"],
 			"@app-config/*": ["src/app-config/*"],
 			"@auth/*": ["src/auth/*"],
 			"@books/*": ["src/books/*"],

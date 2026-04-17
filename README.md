@@ -64,58 +64,35 @@ docker-compose --version
 cp .env.example .env
 ```
 
-2. Crie um arquivo `.env` no diretório `back/` baseado no arquivo `back/.env.example`:
+2. Configure as variáveis de ambiente necessárias no arquivo `.env` criado. 
 
-```bash
-cp back/.env.example back/.env
-```
-
-3. Configure as variáveis de ambiente necessárias nos arquivos `.env` criados. Exemplo de configuração mínima:
-
-**Arquivo `.env` (raiz):**
+**Exemplo de configuração mínima:**
 
 ```env
 NODE_ENV=development
 API_PORT=3000
-APP_PORT=4200
+ALLOWED_URL=http://localhost:4200
+APP_URL=http://localhost:4200
+API_URL=http://localhost:3000
 
 # Database configuration
+DB_TYPE=mysql
 DB_NAME=gatuno
+DB_USER=gatuno
 DB_PASS=sua_senha_aqui
-DB_USER=gatuno_user
-DB_MASTER_EXTERNAL_PORT=3306
-DB_SLAVE_1_EXTERNAL_PORT=3307
-DB_SLAVE_2_EXTERNAL_PORT=3308
+DB_PORT=3306
+DB_MASTER_HOST=database-master
+DB_SLAVE_HOSTS=database-slave-1,database-slave-2
 
-PHPMYADMIN_PORT=8080
-
-# Selenium Hub Ports
-SELENIUM_HUB_PORT_1=4442
-SELENIUM_HUB_PORT_2=4443
-SELENIUM_HUB_PORT_3=4444
-
-# Redis configuration
-REDIS_PORT=6379
-REDIS_PASSWORD=sua_senha_redis
-REDISCOMMANDER_PORT=8081
-```
-
-**Arquivo `back/.env`:**
-
-```env
+# Authentication
 JWT_ACCESS_SECRET=seu_secret_jwt_access
-JWT_ACCESS_EXPIRATION=15m
 JWT_REFRESH_SECRET=seu_secret_jwt_refresh
-JWT_REFRESH_EXPIRATION=7d
-SALT_LENGTH=16
-PASSWORD_KEY_LENGTH=32
-
 USERADMIN_EMAIL=admin@example.com
 USERADMIN_PASSWORD=senha_admin
 
-CHAPTER_SCRAPING_CONCURRENCY=6
-COVER_IMAGE_CONCURRENCY=3
-FIX_CHAPTER_CONCURRENCY=2
+# Redis
+REDIS_HOST=redis
+REDIS_PASSWORD=sua_senha_redis
 ```
 
 ### Executando o ambiente de desenvolvimento
@@ -158,7 +135,7 @@ docker compose -f docker-compose.tools.yml up -d --build
 
 ### Executando o ambiente de produção
 
-Para produção, ajuste as variáveis no `.env` da raiz e no `back/.env`.
+Para produção, ajuste as variáveis no `.env` da raiz.
 
 1. Configure as variáveis de ambiente para produção no arquivo `.env`:
 
@@ -205,7 +182,7 @@ npm run chromium:cache
 docker compose -f docker-compose.common.yml -f docker-compose.prod.yml up -d --build
 ```
 
-Cache local usado no fallback: `back/.playwright-cache/`.
+Cache local usado no fallback: `./.playwright-cache/`.
 
 Se o download falhar e não houver cache válido, o build falha com erro explícito.
 

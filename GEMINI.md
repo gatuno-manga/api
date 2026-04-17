@@ -1,7 +1,7 @@
-# Gatuno Project Log
+# Gatuno API Project Log
 
 ## Overview
-Gatuno is a multi-platform ecosystem for content discovery and reading, consisting of a NestJS backend, a Flutter mobile app, and an Angular web frontend.
+Gatuno API is the backend component of the Gatuno ecosystem, responsible for content discovery, scraping, and management. It is built with NestJS and follows a modular monolith architecture.
 
 ## Core Infrastructure & Tooling
 - **Global Tooling:** 
@@ -20,12 +20,11 @@ Gatuno is a multi-platform ecosystem for content discovery and reading, consisti
 ## Shared Domain Concepts
 - **Scraping Engine:** A centralized, high-performance Playwright-based engine used to fetch and process content.
 - **Book Relationships:** Support for complex work hierarchies (sequences, spin-offs, adaptations).
-- **Synchronization:** Real-time reading progress and state synchronization across Web and Mobile.
+- **Synchronization:** Real-time reading progress and state synchronization.
 
 ## Project Structure
-- `app/`: Flutter mobile application.
-- `back/`: NestJS modular monolith backend.
-- `front/`: Angular web application.
+- `src/`: NestJS source code.
+- `test/`: Unit and E2E tests.
 - `database/`: Migration scripts and database configuration.
 - `monitoring/`: Configuration for the observability stack.
 - `scripts/`: Utility scripts for database maintenance, backups, and migrations.

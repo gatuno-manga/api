@@ -20,7 +20,7 @@
             "@src/*": [
                 "src/*"
             ],
-            "@back/*": [
+            "@api/*": [
                 "src/*"
             ],
             "@app-config/*": [

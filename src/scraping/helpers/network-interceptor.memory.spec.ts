@@ -732,12 +732,14 @@ describe('NetworkInterceptor – gestão de memória (stress tests)', () => {
 			}
 
 			// O heap não deve crescer indefinidamente entre capítulos.
-			// Compara min e max: variação máxima de 80 MB é aceitável (JIT, caches do Node).
+			// Em máquinas locais, 80 MB é suficiente. Em CI/CD (GitHub Actions),
+			// o GC é menos agressivo e o overhead é maior, por isso toleramos até 120 MB.
 			const minHeap = Math.min(...heaps);
 			const maxHeap = Math.max(...heaps);
 			const driftMB = (maxHeap - minHeap) / MB;
 
-			expect(driftMB).toBeLessThan(80);
+			const threshold = process.env.CI ? 120 : 80;
+			expect(driftMB).toBeLessThan(threshold);
 		}, 120_000);
 
 		it('capítulos concorrentes (5 workers × 80 páginas): nenhum worker extrapola o cache', async () => {

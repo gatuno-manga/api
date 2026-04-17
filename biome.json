@@ -31,13 +31,7 @@
 		}
 	},
 	"files": {
-		"ignore": [
-			"dist/**",
-			"node_modules/**",
-			"back/dist/**",
-			"front/dist/**",
-			".angular/**"
-		]
+		"ignore": ["dist/**", "node_modules/**", ".angular/**"]
 	},
 	"overrides": [
 		{
