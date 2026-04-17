@@ -9,7 +9,7 @@ FROM base AS deps
 # Ferramentas nativas para módulos como sharp e bcrypt
 RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 # ─── Estágio de build ─────────────────────────────────────────────────────────
 FROM deps AS builder
