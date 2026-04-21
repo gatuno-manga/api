@@ -9,7 +9,7 @@ import {
 	UpdateDateColumn,
 } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
-import { AuthMethod, AuthRiskLevel } from '../types/auth-security.types';
+import { AuthMethod, AuthRiskLevel } from '../../../types/auth-security.types';
 
 @Entity('auth_sessions')
 @Index(['userId', 'revokedAt'])

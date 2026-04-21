@@ -9,7 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import { WsException } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
-import { ROLES_KEY } from '../decorator/roles.decorator';
+import { ROLES_KEY } from './roles.decorator';
 
 interface WsJwtPayload {
 	sub?: string;

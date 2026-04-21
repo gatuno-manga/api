@@ -20,8 +20,8 @@ export class CreateAdminEvent {
 	async handle() {
 		try {
 			const queryRunner = this.dataSource.createQueryRunner('master');
-			const userEmail = this.appConfigService.adminInfo.email;
-			const userPassword = this.appConfigService.adminInfo.password;
+			const userEmail = this.appConfigService.admin.email;
+			const userPassword = this.appConfigService.admin.password;
 			if (!userEmail || !userPassword) {
 				this.logger.debug(
 					'Admin credentials not configured, skipping admin creation',

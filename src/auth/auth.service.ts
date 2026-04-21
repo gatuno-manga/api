@@ -14,21 +14,22 @@ import { DataEncryptionProvider } from 'src/infrastructure/encryption/data-encry
 import { PasswordEncryption } from 'src/infrastructure/encryption/password-encryption.provider';
 import { PasswordMigrationService } from 'src/infrastructure/encryption/password-migration.service';
 import { SignUpUseCase } from './application/use-cases/sign-up.use-case';
+import { SignInUseCase } from './application/use-cases/sign-in.use-case';
 import { UserAuthData } from './application/ports/user-repository.port';
 import { Role } from 'src/users/entities/role.entity';
 import { User } from 'src/users/entities/user.entity';
 import { Repository } from 'typeorm';
-import { JwtPayloadBuilder } from './builders/jwt-payload.builder';
-import { ListAuthAuditQueryDto } from './dto/list-auth-audit-query.dto';
-import { StoredTokenDto } from './dto/stored-token.dto';
-import { LoginApiKey } from './entities/login-api-key.entity';
+import { JwtPayloadBuilder } from './application/builders/jwt-payload.builder';
+import { ListAuthAuditQueryDto } from './infrastructure/http/dto/list-auth-audit-query.dto';
+import { StoredTokenDto } from './application/dto/stored-token.dto';
+import { LoginApiKey } from './infrastructure/database/entities/login-api-key.entity';
 import {
 	SessionAuditEvent,
 	SessionAuditService,
-} from './services/session-audit.service';
-import { SessionManagementService } from './services/session-management.service';
-import { MfaService } from './services/mfa.service';
-import { TokenStoreService } from './services/token-store.service';
+} from './infrastructure/adapters/session-audit.service';
+import { SessionManagementService } from './infrastructure/adapters/session-management.service';
+import { MfaService } from './infrastructure/adapters/mfa.service';
+import { TokenStoreService } from './infrastructure/adapters/token-store.service';
 import {
 	AuthFlowResult,
 	AuthMethod,
@@ -100,6 +101,7 @@ export class AuthService {
 		private readonly sessionManagement: SessionManagementService,
 		private readonly mfaService: MfaService,
 		private readonly signUpUseCase: SignUpUseCase,
+		private readonly signInUseCase: SignInUseCase,
 	) {
 		this.logger.log(
 			`🔐 Algoritmo de hashing ativo: ${this.passwordEncryption.getAlgorithm()}`,
@@ -210,7 +212,7 @@ export class AuthService {
 	}
 
 	private async createMfaChallengeToken(
-		user: User,
+		user: User | UserAuthData,
 		authMethod: AuthMethod,
 		riskLevel: AuthRiskLevel,
 		context: AuthRequestContext,
@@ -233,7 +235,7 @@ export class AuthService {
 	}
 
 	private async issueAuthFlowForUser(
-		user: User,
+		user: User | UserAuthData,
 		options: {
 			authMethod: AuthMethod;
 			context?: AuthRequestContext;
@@ -297,55 +299,34 @@ export class AuthService {
 		password: string,
 		context?: AuthRequestContext,
 	): Promise<AuthFlowResult> {
-		const normalizedContext = this.normalizeRequestContext(context);
-		const user = await this.userRepository.findOne({
-			where: { email },
-			relations: ['roles'],
-			select: ['id', 'email', 'password', 'roles'],
-		});
-
-		if (!user) {
-			this.sessionAudit.track({
-				event: 'login_failed',
-				success: false,
-				context: normalizedContext,
-				metadata: {
-					email,
-					reason: 'user_not_found',
-				},
-			});
-			this.logger.error('User not exists', email);
-			throw new UnauthorizedException('User not exists');
-		}
-
-		if (!(await this.passwordEncryption.compare(user.password, password))) {
-			this.sessionAudit.track({
-				userId: user.id,
-				event: 'login_failed',
-				success: false,
-				context: normalizedContext,
-				metadata: {
-					reason: 'invalid_password',
-				},
-			});
-			this.logger.error('Invalid password', email);
-			throw new UnauthorizedException('Invalid password');
-		}
-
-		const wasMigrated = await this.passwordMigration.migratePasswordOnLogin(
-			user,
+		return this.signInUseCase.execute(
+			email,
 			password,
-		);
-		if (wasMigrated) {
-			this.logger.log(
-				`🔄 Senha do usuário ${user.email} migrada com sucesso para ${this.passwordEncryption.getAlgorithm()}`,
-			);
-		}
+			context,
+			async (user, authMethod, context) => {
+				// Re-fetch full user for migration if needed
+				const fullUser = await this.userRepository.findOneBy({
+					id: user.id,
+				});
+				if (fullUser) {
+					const wasMigrated =
+						await this.passwordMigration.migratePasswordOnLogin(
+							fullUser,
+							password,
+						);
+					if (wasMigrated) {
+						this.logger.log(
+							`🔄 Senha do usuário ${fullUser.email} migrada com sucesso para ${this.passwordEncryption.getAlgorithm()}`,
+						);
+					}
+				}
 
-		return this.issueAuthFlowForUser(user, {
-			authMethod: 'password',
-			context: normalizedContext,
-		});
+				return this.issueAuthFlowForUser(fullUser || user, {
+					authMethod: authMethod as AuthMethod,
+					context,
+				});
+			},
+		);
 	}
 
 	async createLoginApiKeyForAdminSelf(

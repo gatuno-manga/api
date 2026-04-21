@@ -8,7 +8,7 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
-import { ROLES_KEY } from '../decorator/roles.decorator';
+import { ROLES_KEY } from './roles.decorator';
 
 interface JwtPayload {
 	roles?: string[];

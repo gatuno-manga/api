@@ -2,17 +2,17 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, Repository } from 'typeorm';
 import { CustomLogger } from 'src/custom.logger';
-import { CursorPageDto } from 'src/pages/cursor-page.dto';
+import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 import {
 	decodeCursorPayload,
 	encodeCursorPayload,
-} from 'src/pages/cursor.utils';
-import { AuthAuditLog } from '../entities/auth-audit-log.entity';
+} from 'src/common/pagination/cursor.utils';
+import { AuthAuditLog } from '../database/entities/auth-audit-log.entity';
 import {
 	AuthMethod,
 	AuthRequestContext,
 	AuthRiskLevel,
-} from '../types/auth-security.types';
+} from '../../types/auth-security.types';
 
 export type SessionAuditEvent =
 	| 'login_success'

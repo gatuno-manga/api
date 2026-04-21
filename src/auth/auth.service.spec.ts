@@ -9,14 +9,17 @@ import { PasswordMigrationService } from '../infrastructure/encryption/password-
 import { Role } from '../users/entities/role.entity';
 import { User } from '../users/entities/user.entity';
 import { AuthService } from './auth.service';
-import { LoginApiKey } from './entities/login-api-key.entity';
-import { MfaService } from './services/mfa.service';
-import { SessionAuditService } from './services/session-audit.service';
-import { SessionManagementService } from './services/session-management.service';
-import { TokenStoreService } from './services/token-store.service';
+import { SignUpUseCase } from './application/use-cases/sign-up.use-case';
+import { SignInUseCase } from './application/use-cases/sign-in.use-case';
+import { LoginApiKey } from './infrastructure/database/entities/login-api-key.entity';
+import { MfaService } from './infrastructure/adapters/mfa.service';
+import { SessionAuditService } from './infrastructure/adapters/session-audit.service';
+import { SessionManagementService } from './infrastructure/adapters/session-management.service';
+import { TokenStoreService } from './infrastructure/adapters/token-store.service';
 
 describe('AuthService', () => {
 	let service: AuthService;
+	let module: TestingModule;
 	let userRepository: any;
 	let roleRepository: any;
 	let loginApiKeyRepository: any;
@@ -135,7 +138,7 @@ describe('AuthService', () => {
 			disableTotp: jest.fn(),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				AuthService,
 				{
@@ -186,6 +189,18 @@ describe('AuthService', () => {
 					provide: MfaService,
 					useValue: mockMfaService,
 				},
+				{
+					provide: SignUpUseCase,
+					useValue: {
+						execute: jest.fn(),
+					},
+				},
+				{
+					provide: SignInUseCase,
+					useValue: {
+						execute: jest.fn(),
+					},
+				},
 			],
 		}).compile();
 
@@ -232,75 +247,38 @@ describe('AuthService', () => {
 		it('should create a new user successfully', async () => {
 			const email = 'test@example.com';
 			const password = 'password123';
-			const hashedPassword = 'hashed_password';
-			const role = { id: '1', name: 'user' };
-			const savedUser = {
-				id: '123',
-				email,
-				userName: 'test',
-				password: hashedPassword,
-			};
-			const userWithRoles = { ...savedUser, roles: [role] };
+			const user = { id: '123', email };
 
-			userRepository.findOneBy.mockResolvedValue(null);
-			passwordEncryption.encrypt.mockResolvedValue(hashedPassword);
-			roleRepository.findOne.mockResolvedValue(role);
-			userRepository.save.mockResolvedValue(savedUser);
-			userRepository.findOne.mockResolvedValue(userWithRoles);
+			const signUpUseCase = module.get<SignUpUseCase>(SignUpUseCase);
+			jest.spyOn(signUpUseCase, 'execute').mockResolvedValue(user as any);
 
 			const result = await service.signUp(email, password);
 
-			expect(userRepository.findOneBy).toHaveBeenCalledWith({ email });
-			expect(passwordEncryption.encrypt).toHaveBeenCalledWith(password);
-			expect(roleRepository.findOne).toHaveBeenCalledWith({
-				where: { name: 'user' },
-			});
-			expect(userRepository.save).toHaveBeenCalled();
-			expect(result).toEqual(userWithRoles);
+			expect(signUpUseCase.execute).toHaveBeenCalledWith(
+				email,
+				password,
+				false,
+			);
+			expect(result).toEqual(user);
 		});
 
 		it('should create admin user when isAdmin is true', async () => {
 			const email = 'admin@example.com';
 			const password = 'admin123';
-			const role = { id: '1', name: 'admin' };
 
-			userRepository.findOneBy.mockResolvedValue(null);
-			passwordEncryption.encrypt.mockResolvedValue('hashed');
-			roleRepository.findOne.mockResolvedValue(role);
-			userRepository.save.mockResolvedValue({ id: '1', email });
-			userRepository.findOne.mockResolvedValue({
+			const signUpUseCase = module.get<SignUpUseCase>(SignUpUseCase);
+			jest.spyOn(signUpUseCase, 'execute').mockResolvedValue({
 				id: '1',
 				email,
-				roles: [role],
-			});
+			} as any);
 
 			await service.signUp(email, password, true);
 
-			expect(roleRepository.findOne).toHaveBeenCalledWith({
-				where: { name: 'admin' },
-			});
-		});
-
-		it('should throw BadRequestException if user already exists', async () => {
-			const email = 'existing@example.com';
-			userRepository.findOneBy.mockResolvedValue({ id: '1', email });
-
-			await expect(service.signUp(email, 'password')).rejects.toThrow(
-				BadRequestException,
+			expect(signUpUseCase.execute).toHaveBeenCalledWith(
+				email,
+				password,
+				true,
 			);
-			await expect(service.signUp(email, 'password')).rejects.toThrow(
-				'User already exists',
-			);
-		});
-
-		it('should throw BadRequestException if role not found', async () => {
-			userRepository.findOneBy.mockResolvedValue(null);
-			passwordEncryption.encrypt.mockResolvedValue('hashed');
-			roleRepository.findOne.mockResolvedValue(null);
-
-			await expect(
-				service.signUp('test@example.com', 'password'),
-			).rejects.toThrow(BadRequestException);
 		});
 	});
 
@@ -308,90 +286,26 @@ describe('AuthService', () => {
 		it('should sign in user successfully', async () => {
 			const email = 'test@example.com';
 			const password = 'password123';
-			const user = {
-				id: '123',
-				email,
-				password: 'hashed_password',
-				roles: [{ id: '1', name: 'user' }],
-			};
+			const user = { id: '123', email };
 			const tokens = {
 				accessToken: 'access_token',
 				refreshToken: 'refresh_token',
 			};
 
-			userRepository.findOne.mockResolvedValue(user);
-			passwordEncryption.compare.mockResolvedValue(true);
-			passwordMigration.migratePasswordOnLogin.mockResolvedValue(false);
-			jwtService.signAsync
-				.mockResolvedValueOnce('access_token')
-				.mockResolvedValueOnce('refresh_token');
-			dataEncryption.encrypt.mockResolvedValue('encrypted_token');
-			tokenStore.addToken.mockResolvedValue(undefined);
+			const signInUseCase = module.get<SignInUseCase>(SignInUseCase);
+			jest.spyOn(signInUseCase, 'execute').mockResolvedValue(
+				tokens as any,
+			);
 
 			const result = await service.signIn(email, password);
 
-			expect(userRepository.findOne).toHaveBeenCalledWith({
-				where: { email },
-				relations: ['roles'],
-				select: ['id', 'email', 'password', 'roles'],
-			});
-			expect(passwordEncryption.compare).toHaveBeenCalledWith(
-				user.password,
+			expect(signInUseCase.execute).toHaveBeenCalledWith(
+				email,
 				password,
+				undefined,
+				expect.any(Function),
 			);
-			expect(result).toHaveProperty('accessToken');
-			expect(result).toHaveProperty('refreshToken');
-			expect(tokenStore.addToken).toHaveBeenCalled();
-		});
-
-		it('should throw UnauthorizedException if user not found', async () => {
-			userRepository.findOne.mockResolvedValue(null);
-
-			await expect(
-				service.signIn('test@example.com', 'password'),
-			).rejects.toThrow(UnauthorizedException);
-			await expect(
-				service.signIn('test@example.com', 'password'),
-			).rejects.toThrow('User not exists');
-		});
-
-		it('should throw UnauthorizedException if password is invalid', async () => {
-			const user = {
-				id: '1',
-				email: 'test@example.com',
-				password: 'hashed',
-				roles: [],
-			};
-			userRepository.findOne.mockResolvedValue(user);
-			passwordEncryption.compare.mockResolvedValue(false);
-
-			await expect(
-				service.signIn('test@example.com', 'wrong_password'),
-			).rejects.toThrow(UnauthorizedException);
-			await expect(
-				service.signIn('test@example.com', 'wrong_password'),
-			).rejects.toThrow('Invalid password');
-		});
-
-		it('should migrate password if needed', async () => {
-			const user = {
-				id: '123',
-				email: 'test@example.com',
-				password: 'old_hash',
-				roles: [{ id: '1', name: 'user' }],
-			};
-
-			userRepository.findOne.mockResolvedValue(user);
-			passwordEncryption.compare.mockResolvedValue(true);
-			passwordMigration.migratePasswordOnLogin.mockResolvedValue(true);
-			jwtService.signAsync.mockResolvedValue('token');
-			dataEncryption.encrypt.mockResolvedValue('encrypted');
-
-			await service.signIn(user.email, 'password');
-
-			expect(
-				passwordMigration.migratePasswordOnLogin,
-			).toHaveBeenCalledWith(user, 'password');
+			expect(result).toEqual(tokens);
 		});
 	});
 

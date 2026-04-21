@@ -135,6 +135,9 @@ describe('TokenStoreService', () => {
 			await service.addToken('user123', {
 				hash: 'new_hash',
 				jti: 'jti-new-hash',
+				sessionId: undefined,
+				familyId: undefined,
+				parentJti: undefined,
 			});
 
 			expect(cacheManager.set).toHaveBeenCalled();
@@ -158,6 +161,9 @@ describe('TokenStoreService', () => {
 				{
 					hash: 'new_hash',
 					jti: 'jti-new-hash',
+					sessionId: undefined,
+					familyId: undefined,
+					parentJti: undefined,
 				},
 				existing,
 			);
@@ -195,6 +201,9 @@ describe('TokenStoreService', () => {
 				await service.addToken('user123', {
 					hash: 'token4',
 					jti: 'jti-token4',
+					sessionId: undefined,
+					familyId: undefined,
+					parentJti: undefined,
 				});
 
 				const [, savedTokens] = cacheManager.set.mock.calls[0];
@@ -217,6 +226,9 @@ describe('TokenStoreService', () => {
 				await service.addToken('user123', {
 					hash: 'newest',
 					jti: 'jti-newest',
+					sessionId: undefined,
+					familyId: undefined,
+					parentJti: undefined,
 				});
 
 				const [, savedTokens] = cacheManager.set.mock.calls[0];
@@ -241,6 +253,9 @@ describe('TokenStoreService', () => {
 				await service.addToken('user123', {
 					hash: 'new_token',
 					jti: 'jti-new-token',
+					sessionId: undefined,
+					familyId: undefined,
+					parentJti: undefined,
 				});
 
 				const [, savedTokens] = cacheManager.set.mock.calls[0];

@@ -1,5 +1,5 @@
 import { User } from 'src/users/entities/user.entity';
-import { UserAuthData } from '../application/ports/user-repository.port';
+import { UserAuthData } from '../ports/user-repository.port';
 import { JwtPayloadDto } from '../dto/jwt-payload.dto';
 
 export class JwtPayloadBuilder {
@@ -100,7 +100,11 @@ export class JwtPayloadBuilder {
 		} else {
 			// Fallback: try to find max weight in roles if they have it
 			const weights = user.roles
-				.map((role: any) => role.maxWeightSensitiveContent ?? 0)
+				.map(
+					(role) =>
+						(role as { maxWeightSensitiveContent?: number })
+							.maxWeightSensitiveContent ?? 0,
+				)
 				.filter((w) => typeof w === 'number');
 
 			if (weights.length > 0) {
