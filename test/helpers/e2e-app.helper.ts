@@ -5,7 +5,7 @@ import cookieParser from 'cookie-parser';
 import { JwtService } from '@nestjs/jwt';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { AppModule } from 'src/app.module';
-import { configureValidationPipe } from 'src/config/validation-pipe.config';
+import { configureValidationPipe } from 'src/infrastructure/http/config/validation-pipe.config';
 
 export async function createE2EApp(): Promise<INestApplication> {
 	const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -33,8 +33,8 @@ export function createAdminAccessToken(app: INestApplication): string {
 			sessionId: randomUUID(),
 		},
 		{
-			issuer: configService.jwtIssuer,
-			audience: configService.jwtAudience,
+			issuer: configService.jwt.issuer,
+			audience: configService.jwt.audience,
 			expiresIn: '5m',
 		},
 	);
