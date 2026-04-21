@@ -16,8 +16,8 @@ import { PasswordMigrationService } from 'src/infrastructure/encryption/password
 import { SignUpUseCase } from './application/use-cases/sign-up.use-case';
 import { SignInUseCase } from './application/use-cases/sign-in.use-case';
 import { UserAuthData } from './application/ports/user-repository.port';
-import { Role } from 'src/users/entities/role.entity';
-import { User } from 'src/users/entities/user.entity';
+import { Role } from 'src/users/infrastructure/database/entities/role.entity';
+import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import { Repository } from 'typeorm';
 import { JwtPayloadBuilder } from './application/builders/jwt-payload.builder';
 import { ListAuthAuditQueryDto } from './infrastructure/http/dto/list-auth-audit-query.dto';

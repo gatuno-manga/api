@@ -7,7 +7,7 @@ import {
 	ManyToOne,
 	PrimaryGeneratedColumn,
 } from 'typeorm';
-import { User } from 'src/users/entities/user.entity';
+import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import { AuthMethod, AuthRiskLevel } from '../../../types/auth-security.types';
 
 @Entity('auth_audit_logs')

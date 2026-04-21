@@ -7,8 +7,8 @@ import { AppConfigService } from 'src/infrastructure/app-config/app-config.servi
 import { DataEncryptionProvider } from 'src/infrastructure/encryption/data-encryption.provider';
 import { EncryptionModule } from 'src/infrastructure/encryption/encryption.module';
 import { LoggingModule } from 'src/infrastructure/logging/logging.module';
-import { Role } from 'src/users/entities/role.entity';
-import { User } from 'src/users/entities/user.entity';
+import { Role } from 'src/users/infrastructure/database/entities/role.entity';
+import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import { AuthController } from './infrastructure/controllers/auth.controller';
 import { AuthService } from './auth.service';
 import { CreateAdminEvent } from './events/create-admin.event';

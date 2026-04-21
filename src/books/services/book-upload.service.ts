@@ -10,7 +10,7 @@ import { InjectMetric } from '@willsoto/nestjs-prometheus';
 import pLimit from 'p-limit';
 import { Counter, Histogram } from 'prom-client';
 import { CustomLogger } from 'src/custom.logger';
-import { FilesService } from 'src/files/files.service';
+import { FilesService } from 'src/files/application/services/files.service';
 import { Repository } from 'typeorm';
 import {
 	FORMAT_TO_EXTENSION,

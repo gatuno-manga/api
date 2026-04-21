@@ -8,8 +8,8 @@ import { randomUUID } from 'node:crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
-import { RolesEnum } from 'src/users/enum/roles.enum';
-import { User } from 'src/users/entities/user.entity';
+import { RolesEnum } from 'src/users/domain/enums/roles.enum';
+import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 import {
 	decodeCursorPayload,

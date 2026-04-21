@@ -24,7 +24,7 @@ import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
-import { RolesEnum } from 'src/users/enum/roles.enum';
+import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 import { AuthService } from '../../auth.service';
 import { CurrentUser } from '../framework/current-user.decorator';
 import { Roles } from '../framework/roles.decorator';

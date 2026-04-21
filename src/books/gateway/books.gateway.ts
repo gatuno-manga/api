@@ -12,7 +12,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { WsJwtGuard } from '../../auth/infrastructure/framework/ws-jwt.guard';
-import { RolesEnum } from '../../users/enum/roles.enum';
+import { RolesEnum } from '../../users/domain/enums/roles.enum';
 import { BookEvents } from '../constants/events.constant';
 import { Book } from '../entities/book.entity';
 import { Chapter } from '../entities/chapter.entity';

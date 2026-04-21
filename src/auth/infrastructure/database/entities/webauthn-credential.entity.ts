@@ -8,7 +8,7 @@ import {
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
 } from 'typeorm';
-import { User } from 'src/users/entities/user.entity';
+import { User } from 'src/users/infrastructure/database/entities/user.entity';
 
 @Entity('auth_webauthn_credentials')
 @Index(['userId', 'createdAt'])

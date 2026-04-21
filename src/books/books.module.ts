@@ -10,7 +10,7 @@ import { LoggingModule } from 'src/infrastructure/logging/logging.module';
 import { MetricsModule } from 'src/metrics/metrics.module';
 import { ScrapingModule } from 'src/scraping/scraping.module';
 import { UsersModule } from 'src/users/users.module';
-import { User } from 'src/users/entities/user.entity';
+import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import { AdminBooksDashboardController } from './admin-books-dashboard.controller';
 import { AdminBookRelationshipsController } from './admin-book-relationships.controller';
 import { AdminBooksUploadController } from './admin-books-upload.controller';

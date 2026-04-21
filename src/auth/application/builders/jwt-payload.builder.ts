@@ -1,4 +1,4 @@
-import { User } from 'src/users/entities/user.entity';
+import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import { UserAuthData } from '../ports/user-repository.port';
 import { JwtPayloadDto } from '../dto/jwt-payload.dto';
 

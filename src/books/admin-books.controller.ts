@@ -22,7 +22,7 @@ import { Throttle } from '@nestjs/throttler';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
-import { RolesEnum } from 'src/users/enum/roles.enum';
+import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 import { BooksService } from './books.service';
 import { CreateBookDto } from './dto/create-book.dto';
 import { CreateChapterBatchItemDto } from './dto/create-chapter-batch-item.dto';

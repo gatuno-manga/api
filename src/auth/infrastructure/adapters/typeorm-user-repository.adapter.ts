@@ -1,8 +1,8 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from 'src/users/entities/user.entity';
-import { Role } from 'src/users/entities/role.entity';
+import { User } from 'src/users/infrastructure/database/entities/user.entity';
+import { Role } from 'src/users/infrastructure/database/entities/role.entity';
 import {
 	UserRepositoryPort,
 	UserAuthData,

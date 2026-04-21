@@ -5,7 +5,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { AdminUsersService } from 'src/users/admin-users.service';
+import { AdminUsersService } from 'src/users/application/use-cases/admin-users.service';
 import { In, IsNull, Repository, SelectQueryBuilder } from 'typeorm';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 import {

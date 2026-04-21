@@ -2,7 +2,7 @@ import { Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
-import { User } from 'src/users/entities/user.entity';
+import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import { DataSource, Repository } from 'typeorm';
 import { AuthService } from '../auth.service';
 

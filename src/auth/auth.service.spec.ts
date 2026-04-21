@@ -6,8 +6,8 @@ import { AppConfigService } from '../infrastructure/app-config/app-config.servic
 import { DataEncryptionProvider } from '../infrastructure/encryption/data-encryption.provider';
 import { PasswordEncryption } from '../infrastructure/encryption/password-encryption.provider';
 import { PasswordMigrationService } from '../infrastructure/encryption/password-migration.service';
-import { Role } from '../users/entities/role.entity';
-import { User } from '../users/entities/user.entity';
+import { Role } from 'src/users/infrastructure/database/entities/role.entity';
+import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import { AuthService } from './auth.service';
 import { SignUpUseCase } from './application/use-cases/sign-up.use-case';
 import { SignInUseCase } from './application/use-cases/sign-in.use-case';

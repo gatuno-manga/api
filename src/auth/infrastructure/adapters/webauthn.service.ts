@@ -16,7 +16,7 @@ import { isoBase64URL } from '@simplewebauthn/server/helpers';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
-import { User } from 'src/users/entities/user.entity';
+import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import { WebAuthnCredential } from '../database/entities/webauthn-credential.entity';
 
 type SupportedTransport =

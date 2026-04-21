@@ -30,7 +30,7 @@ import { Tag } from '../entities/tags.entity';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 import { SensitiveContentService } from '../sensitive-content/sensitive-content.service';
 import { FilterStrategy } from '../strategies';
-import { AdminUsersService } from 'src/users/admin-users.service';
+import { AdminUsersService } from 'src/users/application/use-cases/admin-users.service';
 import { BookOrderField } from '../enum/book-order-field.enum';
 
 interface RawChapterRow {

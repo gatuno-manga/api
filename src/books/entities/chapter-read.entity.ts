@@ -5,7 +5,7 @@ import {
 	ManyToOne,
 	PrimaryGeneratedColumn,
 } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
+import { User } from '../../users/infrastructure/database/entities/user.entity';
 
 @Entity('chapters_read')
 export class ChapterRead {

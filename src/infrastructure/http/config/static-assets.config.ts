@@ -3,7 +3,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { Response } from 'express';
 
 export function configureStaticAssets(app: NestExpressApplication) {
-	app.useStaticAssets(join(__dirname, '..', '..', 'data'), {
+	app.useStaticAssets(join(__dirname, '..', '..', '..', '..', 'data'), {
 		prefix: '/data/',
 		maxAge: '365d',
 		setHeaders: (res: Response) => {

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { FileCleanupService } from '../../files/file-cleanup.service';
+import { FileCleanupService } from '../../files/application/services/file-cleanup.service';
 import { BookEvents } from '../constants/events.constant';
 
 @Injectable()

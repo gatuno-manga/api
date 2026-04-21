@@ -7,37 +7,37 @@ import { Chapter } from 'src/books/entities/chapter.entity';
 import { Page } from 'src/books/entities/page.entity';
 import { Tag } from 'src/books/entities/tags.entity';
 import { FilesModule } from 'src/files/files.module';
-import { AdminAccessPoliciesController } from './admin-access-policies.controller';
-import { AdminGroupsController } from './admin-groups.controller';
-import { AdminRolesController } from './admin-roles.controller';
-import { AdminUsersController } from './admin-users.controller';
-import { AdminUsersService } from './admin-users.service';
+import { AdminAccessPoliciesController } from './infrastructure/controllers/admin-access-policies.controller';
+import { AdminGroupsController } from './infrastructure/controllers/admin-groups.controller';
+import { AdminRolesController } from './infrastructure/controllers/admin-roles.controller';
+import { AdminUsersController } from './infrastructure/controllers/admin-users.controller';
+import { AdminUsersService } from './application/use-cases/admin-users.service';
 import {
 	CollectionBook,
 	CollectionsBooksController,
 	CollectionsBooksService,
-} from './collections-books';
-import { AccessPolicy } from './entities/access-policy.entity';
-import { ReadingProgress } from './entities/reading-progress.entity';
-import { Role } from './entities/role.entity';
-import { UserGroup } from './entities/user-group.entity';
-import { User } from './entities/user.entity';
-import { ReadingProgressGateway } from './gateway/reading-progress.gateway';
-import { ReadingProgressController } from './reading-progress.controller';
-import { ReadingProgressService } from './reading-progress.service';
+} from './infrastructure/controllers/collections-books.index';
+import { AccessPolicy } from './infrastructure/database/entities/access-policy.entity';
+import { ReadingProgress } from './infrastructure/database/entities/reading-progress.entity';
+import { Role } from './infrastructure/database/entities/role.entity';
+import { UserGroup } from './infrastructure/database/entities/user-group.entity';
+import { User } from './infrastructure/database/entities/user.entity';
+import { ReadingProgressGateway } from './infrastructure/gateways/reading-progress.gateway';
+import { ReadingProgressController } from './infrastructure/controllers/reading-progress.controller';
+import { ReadingProgressService } from './application/use-cases/reading-progress.service';
 import {
 	SavedPage,
 	SavedPagesController,
 	SavedPagesService,
-} from './saved-pages';
-import { UsersController } from './users.controller';
-import { UsersService } from './users.service';
-import { HighestPageWinsStrategy } from './sync/highest-page-wins.strategy';
-import { LastWriteWinsStrategy } from './sync/last-write-wins.strategy';
-import { SyncStrategyResolver } from './sync/sync-strategy.resolver';
-import { UserPublicResourcesController } from './user-public-resources.controller';
-import { UserResourcesMapper } from './user-resources.mapper';
-import { UserBookSavedPagesController } from './user-book-saved-pages.controller';
+} from './infrastructure/controllers/saved-pages.index';
+import { UsersController } from './infrastructure/controllers/users.controller';
+import { UsersService } from './application/use-cases/users.service';
+import { HighestPageWinsStrategy } from './application/strategies/highest-page-wins.strategy';
+import { LastWriteWinsStrategy } from './application/strategies/last-write-wins.strategy';
+import { SyncStrategyResolver } from './application/strategies/sync-strategy.resolver';
+import { UserPublicResourcesController } from './infrastructure/controllers/user-public-resources.controller';
+import { UserResourcesMapper } from './application/mappers/user-resources.mapper';
+import { UserBookSavedPagesController } from './infrastructure/controllers/user-book-saved-pages.controller';
 
 @Module({
 	imports: [

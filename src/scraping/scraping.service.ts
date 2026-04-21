@@ -8,7 +8,7 @@ import {
 import { Redis } from 'ioredis';
 import { Browser, BrowserContext, Page } from 'playwright';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
-import { FilesService } from 'src/files/files.service';
+import { FilesService } from 'src/files/application/services/files.service';
 import { REDIS_CLIENT } from 'src/infrastructure/redis/redis.constants';
 import { PlaywrightBrowserFactory } from './browser';
 import { IConcurrencyManager, RedisConcurrencyManager } from './concurrency';

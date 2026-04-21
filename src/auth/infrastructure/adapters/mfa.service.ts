@@ -14,7 +14,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { PasswordEncryption } from 'src/infrastructure/encryption/password-encryption.provider';
-import { User } from 'src/users/entities/user.entity';
+import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import { UserMfa } from '../database/entities/user-mfa.entity';
 
 interface MfaStatusResult {

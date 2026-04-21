@@ -1,5 +1,5 @@
 import { Chapter } from 'src/books/entities/chapter.entity';
-import { User } from 'src/users/entities/user.entity';
+import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import {
 	Column,
 	CreateDateColumn,

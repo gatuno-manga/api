@@ -2,7 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { AdminUsersService } from '../../users/admin-users.service';
+import { AdminUsersService } from '../../users/application/use-cases/admin-users.service';
 import { BookRelationship } from '../entities/book-relationship.entity';
 import { Book } from '../entities/book.entity';
 import { BookBookRelationshipService } from './book-book-relationship.service';

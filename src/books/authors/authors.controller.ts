@@ -23,7 +23,7 @@ import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { OptionalAuthGuard } from 'src/auth/infrastructure/framework/optional-auth.guard';
 import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-cache.interceptor';
-import { RolesEnum } from 'src/users/enum/roles.enum';
+import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 import { AuthorsService } from './authors.service';
 import { AuthorsOptions } from './dto/authors-options.dto';
 
