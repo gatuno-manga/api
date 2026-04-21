@@ -3,7 +3,7 @@ import { Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Job } from 'bullmq';
-import { AppConfigService } from 'src/app-config/app-config.service';
+import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { Repository } from 'typeorm';
 import { Book } from '../entities/book.entity';
 import { BookContentUpdateService } from '../services/book-content-update.service';

@@ -1,7 +1,7 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
-import { AppConfigService } from 'src/app-config/app-config.service';
+import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { Chapter } from '../entities/chapter.entity';
 import { ChapterScrapingJob } from './chapter-scraping.job';
 import { ChapterScrapingSharedService } from './chapter-scraping.shared';

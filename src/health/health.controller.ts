@@ -9,7 +9,7 @@ import {
 } from '@nestjs/terminus';
 import { Redis } from 'ioredis';
 import { REDIS_CLIENT } from '../redis/redis.constants';
-import { AppConfigService } from '../app-config/app-config.service';
+import { AppConfigService } from '../infrastructure/app-config/app-config.service';
 
 @ApiTags('Health')
 @Controller('health')

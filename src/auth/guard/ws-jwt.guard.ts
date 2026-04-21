@@ -8,7 +8,7 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { WsException } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
-import { AppConfigService } from 'src/app-config/app-config.service';
+import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { ROLES_KEY } from '../decorator/roles.decorator';
 
 interface WsJwtPayload {
@@ -41,9 +41,9 @@ export class WsJwtGuard implements CanActivate {
 			}
 
 			const payload = this.jwtService.verify(token, {
-				secret: this.configService.jwtAccessSecret,
-				issuer: this.configService.jwtIssuer,
-				audience: this.configService.jwtAudience,
+				secret: this.configService.jwt.accessSecret,
+				issuer: this.configService.jwt.issuer,
+				audience: this.configService.jwt.audience,
 			});
 
 			// Anexa o payload ao client para uso posterior

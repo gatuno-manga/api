@@ -15,7 +15,7 @@ import {
 import { isoBase64URL } from '@simplewebauthn/server/helpers';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { AppConfigService } from 'src/app-config/app-config.service';
+import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { User } from 'src/users/entities/user.entity';
 import { WebAuthnCredential } from '../entities/webauthn-credential.entity';
 

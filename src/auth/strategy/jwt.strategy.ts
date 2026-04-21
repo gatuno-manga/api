@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { AppConfigService } from 'src/app-config/app-config.service';
+import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { CurrentUserDto } from '../dto/current-user.dto';
 import { PayloadAuthDto } from '../dto/payload-auth.dto';
 
@@ -15,9 +15,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 		super({
 			jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
 			ignoreExpiration: false,
-			secretOrKey: configService.jwtAccessSecret,
-			issuer: configService.jwtIssuer,
-			audience: configService.jwtAudience,
+			secretOrKey: configService.jwt.accessSecret,
+			issuer: configService.jwt.issuer,
+			audience: configService.jwt.audience,
 		});
 	}
 

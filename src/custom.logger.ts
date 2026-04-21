@@ -1,6 +1,6 @@
 import { Injectable, LoggerService, Scope } from '@nestjs/common';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
-import { AppConfigService } from './app-config/app-config.service';
+import { AppConfigService } from './infrastructure/app-config/app-config.service';
 import {
 	BookScrapingLog,
 	ChapterProcessingLog,

@@ -3,7 +3,7 @@ import { Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Job } from 'bullmq';
-import { AppConfigService } from 'src/app-config/app-config.service';
+import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { ScrapingService } from 'src/scraping/scraping.service';
 import { DataSource, Repository } from 'typeorm';
 import { QueueCoverProcessorDto } from '../dto/queue-cover-processor.dto';

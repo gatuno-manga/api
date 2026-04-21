@@ -62,24 +62,32 @@ describe('AppConfigService', () => {
 	});
 
 	describe('JWT configuration', () => {
-		it('should return jwtAccessSecret', () => {
-			mockConfigService.get.mockReturnValueOnce('test-secret');
-			expect(service.jwtAccessSecret).toBe('test-secret');
-		});
-
-		it('should return jwtAccessExpiration', () => {
-			mockConfigService.get.mockReturnValueOnce('15m');
-			expect(service.jwtAccessExpiration).toBe('15m');
-		});
-
-		it('should return jwtRefreshSecret', () => {
-			mockConfigService.get.mockReturnValueOnce('test-refresh-secret');
-			expect(service.jwtRefreshSecret).toBe('test-refresh-secret');
-		});
-
-		it('should return jwtRefreshExpiration', () => {
-			mockConfigService.get.mockReturnValueOnce('60m');
-			expect(service.jwtRefreshExpiration).toBe('60m');
+		it('should return jwt config object', () => {
+			mockConfigService.get.mockImplementation((key) => {
+				switch (key) {
+					case 'JWT_ACCESS_SECRET':
+						return 'test-secret';
+					case 'JWT_ACCESS_EXPIRATION':
+						return '15m';
+					case 'JWT_REFRESH_SECRET':
+						return 'test-refresh-secret';
+					case 'JWT_REFRESH_EXPIRATION':
+						return '60m';
+					case 'JWT_ISSUER':
+						return 'gatuno-auth';
+					case 'JWT_AUDIENCE':
+						return 'gatuno-api';
+					default:
+						return null;
+				}
+			});
+			const jwt = service.jwt;
+			expect(jwt.accessSecret).toBe('test-secret');
+			expect(jwt.accessExpiration).toBe('15m');
+			expect(jwt.refreshSecret).toBe('test-refresh-secret');
+			expect(jwt.refreshExpiration).toBe('60m');
+			expect(jwt.issuer).toBe('gatuno-auth');
+			expect(jwt.audience).toBe('gatuno-api');
 		});
 
 		it('should calculate refreshTokenTtl in milliseconds', () => {
@@ -88,15 +96,33 @@ describe('AppConfigService', () => {
 		});
 	});
 
-	describe('password configuration', () => {
-		it('should return saltLength', () => {
-			mockConfigService.get.mockReturnValueOnce(16);
-			expect(service.saltLength).toBe(16);
-		});
-
-		it('should return passwordKeyLength', () => {
-			mockConfigService.get.mockReturnValueOnce(64);
-			expect(service.passwordKeyLength).toBe(64);
+	describe('Security configuration', () => {
+		it('should return security config object', () => {
+			mockConfigService.get.mockImplementation((key) => {
+				switch (key) {
+					case 'SALT_LENGTH':
+						return 16;
+					case 'PASSWORD_KEY_LENGTH':
+						return 64;
+					case 'MFA_ISSUER_NAME':
+						return 'Gatuno';
+					case 'MFA_ENCRYPTION_SECRET':
+						return 'secret';
+					case 'MFA_STEP_UP_ENABLED':
+						return true;
+					case 'MFA_CHALLENGE_EXPIRATION':
+						return '5m';
+					default:
+						return null;
+				}
+			});
+			const security = service.security;
+			expect(security.saltLength).toBe(16);
+			expect(security.passwordKeyLength).toBe(64);
+			expect(security.mfaIssuerName).toBe('Gatuno');
+			expect(security.mfaEncryptionSecret).toBe('secret');
+			expect(security.mfaStepUpEnabled).toBe(true);
+			expect(security.mfaChallengeExpiration).toBe('5m');
 		});
 	});
 
@@ -152,11 +178,11 @@ describe('AppConfigService', () => {
 			expect(service.appUrl).toBe('http://app:4200');
 		});
 
-		it('should return adminInfo', () => {
-			const adminInfo = service.adminInfo;
-			expect(adminInfo).toBeDefined();
-			expect(adminInfo).toHaveProperty('email');
-			expect(adminInfo).toHaveProperty('password');
+		it('should return admin', () => {
+			const admin = service.admin;
+			expect(admin).toBeDefined();
+			expect(admin).toHaveProperty('email');
+			expect(admin).toHaveProperty('password');
 		});
 	});
 });

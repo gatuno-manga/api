@@ -1,5 +1,5 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { AppConfigService } from '../app-config/app-config.service';
+import { AppConfigService } from '../infrastructure/app-config/app-config.service';
 import { FilesService } from '../files/files.service';
 import { REDIS_CLIENT } from '../redis/redis.constants';
 import { PlaywrightBrowserFactory } from './browser';

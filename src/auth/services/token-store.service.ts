@@ -9,7 +9,7 @@ import {
 import { Cache } from 'cache-manager';
 import { randomUUID } from 'node:crypto';
 import { Redis } from 'ioredis';
-import { AppConfigService } from 'src/app-config/app-config.service';
+import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { REDIS_CLIENT } from 'src/redis/redis.constants';
 import { StoredTokenDto } from '../dto/stored-token.dto';
 

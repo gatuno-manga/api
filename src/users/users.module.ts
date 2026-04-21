@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AppConfigModule } from 'src/app-config/app-config.module';
+import { AppConfigModule } from 'src/infrastructure/app-config/app-config.module';
 import { AuthModule } from 'src/auth/auth.module';
 import { Book } from 'src/books/entities/book.entity';
 import { Chapter } from 'src/books/entities/chapter.entity';

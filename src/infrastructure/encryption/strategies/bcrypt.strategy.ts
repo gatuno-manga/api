@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { AppConfigService } from 'src/app-config/app-config.service';
+import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { PasswordHasher } from '../interfaces/password-hasher.interface';
 
 @Injectable()
@@ -10,7 +10,7 @@ export class BcryptStrategy implements PasswordHasher {
 	constructor(private readonly config: AppConfigService) {}
 
 	async hash(password: string): Promise<string> {
-		return bcrypt.hash(password, this.config.saltLength);
+		return bcrypt.hash(password, this.config.security.saltLength);
 	}
 
 	async compare(password: string, hash: string): Promise<boolean> {

@@ -1,5 +1,5 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { AppConfigService } from 'src/app-config/app-config.service';
+import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { PasswordEncryption } from './password-encryption.provider';
 import { BcryptStrategy } from './strategies/bcrypt.strategy';
 import { ScryptStrategy } from './strategies/scrypt.strategy';
@@ -9,8 +9,10 @@ describe('PasswordEncryption com Strategy Pattern', () => {
 	let strategy: ScryptStrategy;
 
 	const mockConfig = {
-		saltLength: 16,
-		passwordKeyLength: 64,
+		security: {
+			saltLength: 16,
+			passwordKeyLength: 64,
+		},
 	};
 
 	beforeEach(async () => {
@@ -88,8 +90,10 @@ describe('PasswordEncryption com Strategy Pattern', () => {
 
 describe('PasswordHasher - Testes de Diferentes Estratégias', () => {
 	const mockConfig = {
-		saltLength: 16,
-		passwordKeyLength: 64,
+		security: {
+			saltLength: 16,
+			passwordKeyLength: 64,
+		},
 	};
 
 	describe('ScryptStrategy', () => {
@@ -128,7 +132,9 @@ describe('PasswordHasher - Testes de Diferentes Estratégias', () => {
 
 		beforeEach(() => {
 			const mockAppConfig = {
-				saltLength: 10,
+				security: {
+					saltLength: 10,
+				},
 			};
 			strategy = new BcryptStrategy(mockAppConfig as any);
 		});
@@ -230,8 +236,10 @@ describe('PasswordEncryption - Troca de Estratégia', () => {
 describe('PasswordEncryption - Integração', () => {
 	it('deve funcionar em cenário real de signup/signin', async () => {
 		const strategy = new ScryptStrategy({
-			saltLength: 16,
-			passwordKeyLength: 64,
+			security: {
+				saltLength: 16,
+				passwordKeyLength: 64,
+			},
 		} as any);
 
 		const module = await Test.createTestingModule({

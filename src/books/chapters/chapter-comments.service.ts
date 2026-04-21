@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { AppConfigService } from 'src/app-config/app-config.service';
+import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
 import { RolesEnum } from 'src/users/enum/roles.enum';
 import { User } from 'src/users/entities/user.entity';

@@ -3,7 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { randomUUID } from 'node:crypto';
 import cookieParser from 'cookie-parser';
 import { JwtService } from '@nestjs/jwt';
-import { AppConfigService } from 'src/app-config/app-config.service';
+import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { AppModule } from 'src/app.module';
 import { configureValidationPipe } from 'src/config/validation-pipe.config';
 

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import * as argon2 from 'argon2';
-import { AppConfigService } from 'src/app-config/app-config.service';
+import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { PasswordHasher } from '../interfaces/password-hasher.interface';
 
 @Injectable()
@@ -14,7 +14,7 @@ export class Argon2Strategy implements PasswordHasher {
 			memoryCost: 65536, // 64 MB
 			timeCost: 3, // 3 iterações
 			parallelism: 4, // 4 threads
-			hashLength: this.config.passwordKeyLength, // Tamanho do hash em bytes
+			hashLength: this.config.security.passwordKeyLength, // Tamanho do hash em bytes
 		};
 	}
 

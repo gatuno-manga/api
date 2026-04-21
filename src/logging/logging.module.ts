@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
-import { AppConfigModule } from '../app-config/app-config.module';
-import { AppConfigService } from '../app-config/app-config.service';
+import { AppConfigModule } from '../infrastructure/app-config/app-config.module';
+import { AppConfigService } from '../infrastructure/app-config/app-config.service';
 import { CustomLogger } from '../custom.logger';
 import { LoggerRuleEngine } from './logger-rule-engine';
 

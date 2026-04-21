@@ -2,7 +2,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AppConfigModule } from 'src/app-config/app-config.module';
+import { AppConfigModule } from 'src/infrastructure/app-config/app-config.module';
 import { AuthModule } from 'src/auth/auth.module';
 import { ChapterRead } from 'src/books/entities/chapter-read.entity';
 import { FilesModule } from 'src/files/files.module';

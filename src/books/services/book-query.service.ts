@@ -10,7 +10,7 @@ import { Job, Queue } from 'bullmq';
 import { BookChaptersCursorPageDto } from '../dto/book-chapters-cursor-page.dto';
 import { BookChaptersCursorOptionsDto } from '../dto/book-chapters-cursor-options.dto';
 import { QueueCoverProcessorDto } from '../dto/queue-cover-processor.dto';
-import { AppConfigService } from 'src/app-config/app-config.service';
+import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { CursorPageDto } from 'src/pages/cursor-page.dto';
 import {
 	decodeCursorPayload,

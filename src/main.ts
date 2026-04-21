@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
-import { AppConfigService } from './app-config/app-config.service';
+import { AppConfigService } from './infrastructure/app-config/app-config.service';
 import { AppModule } from './app.module';
 import { configureBodyParser } from './config/body-parser.config';
 import { configureCors } from './config/cors.config';

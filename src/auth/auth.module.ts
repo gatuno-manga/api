@@ -2,10 +2,10 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AppConfigModule } from 'src/app-config/app-config.module';
-import { AppConfigService } from 'src/app-config/app-config.service';
-import { DataEncryptionProvider } from 'src/encryption/data-encryption.provider';
-import { EncryptionModule } from 'src/encryption/encryption.module';
+import { AppConfigModule } from 'src/infrastructure/app-config/app-config.module';
+import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
+import { DataEncryptionProvider } from 'src/infrastructure/encryption/data-encryption.provider';
+import { EncryptionModule } from 'src/infrastructure/encryption/encryption.module';
 import { LoggingModule } from 'src/logging/logging.module';
 import { Role } from 'src/users/entities/role.entity';
 import { User } from 'src/users/entities/user.entity';
@@ -28,6 +28,9 @@ import { WebauthnService } from './services/webauthn.service';
 import { JwtRefreshStrategy } from './strategy/jwt-refresh.strategy';
 import { JwtStrategy } from './strategy/jwt.strategy';
 
+import { SignUpUseCase } from './application/use-cases/sign-up.use-case';
+import { TypeOrmUserRepositoryAdapter } from './infrastructure/adapters/typeorm-user-repository.adapter';
+
 @Module({
 	imports: [
 		EncryptionModule,
@@ -47,9 +50,9 @@ import { JwtStrategy } from './strategy/jwt.strategy';
 			imports: [AppConfigModule],
 			inject: [AppConfigService],
 			useFactory: (appConfigService: AppConfigService) => ({
-				secret: appConfigService.jwtAccessSecret,
+				secret: appConfigService.jwt.accessSecret,
 				signOptions: {
-					expiresIn: appConfigService.jwtAccessExpiration,
+					expiresIn: appConfigService.jwt.accessExpiration,
 				},
 			}),
 		}),
@@ -58,6 +61,11 @@ import { JwtStrategy } from './strategy/jwt.strategy';
 	providers: [
 		CreateAdminEvent,
 		AuthService,
+		SignUpUseCase,
+		{
+			provide: 'UserRepositoryPort',
+			useClass: TypeOrmUserRepositoryAdapter,
+		},
 		SessionAuditService,
 		SessionManagementService,
 		TokenStoreService,
@@ -69,6 +77,6 @@ import { JwtStrategy } from './strategy/jwt.strategy';
 		WsJwtGuard,
 		JwtRefreshStrategy,
 	],
-	exports: [JwtModule, JwtStrategy, JwtAuthGuard, WsJwtGuard],
+	exports: [JwtModule, JwtStrategy, JwtAuthGuard, WsJwtGuard, SignUpUseCase],
 })
 export class AuthModule {}

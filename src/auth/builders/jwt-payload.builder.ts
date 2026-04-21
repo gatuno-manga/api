@@ -1,4 +1,5 @@
 import { User } from 'src/users/entities/user.entity';
+import { UserAuthData } from '../application/ports/user-repository.port';
 import { JwtPayloadDto } from '../dto/jwt-payload.dto';
 
 export class JwtPayloadBuilder {
@@ -85,14 +86,27 @@ export class JwtPayloadBuilder {
 		return this;
 	}
 
-	fromUser(user: User): this {
+	fromUser(user: User | UserAuthData): this {
 		if (!user.roles || user.roles.length === 0) {
 			throw new Error('User must have at least one role assigned');
 		}
 
-		const maxWeightSensitiveContent = Math.max(
-			...user.roles.map((role) => role.maxWeightSensitiveContent ?? 0),
-		);
+		let maxWeightSensitiveContent = 0;
+		if (
+			'maxWeightSensitiveContent' in user &&
+			user.maxWeightSensitiveContent !== undefined
+		) {
+			maxWeightSensitiveContent = user.maxWeightSensitiveContent;
+		} else {
+			// Fallback: try to find max weight in roles if they have it
+			const weights = user.roles
+				.map((role: any) => role.maxWeightSensitiveContent ?? 0)
+				.filter((w) => typeof w === 'number');
+
+			if (weights.length > 0) {
+				maxWeightSensitiveContent = Math.max(...weights);
+			}
+		}
 
 		return this.setSubject(user.id)
 			.setEmail(user.email)

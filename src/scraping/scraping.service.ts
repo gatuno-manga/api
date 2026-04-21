@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Redis } from 'ioredis';
 import { Browser, BrowserContext, Page } from 'playwright';
-import { AppConfigService } from 'src/app-config/app-config.service';
+import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { FilesService } from 'src/files/files.service';
 import { REDIS_CLIENT } from 'src/redis/redis.constants';
 import { PlaywrightBrowserFactory } from './browser';

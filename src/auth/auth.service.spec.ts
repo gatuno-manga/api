@@ -2,10 +2,10 @@ import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { AppConfigService } from '../app-config/app-config.service';
-import { DataEncryptionProvider } from '../encryption/data-encryption.provider';
-import { PasswordEncryption } from '../encryption/password-encryption.provider';
-import { PasswordMigrationService } from '../encryption/password-migration.service';
+import { AppConfigService } from '../infrastructure/app-config/app-config.service';
+import { DataEncryptionProvider } from '../infrastructure/encryption/data-encryption.provider';
+import { PasswordEncryption } from '../infrastructure/encryption/password-encryption.provider';
+import { PasswordMigrationService } from '../infrastructure/encryption/password-migration.service';
 import { Role } from '../users/entities/role.entity';
 import { User } from '../users/entities/user.entity';
 import { AuthService } from './auth.service';
@@ -75,21 +75,25 @@ describe('AuthService', () => {
 		};
 
 		const mockAppConfigService = {
-			jwtAccessSecret: 'test-access-secret',
-			jwtRefreshSecret: 'test-refresh-secret',
-			jwtAccessExpiration: '15m',
-			jwtRefreshExpiration: '7d',
+			jwt: {
+				accessSecret: 'test-access-secret',
+				refreshSecret: 'test-refresh-secret',
+				accessExpiration: '15m',
+				refreshExpiration: '7d',
+				issuer: 'gatuno-auth-test',
+				audience: 'gatuno-api-test',
+			},
+			security: {
+				mfaChallengeExpiration: '5m',
+				mfaStepUpEnabled: true,
+				saltLength: 16,
+				passwordKeyLength: 64,
+			},
 			authApiKeyDefaultExpiration: '1h',
 			authApiKeyMaxExpiration: '30d',
 			authApiKeyDefaultTtl: 3600000,
 			authApiKeyMaxTtl: 2592000000,
-			jwtIssuer: 'gatuno-auth-test',
-			jwtAudience: 'gatuno-api-test',
-			mfaChallengeExpiration: '5m',
-			mfaStepUpEnabled: true,
 			refreshTokenTtl: 604800000,
-			saltLength: 16,
-			passwordKeyLength: 64,
 		};
 
 		const mockTokenStore = {

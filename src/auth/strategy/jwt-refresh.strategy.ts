@@ -2,8 +2,8 @@ import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Request } from 'express';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { AppConfigService } from 'src/app-config/app-config.service';
-import { DataEncryptionProvider } from 'src/encryption/data-encryption.provider';
+import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
+import { DataEncryptionProvider } from 'src/infrastructure/encryption/data-encryption.provider';
 import { PayloadAuthDto } from '../dto/payload-auth.dto';
 import { TokenStoreService } from '../services/token-store.service';
 
@@ -28,9 +28,9 @@ export class JwtRefreshStrategy extends PassportStrategy(
 				},
 			]),
 			ignoreExpiration: false,
-			secretOrKey: configService.jwtRefreshSecret,
-			issuer: configService.jwtIssuer,
-			audience: configService.jwtAudience,
+			secretOrKey: configService.jwt.refreshSecret,
+			issuer: configService.jwt.issuer,
+			audience: configService.jwt.audience,
 			passReqToCallback: true,
 		});
 	}

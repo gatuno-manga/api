@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { AppConfigService } from 'src/app-config/app-config.service';
+import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { ReadingProgressResponseDto } from './dto/reading-progress.dto';
 import { ReadingProgress } from './entities/reading-progress.entity';
 import { User } from './entities/user.entity';

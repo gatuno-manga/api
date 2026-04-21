@@ -12,8 +12,8 @@ import {
 import { authenticator } from 'otplib';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { AppConfigService } from 'src/app-config/app-config.service';
-import { PasswordEncryption } from 'src/encryption/password-encryption.provider';
+import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
+import { PasswordEncryption } from 'src/infrastructure/encryption/password-encryption.provider';
 import { User } from 'src/users/entities/user.entity';
 import { UserMfa } from '../entities/user-mfa.entity';
 
@@ -40,7 +40,7 @@ export class MfaService {
 
 	private getEncryptionKey(): Buffer {
 		return createHash('sha256')
-			.update(this.appConfig.mfaEncryptionSecret)
+			.update(this.appConfig.security.mfaEncryptionSecret)
 			.digest();
 	}
 
@@ -138,7 +138,7 @@ export class MfaService {
 		const encryptedSecret = this.encryptSecret(secret);
 		const otpauthUri = authenticator.keyuri(
 			user.email,
-			this.appConfig.mfaIssuerName,
+			this.appConfig.security.mfaIssuerName,
 			secret,
 		);
 

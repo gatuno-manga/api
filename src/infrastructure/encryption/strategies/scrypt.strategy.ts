@@ -1,7 +1,7 @@
 import { scrypt as _scrypt, randomBytes } from 'node:crypto';
 import { promisify } from 'node:util';
 import { Injectable } from '@nestjs/common';
-import { AppConfigService } from 'src/app-config/app-config.service';
+import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { PasswordHasher } from '../interfaces/password-hasher.interface';
 
 const scrypt = promisify(_scrypt);
@@ -13,11 +13,13 @@ export class ScryptStrategy implements PasswordHasher {
 	constructor(private readonly config: AppConfigService) {}
 
 	async hash(password: string): Promise<string> {
-		const salt = randomBytes(this.config.saltLength).toString('hex');
+		const salt = randomBytes(this.config.security.saltLength).toString(
+			'hex',
+		);
 		const hash = (await scrypt(
 			password,
 			salt,
-			this.config.passwordKeyLength,
+			this.config.security.passwordKeyLength,
 		)) as Buffer;
 		return `${hash.toString('hex')}.${salt}`;
 	}
@@ -31,7 +33,7 @@ export class ScryptStrategy implements PasswordHasher {
 		const hashBuffer = (await scrypt(
 			password,
 			salt,
-			this.config.passwordKeyLength,
+			this.config.security.passwordKeyLength,
 		)) as Buffer;
 
 		return hashBuffer.toString('hex') === storedHash;

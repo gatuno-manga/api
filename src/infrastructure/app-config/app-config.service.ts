@@ -4,6 +4,14 @@ import ms from 'ms';
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
+import {
+	AdminConfig,
+	DatabaseConfig,
+	JwtConfig,
+	RedisConfig,
+	SecurityConfig,
+} from './app-config.values';
+
 @Injectable()
 export class AppConfigService {
 	private readonly logger = new Logger(AppConfigService.name);
@@ -43,41 +51,37 @@ export class AppConfigService {
 		return [this.appUrl];
 	}
 
-	get jwtAccessSecret(): string {
-		return this.config.get<string>('JWT_ACCESS_SECRET') || 'default_secret';
-	}
-
-	get jwtAccessExpiration(): string {
-		return this.config.get<string>('JWT_ACCESS_EXPIRATION') || '15m';
-	}
-
-	get jwtRefreshSecret(): string {
-		return (
+	get jwt(): JwtConfig {
+		return new JwtConfig(
+			this.config.get<string>('JWT_ACCESS_SECRET') || 'default_secret',
+			this.config.get<string>('JWT_ACCESS_EXPIRATION') || '15m',
 			this.config.get<string>('JWT_REFRESH_SECRET') ||
-			'default_refresh_secret'
+				'default_refresh_secret',
+			this.config.get<string>('JWT_REFRESH_EXPIRATION') || '7d',
+			this.config.get<string>('JWT_ISSUER') || 'gatuno-auth',
+			this.config.get<string>('JWT_AUDIENCE') || 'gatuno-api',
 		);
 	}
 
-	get jwtRefreshExpiration(): string {
-		return this.config.get<string>('JWT_REFRESH_EXPIRATION') || '7d';
-	}
-
-	get authApiKeyDefaultExpiration(): string {
-		return (
-			this.config.get<string>('AUTH_API_KEY_DEFAULT_EXPIRATION') || '1h'
+	get security(): SecurityConfig {
+		return new SecurityConfig(
+			this.config.get<number>('SALT_LENGTH') || 16,
+			this.config.get<number>('PASSWORD_KEY_LENGTH') || 64,
+			this.config.get<string>('MFA_ISSUER_NAME') || 'Gatuno',
+			this.config.get<string>('MFA_ENCRYPTION_SECRET') ||
+				this.jwt.refreshSecret,
+			this.config.get<boolean>('MFA_STEP_UP_ENABLED') ?? true,
+			this.config.get<string>('MFA_CHALLENGE_EXPIRATION') || '5m',
+			this.config.get<string>('AUTH_API_KEY_DEFAULT_EXPIRATION') || '1h',
+			this.config.get<string>('AUTH_API_KEY_MAX_EXPIRATION') || '30d',
 		);
 	}
 
-	get authApiKeyMaxExpiration(): string {
-		return this.config.get<string>('AUTH_API_KEY_MAX_EXPIRATION') || '30d';
-	}
-
-	get jwtIssuer(): string {
-		return this.config.get<string>('JWT_ISSUER') || 'gatuno-auth';
-	}
-
-	get jwtAudience(): string {
-		return this.config.get<string>('JWT_AUDIENCE') || 'gatuno-api';
+	get admin(): AdminConfig {
+		return new AdminConfig(
+			this.config.get<string>('USERADMIN_EMAIL') || '',
+			this.config.get<string>('USERADMIN_PASSWORD') || '',
+		);
 	}
 
 	private resolveHostFromUrl(url: string): string {
@@ -116,60 +120,24 @@ export class AppConfigService {
 		return this.config.get<number>('WEBAUTHN_CHALLENGE_TTL_MS') ?? 300000;
 	}
 
-	get mfaIssuerName(): string {
-		return this.config.get<string>('MFA_ISSUER_NAME') || 'Gatuno';
-	}
-
-	get mfaEncryptionSecret(): string {
-		return (
-			this.config.get<string>('MFA_ENCRYPTION_SECRET') ||
-			this.jwtRefreshSecret
+	get database(): DatabaseConfig {
+		return new DatabaseConfig(
+			this.config.get<string>('DB_TYPE')!,
+			this.config.get<string>('DB_NAME')!,
+			this.config.get<string>('DB_MASTER_HOST')!,
+			this.config.get<number>('DB_PORT')!,
+			this.config.get<string>('DB_USER')!,
+			this.config.get<string>('DB_PASS')!,
+			this.parseCsv(this.config.get<string>('DB_SLAVE_HOSTS')),
 		);
 	}
 
-	get mfaStepUpEnabled(): boolean {
-		return this.config.get<boolean>('MFA_STEP_UP_ENABLED') ?? true;
-	}
-
-	get mfaChallengeExpiration(): string {
-		return this.config.get<string>('MFA_CHALLENGE_EXPIRATION') || '5m';
-	}
-
-	get saltLength(): number {
-		return this.config.get<number>('SALT_LENGTH') || 16;
-	}
-
-	get passwordKeyLength(): number {
-		return this.config.get<number>('PASSWORD_KEY_LENGTH') || 64;
-	}
-
-	get adminInfo() {
-		return {
-			email: this.config.get<string>('USERADMIN_EMAIL') || '',
-			password: this.config.get<string>('USERADMIN_PASSWORD') || '',
-		};
-	}
-
-	get database() {
-		return {
-			type: this.config.get<string>('DB_TYPE'),
-			name: this.config.get<string>('DB_NAME'),
-			host: this.config.get<string>('DB_MASTER_HOST'),
-			port: this.config.get<number>('DB_PORT'),
-			username: this.config.get<string>('DB_USER'),
-			password: this.config.get<string>('DB_PASS'),
-			slaveHosts: this.parseCsv(
-				this.config.get<string>('DB_SLAVE_HOSTS'),
-			),
-		};
-	}
-
-	get redis() {
-		return {
-			host: this.config.get<string>('REDIS_HOST'),
-			port: this.config.get<number>('REDIS_PORT') || 6379,
-			password: this.config.get<string>('REDIS_PASSWORD') || '',
-		};
+	get redis(): RedisConfig {
+		return new RedisConfig(
+			this.config.get<string>('REDIS_HOST')!,
+			this.config.get<number>('REDIS_PORT') || 6379,
+			this.config.get<string>('REDIS_PASSWORD') || '',
+		);
 	}
 
 	get queueConcurrency() {
@@ -245,18 +213,20 @@ export class AppConfigService {
 	}
 
 	get refreshTokenTtl(): number {
-		const duration = this.jwtRefreshExpiration;
+		const duration = this.jwt.refreshExpiration;
 		return this.parseDurationToMilliseconds(duration);
 	}
 
 	get authApiKeyDefaultTtl(): number {
 		return this.parseDurationToMilliseconds(
-			this.authApiKeyDefaultExpiration,
+			this.config.get<string>('AUTH_API_KEY_DEFAULT_EXPIRATION') || '1h',
 		);
 	}
 
 	get authApiKeyMaxTtl(): number {
-		return this.parseDurationToMilliseconds(this.authApiKeyMaxExpiration);
+		return this.parseDurationToMilliseconds(
+			this.config.get<string>('AUTH_API_KEY_MAX_EXPIRATION') || '30d',
+		);
 	}
 
 	/** 0 = unlimited sessions */
