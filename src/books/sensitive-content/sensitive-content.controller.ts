@@ -20,10 +20,10 @@ import {
 } from '@nestjs/swagger';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Throttle } from '@nestjs/throttler';
-import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
-import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
-import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
-import { OptionalAuthGuard } from 'src/auth/guard/optional-auth.guard';
+import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
+import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
+import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
+import { OptionalAuthGuard } from 'src/auth/infrastructure/framework/optional-auth.guard';
 import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-cache.interceptor';
 import { CreateSensitiveContentDto } from './dto/create-sensitive-content.dto';
 import { UpdateSensitiveContentDto } from './dto/update-sensitive-content.dto';

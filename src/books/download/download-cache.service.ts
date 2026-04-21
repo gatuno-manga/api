@@ -8,7 +8,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { Redis } from 'ioredis';
 import { ChapterUpdatedEvent } from 'src/books/chapters/events/chapter-updated.event';
 import { BookEvents } from 'src/books/constants/events.constant';
-import { REDIS_CLIENT } from 'src/redis/redis.constants';
+import { REDIS_CLIENT } from 'src/infrastructure/redis/redis.constants';
 
 @Injectable()
 export class DownloadCacheService implements OnModuleInit {

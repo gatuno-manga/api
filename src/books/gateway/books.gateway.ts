@@ -11,7 +11,7 @@ import {
 	WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { WsJwtGuard } from '../../auth/guard/ws-jwt.guard';
+import { WsJwtGuard } from '../../auth/infrastructure/framework/ws-jwt.guard';
 import { RolesEnum } from '../../users/enum/roles.enum';
 import { BookEvents } from '../constants/events.constant';
 import { Book } from '../entities/book.entity';

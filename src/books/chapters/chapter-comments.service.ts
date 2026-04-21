@@ -7,16 +7,16 @@ import {
 import { randomUUID } from 'node:crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
-import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
+import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { RolesEnum } from 'src/users/enum/roles.enum';
 import { User } from 'src/users/entities/user.entity';
-import { CursorPageDto } from 'src/pages/cursor-page.dto';
+import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 import {
 	decodeCursorPayload,
 	encodeCursorPayload,
-} from 'src/pages/cursor.utils';
-import { MetadataPageDto } from 'src/pages/metadata-page.dto';
-import { PageDto } from 'src/pages/page.dto';
+} from 'src/common/pagination/cursor.utils';
+import { MetadataPageDto } from 'src/common/pagination/metadata-page.dto';
+import { PageDto } from 'src/common/pagination/page.dto';
 import { Brackets, Repository, SelectQueryBuilder } from 'typeorm';
 import { ChapterComment } from '../entities/chapter-comment.entity';
 import { Chapter } from '../entities/chapter.entity';

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { CursorPageDto } from 'src/pages/cursor-page.dto';
-import { PageDto } from 'src/pages/page.dto';
+import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
+import { PageDto } from 'src/common/pagination/page.dto';
 import { BookRelationshipsQueryDto } from './dto/book-relationships-query.dto';
 import { BookChaptersCursorPageDto } from './dto/book-chapters-cursor-page.dto';
 import { BookChaptersCursorOptionsDto } from './dto/book-chapters-cursor-options.dto';

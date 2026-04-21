@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
-import { PageOptionsDto } from 'src/pages/page-options.dto';
+import { PageOptionsDto } from 'src/common/pagination/page-options.dto';
 
 export class ChapterCommentsPageOptionsDto extends PageOptionsDto {
 	@ApiPropertyOptional({

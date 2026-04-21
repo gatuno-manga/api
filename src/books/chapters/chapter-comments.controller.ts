@@ -12,9 +12,9 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
-import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
-import { OptionalAuthGuard } from 'src/auth/guard/optional-auth.guard';
+import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
+import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
+import { OptionalAuthGuard } from 'src/auth/infrastructure/framework/optional-auth.guard';
 import { AuthenticatedApi } from 'src/common/swagger/auth-api.decorators';
 import { COMMON_RESPONSES } from 'src/common/swagger/common-responses';
 import { ChapterCommentsService } from './chapter-comments.service';

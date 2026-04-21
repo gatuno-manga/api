@@ -18,7 +18,7 @@ import {
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
-import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
+import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { DownloadService } from './download.service';
 import { DownloadChapterQueryDto } from './dto/download-chapter-query.dto';
 

@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
-import { ToArray } from 'src/pages/decorator/to-array.decorator';
+import { ToArray } from 'src/common/pagination/decorator/to-array.decorator';
 import { BookRelationType } from '../enum/book-relation-type.enum';
 
 export class BookRelationshipsQueryDto {

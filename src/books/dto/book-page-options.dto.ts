@@ -8,8 +8,8 @@ import {
 	IsString,
 	IsUUID,
 } from 'class-validator';
-import { ToArray } from 'src/pages/decorator/to-array.decorator';
-import { PageOptionsDto } from 'src/pages/page-options.dto';
+import { ToArray } from 'src/common/pagination/decorator/to-array.decorator';
+import { PageOptionsDto } from 'src/common/pagination/page-options.dto';
 import { FilterLogic } from 'src/common/enum/filter-logic.enum';
 import { FilterOperator } from 'src/common/enum/filter-operator.enum';
 import { OrderDirection } from 'src/common/enum/order-direction.enum';

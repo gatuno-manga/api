@@ -7,11 +7,11 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { AdminUsersService } from 'src/users/admin-users.service';
 import { In, IsNull, Repository, SelectQueryBuilder } from 'typeorm';
-import { CursorPageDto } from 'src/pages/cursor-page.dto';
+import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 import {
 	decodeCursorPayload,
 	encodeCursorPayload,
-} from 'src/pages/cursor.utils';
+} from 'src/common/pagination/cursor.utils';
 import { BookRelationshipsQueryDto } from '../dto/book-relationships-query.dto';
 import { CreateBookRelationshipDto } from '../dto/create-book-relationship.dto';
 import { UpdateBookRelationshipDto } from '../dto/update-book-relationship.dto';

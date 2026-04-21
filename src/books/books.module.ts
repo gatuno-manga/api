@@ -6,7 +6,7 @@ import { AppConfigModule } from 'src/infrastructure/app-config/app-config.module
 import { AuthModule } from 'src/auth/auth.module';
 import { ChapterRead } from 'src/books/entities/chapter-read.entity';
 import { FilesModule } from 'src/files/files.module';
-import { LoggingModule } from 'src/logging/logging.module';
+import { LoggingModule } from 'src/infrastructure/logging/logging.module';
 import { MetricsModule } from 'src/metrics/metrics.module';
 import { ScrapingModule } from 'src/scraping/scraping.module';
 import { UsersModule } from 'src/users/users.module';

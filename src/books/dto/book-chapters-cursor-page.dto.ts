@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { CursorPageDto } from 'src/pages/cursor-page.dto';
+import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 import { ScrapingStatus } from '../enum/scrapingStatus.enum';
 
 export class BookChapterCursorItemDto {

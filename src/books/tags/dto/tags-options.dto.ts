@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional } from 'class-validator';
-import { ToArray } from 'src/pages/decorator/to-array.decorator';
+import { ToArray } from 'src/common/pagination/decorator/to-array.decorator';
 
 export class TagsOptions {
 	@ApiPropertyOptional({
