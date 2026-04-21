@@ -6,11 +6,11 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, In, Repository } from 'typeorm';
-import { CursorPageDto } from 'src/pages/cursor-page.dto';
+import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 import {
 	decodeCursorPayload,
 	encodeCursorPayload,
-} from 'src/pages/cursor.utils';
+} from 'src/common/pagination/cursor.utils';
 import { CreateAccessPolicyDto } from './dto/create-access-policy.dto';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { CreateRoleDto } from './dto/create-role.dto';

@@ -3,11 +3,11 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import { AppConfigService } from './infrastructure/app-config/app-config.service';
 import { AppModule } from './app.module';
-import { configureBodyParser } from './config/body-parser.config';
-import { configureCors } from './config/cors.config';
-import { configureStaticAssets } from './config/static-assets.config';
-import { configureSwagger } from './config/swagger.config';
-import { configureValidationPipe } from './config/validation-pipe.config';
+import { configureBodyParser } from './infrastructure/http/config/body-parser.config';
+import { configureCors } from './infrastructure/http/config/cors.config';
+import { configureStaticAssets } from './infrastructure/http/config/static-assets.config';
+import { configureSwagger } from './infrastructure/http/config/swagger.config';
+import { configureValidationPipe } from './infrastructure/http/config/validation-pipe.config';
 
 async function bootstrap() {
 	const app = await NestFactory.create<NestExpressApplication>(AppModule);

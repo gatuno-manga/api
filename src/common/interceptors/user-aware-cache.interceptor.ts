@@ -1,6 +1,6 @@
 import { CACHE_KEY_METADATA, CacheInterceptor } from '@nestjs/cache-manager';
 import { ExecutionContext, Injectable } from '@nestjs/common';
-import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
+import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 
 interface RequestWithUser {
 	url?: string;

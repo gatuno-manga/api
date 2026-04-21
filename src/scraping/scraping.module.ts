@@ -4,7 +4,7 @@ import { AppConfigModule } from 'src/infrastructure/app-config/app-config.module
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { AuthModule } from 'src/auth/auth.module';
 import { FilesModule } from 'src/files/files.module';
-import { RedisModule } from 'src/redis';
+import { RedisModule } from 'src/infrastructure/redis/redis.module';
 import { BrowserConfig, PlaywrightBrowserFactory } from './browser';
 import { Website } from './entities/website.entity';
 import { BrowserPoolService } from './pool';

@@ -9,8 +9,8 @@ import {
 	Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
-import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
+import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
+import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { AdminApi } from 'src/common/swagger/auth-api.decorators';
 import { COMMON_RESPONSES } from 'src/common/swagger/common-responses';
 import { AdminUsersService } from './admin-users.service';

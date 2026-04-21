@@ -16,8 +16,8 @@ import {
 } from '@nestjs/swagger';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Throttle } from '@nestjs/throttler';
-import { Roles } from 'src/auth/decorator/roles.decorator';
-import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
+import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
+import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { RolesEnum } from 'src/users/enum/roles.enum';
 import { FileCleanupService } from './file-cleanup.service';
 

@@ -14,7 +14,7 @@ import {
 	UserActionLog,
 	ValidationErrorLog,
 } from './common/types/logging.types';
-import { LoggerRuleEngine } from './logging/logger-rule-engine';
+import { LoggerRuleEngine } from './infrastructure/logging/logger-rule-engine';
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class CustomLogger implements LoggerService {

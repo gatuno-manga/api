@@ -1,4 +1,4 @@
-import { LogLevel } from '../common/types/logging.types';
+import { LogLevel } from '../../common/types/logging.types';
 
 export interface LogRule {
 	contexts: string[];

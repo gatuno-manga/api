@@ -1,13 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Author } from '../books/entities/author.entity';
-import { Book } from '../books/entities/book.entity';
-import { Chapter } from '../books/entities/chapter.entity';
-import { Page } from '../books/entities/page.entity';
-import { SensitiveContent } from '../books/entities/sensitive-content.entity';
-import { Tag } from '../books/entities/tags.entity';
-import { User } from '../users/entities/user.entity';
+import { Author } from '../../../../books/entities/author.entity';
+import { Book } from '../../../../books/entities/book.entity';
+import { Chapter } from '../../../../books/entities/chapter.entity';
+import { Page } from '../../../../books/entities/page.entity';
+import { SensitiveContent } from '../../../../books/entities/sensitive-content.entity';
+import { Tag } from '../../../../books/entities/tags.entity';
+import { User } from '../../../../users/entities/user.entity';
+import {
+	DashboardRepositoryPort,
+	DashboardStats,
+} from '../../../application/ports/dashboard-repository.port';
 
 interface RawStatusCount {
 	status: string | null;
@@ -20,7 +24,7 @@ interface RawNameCount {
 }
 
 @Injectable()
-export class DashboardService {
+export class TypeOrmDashboardAdapter implements DashboardRepositoryPort {
 	constructor(
 		@InjectRepository(Book)
 		private readonly bookRepository: Repository<Book>,
@@ -38,15 +42,24 @@ export class DashboardService {
 		private readonly sensitiveContentRepository: Repository<SensitiveContent>,
 	) {}
 
-	async getOverview() {
-		const totalBooks = await this.bookRepository.count();
-		const totalChapters = await this.chapterRepository.count();
-		const totalUsers = await this.userRepository.count();
-		const totalPages = await this.pageRepository.count();
-		const totalTags = await this.tagRepository.count();
-		const totalAuthors = await this.authorRepository.count();
-		const totalSensitiveContent =
-			await this.sensitiveContentRepository.count();
+	async getOverviewStats(): Promise<DashboardStats> {
+		const [
+			totalBooks,
+			totalChapters,
+			totalUsers,
+			totalPages,
+			totalTags,
+			totalAuthors,
+			totalSensitiveContent,
+		] = await Promise.all([
+			this.bookRepository.count(),
+			this.chapterRepository.count(),
+			this.userRepository.count(),
+			this.pageRepository.count(),
+			this.tagRepository.count(),
+			this.authorRepository.count(),
+			this.sensitiveContentRepository.count(),
+		]);
 
 		// Agrupar status de scraping dos livros
 		const booksByStatus = await this.bookRepository
@@ -97,22 +110,20 @@ export class DashboardService {
 				sensitiveContent: totalSensitiveContent,
 			},
 			status: {
-				books: booksByStatus.map((item: RawStatusCount) => ({
+				books: booksByStatus.map((item) => ({
 					status: item.status || 'UNKNOWN',
 					count: Number.parseInt(item.count),
 				})),
-				chapters: chaptersByStatus.map((item: RawStatusCount) => ({
+				chapters: chaptersByStatus.map((item) => ({
 					status: item.status || 'UNKNOWN',
 					count: Number.parseInt(item.count),
 				})),
 			},
-			sensitiveContent: sensitiveContentDistribution.map(
-				(item: RawNameCount) => ({
-					name: item.name,
-					count: Number.parseInt(item.count),
-				}),
-			),
-			tags: tagsDistribution.map((item: RawNameCount) => ({
+			sensitiveContent: sensitiveContentDistribution.map((item) => ({
+				name: item.name,
+				count: Number.parseInt(item.count),
+			})),
+			tags: tagsDistribution.map((item) => ({
 				name: item.name,
 				count: Number.parseInt(item.count),
 			})),

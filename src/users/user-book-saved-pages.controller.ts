@@ -14,9 +14,9 @@ import {
 	ApiTags,
 } from '@nestjs/swagger';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
-import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
-import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
-import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
+import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
+import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
+import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { DataEnvelopeInterceptor } from 'src/common/interceptors/data-envelope.interceptor';
 import { SavedPagesService } from './saved-pages/saved-pages.service';
 

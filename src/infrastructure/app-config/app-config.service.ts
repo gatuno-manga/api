@@ -122,19 +122,19 @@ export class AppConfigService {
 
 	get database(): DatabaseConfig {
 		return new DatabaseConfig(
-			this.config.get<string>('DB_TYPE')!,
-			this.config.get<string>('DB_NAME')!,
-			this.config.get<string>('DB_MASTER_HOST')!,
-			this.config.get<number>('DB_PORT')!,
-			this.config.get<string>('DB_USER')!,
-			this.config.get<string>('DB_PASS')!,
+			this.config.get<string>('DB_TYPE') ?? 'mysql',
+			this.config.get<string>('DB_NAME') ?? '',
+			this.config.get<string>('DB_MASTER_HOST') ?? '',
+			this.config.get<number>('DB_PORT') ?? 3306,
+			this.config.get<string>('DB_USER') ?? '',
+			this.config.get<string>('DB_PASS') ?? '',
 			this.parseCsv(this.config.get<string>('DB_SLAVE_HOSTS')),
 		);
 	}
 
 	get redis(): RedisConfig {
 		return new RedisConfig(
-			this.config.get<string>('REDIS_HOST')!,
+			this.config.get<string>('REDIS_HOST') ?? '',
 			this.config.get<number>('REDIS_PORT') || 6379,
 			this.config.get<string>('REDIS_PASSWORD') || '',
 		);

@@ -1,7 +1,7 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { AppConfigService } from '../infrastructure/app-config/app-config.service';
 import { FilesService } from '../files/files.service';
-import { REDIS_CLIENT } from '../redis/redis.constants';
+import { REDIS_CLIENT } from '../infrastructure/redis/redis.constants';
 import { PlaywrightBrowserFactory } from './browser';
 import { ScrapingService } from './scraping.service';
 import { WebsiteService } from './website.service';

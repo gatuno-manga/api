@@ -14,8 +14,8 @@ import {
 	ApiTags,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
-import { CurrentUserDto } from 'src/auth/dto/current-user.dto';
+import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
+import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { DataEnvelopeInterceptor } from 'src/common/interceptors/data-envelope.interceptor';
 import { AuthenticatedApi } from 'src/common/swagger/auth-api.decorators';
 import { COMMON_RESPONSES } from 'src/common/swagger/common-responses';

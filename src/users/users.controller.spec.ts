@@ -1,5 +1,5 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/infrastructure/framework/jwt-auth.guard';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 
