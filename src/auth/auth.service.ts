@@ -9,24 +9,27 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import ms from 'ms';
-import { AppConfigService } from 'src/app-config/app-config.service';
-import { DataEncryptionProvider } from 'src/encryption/data-encryption.provider';
-import { PasswordEncryption } from 'src/encryption/password-encryption.provider';
-import { PasswordMigrationService } from 'src/encryption/password-migration.service';
-import { Role } from 'src/users/entities/role.entity';
-import { User } from 'src/users/entities/user.entity';
+import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
+import { DataEncryptionProvider } from 'src/infrastructure/encryption/data-encryption.provider';
+import { PasswordEncryption } from 'src/infrastructure/encryption/password-encryption.provider';
+import { PasswordMigrationService } from 'src/infrastructure/encryption/password-migration.service';
+import { SignUpUseCase } from './application/use-cases/sign-up.use-case';
+import { SignInUseCase } from './application/use-cases/sign-in.use-case';
+import { UserAuthData } from './application/ports/user-repository.port';
+import { Role } from 'src/users/infrastructure/database/entities/role.entity';
+import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import { Repository } from 'typeorm';
-import { JwtPayloadBuilder } from './builders/jwt-payload.builder';
-import { ListAuthAuditQueryDto } from './dto/list-auth-audit-query.dto';
-import { StoredTokenDto } from './dto/stored-token.dto';
-import { LoginApiKey } from './entities/login-api-key.entity';
+import { JwtPayloadBuilder } from './application/builders/jwt-payload.builder';
+import { ListAuthAuditQueryDto } from './infrastructure/http/dto/list-auth-audit-query.dto';
+import { StoredTokenDto } from './application/dto/stored-token.dto';
+import { LoginApiKey } from './infrastructure/database/entities/login-api-key.entity';
 import {
 	SessionAuditEvent,
 	SessionAuditService,
-} from './services/session-audit.service';
-import { SessionManagementService } from './services/session-management.service';
-import { MfaService } from './services/mfa.service';
-import { TokenStoreService } from './services/token-store.service';
+} from './infrastructure/adapters/session-audit.service';
+import { SessionManagementService } from './infrastructure/adapters/session-management.service';
+import { MfaService } from './infrastructure/adapters/mfa.service';
+import { TokenStoreService } from './infrastructure/adapters/token-store.service';
 import {
 	AuthFlowResult,
 	AuthMethod,
@@ -97,6 +100,8 @@ export class AuthService {
 		private readonly sessionAudit: SessionAuditService,
 		private readonly sessionManagement: SessionManagementService,
 		private readonly mfaService: MfaService,
+		private readonly signUpUseCase: SignUpUseCase,
+		private readonly signInUseCase: SignInUseCase,
 	) {
 		this.logger.log(
 			`🔐 Algoritmo de hashing ativo: ${this.passwordEncryption.getAlgorithm()}`,
@@ -143,7 +148,7 @@ export class AuthService {
 
 		if (parsedDuration > configuredMaxTtl) {
 			throw new BadRequestException(
-				`API key expiration exceeds maximum allowed value (${this.configService.authApiKeyMaxExpiration})`,
+				`API key expiration exceeds maximum allowed value (${this.configService.security.authApiKeyMaxExpiration})`,
 			);
 		}
 
@@ -191,36 +196,7 @@ export class AuthService {
 	}
 
 	async signUp(email: string, password: string, isAdmin = false) {
-		const userExist = await this.userRepository.findOneBy({ email });
-		if (userExist) {
-			this.logger.error('User exists', userExist);
-			throw new BadRequestException('User already exists');
-		}
-
-		const result = await this.passwordEncryption.encrypt(password);
-		const roleName = isAdmin ? 'admin' : 'user';
-		const role = await this.roleRepository.findOne({
-			where: { name: roleName },
-		});
-		if (!role) {
-			throw new BadRequestException(
-				`${roleName.charAt(0).toUpperCase() + roleName.slice(1)} role not found`,
-			);
-		}
-		const user = await this.userRepository.save(
-			this.userRepository.create({
-				userName: email.split('@')[0],
-				email,
-				password: result,
-				roles: [role],
-			}),
-		);
-
-		// Mantém roles no objeto retornado sem depender de novo SELECT.
-		user.roles = [role];
-
-		this.logger.log('User created', user);
-		return user;
+		return this.signUpUseCase.execute(email, password, isAdmin);
 	}
 
 	private async resolveRiskLevel(
@@ -236,7 +212,7 @@ export class AuthService {
 	}
 
 	private async createMfaChallengeToken(
-		user: User,
+		user: User | UserAuthData,
 		authMethod: AuthMethod,
 		riskLevel: AuthRiskLevel,
 		context: AuthRequestContext,
@@ -251,15 +227,15 @@ export class AuthService {
 		};
 
 		return this.jwtService.signAsync(payload, {
-			secret: this.configService.jwtAccessSecret,
-			expiresIn: this.configService.mfaChallengeExpiration,
-			issuer: this.configService.jwtIssuer,
-			audience: this.configService.jwtAudience,
+			secret: this.configService.jwt.accessSecret,
+			expiresIn: this.configService.security.mfaChallengeExpiration,
+			issuer: this.configService.jwt.issuer,
+			audience: this.configService.jwt.audience,
 		});
 	}
 
 	private async issueAuthFlowForUser(
-		user: User,
+		user: User | UserAuthData,
 		options: {
 			authMethod: AuthMethod;
 			context?: AuthRequestContext;
@@ -272,7 +248,7 @@ export class AuthService {
 		);
 		const mfaEnabled = await this.mfaService.isTotpEnabled(user.id);
 		const stepUpEnabled =
-			this.configService.mfaStepUpEnabled &&
+			this.configService.security.mfaStepUpEnabled &&
 			!this.isMobileContext(normalizedContext);
 
 		if (mfaEnabled && stepUpEnabled && riskLevel === 'high') {
@@ -323,55 +299,34 @@ export class AuthService {
 		password: string,
 		context?: AuthRequestContext,
 	): Promise<AuthFlowResult> {
-		const normalizedContext = this.normalizeRequestContext(context);
-		const user = await this.userRepository.findOne({
-			where: { email },
-			relations: ['roles'],
-			select: ['id', 'email', 'password', 'roles'],
-		});
-
-		if (!user) {
-			this.sessionAudit.track({
-				event: 'login_failed',
-				success: false,
-				context: normalizedContext,
-				metadata: {
-					email,
-					reason: 'user_not_found',
-				},
-			});
-			this.logger.error('User not exists', email);
-			throw new UnauthorizedException('User not exists');
-		}
-
-		if (!(await this.passwordEncryption.compare(user.password, password))) {
-			this.sessionAudit.track({
-				userId: user.id,
-				event: 'login_failed',
-				success: false,
-				context: normalizedContext,
-				metadata: {
-					reason: 'invalid_password',
-				},
-			});
-			this.logger.error('Invalid password', email);
-			throw new UnauthorizedException('Invalid password');
-		}
-
-		const wasMigrated = await this.passwordMigration.migratePasswordOnLogin(
-			user,
+		return this.signInUseCase.execute(
+			email,
 			password,
-		);
-		if (wasMigrated) {
-			this.logger.log(
-				`🔄 Senha do usuário ${user.email} migrada com sucesso para ${this.passwordEncryption.getAlgorithm()}`,
-			);
-		}
+			context,
+			async (user, authMethod, context) => {
+				// Re-fetch full user for migration if needed
+				const fullUser = await this.userRepository.findOneBy({
+					id: user.id,
+				});
+				if (fullUser) {
+					const wasMigrated =
+						await this.passwordMigration.migratePasswordOnLogin(
+							fullUser,
+							password,
+						);
+					if (wasMigrated) {
+						this.logger.log(
+							`🔄 Senha do usuário ${fullUser.email} migrada com sucesso para ${this.passwordEncryption.getAlgorithm()}`,
+						);
+					}
+				}
 
-		return this.issueAuthFlowForUser(user, {
-			authMethod: 'password',
-			context: normalizedContext,
-		});
+				return this.issueAuthFlowForUser(fullUser || user, {
+					authMethod: authMethod as AuthMethod,
+					context,
+				});
+			},
+		);
 	}
 
 	async createLoginApiKeyForAdminSelf(
@@ -571,9 +526,9 @@ export class AuthService {
 			payload = await this.jwtService.verifyAsync<MfaChallengePayload>(
 				mfaToken,
 				{
-					secret: this.configService.jwtAccessSecret,
-					issuer: this.configService.jwtIssuer,
-					audience: this.configService.jwtAudience,
+					secret: this.configService.jwt.accessSecret,
+					issuer: this.configService.jwt.issuer,
+					audience: this.configService.jwt.audience,
 				},
 			);
 		} catch {
@@ -689,7 +644,7 @@ export class AuthService {
 	}
 
 	private async getTokens(
-		user: User,
+		user: User | UserAuthData,
 		rotation?: TokenRotationInput,
 	): Promise<{
 		accessToken: string;
@@ -705,7 +660,7 @@ export class AuthService {
 		const sessionId = rotation?.sessionId ?? randomUUID();
 		const payload = new JwtPayloadBuilder()
 			.fromUser(user)
-			.setIssuer(this.configService.jwtIssuer)
+			.setIssuer(this.configService.jwt.issuer)
 			.setSessionId(sessionId)
 			.build();
 
@@ -721,14 +676,14 @@ export class AuthService {
 
 		const [accessToken, refreshToken] = await Promise.all([
 			this.jwtService.signAsync(payload, {
-				secret: this.configService.jwtAccessSecret,
-				expiresIn: this.configService.jwtAccessExpiration,
-				audience: this.configService.jwtAudience,
+				secret: this.configService.jwt.accessSecret,
+				expiresIn: this.configService.jwt.accessExpiration,
+				audience: this.configService.jwt.audience,
 			}),
 			this.jwtService.signAsync(refreshPayload, {
-				secret: this.configService.jwtRefreshSecret,
-				expiresIn: this.configService.jwtRefreshExpiration,
-				audience: this.configService.jwtAudience,
+				secret: this.configService.jwt.refreshSecret,
+				expiresIn: this.configService.jwt.refreshExpiration,
+				audience: this.configService.jwt.audience,
 			}),
 		]);
 
@@ -742,7 +697,7 @@ export class AuthService {
 	}
 
 	async generateTokensForUser(
-		user: User,
+		user: User | UserAuthData,
 		options?: GenerateTokensOptions,
 	): Promise<SuccessfulAuthResult> {
 		const normalizedContext = this.normalizeRequestContext(

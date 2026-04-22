@@ -10,6 +10,18 @@
 	},
 	"transformIgnorePatterns": ["node_modules/(?!(p-limit|yocto-queue)/)"],
 	"moduleNameMapper": {
-		"^src/(.*)$": "<rootDir>/../src/$1"
+		"^src/(.*)$": "<rootDir>/../src/$1",
+		"^@src/(.*)$": "<rootDir>/../src/$1",
+		"^@api/(.*)$": "<rootDir>/../src/$1",
+		"^@app-config/(.*)$": "<rootDir>/../src/infrastructure/app-config/$1",
+		"^@auth/(.*)$": "<rootDir>/../src/auth/$1",
+		"^@books/(.*)$": "<rootDir>/../src/books/$1",
+		"^@database/(.*)$": "<rootDir>/../src/infrastructure/database/$1",
+		"^@encryption/(.*)$": "<rootDir>/../src/infrastructure/encryption/$1",
+		"^@files/(.*)$": "<rootDir>/../src/files/$1",
+		"^@health/(.*)$": "<rootDir>/../src/infrastructure/health/$1",
+		"^@pages/(.*)$": "<rootDir>/../src/pages/$1",
+		"^@scraping/(.*)$": "<rootDir>/../src/scraping/$1",
+		"^@users/(.*)$": "<rootDir>/../src/users/$1"
 	}
 }

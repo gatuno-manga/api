@@ -1,0 +1,23 @@
+import { SelectQueryBuilder } from 'typeorm';
+import { BookPageOptionsDto } from '../dto/book-page-options.dto';
+import { Book } from '../../infrastructure/database/entities/book.entity';
+import { BaseManyToManyFilterStrategy } from './base-many-to-many-filter.strategy';
+
+export class ExcludeTagsFilterStrategy extends BaseManyToManyFilterStrategy {
+	constructor() {
+		super('books_tags_tags', 'tagsId');
+	}
+
+	canApply(options: BookPageOptionsDto): boolean {
+		return !!options.excludeTags && options.excludeTags.length > 0;
+	}
+
+	apply(
+		queryBuilder: SelectQueryBuilder<Book>,
+		options: BookPageOptionsDto,
+	): void {
+		const logic = options.excludeTagsLogic || 'or';
+		const excludeTags = options.excludeTags ?? [];
+		this.applyLogic(queryBuilder, excludeTags, logic, true);
+	}
+}
