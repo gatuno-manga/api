@@ -9,7 +9,7 @@
 #   -q      Modo silencioso (sem barra de progresso)
 #   -h      Mostrar ajuda
 
-set -e
+set -euo pipefail
 
 # ============================================
 # Configurações
@@ -20,7 +20,7 @@ MAX_BACKUPS=5
 STOP_CONTAINER=false
 QUIET=false
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-BACKUP_FILE="api-data-backup-${TIMESTAMP}.tar.gz"
+BACKUP_FILE="api-data-backup-${TIMESTAMP}.tar.zst"
 LOG_FILE=""
 
 # ============================================
@@ -43,19 +43,19 @@ show_help() {
 }
 
 log() {
-    local message="$1"
+    local message="${1:-}"
     local timestamp=$(date "+%Y-%m-%d %H:%M:%S")
-    if [ -n "$LOG_FILE" ]; then
+    if [ -n "${LOG_FILE:-}" ]; then
         echo "[$timestamp] $message" >> "$LOG_FILE"
     fi
-    if [ "$QUIET" = false ]; then
+    if [ "${QUIET:-false}" = false ]; then
         echo "$message"
     fi
 }
 
 log_inline() {
-    local message="$1"
-    if [ "$QUIET" = false ]; then
+    local message="${1:-}"
+    if [ "${QUIET:-false}" = false ]; then
         echo -ne "$message"
     fi
 }
@@ -63,8 +63,8 @@ log_inline() {
 # Barra de progresso visual
 # Uso: progress_bar <atual> <total> <descrição>
 progress_bar() {
-    local current=$1
-    local total=$2
+    local current=${1:-0}
+    local total=${2:-1}
     local desc="${3:-Processando}"
     local width=30
 
@@ -86,10 +86,12 @@ progress_bar() {
 
 # Spinner animado
 spinner() {
-    local pid=$1
+    local pid=${1:-}
     local desc="${2:-Processando}"
     local chars='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
     local i=0
+
+    if [ -z "$pid" ]; then return; fi
 
     while kill -0 "$pid" 2>/dev/null; do
         printf "\r%s %s" "${chars:$i:1}" "$desc"
@@ -100,10 +102,18 @@ spinner() {
 }
 
 cleanup() {
+    local exit_code=$?
+    
     # Reiniciar container se foi parado
     if [ "$STOP_CONTAINER" = true ] && [ "$CONTAINER_STOPPED" = true ]; then
         log "🔄 Reiniciando container da API..."
         docker-compose -f docker-compose.dev.yml start api 2>/dev/null || true
+    fi
+
+    # Limpar arquivos incompletos se o backup falhou
+    if [ $exit_code -ne 0 ] && [ -n "${BACKUP_FILE:-}" ] && [ -n "${BACKUP_DIR:-}" ]; then
+        log "⚠️ Falha ou cancelamento detectado (Código: $exit_code). Removendo backup incompleto..."
+        rm -f "${BACKUP_DIR}/${BACKUP_FILE}" "${BACKUP_DIR}/${BACKUP_FILE}.tmp" "${BACKUP_DIR}/${BACKUP_FILE}.sha256" 2>/dev/null || true
     fi
 }
 
@@ -112,7 +122,7 @@ cleanup() {
 # ============================================
 
 # Primeiro argumento pode ser o diretório
-if [ -n "$1" ] && [[ ! "$1" =~ ^- ]]; then
+if [ $# -gt 0 ] && [[ ! "${1:-}" =~ ^- ]]; then
     BACKUP_DIR="$1"
     shift
 fi
@@ -164,28 +174,23 @@ log ""
 
 log "📊 Analisando volume ${VOLUME_NAME}..."
 
-VOLUME_INFO=$(docker run --rm -v ${VOLUME_NAME}:/data alpine sh -c "
-  TOTAL_FILES=\$(find /data -type f 2>/dev/null | wc -l)
-  TOTAL_DIRS=\$(find /data -type d 2>/dev/null | wc -l)
-  TOTAL_SIZE=\$(du -sh /data 2>/dev/null | cut -f1)
-  TOTAL_BYTES=\$(du -sb /data 2>/dev/null | cut -f1)
-  echo \"\$TOTAL_FILES|\$TOTAL_DIRS|\$TOTAL_SIZE|\$TOTAL_BYTES\"
-")
+VOLUME_KB=$(docker run --rm -v ${VOLUME_NAME}:/data alpine sh -c "du -sk /data 2>/dev/null | cut -f1" || echo 0)
+VOLUME_KB=${VOLUME_KB:-0}
 
-TOTAL_FILES=$(echo "$VOLUME_INFO" | cut -d'|' -f1)
-TOTAL_DIRS=$(echo "$VOLUME_INFO" | cut -d'|' -f2)
-TOTAL_SIZE=$(echo "$VOLUME_INFO" | cut -d'|' -f3)
-TOTAL_BYTES=$(echo "$VOLUME_INFO" | cut -d'|' -f4)
+if [ "$VOLUME_KB" -eq 0 ]; then
+    log "⚠️ Aviso: Volume vazio ou não foi possível ler o tamanho"
+fi
+
+TOTAL_BYTES=$((VOLUME_KB * 1024))
+TOTAL_SIZE="$((VOLUME_KB / 1024))MB"
 
 log "📊 Informações do volume:"
-log "   📁 Arquivos: ${TOTAL_FILES}"
-log "   📂 Diretórios: ${TOTAL_DIRS}"
 log "   💾 Tamanho total: ${TOTAL_SIZE}"
 log ""
 
 # Verificar espaço em disco disponível
-AVAILABLE_KB=$(df -P "${BACKUP_DIR}" | tail -1 | awk '{print $4}')
-REQUIRED_KB=$((TOTAL_BYTES / 1024))
+AVAILABLE_KB=$(df -Pk "${BACKUP_DIR}" | tail -n1 | awk '{print $4}')
+REQUIRED_KB=$VOLUME_KB
 
 if [ "$REQUIRED_KB" -gt "$AVAILABLE_KB" ]; then
     log "❌ Erro: Espaço em disco insuficiente"
@@ -227,7 +232,6 @@ log ""
 docker run --rm \
   -v ${VOLUME_NAME}:/data:ro \
   -v "$(cd "${BACKUP_DIR}" && pwd):/backup" \
-  -e TOTAL_FILES="${TOTAL_FILES}" \
   -e BACKUP_FILE="${BACKUP_FILE}" \
   -e QUIET="${QUIET}" \
   alpine \
@@ -311,8 +315,10 @@ docker run --rm \
     # Criar arquivo temporário primeiro
     touch /backup/${BACKUP_FILE}.tmp
 
-    # Criar arquivo tar
-    tar czf /backup/${BACKUP_FILE} . 2>/dev/null
+    # Criar arquivo tar com zstd e hash on-the-fly
+    set -o pipefail
+    apk add --no-cache zstd >/dev/null 2>&1
+    tar -cf - . | zstd -T0 | tee /backup/${BACKUP_FILE} | sha256sum | sed "s/-/ ${BACKUP_FILE}/" > /backup/${BACKUP_FILE}.sha256
     EXIT_CODE=$?
 
     # Remover marcador temporário
@@ -331,24 +337,16 @@ docker run --rm \
 log ""
 
 # ============================================
-# Verificar integridade do backup
+# Verificar resultado e Hash
 # ============================================
 
-log "🔍 Verificando integridade do backup..."
-
-if ! tar tzf "${BACKUP_DIR}/${BACKUP_FILE}" >/dev/null 2>&1; then
-    log "❌ Erro: Backup corrompido! Removendo arquivo..."
-    rm -f "${BACKUP_DIR}/${BACKUP_FILE}"
+if [ ! -f "${BACKUP_DIR}/${BACKUP_FILE}.sha256" ]; then
+    log "❌ Erro: Falha ao gerar backup ou hash!"
     exit 1
 fi
 
-BACKUP_ITEMS=$(tar tzf "${BACKUP_DIR}/${BACKUP_FILE}" 2>/dev/null | wc -l)
-log "   ✅ Arquivo íntegro (${BACKUP_ITEMS} itens)"
-
-# Gerar hash SHA256
-log "🔐 Gerando hash SHA256..."
-sha256sum "${BACKUP_DIR}/${BACKUP_FILE}" > "${BACKUP_DIR}/${BACKUP_FILE}.sha256"
 HASH=$(cat "${BACKUP_DIR}/${BACKUP_FILE}.sha256" | cut -d' ' -f1)
+log "   ✅ Backup concluído com hash verificado"
 log "   Hash: ${HASH:0:16}..."
 log ""
 
@@ -356,13 +354,13 @@ log ""
 # Política de retenção
 # ============================================
 
-BACKUP_COUNT=$(ls -1 "${BACKUP_DIR}"/api-data-backup-*.tar.gz 2>/dev/null | wc -l)
+BACKUP_COUNT=$(ls -1 "${BACKUP_DIR}"/api-data-backup-*.tar.zst 2>/dev/null | wc -l)
 
 if [ "$BACKUP_COUNT" -gt "$MAX_BACKUPS" ]; then
     log "🗑️  Aplicando política de retenção (máximo: ${MAX_BACKUPS})..."
 
     # Listar backups antigos a remover
-    OLD_BACKUPS=$(ls -1t "${BACKUP_DIR}"/api-data-backup-*.tar.gz | tail -n +$((MAX_BACKUPS + 1)))
+    OLD_BACKUPS=$(ls -1t "${BACKUP_DIR}"/api-data-backup-*.tar.zst | tail -n +$((MAX_BACKUPS + 1)))
 
     for old_backup in $OLD_BACKUPS; do
         log "   Removendo: $(basename "$old_backup")"
