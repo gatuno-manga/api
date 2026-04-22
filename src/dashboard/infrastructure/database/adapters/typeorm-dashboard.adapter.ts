@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Author } from '../../../../books/entities/author.entity';
-import { Book } from '../../../../books/entities/book.entity';
-import { Chapter } from '../../../../books/entities/chapter.entity';
-import { Page } from '../../../../books/entities/page.entity';
-import { SensitiveContent } from '../../../../books/entities/sensitive-content.entity';
-import { Tag } from '../../../../books/entities/tags.entity';
+import { Author } from '../../../../books/infrastructure/database/entities/author.entity';
+import { Book } from '../../../../books/infrastructure/database/entities/book.entity';
+import { Chapter } from '../../../../books/infrastructure/database/entities/chapter.entity';
+import { Page } from '../../../../books/infrastructure/database/entities/page.entity';
+import { SensitiveContent } from '../../../../books/infrastructure/database/entities/sensitive-content.entity';
+import { Tag } from '../../../../books/infrastructure/database/entities/tags.entity';
 import { User } from '../../../../users/infrastructure/database/entities/user.entity';
 import {
 	DashboardRepositoryPort,

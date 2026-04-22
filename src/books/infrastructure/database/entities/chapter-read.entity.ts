@@ -1,0 +1,23 @@
+import { Chapter } from 'src/books/infrastructure/database/entities/chapter.entity';
+import {
+	CreateDateColumn,
+	Entity,
+	ManyToOne,
+	PrimaryGeneratedColumn,
+} from 'typeorm';
+import { User } from '../../../../users/infrastructure/database/entities/user.entity';
+
+@Entity('chapters_read')
+export class ChapterRead {
+	@PrimaryGeneratedColumn()
+	id: number;
+
+	@ManyToOne(() => User, { onDelete: 'CASCADE' })
+	user: User;
+
+	@ManyToOne(() => Chapter, { onDelete: 'CASCADE' })
+	chapter: Chapter;
+
+	@CreateDateColumn()
+	readAt: Date;
+}

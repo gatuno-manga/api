@@ -4,10 +4,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
-import { Book } from '../../../books/entities/book.entity';
-import { Chapter } from '../../../books/entities/chapter.entity';
-import { Cover } from '../../../books/entities/cover.entity';
-import { Page } from '../../../books/entities/page.entity';
+import { Book } from '../../../books/infrastructure/database/entities/book.entity';
+import { Chapter } from '../../../books/infrastructure/database/entities/chapter.entity';
+import { Cover } from '../../../books/infrastructure/database/entities/cover.entity';
+import { Page } from '../../../books/infrastructure/database/entities/page.entity';
 
 export interface OrphanFile {
 	filename: string;

@@ -1,6 +1,6 @@
-import { Book } from 'src/books/entities/book.entity';
-import { Chapter } from 'src/books/entities/chapter.entity';
-import { Page } from 'src/books/entities/page.entity';
+import { Book } from 'src/books/infrastructure/database/entities/book.entity';
+import { Chapter } from 'src/books/infrastructure/database/entities/chapter.entity';
+import { Page } from 'src/books/infrastructure/database/entities/page.entity';
 import {
 	Column,
 	CreateDateColumn,

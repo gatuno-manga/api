@@ -4,10 +4,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { FileCleanupService } from './file-cleanup.service';
-import { Page } from '../../../books/entities/page.entity';
-import { Cover } from '../../../books/entities/cover.entity';
-import { Book } from '../../../books/entities/book.entity';
-import { Chapter } from '../../../books/entities/chapter.entity';
+import { Page } from '@books/infrastructure/database/entities/page.entity';
+import { Cover } from '@books/infrastructure/database/entities/cover.entity';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 
 describe('FileCleanupService (Recursive)', () => {
 	let service: FileCleanupService;

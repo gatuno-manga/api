@@ -1,6 +1,6 @@
-import { Book } from 'src/books/entities/book.entity';
-import { SensitiveContent } from 'src/books/entities/sensitive-content.entity';
-import { Tag } from 'src/books/entities/tags.entity';
+import { Book } from 'src/books/infrastructure/database/entities/book.entity';
+import { SensitiveContent } from 'src/books/infrastructure/database/entities/sensitive-content.entity';
+import { Tag } from 'src/books/infrastructure/database/entities/tags.entity';
 import {
 	Column,
 	CreateDateColumn,

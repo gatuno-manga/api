@@ -1,4 +1,4 @@
-import { Book } from 'src/books/entities/book.entity';
+import { Book } from 'src/books/infrastructure/database/entities/book.entity';
 import {
 	Column,
 	CreateDateColumn,

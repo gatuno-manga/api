@@ -2,10 +2,10 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppConfigModule } from 'src/infrastructure/app-config/app-config.module';
 import { AuthModule } from 'src/auth/auth.module';
-import { Book } from 'src/books/entities/book.entity';
-import { Chapter } from 'src/books/entities/chapter.entity';
-import { Page } from 'src/books/entities/page.entity';
-import { Tag } from 'src/books/entities/tags.entity';
+import { Book } from 'src/books/infrastructure/database/entities/book.entity';
+import { Chapter } from 'src/books/infrastructure/database/entities/chapter.entity';
+import { Page } from 'src/books/infrastructure/database/entities/page.entity';
+import { Tag } from 'src/books/infrastructure/database/entities/tags.entity';
 import { FilesModule } from 'src/files/files.module';
 import { AdminAccessPoliciesController } from './infrastructure/controllers/admin-access-policies.controller';
 import { AdminGroupsController } from './infrastructure/controllers/admin-groups.controller';
@@ -38,6 +38,8 @@ import { SyncStrategyResolver } from './application/strategies/sync-strategy.res
 import { UserPublicResourcesController } from './infrastructure/controllers/user-public-resources.controller';
 import { UserResourcesMapper } from './application/mappers/user-resources.mapper';
 import { UserBookSavedPagesController } from './infrastructure/controllers/user-book-saved-pages.controller';
+import { I_USER_REPOSITORY } from './application/ports/user-repository.interface';
+import { TypeOrmUserRepositoryAdapter } from './infrastructure/database/adapters/typeorm-user-repository.adapter';
 
 @Module({
 	imports: [
@@ -71,6 +73,7 @@ import { UserBookSavedPagesController } from './infrastructure/controllers/user-
 		SavedPagesController,
 	],
 	providers: [
+		{ provide: I_USER_REPOSITORY, useClass: TypeOrmUserRepositoryAdapter },
 		UsersService,
 		AdminUsersService,
 		CollectionsBooksService,
@@ -82,6 +85,6 @@ import { UserBookSavedPagesController } from './infrastructure/controllers/user-
 		HighestPageWinsStrategy,
 		SyncStrategyResolver,
 	],
-	exports: [AdminUsersService],
+	exports: [AdminUsersService, I_USER_REPOSITORY],
 })
 export class UsersModule {}

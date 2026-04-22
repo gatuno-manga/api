@@ -1,16 +1,21 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AppConfigModule } from 'src/infrastructure/app-config/app-config.module';
-import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
-import { AuthModule } from 'src/auth/auth.module';
-import { FilesModule } from 'src/files/files.module';
-import { RedisModule } from 'src/infrastructure/redis/redis.module';
-import { BrowserConfig, PlaywrightBrowserFactory } from './browser';
-import { Website } from './entities/website.entity';
-import { BrowserPoolService } from './pool';
-import { ScrapingService } from './scraping.service';
-import { WebsiteController } from './website.controller';
-import { WebsiteService } from './website.service';
+import { AppConfigModule } from '../infrastructure/app-config/app-config.module';
+import { AppConfigService } from '../infrastructure/app-config/app-config.service';
+import { AuthModule } from '../auth/auth.module';
+import { FilesModule } from '../files/files.module';
+import { RedisModule } from '../infrastructure/redis/redis.module';
+import {
+	BrowserConfig,
+	PlaywrightBrowserFactory,
+} from './infrastructure/browser';
+import { Website } from './infrastructure/database/entities/website.entity';
+import { BrowserPoolService } from './infrastructure/pool';
+import { ScrapingService } from './application/services/scraping.service';
+import { WebsiteController } from './infrastructure/http/controllers/website.controller';
+import { WebsiteService } from './application/services/website.service';
+import { I_WEBSITE_REPOSITORY } from './application/ports/website-repository.interface';
+import { TypeOrmWebsiteRepositoryAdapter } from './infrastructure/database/adapters/typeorm-website-repository.adapter';
 
 @Module({
 	controllers: [WebsiteController],
@@ -70,10 +75,14 @@ import { WebsiteService } from './website.service';
 			},
 			inject: [AppConfigService, BrowserPoolService],
 		},
+		{
+			provide: I_WEBSITE_REPOSITORY,
+			useClass: TypeOrmWebsiteRepositoryAdapter,
+		},
 		ScrapingService,
 		WebsiteService,
 	],
-	exports: [ScrapingService, PlaywrightBrowserFactory],
+	exports: [ScrapingService, PlaywrightBrowserFactory, I_WEBSITE_REPOSITORY],
 	imports: [
 		AppConfigModule,
 		FilesModule,
