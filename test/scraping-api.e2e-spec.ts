@@ -85,6 +85,12 @@ describe('Scraping pipeline API (e2e)', () => {
 		expect(bookUpdateQueueBefore).toBeDefined();
 
 		const failedBefore = Number(bookUpdateQueueBefore?.counts.failed ?? 0);
+		const completedBefore = Number(
+			bookUpdateQueueBefore?.counts.completed ?? 0,
+		);
+		const delayedBefore = Number(
+			bookUpdateQueueBefore?.counts.delayed ?? 0,
+		);
 		const testBookId = randomUUID();
 
 		const triggerResponse = await request(app.getHttpServer())
@@ -107,13 +113,28 @@ describe('Scraping pipeline API (e2e)', () => {
 			}
 
 			const failedNow = Number(queueNow.counts.failed ?? 0);
+			const completedNow = Number(queueNow.counts.completed ?? 0);
+			const delayedNow = Number(queueNow.counts.delayed ?? 0);
 			const activeJobs = queueNow.activeJobs ?? [];
 			const pendingJobs = queueNow.pendingJobs ?? [];
+
 			const inFlightForBook = [...activeJobs, ...pendingJobs].some(
 				(job) => job.bookId === testBookId,
 			);
 
-			if (inFlightForBook || failedNow > failedBefore) {
+			// Debug log para ajudar a identificar o problema se falhar
+			if (attempt % 5 === 0) {
+				console.log(
+					`Attempt ${attempt}: failedNow=${failedNow}, completedNow=${completedNow}, delayedNow=${delayedNow}, inFlight=${inFlightForBook}`,
+				);
+			}
+
+			if (
+				inFlightForBook ||
+				failedNow > failedBefore ||
+				completedNow > completedBefore ||
+				delayedNow > delayedBefore
+			) {
 				observedRealQueueTransition = true;
 				break;
 			}

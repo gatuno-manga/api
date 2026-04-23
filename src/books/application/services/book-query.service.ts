@@ -379,7 +379,56 @@ export class BookQueryService {
 	}
 
 	async getQueueStats() {
-		return { queues: [] };
+		const getStats = async (queue: Queue) => {
+			const [counts, jobs] = await Promise.all([
+				queue.getJobCounts(),
+				queue.getJobs(['active', 'waiting', 'delayed'], 0, 10, true),
+			]);
+
+			const jobsWithState = await Promise.all(
+				jobs.map(async (job) => ({
+					job,
+					state: await job.getState(),
+				})),
+			);
+
+			const mapJob = (j: { job: Job }) => ({
+				id: j.job.id,
+				bookId: j.job.data?.bookId || null,
+				chapterId: j.job.data?.chapterId || null,
+			});
+
+			return {
+				name: queue.name,
+				counts: {
+					waiting: counts.waiting,
+					active: counts.active,
+					completed: counts.completed,
+					failed: counts.failed,
+					delayed: counts.delayed,
+				},
+				activeJobs: jobsWithState
+					.filter((j) => j.state === 'active')
+					.map(mapJob),
+				pendingJobs: jobsWithState
+					.filter(
+						(j) =>
+							j.state === 'waiting' ||
+							j.state === 'prioritized' ||
+							j.state === 'delayed',
+					)
+					.map(mapJob),
+			};
+		};
+
+		const queues = await Promise.all([
+			getStats(this.bookUpdateQueue),
+			getStats(this.chapterScrapingQueue),
+			getStats(this.coverImageQueue),
+			getStats(this.fixChapterQueue),
+		]);
+
+		return { queues };
 	}
 
 	private toAbsoluteMediaUrl(url: string | null): string {
