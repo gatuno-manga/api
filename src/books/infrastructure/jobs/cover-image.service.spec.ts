@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ScrapingService } from '@scraping/application/services/scraping.service';
+import { StorageBucket } from '../../../common/enum/storage-bucket.enum';
 import { FilesService } from '../../../files/application/services/files.service';
 import { Cover } from '../../infrastructure/database/entities/cover.entity';
 import { CoverImageService } from './cover-image.service';
@@ -115,6 +116,7 @@ describe('CoverImageService', () => {
 		expect(hash).toBe(expectedHash);
 		expect(mockFilesService.getFileBuffer).toHaveBeenCalledWith(
 			'/data/covers/cover.webp',
+			StorageBucket.BOOKS,
 		);
 	});
 

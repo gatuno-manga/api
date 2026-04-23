@@ -44,7 +44,12 @@ describe('FilesService', () => {
 		service = module.get<FilesService>(FilesService);
 
 		mockStoragePort.save.mockImplementation(
-			async (buffer: Buffer, fileKey: string) => `/data/${fileKey}`,
+			async (
+				buffer: Buffer,
+				fileKey: string,
+				mimeType: string,
+				bucket?: string,
+			) => `/data/${fileKey}`,
 		);
 	});
 
@@ -96,7 +101,12 @@ describe('FilesService', () => {
 				buffer,
 				extension,
 			);
-			expect(mockStoragePort.save).toHaveBeenCalled();
+			expect(mockStoragePort.save).toHaveBeenCalledWith(
+				expect.any(Buffer),
+				expect.any(String),
+				'image/webp',
+				undefined,
+			);
 			expect(result).toMatch(/^\/data\/.+\/.+\.webp$/);
 		});
 
@@ -111,7 +121,12 @@ describe('FilesService', () => {
 				extension,
 			);
 			expect(mockCompressorFactory.compress).not.toHaveBeenCalled();
-			expect(mockStoragePort.save).toHaveBeenCalled();
+			expect(mockStoragePort.save).toHaveBeenCalledWith(
+				buffer,
+				expect.any(String),
+				'application/octet-stream',
+				undefined,
+			);
 			expect(result).toMatch(/^\/data\/.+\/.+\.txt$/);
 		});
 
@@ -132,7 +147,8 @@ describe('FilesService', () => {
 			expect(mockStoragePort.save).toHaveBeenCalledWith(
 				buffer,
 				expect.any(String),
-				expect.any(String),
+				'image/jpeg',
+				undefined,
 			);
 			expect(result).toMatch(/^\/data\/.+\/.+\.jpg$/);
 		});
@@ -170,7 +186,12 @@ describe('FilesService', () => {
 				Buffer.from(base64Data, 'base64'),
 				extension,
 			);
-			expect(mockStoragePort.save).toHaveBeenCalled();
+			expect(mockStoragePort.save).toHaveBeenCalledWith(
+				expect.any(Buffer),
+				expect.any(String),
+				'image/webp',
+				undefined,
+			);
 			expect(result).toMatch(/^\/data\/.+\/.+\.webp$/);
 		});
 
@@ -185,7 +206,12 @@ describe('FilesService', () => {
 				extension,
 			);
 			expect(mockCompressorFactory.compress).not.toHaveBeenCalled();
-			expect(mockStoragePort.save).toHaveBeenCalled();
+			expect(mockStoragePort.save).toHaveBeenCalledWith(
+				expect.any(Buffer),
+				expect.any(String),
+				'application/octet-stream',
+				undefined,
+			);
 			expect(result).toMatch(/^\/data\/.+\/.+\.txt$/);
 		});
 	});
@@ -195,7 +221,10 @@ describe('FilesService', () => {
 			const publicPath = '/data/ab/uuid.webp';
 			await service.deleteFile(publicPath);
 
-			expect(mockStoragePort.delete).toHaveBeenCalledWith('ab/uuid.webp');
+			expect(mockStoragePort.delete).toHaveBeenCalledWith(
+				'ab/uuid.webp',
+				undefined,
+			);
 		});
 	});
 });
