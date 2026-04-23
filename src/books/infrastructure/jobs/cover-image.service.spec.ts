@@ -1,14 +1,10 @@
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ScrapingService } from '@scraping/application/services/scraping.service';
+import { FilesService } from '../../../files/application/services/files.service';
 import { Cover } from '../../infrastructure/database/entities/cover.entity';
 import { CoverImageService } from './cover-image.service';
-
-jest.mock('node:fs/promises', () => ({
-	readFile: jest.fn(),
-}));
 
 describe('CoverImageService', () => {
 	let service: CoverImageService;
@@ -24,6 +20,10 @@ describe('CoverImageService', () => {
 
 	const mockScrapingService = {
 		fetchImageBuffer: jest.fn(),
+	};
+
+	const mockFilesService = {
+		getFileBuffer: jest.fn(),
 	};
 
 	beforeEach(async () => {
@@ -43,6 +43,10 @@ describe('CoverImageService', () => {
 				{
 					provide: ScrapingService,
 					useValue: mockScrapingService,
+				},
+				{
+					provide: FilesService,
+					useValue: mockFilesService,
 				},
 			],
 		}).compile();
@@ -101,7 +105,7 @@ describe('CoverImageService', () => {
 
 	it('should calculate hash from local /data path', async () => {
 		const buffer = Buffer.from('local-image-bytes');
-		(readFile as jest.Mock).mockResolvedValue(buffer);
+		mockFilesService.getFileBuffer.mockResolvedValue(buffer);
 
 		const hash = await service.calculateImageHash(
 			'/data/covers/cover.webp',
@@ -109,8 +113,8 @@ describe('CoverImageService', () => {
 
 		const expectedHash = createHash('sha256').update(buffer).digest('hex');
 		expect(hash).toBe(expectedHash);
-		expect(readFile).toHaveBeenCalledWith(
-			'/usr/src/app/data/covers/cover.webp',
+		expect(mockFilesService.getFileBuffer).toHaveBeenCalledWith(
+			'/data/covers/cover.webp',
 		);
 	});
 

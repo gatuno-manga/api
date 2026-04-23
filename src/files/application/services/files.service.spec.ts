@@ -23,6 +23,7 @@ describe('FilesService', () => {
 			delete: jest.fn(),
 			exists: jest.fn(),
 			getStats: jest.fn(),
+			getBuffer: jest.fn(),
 			listAllFiles: jest.fn(),
 		};
 
