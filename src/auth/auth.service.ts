@@ -294,6 +294,51 @@ export class AuthService {
 		});
 	}
 
+	private async findUserWithPasswordById(
+		userId: string,
+	): Promise<User | null> {
+		return this.userRepository
+			.createQueryBuilder('user')
+			.leftJoinAndSelect('user.roles', 'role')
+			.addSelect('user.password')
+			.where('user.id = :id', { id: userId })
+			.getOne();
+	}
+
+	private async migratePasswordWhenPossible(
+		fullUser: User,
+		plainPassword: string,
+	): Promise<void> {
+		if (!fullUser.password) {
+			this.logger.warn(
+				`Password hash unavailable for user ${fullUser.id}. Password migration skipped.`,
+			);
+			return;
+		}
+
+		try {
+			const wasMigrated =
+				await this.passwordMigration.migratePasswordOnLogin(
+					fullUser,
+					plainPassword,
+				);
+
+			if (!wasMigrated) {
+				return;
+			}
+
+			this.logger.log(
+				`🔄 Senha do usuário ${fullUser.email} migrada com sucesso para ${this.passwordEncryption.getAlgorithm()}`,
+			);
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : 'unknown_error';
+			this.logger.warn(
+				`Password migration skipped for user ${fullUser.id}: ${errorMessage}`,
+			);
+		}
+	}
+
 	async signIn(
 		email: string,
 		password: string,
@@ -304,21 +349,9 @@ export class AuthService {
 			password,
 			context,
 			async (user, authMethod, context) => {
-				// Re-fetch full user for migration if needed
-				const fullUser = await this.userRepository.findOneBy({
-					id: user.id,
-				});
+				const fullUser = await this.findUserWithPasswordById(user.id);
 				if (fullUser) {
-					const wasMigrated =
-						await this.passwordMigration.migratePasswordOnLogin(
-							fullUser,
-							password,
-						);
-					if (wasMigrated) {
-						this.logger.log(
-							`🔄 Senha do usuário ${fullUser.email} migrada com sucesso para ${this.passwordEncryption.getAlgorithm()}`,
-						);
-					}
+					await this.migratePasswordWhenPossible(fullUser, password);
 				}
 
 				return this.issueAuthFlowForUser(fullUser || user, {

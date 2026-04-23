@@ -30,12 +30,16 @@ export class ScryptStrategy implements PasswordHasher {
 			return false;
 		}
 
-		const hashBuffer = (await scrypt(
-			password,
-			salt,
-			this.config.security.passwordKeyLength,
-		)) as Buffer;
+		try {
+			const hashBuffer = (await scrypt(
+				password,
+				salt,
+				this.config.security.passwordKeyLength,
+			)) as Buffer;
 
-		return hashBuffer.toString('hex') === storedHash;
+			return hashBuffer.toString('hex') === storedHash;
+		} catch (error) {
+			return false;
+		}
 	}
 }

@@ -5,7 +5,6 @@ import {
 	UnauthorizedException,
 } from '@nestjs/common';
 import { PasswordEncryption } from 'src/infrastructure/encryption/password-encryption.provider';
-import { PasswordMigrationService } from 'src/infrastructure/encryption/password-migration.service';
 import { EmailVO } from '../../domain/value-objects/email.vo';
 import {
 	UserAuthData,
@@ -25,7 +24,6 @@ export class SignInUseCase {
 		@Inject('UserRepositoryPort')
 		private readonly userRepository: UserRepositoryPort,
 		private readonly passwordEncryption: PasswordEncryption,
-		private readonly passwordMigration: PasswordMigrationService,
 		private readonly sessionAudit: SessionAuditService,
 	) {}
 
@@ -40,7 +38,7 @@ export class SignInUseCase {
 		) => Promise<AuthFlowResult>,
 	): Promise<AuthFlowResult> {
 		const email = new EmailVO(emailStr);
-		const user = await this.userRepository.findByEmail(email);
+		const user = await this.userRepository.findCredentialsByEmail(email);
 
 		if (!user) {
 			this.sessionAudit.track({
@@ -56,10 +54,29 @@ export class SignInUseCase {
 			throw new UnauthorizedException('User not exists');
 		}
 
-		if (
-			!user.password ||
-			!(await this.passwordEncryption.compare(user.password, password))
-		) {
+		if (!user.password) {
+			this.sessionAudit.track({
+				userId: user.id,
+				event: 'login_failed',
+				success: false,
+				context,
+				metadata: {
+					reason: 'password_hash_unavailable',
+				},
+			});
+			this.logger.error(
+				'Password hash unavailable for sign in',
+				email.value,
+			);
+			throw new UnauthorizedException('Invalid password');
+		}
+
+		const isPasswordValid = await this.passwordEncryption.compare(
+			user.password,
+			password,
+		);
+
+		if (!isPasswordValid) {
 			this.sessionAudit.track({
 				userId: user.id,
 				event: 'login_failed',
@@ -72,12 +89,6 @@ export class SignInUseCase {
 			this.logger.error('Invalid password', email.value);
 			throw new UnauthorizedException('Invalid password');
 		}
-
-		// Note: Password migration requires the full User entity usually,
-		// but here we are using UserAuthData from Port.
-		// We might need a Port method to update password.
-
-		// For now, if issueAuthFlow is provided, we use it (gradual migration)
 		if (issueAuthFlow) {
 			return issueAuthFlow(user, 'password', context);
 		}

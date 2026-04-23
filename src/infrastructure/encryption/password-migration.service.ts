@@ -15,21 +15,13 @@ export class PasswordMigrationService {
 	) {}
 
 	isLegacyHash(hash: string): boolean {
-		const currentAlgorithm = this.passwordEncryption.getAlgorithm();
-
-		switch (currentAlgorithm) {
-			case 'scrypt':
-				return false;
-
-			case 'bcrypt':
-				return hash.includes('.') && !hash.startsWith('$');
-
-			case 'argon2':
-				return !hash.startsWith('$argon2');
-
-			default:
-				return false;
+		const detectedAlgorithm = this.detectHashAlgorithm(hash);
+		if (detectedAlgorithm === 'unknown') {
+			return true;
 		}
+
+		const currentAlgorithm = this.passwordEncryption.getAlgorithm();
+		return detectedAlgorithm !== currentAlgorithm;
 	}
 
 	detectHashAlgorithm(hash: string): string {
