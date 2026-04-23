@@ -26,6 +26,7 @@
 		"prepare": "lefthook install"
 	},
 	"dependencies": {
+		"@aws-sdk/client-s3": "^3.1035.0",
 		"@keyv/redis": "^4.6.0",
 		"@nestjs/axios": "^4.0.1",
 		"@nestjs/bullmq": "^11.0.3",

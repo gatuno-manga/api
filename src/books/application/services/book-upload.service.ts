@@ -40,6 +40,7 @@ import {
 	I_PAGE_REPOSITORY,
 	IPageRepository,
 } from '../ports/page-repository.interface';
+import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
 
 /**
  * Service responsável por upload de capas e páginas de capítulos
@@ -124,6 +125,7 @@ export class BookUploadService {
 			const savedPath = await this.filesService.saveBufferFile(
 				file.buffer,
 				extension,
+				StorageBucket.BOOKS,
 			);
 
 			const cover = this.coverRepository.create({
@@ -232,7 +234,10 @@ export class BookUploadService {
 			// Delete old image file if exists
 			if (cover.url) {
 				try {
-					await this.filesService.deleteFile(cover.url);
+					await this.filesService.deleteFile(
+						cover.url,
+						StorageBucket.BOOKS,
+					);
 				} catch {
 					this.logger.warn(
 						`Failed to delete old cover image: ${cover.url}`,
@@ -245,6 +250,7 @@ export class BookUploadService {
 			const savedPath = await this.filesService.saveBufferFile(
 				file.buffer,
 				extension,
+				StorageBucket.BOOKS,
 			);
 
 			cover.url = savedPath;
@@ -356,6 +362,7 @@ export class BookUploadService {
 							await this.filesService.saveBufferFile(
 								file.buffer,
 								extension,
+								StorageBucket.BOOKS,
 							);
 						savedPaths.push(savedPath);
 
@@ -401,7 +408,7 @@ export class BookUploadService {
 				await Promise.all(
 					savedPaths.map((p) =>
 						this.filesService
-							.deleteFile(p)
+							.deleteFile(p, StorageBucket.BOOKS)
 							.catch((e: unknown) =>
 								this.logger.warn(
 									`Failed to clean up file ${p} after upload error: ${this.getErrorMessage(e)}`,
@@ -502,6 +509,7 @@ export class BookUploadService {
 					const savedPath = await this.filesService.saveBufferFile(
 						file.buffer,
 						extension,
+						StorageBucket.BOOKS,
 					);
 
 					return this.pageRepository.create({
@@ -609,7 +617,10 @@ export class BookUploadService {
 			// Deleta documento anterior se existir
 			if (chapter.documentPath) {
 				try {
-					await this.filesService.deleteFile(chapter.documentPath);
+					await this.filesService.deleteFile(
+						chapter.documentPath,
+						StorageBucket.BOOKS,
+					);
 				} catch {
 					this.logger.warn(
 						`Falha ao deletar documento anterior: ${chapter.documentPath}`,
@@ -623,6 +634,7 @@ export class BookUploadService {
 			const savedPath = await this.filesService.saveBufferFile(
 				file.buffer,
 				extension,
+				StorageBucket.BOOKS,
 			);
 
 			// Atualiza o capítulo
@@ -728,7 +740,10 @@ export class BookUploadService {
 			// Deleta documento anterior se existir (mudando de DOCUMENT para TEXT)
 			if (chapter.documentPath) {
 				try {
-					await this.filesService.deleteFile(chapter.documentPath);
+					await this.filesService.deleteFile(
+						chapter.documentPath,
+						StorageBucket.BOOKS,
+					);
 				} catch {
 					this.logger.warn(
 						`Falha ao deletar documento anterior: ${chapter.documentPath}`,

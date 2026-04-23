@@ -1,6 +1,4 @@
-import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
@@ -8,10 +6,10 @@ import { Book } from '../../../books/infrastructure/database/entities/book.entit
 import { Chapter } from '../../../books/infrastructure/database/entities/chapter.entity';
 import { Cover } from '../../../books/infrastructure/database/entities/cover.entity';
 import { Page } from '../../../books/infrastructure/database/entities/page.entity';
+import { StoragePort, FileMetadata } from '../ports/storage.port';
 
 export interface OrphanFile {
 	filename: string;
-	fullPath: string;
 	size: number;
 	lastModified: Date;
 	reason: 'no_page_reference' | 'no_cover_reference';
@@ -37,19 +35,24 @@ export interface CleanupReport {
 @Injectable()
 export class FileCleanupService {
 	private readonly logger = new Logger(FileCleanupService.name);
-	private readonly downloadDir = path.resolve('/usr/src/app/data');
 	private readonly retentionDays: number;
 
-	private getErrorCode(error: unknown): string | undefined {
-		if (
-			typeof error === 'object' &&
-			error !== null &&
-			'code' in error &&
-			typeof (error as { code?: unknown }).code === 'string'
-		) {
-			return (error as { code: string }).code;
-		}
-		return undefined;
+	constructor(
+		@InjectRepository(Page)
+		private readonly pageRepository: Repository<Page>,
+		@InjectRepository(Cover)
+		private readonly coverRepository: Repository<Cover>,
+		@InjectRepository(Book)
+		private readonly bookRepository: Repository<Book>,
+		@InjectRepository(Chapter)
+		private readonly chapterRepository: Repository<Chapter>,
+		private readonly configService: ConfigService,
+		@Inject('STORAGE_PORT') private readonly storagePort: StoragePort,
+	) {
+		this.retentionDays = this.configService.get<number>(
+			'SOFT_DELETE_RETENTION_DAYS',
+			10,
+		);
 	}
 
 	private getErrorMessage(error: unknown): string {
@@ -64,104 +67,22 @@ export class FileCleanupService {
 		return error instanceof Error ? error.message : String(error);
 	}
 
-	constructor(
-		@InjectRepository(Page)
-		private readonly pageRepository: Repository<Page>,
-		@InjectRepository(Cover)
-		private readonly coverRepository: Repository<Cover>,
-		@InjectRepository(Book)
-		private readonly bookRepository: Repository<Book>,
-		@InjectRepository(Chapter)
-		private readonly chapterRepository: Repository<Chapter>,
-		private readonly configService: ConfigService,
-	) {
-		this.retentionDays = this.configService.get<number>(
-			'SOFT_DELETE_RETENTION_DAYS',
-			10,
-		);
-	}
-
 	async deleteFile(filePath: string): Promise<void> {
 		try {
-			const filename = filePath.replace('/data/', '');
-			const fullPath = path.join(this.downloadDir, filename);
-
-			try {
-				const stats = await fs.stat(fullPath);
-				if (stats.isDirectory()) {
-					this.logger.warn(`Skipping directory: ${filename}`);
-					return;
-				}
-			} catch (statError: unknown) {
-				if (this.getErrorCode(statError) === 'ENOENT') {
-					this.logger.warn(
-						`File not found (already deleted?): ${filePath}`,
-					);
-					return;
-				}
-			}
-
-			await fs.unlink(fullPath);
-			this.logger.log(`File deleted: ${filename}`);
+			const fileKey = filePath.replace('/data/', '');
+			await this.storagePort.delete(fileKey);
+			this.logger.log(`File deleted from Storage: ${fileKey}`);
 		} catch (error: unknown) {
-			if (this.getErrorCode(error) !== 'ENOENT') {
-				this.logger.error(`Error deleting file ${filePath}:`, error);
-				throw error;
-			}
-			this.logger.warn(`File not found (already deleted?): ${filePath}`);
-		}
-	}
-
-	/**
-	 * Obtém todos os arquivos recursivamente usando um Generator para economizar memória
-	 * @private
-	 */
-	private async *getAllFilesGenerator(
-		dir: string,
-		baseDir?: string,
-	): AsyncGenerator<{
-		filename: string;
-		fullPath: string;
-		size: number;
-		mtime: Date;
-	}> {
-		const effectiveBaseDir = baseDir || dir;
-		let entries: import('node:fs').Dirent[];
-		try {
-			entries = await fs.readdir(dir, { withFileTypes: true });
-		} catch (error) {
-			this.logger.error(`Error reading directory ${dir}:`, error);
-			return;
-		}
-
-		for (const entry of entries) {
-			const fullPath = path.join(dir, entry.name);
-			const relativePath = path.relative(effectiveBaseDir, fullPath);
-
-			if (entry.isDirectory()) {
-				if (entry.name === 'cache') continue;
-				yield* this.getAllFilesGenerator(fullPath, effectiveBaseDir);
-			} else {
-				try {
-					const stats = await fs.stat(fullPath);
-					yield {
-						filename: relativePath,
-						fullPath,
-						size: stats.size,
-						mtime: stats.mtime,
-					};
-				} catch (error) {
-					this.logger.error(
-						`Error reading file stats for ${relativePath}:`,
-						error,
-					);
-				}
-			}
+			this.logger.error(
+				`Error deleting file ${filePath} from Storage:`,
+				error,
+			);
+			throw error;
 		}
 	}
 
 	async findOrphanFiles(): Promise<OrphanFile[]> {
-		this.logger.log('Starting orphan file scan (Memory-Safe mode)...');
+		this.logger.log('Starting orphan file scan (Storage mode)...');
 
 		try {
 			const pages = await this.pageRepository.find({
@@ -180,13 +101,10 @@ export class FileCleanupService {
 
 			const orphanFiles: OrphanFile[] = [];
 
-			for await (const file of this.getAllFilesGenerator(
-				this.downloadDir,
-			)) {
+			for await (const file of this.storagePort.listAllFiles()) {
 				if (!allReferencedFiles.has(file.filename)) {
 					orphanFiles.push({
 						filename: file.filename,
-						fullPath: file.fullPath,
 						size: file.size,
 						lastModified: file.mtime,
 						reason: 'no_page_reference',
@@ -229,7 +147,7 @@ export class FileCleanupService {
 
 		for (const file of orphanFiles) {
 			try {
-				await fs.unlink(file.fullPath);
+				await this.storagePort.delete(file.filename);
 				report.filesDeleted++;
 				report.spaceRecovered += file.size;
 				this.logger.log(`Deleted orphan file: ${file.filename}`);
@@ -269,12 +187,9 @@ export class FileCleanupService {
 			if (pages.length === 0) break;
 
 			for (const page of pages) {
-				const filename = page.path.replace('/data/', '');
-				const fullPath = path.join(this.downloadDir, filename);
-
-				try {
-					await fs.access(fullPath);
-				} catch {
+				const fileKey = page.path.replace('/data/', '');
+				const exists = await this.storagePort.exists(fileKey);
+				if (!exists) {
 					missingFiles.push({
 						entityType: 'page',
 						entityId: page.id,
@@ -307,12 +222,9 @@ export class FileCleanupService {
 				if (covers.length === 0) break;
 
 				for (const cover of covers) {
-					const filename = cover.url.replace('/data/', '');
-					const fullPath = path.join(this.downloadDir, filename);
-
-					try {
-						await fs.access(fullPath);
-					} catch {
+					const fileKey = cover.url.replace('/data/', '');
+					const exists = await this.storagePort.exists(fileKey);
+					if (!exists) {
 						missingFiles.push({
 							entityType: 'cover',
 							entityId: cover.id,
@@ -357,23 +269,20 @@ export class FileCleanupService {
 
 		for (const page of oldPages) {
 			try {
-				const filename = page.path.replace('/data/', '');
-				const fullPath = path.join(this.downloadDir, filename);
-				const stats = await fs.stat(fullPath);
+				const fileKey = page.path.replace('/data/', '');
+				const stats = await this.storagePort.getStats(fileKey);
 
-				await fs.unlink(fullPath);
+				await this.storagePort.delete(fileKey);
 				report.filesDeleted++;
 				report.spaceRecovered += stats.size;
 
 				await this.pageRepository.remove(page);
 
-				this.logger.log(`Deleted old page file: ${filename}`);
+				this.logger.log(`Deleted old page file: ${fileKey}`);
 			} catch (error: unknown) {
-				if (this.getErrorCode(error) !== 'ENOENT') {
-					const errorMsg = `Failed to delete page ${page.id}: ${this.getErrorMessage(error)}`;
-					this.logger.error(errorMsg);
-					report.errors.push(errorMsg);
-				}
+				const errorMsg = `Failed to delete page ${page.id}: ${this.getErrorMessage(error)}`;
+				this.logger.error(errorMsg);
+				report.errors.push(errorMsg);
 			}
 		}
 
@@ -386,23 +295,20 @@ export class FileCleanupService {
 
 		for (const cover of oldCovers) {
 			try {
-				const filename = cover.url.replace('/data/', '');
-				const fullPath = path.join(this.downloadDir, filename);
-				const stats = await fs.stat(fullPath);
+				const fileKey = cover.url.replace('/data/', '');
+				const stats = await this.storagePort.getStats(fileKey);
 
-				await fs.unlink(fullPath);
+				await this.storagePort.delete(fileKey);
 				report.filesDeleted++;
 				report.spaceRecovered += stats.size;
 
 				await this.coverRepository.remove(cover);
 
-				this.logger.log(`Deleted old cover file: ${filename}`);
+				this.logger.log(`Deleted old cover file: ${fileKey}`);
 			} catch (error: unknown) {
-				if (this.getErrorCode(error) !== 'ENOENT') {
-					const errorMsg = `Failed to delete cover ${cover.id}: ${this.getErrorMessage(error)}`;
-					this.logger.error(errorMsg);
-					report.errors.push(errorMsg);
-				}
+				const errorMsg = `Failed to delete cover ${cover.id}: ${this.getErrorMessage(error)}`;
+				this.logger.error(errorMsg);
+				report.errors.push(errorMsg);
 			}
 		}
 
@@ -447,12 +353,14 @@ export class FileCleanupService {
 		deletedCovers: number;
 		retentionDays: number;
 	}> {
-		this.logger.log('Calculating storage statistics (Streaming mode)...');
+		this.logger.log(
+			'Calculating storage statistics (S3 Streaming mode)...',
+		);
 
 		let totalSize = 0;
 		let fileCount = 0;
 
-		for await (const file of this.getAllFilesGenerator(this.downloadDir)) {
+		for await (const file of this.storagePort.listAllFiles()) {
 			totalSize += file.size;
 			fileCount++;
 		}

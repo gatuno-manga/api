@@ -41,17 +41,17 @@ import { UsersModule } from './users/users.module';
 			{
 				name: 'short',
 				ttl: 1000, // 1 segundo
-				limit: 3,
+				limit: 100, // Aumentado de 3 para 100
 			},
 			{
 				name: 'medium',
 				ttl: 10000, // 10 segundos
-				limit: 20,
+				limit: 200, // Aumentado de 20 para 200
 			},
 			{
 				name: 'long',
 				ttl: 60000, // 1 minuto
-				limit: 100,
+				limit: 1000, // Aumentado de 100 para 1000
 			},
 		]),
 		ScrapingModule,

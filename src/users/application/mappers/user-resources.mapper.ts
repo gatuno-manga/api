@@ -1,13 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
-import { ReadingProgressResponseDto } from '../../infrastructure/http/dto/reading-progress.dto';
+import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
+import { MediaUrlService } from 'src/common/services/media-url.service';
 import { ReadingProgress } from '../../infrastructure/database/entities/reading-progress.entity';
-import { User } from '../../infrastructure/database/entities/user.entity';
 import { SavedPage } from '../../infrastructure/database/entities/saved-page.entity';
+import { User } from '../../infrastructure/database/entities/user.entity';
+import { ReadingProgressResponseDto } from '../../infrastructure/http/dto/reading-progress.dto';
 
 @Injectable()
 export class UserResourcesMapper {
-	constructor(private readonly appConfig: AppConfigService) {}
+	constructor(private readonly mediaUrlService: MediaUrlService) {}
 
 	toReadingProgressDto(
 		progress: ReadingProgress,
@@ -34,7 +35,10 @@ export class UserResourcesMapper {
 			return savedPage;
 		}
 
-		savedPage.page.path = this.toAbsoluteMediaUrl(savedPage.page.path);
+		savedPage.page.path = this.mediaUrlService.resolveUrl(
+			savedPage.page.path,
+			StorageBucket.BOOKS,
+		);
 		return savedPage;
 	}
 
@@ -51,9 +55,15 @@ export class UserResourcesMapper {
 			roles: user.roles,
 			maxWeightSensitiveContent: user.maxWeightSensitiveContent,
 			profileImagePath: user.profileImagePath,
-			profileImageUrl: this.toAbsoluteMediaUrl(user.profileImagePath),
+			profileImageUrl: this.mediaUrlService.resolveUrl(
+				user.profileImagePath,
+				StorageBucket.USERS,
+			),
 			profileBannerPath: user.profileBannerPath,
-			profileBannerUrl: this.toAbsoluteMediaUrl(user.profileBannerPath),
+			profileBannerUrl: this.mediaUrlService.resolveUrl(
+				user.profileBannerPath,
+				StorageBucket.USERS,
+			),
 			createdAt: user.createdAt,
 			updatedAt: user.updatedAt,
 		};
@@ -64,22 +74,15 @@ export class UserResourcesMapper {
 			id: user.id,
 			userName: user.userName,
 			name: user.name,
-			profileImageUrl: this.toAbsoluteMediaUrl(user.profileImagePath),
-			profileBannerUrl: this.toAbsoluteMediaUrl(user.profileBannerPath),
+			profileImageUrl: this.mediaUrlService.resolveUrl(
+				user.profileImagePath,
+				StorageBucket.USERS,
+			),
+			profileBannerUrl: this.mediaUrlService.resolveUrl(
+				user.profileBannerPath,
+				StorageBucket.USERS,
+			),
 			createdAt: user.createdAt,
 		};
-	}
-
-	private toAbsoluteMediaUrl(url: string | null): string {
-		if (
-			!url ||
-			url.startsWith('null') ||
-			url.startsWith('undefined') ||
-			url.startsWith('http')
-		) {
-			return url || '';
-		}
-
-		return `${this.appConfig.apiUrl}${url}`;
 	}
 }

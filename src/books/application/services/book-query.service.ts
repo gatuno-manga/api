@@ -5,32 +5,25 @@ import {
 	NotFoundException,
 	ForbiddenException,
 } from '@nestjs/common';
-import { In } from 'typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Job, Queue } from 'bullmq';
+import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
+import { MediaUrlService } from 'src/common/services/media-url.service';
 import {
 	BookChaptersCursorPageDto,
 	BookChapterCursorItemDto,
 } from '../dto/book-chapters-cursor-page.dto';
 import { BookChaptersCursorOptionsDto } from '../dto/book-chapters-cursor-options.dto';
 import { QueueCoverProcessorDto } from '../dto/queue-cover-processor.dto';
-import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 import { MetadataPageDto } from 'src/common/pagination/metadata-page.dto';
 import { PageDto } from 'src/common/pagination/page.dto';
-import { OrderDirection } from 'src/common/enum/order-direction.enum';
 import { BookPageOptionsDto } from '../dto/book-page-options.dto';
-import { Author } from '../../domain/entities/author';
 import { Book } from '../../domain/entities/book';
-import { Chapter } from '../../domain/entities/chapter';
-import { Page } from '../../domain/entities/page';
-import { SensitiveContent } from '../../domain/entities/sensitive-content';
-import { Tag } from '../../domain/entities/tag';
 import { ScrapingStatus } from '../../domain/enums/scrapingStatus.enum';
 import { SensitiveContentService } from './sensitive-content.service';
 import { FilterStrategy } from '../strategies';
 import { AdminUsersService } from 'src/users/application/use-cases/admin-users.service';
-import { BookOrderField } from '../../domain/enums/book-order-field.enum';
 import {
 	I_BOOK_REPOSITORY,
 	IBookRepository,
@@ -56,18 +49,6 @@ import {
 	ISensitiveContentRepository,
 } from '../ports/sensitive-content-repository.interface';
 
-interface RawChapterRow {
-	chapter_id: string;
-	chapter_title: string;
-	chapter_index: number;
-	chapter_scrapingStatus: string;
-	readCount: string;
-}
-
-/**
- * Interface representando o item retornado pelo repositório de capítulos.
- * Pode ser um objeto bruto (quando userId está presente) ou a entidade de domínio.
- */
 interface RawChapterItem {
 	// Campos da entidade
 	id?: string;
@@ -103,7 +84,7 @@ export class BookQueryService {
 		@Inject(I_SENSITIVE_CONTENT_REPOSITORY)
 		private readonly sensitiveContentRepository: ISensitiveContentRepository,
 		private readonly sensitiveContentService: SensitiveContentService,
-		private readonly appConfig: AppConfigService,
+		private readonly mediaUrlService: MediaUrlService,
 		@InjectQueue('book-update-queue')
 		private readonly bookUpdateQueue: Queue<{ bookId: string }>,
 		@InjectQueue('chapter-scraping')
@@ -156,7 +137,10 @@ export class BookQueryService {
 		);
 		const data = books.map((b) => ({
 			...b,
-			cover: this.toAbsoluteMediaUrl(b.covers?.[0]?.url || null),
+			cover: this.mediaUrlService.resolveUrl(
+				b.covers?.[0]?.url || null,
+				StorageBucket.BOOKS,
+			),
 		}));
 
 		if (options.cursor) {
@@ -209,7 +193,10 @@ export class BookQueryService {
 		const { covers, ...rest } = book;
 		return {
 			...rest,
-			cover: this.toAbsoluteMediaUrl(covers?.[0]?.url || null),
+			cover: this.mediaUrlService.resolveUrl(
+				covers?.[0]?.url || null,
+				StorageBucket.BOOKS,
+			),
 		};
 	}
 
@@ -308,7 +295,10 @@ export class BookQueryService {
 
 		if (book.covers) {
 			for (const cover of book.covers) {
-				cover.url = this.toAbsoluteMediaUrl(cover.url);
+				cover.url = this.mediaUrlService.resolveUrl(
+					cover.url,
+					StorageBucket.BOOKS,
+				);
 			}
 		}
 
@@ -332,7 +322,10 @@ export class BookQueryService {
 
 		if (book.covers) {
 			for (const cover of book.covers) {
-				cover.url = this.toAbsoluteMediaUrl(cover.url);
+				cover.url = this.mediaUrlService.resolveUrl(
+					cover.url,
+					StorageBucket.BOOKS,
+				);
 			}
 		}
 
@@ -379,19 +372,55 @@ export class BookQueryService {
 	}
 
 	async getQueueStats() {
-		return { queues: [] };
-	}
+		const getStats = async (queue: Queue) => {
+			const [counts, jobs] = await Promise.all([
+				queue.getJobCounts(),
+				queue.getJobs(['active', 'waiting', 'delayed'], 0, 10, true),
+			]);
 
-	private toAbsoluteMediaUrl(url: string | null): string {
-		if (
-			!url ||
-			url.startsWith('null') ||
-			url.startsWith('undefined') ||
-			url.startsWith('http')
-		) {
-			return url || '';
-		}
+			const jobsWithState = await Promise.all(
+				jobs.map(async (job) => ({
+					job,
+					state: await job.getState(),
+				})),
+			);
 
-		return `${this.appConfig.apiUrl}${url}`;
+			const mapJob = (j: { job: Job }) => ({
+				id: j.job.id,
+				bookId: j.job.data?.bookId || null,
+				chapterId: j.job.data?.chapterId || null,
+			});
+
+			return {
+				name: queue.name,
+				counts: {
+					waiting: counts.waiting,
+					active: counts.active,
+					completed: counts.completed,
+					failed: counts.failed,
+					delayed: counts.delayed,
+				},
+				activeJobs: jobsWithState
+					.filter((j) => j.state === 'active')
+					.map(mapJob),
+				pendingJobs: jobsWithState
+					.filter(
+						(j) =>
+							j.state === 'waiting' ||
+							j.state === 'prioritized' ||
+							j.state === 'delayed',
+					)
+					.map(mapJob),
+			};
+		};
+
+		const queues = await Promise.all([
+			getStats(this.bookUpdateQueue),
+			getStats(this.chapterScrapingQueue),
+			getStats(this.coverImageQueue),
+			getStats(this.fixChapterQueue),
+		]);
+
+		return { queues };
 	}
 }

@@ -1,7 +1,8 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
-import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
+import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
+import { MediaUrlService } from 'src/common/services/media-url.service';
 import { In, Repository } from 'typeorm';
 import { ChapterRead } from '@books/infrastructure/database/entities/chapter-read.entity';
 import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
@@ -21,16 +22,9 @@ export class ChapterService {
 		private readonly chapterRepository: Repository<Chapter>,
 		@InjectRepository(ChapterRead)
 		private readonly chapterReadRepository: Repository<ChapterRead>,
-		private readonly appConfig: AppConfigService,
+		private readonly mediaUrlService: MediaUrlService,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
-
-	private urlImage(url: string): string {
-		if (!url || url.startsWith('null') || url.startsWith('undefined'))
-			return '';
-		const appUrl = this.appConfig.apiUrl;
-		return `${appUrl}${url}`;
-	}
 
 	private getErrorMessage(error: unknown): string {
 		return error instanceof Error ? error.message : 'Unknown error';
@@ -100,7 +94,10 @@ export class ChapterService {
 		if (chapter.contentType === ContentType.IMAGE) {
 			if (chapterWithoutBook.pages) {
 				for (const page of chapterWithoutBook.pages) {
-					page.path = this.urlImage(page.path);
+					page.path = this.mediaUrlService.resolveUrl(
+						page.path,
+						StorageBucket.BOOKS,
+					);
 				}
 			}
 		} else {
@@ -113,7 +110,10 @@ export class ChapterService {
 			chapter.contentType === ContentType.DOCUMENT &&
 			chapter.documentPath
 		) {
-			baseResponse.documentPath = this.urlImage(chapter.documentPath);
+			baseResponse.documentPath = this.mediaUrlService.resolveUrl(
+				chapter.documentPath,
+				StorageBucket.BOOKS,
+			);
 		}
 
 		// Para TEXT: content já está no objeto, não precisa modificar
@@ -351,7 +351,10 @@ export class ChapterService {
 				documentPath:
 					chapter.contentType === ContentType.DOCUMENT &&
 					chapter.documentPath
-						? this.urlImage(chapter.documentPath)
+						? this.mediaUrlService.resolveUrl(
+								chapter.documentPath,
+								StorageBucket.BOOKS,
+							)
 						: undefined,
 			};
 
@@ -361,7 +364,10 @@ export class ChapterService {
 				baseResponse.pages
 			) {
 				for (const page of baseResponse.pages) {
-					page.path = this.urlImage(page.path);
+					page.path = this.mediaUrlService.resolveUrl(
+						page.path,
+						StorageBucket.BOOKS,
+					);
 				}
 			}
 

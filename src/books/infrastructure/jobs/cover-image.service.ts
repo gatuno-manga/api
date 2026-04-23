@@ -1,10 +1,11 @@
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Queue } from 'bullmq';
 import { ScrapingService } from '../../../scraping/application/services/scraping.service';
+import { FilesService } from '../../../files/application/services/files.service';
+import { StorageBucket } from '../../../common/enum/storage-bucket.enum';
 import { IsNull, Repository } from 'typeorm';
 import { QueueCoverProcessorDto } from '../../application/dto/queue-cover-processor.dto';
 import { UrlImageDto } from '../../application/dto/url-image.dto';
@@ -23,6 +24,7 @@ export class CoverImageService {
 		@InjectRepository(Cover)
 		private readonly coverRepository: Repository<Cover>,
 		private readonly scrapingService: ScrapingService,
+		private readonly filesService: FilesService,
 	) {}
 
 	/**
@@ -58,7 +60,7 @@ export class CoverImageService {
 
 	/**
 	 * Calcula o hash SHA-256 do conteúdo de uma imagem.
-	 * Suporta tanto URLs HTTP/HTTPS quanto caminhos de arquivo locais.
+	 * Suporta tanto URLs HTTP/HTTPS quanto caminhos de arquivo locais (Storage).
 	 * @param imageSource URL ou caminho local da imagem
 	 * @param refererUrl URL de origem para usar como referer (opcional)
 	 * @returns Hash da imagem em hexadecimal
@@ -88,11 +90,19 @@ export class CoverImageService {
 				throw error;
 			}
 		} else {
-			const realPath = imageSource.startsWith('/data/')
-				? imageSource.replace('/data/', '/usr/src/app/data/')
-				: imageSource;
-
-			buffer = await readFile(realPath);
+			try {
+				// Usa o FilesService para buscar o buffer do storage (S3/RustFS)
+				buffer = await this.filesService.getFileBuffer(
+					imageSource,
+					StorageBucket.BOOKS,
+				);
+			} catch (error) {
+				this.logger.error(
+					`Failed to read image buffer from storage: ${imageSource}`,
+					error,
+				);
+				throw error;
+			}
 		}
 
 		return createHash('sha256').update(buffer).digest('hex');

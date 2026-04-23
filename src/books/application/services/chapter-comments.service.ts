@@ -6,15 +6,12 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
+import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
+import { MediaUrlService } from 'src/common/services/media-url.service';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { RolesEnum } from '../../../users/domain/enums/roles.enum';
 import { User } from '../../../users/domain/entities/user';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
-import {
-	decodeCursorPayload,
-	encodeCursorPayload,
-} from 'src/common/pagination/cursor.utils';
 import { MetadataPageDto } from 'src/common/pagination/metadata-page.dto';
 import { PageDto } from 'src/common/pagination/page.dto';
 import { ChapterComment } from '../../domain/entities/chapter-comment';
@@ -50,11 +47,6 @@ export type ChapterCommentNode = {
 	replies: ChapterCommentNode[];
 };
 
-type ChapterCommentsCursorPayload = {
-	createdAt: string;
-	id: string;
-};
-
 @Injectable()
 export class ChapterCommentsService {
 	constructor(
@@ -64,7 +56,7 @@ export class ChapterCommentsService {
 		private readonly chapterRepository: IChapterRepository,
 		@Inject(I_USER_REPOSITORY)
 		private readonly userRepository: IUserRepository,
-		private readonly appConfig: AppConfigService,
+		private readonly mediaUrlService: MediaUrlService,
 	) {}
 
 	async listChapterComments(
@@ -77,13 +69,6 @@ export class ChapterCommentsService {
 		await this.ensureChapterExists(chapterId);
 
 		if (options.cursor) {
-			const roots =
-				await this.chapterCommentRepository.findRootsWithCursor(
-					chapterId,
-					options,
-					viewer,
-				);
-			// Mapeamento simplificado para build
 			return new CursorPageDto([], null, false);
 		}
 
@@ -322,8 +307,9 @@ export class ChapterCommentsService {
 				comment.user?.userName ||
 				comment.user?.id ||
 				'unknown-user',
-			profileImageUrl: this.toAbsoluteMediaUrl(
+			profileImageUrl: this.mediaUrlService.resolveUrl(
 				comment.user?.profileImagePath || null,
+				StorageBucket.USERS,
 			),
 			parentId: comment.parent?.id ?? null,
 			content: isDeleted ? '[comentario removido]' : comment.content,
@@ -342,23 +328,11 @@ export class ChapterCommentsService {
 		const user = await this.userRepository.findById(userId);
 
 		const userName = user?.userName?.trim() || fallback?.trim() || userId;
-		const profileImageUrl = this.toAbsoluteMediaUrl(
+		const profileImageUrl = this.mediaUrlService.resolveUrl(
 			user?.profileImagePath || null,
+			StorageBucket.USERS,
 		);
 
 		return { userName, profileImageUrl };
-	}
-
-	private toAbsoluteMediaUrl(url: string | null): string {
-		if (
-			!url ||
-			url.startsWith('null') ||
-			url.startsWith('undefined') ||
-			url.startsWith('http')
-		) {
-			return url || '';
-		}
-
-		return `${this.appConfig.apiUrl}${url}`;
 	}
 }

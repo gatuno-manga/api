@@ -27,6 +27,17 @@ export class TypeOrmUserRepositoryAdapter implements UserRepositoryPort {
 		return user ? this.toDomain(user) : null;
 	}
 
+	async findCredentialsByEmail(email: EmailVO): Promise<UserAuthData | null> {
+		const user = await this.userRepository
+			.createQueryBuilder('user')
+			.leftJoinAndSelect('user.roles', 'role')
+			.addSelect('user.password')
+			.where('user.email = :email', { email: email.value })
+			.getOne();
+
+		return user ? this.toDomain(user) : null;
+	}
+
 	async save(input: UserSaveInput): Promise<UserAuthData> {
 		const role = await this.roleRepository.findOne({
 			where: { name: input.roleName },

@@ -26,8 +26,6 @@ async function bootstrap() {
 		configureSwagger(app);
 	}
 
-	configureStaticAssets(app);
-
 	await app.listen(configService.port);
 }
 

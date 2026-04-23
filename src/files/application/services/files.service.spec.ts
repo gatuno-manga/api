@@ -1,20 +1,12 @@
-import * as fs from 'node:fs/promises';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { FileCompressorFactory } from '../../infrastructure/adapters/file-compressor.factory';
+import { StoragePort } from '../ports/storage.port';
 import { FilesService } from './files.service';
-
-// Mock do fs
-jest.mock('node:fs/promises', () => ({
-	writeFile: jest.fn(),
-	mkdir: jest.fn(),
-	unlink: jest.fn(),
-	stat: jest.fn(),
-	readFile: jest.fn(),
-}));
 
 describe('FilesService', () => {
 	let service: FilesService;
 	let mockCompressorFactory: jest.Mocked<FileCompressorFactory>;
+	let mockStoragePort: jest.Mocked<StoragePort>;
 
 	beforeEach(async () => {
 		mockCompressorFactory = {
@@ -26,6 +18,15 @@ describe('FilesService', () => {
 			getSupportedExtensions: jest.fn(),
 		} as any;
 
+		mockStoragePort = {
+			save: jest.fn(),
+			delete: jest.fn(),
+			exists: jest.fn(),
+			getStats: jest.fn(),
+			getBuffer: jest.fn(),
+			listAllFiles: jest.fn(),
+		};
+
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				FilesService,
@@ -33,13 +34,23 @@ describe('FilesService', () => {
 					provide: FileCompressorFactory,
 					useValue: mockCompressorFactory,
 				},
+				{
+					provide: 'STORAGE_PORT',
+					useValue: mockStoragePort,
+				},
 			],
 		}).compile();
 
 		service = module.get<FilesService>(FilesService);
 
-		// Mock do fs.writeFile para não escrever arquivos realmente
-		(fs.writeFile as jest.Mock).mockResolvedValue(undefined);
+		mockStoragePort.save.mockImplementation(
+			async (
+				buffer: Buffer,
+				fileKey: string,
+				mimeType: string,
+				bucket?: string,
+			) => `/data/${fileKey}`,
+		);
 	});
 
 	afterEach(() => {
@@ -90,8 +101,13 @@ describe('FilesService', () => {
 				buffer,
 				extension,
 			);
-			expect(fs.writeFile).toHaveBeenCalled();
-			expect(result).toMatch(/^\/data\/.+\.webp$/);
+			expect(mockStoragePort.save).toHaveBeenCalledWith(
+				expect.any(Buffer),
+				expect.any(String),
+				'image/webp',
+				undefined,
+			);
+			expect(result).toMatch(/^\/data\/.+\/.+\.webp$/);
 		});
 
 		it('deve salvar arquivo sem compressão quando não disponível', async () => {
@@ -105,8 +121,13 @@ describe('FilesService', () => {
 				extension,
 			);
 			expect(mockCompressorFactory.compress).not.toHaveBeenCalled();
-			expect(fs.writeFile).toHaveBeenCalled();
-			expect(result).toMatch(/^\/data\/.+\.txt$/);
+			expect(mockStoragePort.save).toHaveBeenCalledWith(
+				buffer,
+				expect.any(String),
+				'application/octet-stream',
+				undefined,
+			);
+			expect(result).toMatch(/^\/data\/.+\/.+\.txt$/);
 		});
 
 		it('deve fazer fallback para buffer original quando compressão falha', async () => {
@@ -123,11 +144,13 @@ describe('FilesService', () => {
 				extension,
 			);
 			expect(mockCompressorFactory.compress).toHaveBeenCalled();
-			expect(fs.writeFile).toHaveBeenCalledWith(
-				expect.any(String),
+			expect(mockStoragePort.save).toHaveBeenCalledWith(
 				buffer,
+				expect.any(String),
+				'image/jpeg',
+				undefined,
 			);
-			expect(result).toMatch(/^\/data\/.+\.jpg$/);
+			expect(result).toMatch(/^\/data\/.+\/.+\.jpg$/);
 		});
 
 		it('deve gerar UUID único para cada arquivo', async () => {
@@ -139,8 +162,8 @@ describe('FilesService', () => {
 			const result2 = await service.saveBufferFile(buffer, extension);
 
 			expect(result1).not.toBe(result2);
-			expect(result1).toMatch(/^\/data\/.+\.png$/);
-			expect(result2).toMatch(/^\/data\/.+\.png$/);
+			expect(result1).toMatch(/^\/data\/.+\/.+\.png$/);
+			expect(result2).toMatch(/^\/data\/.+\/.+\.png$/);
 		});
 	});
 
@@ -163,8 +186,13 @@ describe('FilesService', () => {
 				Buffer.from(base64Data, 'base64'),
 				extension,
 			);
-			expect(fs.writeFile).toHaveBeenCalled();
-			expect(result).toMatch(/^\/data\/.+\.webp$/);
+			expect(mockStoragePort.save).toHaveBeenCalledWith(
+				expect.any(Buffer),
+				expect.any(String),
+				'image/webp',
+				undefined,
+			);
+			expect(result).toMatch(/^\/data\/.+\/.+\.webp$/);
 		});
 
 		it('deve salvar arquivo sem compressão quando não disponível', async () => {
@@ -178,24 +206,25 @@ describe('FilesService', () => {
 				extension,
 			);
 			expect(mockCompressorFactory.compress).not.toHaveBeenCalled();
-			expect(fs.writeFile).toHaveBeenCalled();
-			expect(result).toMatch(/^\/data\/.+\.txt$/);
-		});
-
-		it('deve manter compatibilidade com código legado', async () => {
-			const testData = 'test image data';
-			const base64Data = Buffer.from(testData).toString('base64');
-			const extension = '.jpg';
-			mockCompressorFactory.hasCompressor.mockReturnValue(false);
-
-			const result = await service.saveBase64File(base64Data, extension);
-
-			// Verifica que o arquivo foi escrito com o conteúdo correto
-			expect(fs.writeFile).toHaveBeenCalledWith(
+			expect(mockStoragePort.save).toHaveBeenCalledWith(
+				expect.any(Buffer),
 				expect.any(String),
-				Buffer.from(testData),
+				'application/octet-stream',
+				undefined,
 			);
-			expect(result).toMatch(/^\/data\/.+\.jpg$/);
+			expect(result).toMatch(/^\/data\/.+\/.+\.txt$/);
+		});
+	});
+
+	describe('deleteFile', () => {
+		it('deve chamar storagePort.delete com o fileKey correto', async () => {
+			const publicPath = '/data/ab/uuid.webp';
+			await service.deleteFile(publicPath);
+
+			expect(mockStoragePort.delete).toHaveBeenCalledWith(
+				'ab/uuid.webp',
+				undefined,
+			);
 		});
 	});
 });

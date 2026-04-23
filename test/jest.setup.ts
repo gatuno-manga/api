@@ -27,21 +27,30 @@ const detectDockerContainerIp = (containerName: string): string | null => {
 	}
 };
 
+const masterIp = detectDockerContainerIp('gatuno-database');
+const slave1Ip = detectDockerContainerIp('gatuno-database-slave-1');
+const slave2Ip = detectDockerContainerIp('gatuno-database-slave-2');
+const redisIp = detectDockerContainerIp('gatuno-redis');
+
+// Força os IPs detectados no process.env para sobrescrever o .env
+if (masterIp) process.env.DB_MASTER_HOST = masterIp;
+if (slave1Ip && slave2Ip) {
+	process.env.DB_SLAVE_HOSTS = `${slave1Ip},${slave2Ip}`;
+} else if (slave1Ip || slave2Ip) {
+	process.env.DB_SLAVE_HOSTS = slave1Ip || slave2Ip || '';
+}
+
+if (redisIp) process.env.REDIS_HOST = redisIp;
+
 setEnvDefault('NODE_ENV', 'test');
 setEnvDefault('DB_TYPE', 'mysql');
 setEnvDefault('DB_NAME', 'gatuno');
 setEnvDefault('DB_MASTER_HOST', '127.0.0.1');
 setEnvDefault('DB_SLAVE_HOSTS', '127.0.0.1');
-setEnvDefault('DB_PORT', process.env.DB_MASTER_EXTERNAL_PORT || '3306');
+setEnvDefault('DB_PORT', '3306');
 setEnvDefault('DB_USER', 'root');
 setEnvDefault('DB_PASS', 'root');
-setEnvDefault('API_URL', 'http://localhost:3000');
-setEnvDefault('APP_URL', 'http://localhost:4200');
-setEnvDefault('ALLOWED_URL', 'http://localhost:4200');
-setEnvDefault(
-	'REDIS_HOST',
-	detectDockerContainerIp('gatuno-redis') || '127.0.0.1',
-);
+setEnvDefault('REDIS_HOST', '127.0.0.1');
 setEnvDefault('REDIS_PORT', '6379');
 setEnvDefault('REDIS_PASSWORD', '');
 setEnvDefault('USERADMIN_EMAIL', 'admin@example.com');

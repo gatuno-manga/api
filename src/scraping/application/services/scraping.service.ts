@@ -38,6 +38,7 @@ import {
 import { ScrapingContext } from '../../infrastructure/runner/scraping-context.interface';
 import { ScrapingSessionRunner } from '../../infrastructure/runner/scraping-session.runner';
 import { WebsiteService } from './website.service';
+import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
 
 @Injectable()
 export class ScrapingService implements OnApplicationShutdown {
@@ -249,8 +250,13 @@ export class ScrapingService implements OnApplicationShutdown {
 				? await this.filesService.savePreCompressedFile(
 						bufferData,
 						extension,
+						StorageBucket.BOOKS,
 					)
-				: await this.filesService.saveBufferFile(bufferData, extension);
+				: await this.filesService.saveBufferFile(
+						bufferData,
+						extension,
+						StorageBucket.BOOKS,
+					);
 
 			results.push(savedPath);
 		}
@@ -409,6 +415,7 @@ export class ScrapingService implements OnApplicationShutdown {
 				const savedPath = await this.filesService.saveBufferFile(
 					buffer,
 					'.png',
+					StorageBucket.BOOKS,
 				);
 				results.push(savedPath);
 			} catch (error) {
@@ -480,8 +487,13 @@ export class ScrapingService implements OnApplicationShutdown {
 					? this.filesService.savePreCompressedFile(
 							bufferData,
 							extension,
+							StorageBucket.BOOKS,
 						)
-					: this.filesService.saveBufferFile(bufferData, extension);
+					: this.filesService.saveBufferFile(
+							bufferData,
+							extension,
+							StorageBucket.BOOKS,
+						);
 			},
 		);
 	}
@@ -645,10 +657,12 @@ export class ScrapingService implements OnApplicationShutdown {
 							? await this.filesService.savePreCompressedFile(
 									bufferData,
 									extension,
+									StorageBucket.BOOKS,
 								)
 							: await this.filesService.saveBufferFile(
 									bufferData,
 									extension,
+									StorageBucket.BOOKS,
 								);
 						results.push(saved);
 					} catch (err) {
