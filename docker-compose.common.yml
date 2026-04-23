@@ -20,6 +20,11 @@ services:
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+      - RUSTFS_ENDPOINT=${RUSTFS_ENDPOINT:-http://rustfs:9000}
+      - RUSTFS_ACCESS_KEY=${RUSTFS_ACCESS_KEY:-rustfsadmin}
+      - RUSTFS_SECRET_KEY=${RUSTFS_SECRET_KEY:-rustfsadmin}
+      - RUSTFS_BUCKET=${RUSTFS_BUCKET:-gatuno-files}
+      - RUSTFS_REGION=${RUSTFS_REGION:-us-east-1}
     healthcheck:
       test:
         [
@@ -142,12 +147,66 @@ services:
       - ./database/slave/healthcheck-replica.sh:/usr/local/bin/healthcheck-replica.sh:ro
     command: ['mysqld', '--server-id=3']
 
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: gatuno-rustfs
+    security_opt:
+      - "no-new-privileges:true"
+    environment:
+      - RUSTFS_VOLUMES=/data
+      - RUSTFS_ADDRESS=0.0.0.0:9000
+      - RUSTFS_CONSOLE_ADDRESS=0.0.0.0:9001
+      - RUSTFS_CONSOLE_ENABLE=true
+      - RUSTFS_CORS_ALLOWED_ORIGINS=${APP_URL},${API_URL},${ALLOWED_URL}
+      - RUSTFS_CONSOLE_CORS_ALLOWED_ORIGINS=*
+      - RUSTFS_ACCESS_KEY=${RUSTFS_ACCESS_KEY:-rustfsadmin}
+      - RUSTFS_SECRET_KEY=${RUSTFS_SECRET_KEY:-rustfsadmin}
+    volumes:
+      - rustfs_data:/data
+    networks:
+      - gatuno-net
+
+  rustfs-init:
+    image: minio/mc
+    depends_on:
+      - rustfs
+    entrypoint: >
+      /bin/sh -c "
+      sleep 5;
+      mc alias set myrustfs http://rustfs:9000 ${RUSTFS_ACCESS_KEY:-rustfsadmin} ${RUSTFS_SECRET_KEY:-rustfsadmin};
+      mc mb myrustfs/${RUSTFS_BUCKET:-gatuno-files} || true;
+      echo '{
+        \"Version\": \"2012-10-17\",
+        \"Statement\": [
+          {
+            \"Effect\": \"Allow\",
+            \"Principal\": \"*\",
+            \"Action\": [\"s3:GetObject\"],
+            \"Resource\": [\"arn:aws:s3:::${RUSTFS_BUCKET:-gatuno-files}/*\"],
+            \"Condition\": {
+              \"StringLike\": {
+                \"aws:Referer\": [
+                  \"${APP_URL}/*\",
+                  \"${API_URL}/*\",
+                  \"${ALLOWED_URL}/*\"
+                ]
+              }
+            }
+          }
+        ]
+      }' > /tmp/policy.json;
+      mc anonymous set-json /tmp/policy.json myrustfs/${RUSTFS_BUCKET:-gatuno-files};
+      "
+    networks:
+      - gatuno-net
+
 volumes:
   database-data:
   database-slave-1-data:
   database-slave-2-data:
   api-data:
   redis_data:
+  rustfs_data:
 
 networks:
   gatuno-net:

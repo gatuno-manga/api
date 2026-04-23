@@ -26,10 +26,20 @@ export class ChapterService {
 	) {}
 
 	private urlImage(url: string): string {
-		if (!url || url.startsWith('null') || url.startsWith('undefined'))
-			return '';
-		const appUrl = this.appConfig.apiUrl;
-		return `${appUrl}${url}`;
+		if (
+			!url ||
+			url.startsWith('null') ||
+			url.startsWith('undefined') ||
+			url.startsWith('http')
+		) {
+			return url || '';
+		}
+
+		// Garante que o caminho comece com /api/data/
+		const cleanPath = url
+			.replace(/^\/?(api\/)?data\//, '')
+			.replace(/^\//, '');
+		return `${this.appConfig.apiUrl}/api/data/${cleanPath}`;
 	}
 
 	private getErrorMessage(error: unknown): string {

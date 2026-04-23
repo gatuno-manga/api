@@ -359,6 +359,10 @@ export class ChapterCommentsService {
 			return url || '';
 		}
 
-		return `${this.appConfig.apiUrl}${url}`;
+		// Garante que o caminho comece com /api/data/
+		const cleanPath = url
+			.replace(/^\/?(api\/)?data\//, '')
+			.replace(/^\//, '');
+		return `${this.appConfig.apiUrl}/api/data/${cleanPath}`;
 	}
 }

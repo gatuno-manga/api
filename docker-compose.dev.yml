@@ -61,3 +61,8 @@ services:
   database-slave-2:
     ports:
       - "${DB_SLAVE_2_EXTERNAL_PORT}:3306"
+
+  rustfs:
+    ports:
+      - "9000:9000"
+      - "9001:9001"

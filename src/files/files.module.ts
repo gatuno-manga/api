@@ -11,12 +11,14 @@ import { SharpAdapter } from './infrastructure/adapters/sharp.adapter';
 import { FileCompressorFactory } from './infrastructure/adapters/file-compressor.factory';
 import { IFileCompressor } from './application/ports/file-compressor.interface';
 import { FileCleanupController } from './infrastructure/controllers/file-cleanup.controller';
+import { FilesController } from './infrastructure/controllers/files.controller';
 import { FileCleanupCron } from './infrastructure/framework/file-cleanup.cron';
 import { FileCleanupService } from './application/services/file-cleanup.service';
 import { FilesService } from './application/services/files.service';
+import { S3StorageAdapter } from './infrastructure/adapters/s3-storage.adapter';
 
 @Module({
-	controllers: [FileCleanupController],
+	controllers: [FileCleanupController, FilesController],
 	providers: [
 		FilesService,
 		FileCleanupService,
@@ -24,6 +26,11 @@ import { FilesService } from './application/services/files.service';
 		FileCompressorFactory,
 		SharpAdapter,
 		NoCompressionAdapter,
+		S3StorageAdapter,
+		{
+			provide: 'STORAGE_PORT',
+			useClass: S3StorageAdapter,
+		},
 		{
 			provide: 'FILE_COMPRESSORS',
 			useFactory: (

@@ -1,18 +1,19 @@
-import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { FileCompressorFactory } from '../../infrastructure/adapters/file-compressor.factory';
+import { StoragePort } from '../ports/storage.port';
 
 @Injectable()
 export class FilesService {
-	private downloadDir = path.resolve('/usr/src/app/data');
 	private readonly logger = new Logger(FilesService.name);
 
-	constructor(private readonly compressorFactory: FileCompressorFactory) {}
+	constructor(
+		private readonly compressorFactory: FileCompressorFactory,
+		@Inject('STORAGE_PORT') private readonly storagePort: StoragePort,
+	) {}
 
-	private getPublicPath(fileName: string): string {
-		return `/data/${fileName}`;
+	private getPublicPath(fileKey: string): string {
+		return `/data/${fileKey}`;
 	}
 
 	/**
@@ -31,7 +32,7 @@ export class FilesService {
 	}
 
 	/**
-	 * Implementação interna de salvamento com sharding (2 caracteres)
+	 * Implementação interna de salvamento com sharding (2 caracteres) no S3
 	 * @private
 	 */
 	private async saveFileInternal(
@@ -41,18 +42,15 @@ export class FilesService {
 		const uuid = uuidv4();
 		const shard = uuid.substring(0, 2);
 		const fileName = `${uuid}${extension}`;
+		const fileKey = `${shard}/${fileName}`;
 
-		// Estrutura: data/ab/uuid.ext
-		const shardDir = path.join(this.downloadDir, shard);
+		let mimeType = 'application/octet-stream';
+		if (extension === '.webp') mimeType = 'image/webp';
+		if (extension === '.jpg' || extension === '.jpeg')
+			mimeType = 'image/jpeg';
+		if (extension === '.png') mimeType = 'image/png';
 
-		// Cria o diretório (ex: data/ab) se não existir
-		await fs.mkdir(shardDir, { recursive: true });
-
-		const filePath = path.join(shardDir, fileName);
-		await fs.writeFile(filePath, buffer);
-
-		// O caminho público agora inclui o shard: /data/ab/uuid.ext
-		return this.getPublicPath(path.join(shard, fileName));
+		return await this.storagePort.save(buffer, fileKey, mimeType);
 	}
 
 	/**
@@ -122,19 +120,26 @@ export class FilesService {
 	}
 
 	/**
-	 * Deleta um arquivo do sistema de arquivos
-	 * @param publicPath Caminho público do arquivo (ex: '/data/arquivo.jpg')
+	 * Obtém o buffer de um arquivo do storage
+	 * @param storedPath Caminho guardado no banco (key ou /data/key)
 	 */
-	async deleteFile(publicPath: string): Promise<void> {
+	async getFileBuffer(storedPath: string): Promise<Buffer> {
+		const fileKey = storedPath.replace(/^\/data\//, '');
+		return await this.storagePort.getBuffer(fileKey);
+	}
+
+	/**
+	 * Deleta um arquivo do storage
+	 * @param storedPath Caminho guardado no banco (pode ser a key ou /data/key)
+	 */
+	async deleteFile(storedPath: string): Promise<void> {
 		try {
-			// Converte o caminho público para o caminho real no filesystem
-			const fileName = publicPath.replace('/data/', '');
-			const filePath = path.join(this.downloadDir, fileName);
-			await fs.unlink(filePath);
-			this.logger.log(`Arquivo deletado: ${filePath}`);
+			// Normaliza a key removendo o prefixo /data/ se existir
+			const fileKey = storedPath.replace(/^\/data\//, '');
+			await this.storagePort.delete(fileKey);
+			this.logger.log(`Arquivo deletado do Storage: ${fileKey}`);
 		} catch (error) {
-			this.logger.warn(`Erro ao deletar arquivo ${publicPath}:`, error);
-			// Não lança erro para não interromper operações em cascata
+			this.logger.warn(`Erro ao deletar arquivo ${storedPath}:`, error);
 		}
 	}
 }
