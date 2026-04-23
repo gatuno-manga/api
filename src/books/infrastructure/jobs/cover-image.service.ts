@@ -5,6 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Queue } from 'bullmq';
 import { ScrapingService } from '../../../scraping/application/services/scraping.service';
 import { FilesService } from '../../../files/application/services/files.service';
+import { StorageBucket } from '../../../common/enum/storage-bucket.enum';
 import { IsNull, Repository } from 'typeorm';
 import { QueueCoverProcessorDto } from '../../application/dto/queue-cover-processor.dto';
 import { UrlImageDto } from '../../application/dto/url-image.dto';
@@ -91,7 +92,10 @@ export class CoverImageService {
 		} else {
 			try {
 				// Usa o FilesService para buscar o buffer do storage (S3/RustFS)
-				buffer = await this.filesService.getFileBuffer(imageSource);
+				buffer = await this.filesService.getFileBuffer(
+					imageSource,
+					StorageBucket.BOOKS,
+				);
 			} catch (error) {
 				this.logger.error(
 					`Failed to read image buffer from storage: ${imageSource}`,

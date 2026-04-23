@@ -14,6 +14,7 @@ import { Role } from '../../infrastructure/database/entities/role.entity';
 import { User } from '../../infrastructure/database/entities/user.entity';
 import { RolesEnum } from '../../domain/enums/roles.enum';
 import { UserResourcesMapper } from '../mappers/user-resources.mapper';
+import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
 
 @Injectable()
 export class UsersService implements OnApplicationBootstrap {
@@ -123,10 +124,14 @@ export class UsersService implements OnApplicationBootstrap {
 		const publicPath = await this.filesService.saveBufferFile(
 			file.buffer,
 			extension,
+			StorageBucket.USERS,
 		);
 
 		if (user.profileImagePath) {
-			await this.filesService.deleteFile(user.profileImagePath);
+			await this.filesService.deleteFile(
+				user.profileImagePath,
+				StorageBucket.USERS,
+			);
 		}
 
 		user.profileImagePath = publicPath;
@@ -144,10 +149,14 @@ export class UsersService implements OnApplicationBootstrap {
 		const publicPath = await this.filesService.saveBufferFile(
 			file.buffer,
 			extension,
+			StorageBucket.USERS,
 		);
 
 		if (user.profileBannerPath) {
-			await this.filesService.deleteFile(user.profileBannerPath);
+			await this.filesService.deleteFile(
+				user.profileBannerPath,
+				StorageBucket.USERS,
+			);
 		}
 
 		user.profileBannerPath = publicPath;

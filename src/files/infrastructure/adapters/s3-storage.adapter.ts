@@ -16,7 +16,7 @@ import {
 @Injectable()
 export class S3StorageAdapter implements StoragePort {
 	private readonly s3Client: S3Client;
-	private readonly bucket: string;
+	private readonly defaultBucket: string;
 	private readonly logger = new Logger(S3StorageAdapter.name);
 
 	constructor(private readonly configService: ConfigService) {
@@ -24,7 +24,7 @@ export class S3StorageAdapter implements StoragePort {
 			'RUSTFS_ENDPOINT',
 			'http://rustfs:9000',
 		);
-		this.bucket = this.configService.get<string>(
+		this.defaultBucket = this.configService.get<string>(
 			'RUSTFS_BUCKET',
 			'gatuno-files',
 		);
@@ -53,11 +53,12 @@ export class S3StorageAdapter implements StoragePort {
 		buffer: Buffer,
 		fileKey: string,
 		mimeType?: string,
+		bucket?: string,
 	): Promise<string> {
 		try {
 			await this.s3Client.send(
 				new PutObjectCommand({
-					Bucket: this.bucket,
+					Bucket: bucket || this.defaultBucket,
 					Key: fileKey,
 					Body: buffer,
 					ContentType: mimeType,
@@ -72,11 +73,11 @@ export class S3StorageAdapter implements StoragePort {
 		}
 	}
 
-	async delete(fileKey: string): Promise<void> {
+	async delete(fileKey: string, bucket?: string): Promise<void> {
 		try {
 			await this.s3Client.send(
 				new DeleteObjectCommand({
-					Bucket: this.bucket,
+					Bucket: bucket || this.defaultBucket,
 					Key: fileKey,
 				}),
 			);
@@ -86,11 +87,11 @@ export class S3StorageAdapter implements StoragePort {
 		}
 	}
 
-	async exists(fileKey: string): Promise<boolean> {
+	async exists(fileKey: string, bucket?: string): Promise<boolean> {
 		try {
 			await this.s3Client.send(
 				new HeadObjectCommand({
-					Bucket: this.bucket,
+					Bucket: bucket || this.defaultBucket,
 					Key: fileKey,
 				}),
 			);
@@ -108,11 +109,11 @@ export class S3StorageAdapter implements StoragePort {
 		}
 	}
 
-	async getStats(fileKey: string): Promise<FileMetadata> {
+	async getStats(fileKey: string, bucket?: string): Promise<FileMetadata> {
 		try {
 			const head = await this.s3Client.send(
 				new HeadObjectCommand({
-					Bucket: this.bucket,
+					Bucket: bucket || this.defaultBucket,
 					Key: fileKey,
 				}),
 			);
@@ -128,11 +129,11 @@ export class S3StorageAdapter implements StoragePort {
 		}
 	}
 
-	async getBuffer(fileKey: string): Promise<Buffer> {
+	async getBuffer(fileKey: string, bucket?: string): Promise<Buffer> {
 		try {
 			const response = await this.s3Client.send(
 				new GetObjectCommand({
-					Bucket: this.bucket,
+					Bucket: bucket || this.defaultBucket,
 					Key: fileKey,
 				}),
 			);
@@ -149,7 +150,7 @@ export class S3StorageAdapter implements StoragePort {
 		}
 	}
 
-	async *listAllFiles(): AsyncGenerator<FileMetadata> {
+	async *listAllFiles(bucket?: string): AsyncGenerator<FileMetadata> {
 		let isTruncated = true;
 		let continuationToken: string | undefined = undefined;
 
@@ -157,7 +158,7 @@ export class S3StorageAdapter implements StoragePort {
 			while (isTruncated) {
 				const response = await this.s3Client.send(
 					new ListObjectsV2Command({
-						Bucket: this.bucket,
+						Bucket: bucket || this.defaultBucket,
 						ContinuationToken: continuationToken,
 					}),
 				);

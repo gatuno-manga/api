@@ -284,4 +284,22 @@ export class AppConfigService {
 	get downloadCacheThresholdMB(): number {
 		return this.config.get<number>('DOWNLOAD_CACHE_THRESHOLD_MB') || 100;
 	}
+
+	get rustfs() {
+		return {
+			endpoint: this.config.get<string>(
+				'RUSTFS_ENDPOINT',
+				'http://rustfs:9000',
+			),
+			bucket: this.config.get<string>('RUSTFS_BUCKET', 'gatuno-files'),
+			publicUrl: this.config.get<string>('RUSTFS_PUBLIC_URL', ''),
+		};
+	}
+
+	get rustfsPublicUrl(): string {
+		return (
+			this.config.get<string>('RUSTFS_PUBLIC_URL') ||
+			`${this.apiUrl}/api/data`
+		);
+	}
 }

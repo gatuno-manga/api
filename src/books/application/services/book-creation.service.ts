@@ -90,10 +90,12 @@ export class BookCreationService {
 		const savedBook = await this.bookRepository.save(book);
 
 		if (dto.chapters && dto.chapters.length > 0) {
-			await this.chapterManagementService.createChaptersFromDto(
-				dto.chapters,
-				savedBook,
-			);
+			const createdChapters =
+				await this.chapterManagementService.createChaptersFromDto(
+					dto.chapters,
+					savedBook,
+				);
+			savedBook.chapters = createdChapters;
 		}
 
 		if (dto.cover?.urlImgs && dto.cover.urlImgs.length > 0) {
