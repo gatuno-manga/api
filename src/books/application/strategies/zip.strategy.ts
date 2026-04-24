@@ -1,13 +1,9 @@
-import { promises as fs } from 'node:fs';
-import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import { Injectable, Logger, StreamableFile } from '@nestjs/common';
 import archiver from 'archiver';
 import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { DownloadStrategy } from './download.strategy';
-
-// Caminho base onde o volume de dados está montado no container
-const DATA_BASE_PATH = '/usr/src/app/data';
+import { FilesService } from '@src/files/application/services/files.service';
 
 // Configuração de paralelismo
 const PARALLEL_CHAPTERS = 4; // Capítulos processados em paralelo
@@ -24,6 +20,8 @@ interface PageData {
 @Injectable()
 export class ZipStrategy implements DownloadStrategy {
 	private readonly logger = new Logger(ZipStrategy.name);
+
+	constructor(private readonly filesService: FilesService) {}
 
 	getContentType(): string {
 		return 'application/zip';
@@ -146,16 +144,13 @@ export class ZipStrategy implements DownloadStrategy {
 			const batchResults = await Promise.all(
 				pageBatch.map(async (page) => {
 					try {
-						const cleanPath = page.path.startsWith('/data/')
-							? page.path.substring(6)
-							: page.path;
-						const filePath = join(DATA_BASE_PATH, cleanPath);
-
-						// Ler arquivo
-						const buffer = await fs.readFile(filePath);
+						// Obter buffer do storage centralizado
+						const buffer = await this.filesService.getFileBuffer(
+							page.path,
+						);
 
 						// Extrair extensão
-						const ext = cleanPath.split('.').pop() || 'webp';
+						const ext = page.path.split('.').pop() || 'webp';
 						const fileName = `${String(page.index).padStart(3, '0')}.${ext}`;
 
 						return {
