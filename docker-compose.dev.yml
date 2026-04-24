@@ -17,12 +17,15 @@ services:
       - PLAYWRIGHT_WS_ENDPOINT=${PLAYWRIGHT_WS_ENDPOINT:-ws://playwright-debug:3000}
       - PLAYWRIGHT_DEBUG=${PLAYWRIGHT_DEBUG:-true}
       - PLAYWRIGHT_SLOW_MO=${PLAYWRIGHT_SLOW_MO}
+      - KAFKA_HOST=${KAFKA_HOST:-kafka}
+      - KAFKA_PORT=${KAFKA_PORT:-9092}
       # Session / JWT Settings (defaults in Joi schema: ACCESS=15m, REFRESH=7d, MAX_SESSIONS=0=unlimited)
       # - JWT_ACCESS_EXPIRATION=15m
       # - JWT_REFRESH_EXPIRATION=7d
       # - MAX_SESSIONS_PER_USER=0
     depends_on:
       - playwright-debug
+      - kafka
     develop:
       watch:
         - action: sync
