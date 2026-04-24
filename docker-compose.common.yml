@@ -8,7 +8,7 @@ services:
       - NODE_ENV=${NODE_ENV}
       - API_URL=${API_SCHEME:-https}://${API_HOST}
       - APP_URL=${APP_SCHEME:-https}://${APP_HOST}
-      - ALLOWED_URL=http://${APP_HOST},https://${APP_HOST}
+      - ALLOWED_URL=${ALLOWED_URL}
       - DB_TYPE=mysql
       - DB_PORT=3306
       - DB_MASTER_HOST=database-master
@@ -169,16 +169,17 @@ services:
     image: minio/mc
     depends_on:
       - rustfs
-    entrypoint: >
-      /bin/sh -c "
-      sleep 5;
-      mc alias set myrustfs http://rustfs:9000 ${RUSTFS_ACCESS_KEY:-rustfsadmin} ${RUSTFS_SECRET_KEY:-rustfsadmin};
-      for BUCKET in books users processing system ${RUSTFS_BUCKET:-gatuno-files}; do
-        mc mb myrustfs/$$BUCKET || true;
-        echo \"{\\\"Version\\\": \\\"2012-10-17\\\", \\\"Statement\\\": [{\\\"Effect\\\": \\\"Allow\\\", \\\"Principal\\\": \\\"*\\\", \\\"Action\\\": [\\\"s3:GetObject\\\"], \\\"Resource\\\": [\\\"arn:aws:s3:::$$BUCKET/*\\\"], \\\"Condition\\\": {\\\"StringLike\\\": {\\\"aws:Referer\\\": [\\\"${APP_URL}/*\\\", \\\"${API_URL}/*\\\", \\\"${ALLOWED_URL}/*\\\"]}}}]}\" > /tmp/policy.json;
-        mc anonymous set-json /tmp/policy.json myrustfs/$$BUCKET;
-      done
-      "
+    environment:
+      - RUSTFS_ACCESS_KEY=${RUSTFS_ACCESS_KEY:-rustfsadmin}
+      - RUSTFS_SECRET_KEY=${RUSTFS_SECRET_KEY:-rustfsadmin}
+      - RUSTFS_BUCKET=${RUSTFS_BUCKET:-gatuno-files}
+      - RUSTFS_BUCKETS_LIST=books users processing system ${RUSTFS_BUCKET:-gatuno-files}
+      - APP_URL=${APP_SCHEME:-https}://${APP_HOST}
+      - API_URL=${API_SCHEME:-https}://${API_HOST}
+      - ALLOWED_URL=${ALLOWED_URL}
+    volumes:
+      - ./scripts/init-rustfs.sh:/usr/local/bin/init-rustfs.sh:ro
+    entrypoint: /usr/local/bin/init-rustfs.sh
     networks:
       - gatuno-net
 

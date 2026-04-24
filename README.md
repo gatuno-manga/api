@@ -71,9 +71,11 @@ cp .env.example .env
 ```env
 NODE_ENV=development
 API_PORT=3000
+API_HOST=localhost:3000
+APP_HOST=localhost:4200
+API_SCHEME=http
+APP_SCHEME=http
 ALLOWED_URL=http://localhost:4200
-APP_URL=http://localhost:4200
-API_URL=http://localhost:3000
 
 # Database configuration
 DB_TYPE=mysql

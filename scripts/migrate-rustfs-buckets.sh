@@ -36,5 +36,5 @@ echo "════════════════════════�
 echo "🎉 MIGRAÇÃO S3 CONCLUÍDA!"
 echo "════════════════════════════════════════════"
 echo "⚠️  IMPORTANTE: Agora você deve rodar:"
-echo "   docker-compose -f docker-compose.common.yml -f docker-compose.dev.yml up -d rustfs-init"
+echo "   docker compose -f docker-compose.common.yml -f docker-compose.dev.yml up -d rustfs-init"
 echo "   Para aplicar as políticas de acesso aos novos buckets."
