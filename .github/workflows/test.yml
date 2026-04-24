@@ -9,7 +9,30 @@ on:
       - main
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'src/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'Dockerfile.prod'
+              - '.swcrc'
+              - 'nest-cli.json'
+              - 'tsconfig.json'
+              - 'tsconfig.build.json'
+              - '.github/workflows/test.yml'
+
   test-backend:
+    needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -46,8 +69,11 @@ jobs:
 
   build-and-publish:
     name: call-registry
-    needs: test-backend
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [changes, test-backend]
+    if: |
+      needs.changes.outputs.backend == 'true' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main'
     uses: gatuno-manga/workflows/.github/workflows/registry.yml@main
     with:
       image_name: gatuno-api
