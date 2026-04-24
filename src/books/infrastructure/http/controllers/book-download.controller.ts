@@ -21,6 +21,8 @@ import { Response } from 'express';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { DownloadService } from '@books/application/services/download.service';
 import { DownloadBookBodyDto } from '@books/application/dto/download-book-body.dto';
+import { DownloadBookQueryDto } from '@books/application/dto/download-book-query.dto';
+import { Get, Query } from '@nestjs/common';
 
 @ApiTags('Downloads')
 @Controller('books')
@@ -30,6 +32,50 @@ export class BookDownloadController {
 	private readonly logger = new Logger(BookDownloadController.name);
 
 	constructor(private readonly downloadService: DownloadService) {}
+
+	@Get(':idBook/download')
+	@Throttle({ default: { limit: 3, ttl: 120000 } })
+	@ApiOperation({
+		summary: 'Download de um livro (GET)',
+		description:
+			'Baixa capítulos selecionados de um livro em formato ZIP de imagens ou PDFs via link direto',
+	})
+	@ApiParam({
+		name: 'idBook',
+		description: 'ID do livro',
+		type: 'string',
+		format: 'uuid',
+	})
+	@ApiResponse({
+		status: 200,
+		description: 'Arquivo do livro gerado com sucesso',
+		content: {
+			'application/zip': {},
+		},
+	})
+	async downloadBookGet(
+		@Param('idBook') idBook: string,
+		@Query() query: DownloadBookQueryDto,
+		@Res({ passthrough: true }) res: Response,
+	): Promise<StreamableFile> {
+		this.logger.log(`GET Download request for book ${idBook}`);
+
+		const { file, fileName, contentType } =
+			await this.downloadService.downloadBook(idBook, {
+				format: query.format,
+				chapterIds: query.chapterIds,
+			});
+
+		// Definir headers para download
+		res.set({
+			'Content-Type': contentType,
+			'Content-Disposition': `attachment; filename="${encodeURIComponent(fileName)}"`,
+			'Cache-Control': 'no-cache',
+		});
+
+		this.logger.log(`Sending file: ${fileName} (${contentType})`);
+		return file;
+	}
 
 	@Post(':idBook/download')
 	@Throttle({ default: { limit: 3, ttl: 120000 } })

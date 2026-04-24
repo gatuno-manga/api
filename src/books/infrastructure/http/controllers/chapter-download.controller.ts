@@ -67,17 +67,16 @@ export class ChapterDownloadController {
 	): Promise<StreamableFile> {
 		this.logger.log(`Download request for chapter ${idChapter}`);
 
-		const { file, fileName } = await this.downloadService.downloadChapter(
-			idChapter,
-			query,
-		);
+		const { file, fileName, contentType } =
+			await this.downloadService.downloadChapter(idChapter, query);
 
 		// Definir header Content-Disposition para download com nome correto
 		res.set({
+			'Content-Type': contentType,
 			'Content-Disposition': `attachment; filename="${encodeURIComponent(fileName)}"`,
 		});
 
-		this.logger.log(`Sending file: ${fileName}`);
+		this.logger.log(`Sending file: ${fileName} (${contentType})`);
 		return file;
 	}
 }

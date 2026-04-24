@@ -184,4 +184,6 @@ export const validationSchema = Joi.object({
 		.description(
 			'Size threshold in MB for switching from buffer to streaming mode in downloads',
 		),
+	KAFKA_HOST: Joi.string().default('kafka').description('Kafka broker host'),
+	KAFKA_PORT: Joi.number().default(9092).description('Kafka broker port'),
 });
