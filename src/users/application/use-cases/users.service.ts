@@ -7,11 +7,12 @@ import {
 } from '@nestjs/common';
 import { FilesService } from 'src/files/application/services/files.service';
 import { InjectRepository } from '@nestjs/typeorm';
-import sharp from 'sharp';
 import { DataSource, Repository } from 'typeorm';
+import { getImageDimensions } from 'src/common/utils/image.utils';
 import { UpdateUserDto } from '../../infrastructure/http/dto/update-user.dto';
 import { Role } from '../../infrastructure/database/entities/role.entity';
 import { User } from '../../infrastructure/database/entities/user.entity';
+import { UserImage } from '../../infrastructure/database/entities/user-image.entity';
 import { RolesEnum } from '../../domain/enums/roles.enum';
 import { UserResourcesMapper } from '../mappers/user-resources.mapper';
 import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
@@ -31,6 +32,8 @@ export class UsersService implements OnApplicationBootstrap {
 		private readonly userRepository: Repository<User>,
 		@InjectRepository(Role)
 		private readonly roleRepository: Repository<Role>,
+		@InjectRepository(UserImage)
+		private readonly userImageRepository: Repository<UserImage>,
 		private readonly dataSource: DataSource,
 		private readonly filesService: FilesService,
 		private readonly userResourcesMapper: UserResourcesMapper,
@@ -116,50 +119,62 @@ export class UsersService implements OnApplicationBootstrap {
 
 	async uploadAvatar(file: Express.Multer.File, userId: string) {
 		const user = await this.findUserOrFail(userId);
-		const extension = await this.validateAndResolveImageExtension(
-			file,
-			this.maxAvatarSizeBytes,
-			'avatar',
-		);
+		const { extension, width, height } =
+			await this.validateAndResolveImageInfo(
+				file,
+				this.maxAvatarSizeBytes,
+				'avatar',
+			);
 		const publicPath = await this.filesService.saveBufferFile(
 			file.buffer,
 			extension,
 			StorageBucket.USERS,
 		);
 
-		if (user.profileImagePath) {
+		if (user.profilePicture) {
 			await this.filesService.deleteFile(
-				user.profileImagePath,
+				user.profilePicture.path,
 				StorageBucket.USERS,
 			);
+		} else {
+			user.profilePicture = new UserImage();
 		}
 
-		user.profileImagePath = publicPath;
+		user.profilePicture.path = publicPath;
+		user.profilePicture.width = width;
+		user.profilePicture.height = height;
+
 		const savedUser = await this.userRepository.save(user);
 		return this.userResourcesMapper.toUserProfile(savedUser);
 	}
 
 	async uploadBanner(file: Express.Multer.File, userId: string) {
 		const user = await this.findUserOrFail(userId);
-		const extension = await this.validateAndResolveImageExtension(
-			file,
-			this.maxBannerSizeBytes,
-			'banner',
-		);
+		const { extension, width, height } =
+			await this.validateAndResolveImageInfo(
+				file,
+				this.maxBannerSizeBytes,
+				'banner',
+			);
 		const publicPath = await this.filesService.saveBufferFile(
 			file.buffer,
 			extension,
 			StorageBucket.USERS,
 		);
 
-		if (user.profileBannerPath) {
+		if (user.profileBanner) {
 			await this.filesService.deleteFile(
-				user.profileBannerPath,
+				user.profileBanner.path,
 				StorageBucket.USERS,
 			);
+		} else {
+			user.profileBanner = new UserImage();
 		}
 
-		user.profileBannerPath = publicPath;
+		user.profileBanner.path = publicPath;
+		user.profileBanner.width = width;
+		user.profileBanner.height = height;
+
 		const savedUser = await this.userRepository.save(user);
 		return this.userResourcesMapper.toUserProfile(savedUser);
 	}
@@ -176,11 +191,11 @@ export class UsersService implements OnApplicationBootstrap {
 		return user;
 	}
 
-	private async validateAndResolveImageExtension(
+	private async validateAndResolveImageInfo(
 		file: Express.Multer.File,
 		maxSizeBytes: number,
 		label: 'avatar' | 'banner',
-	): Promise<string> {
+	): Promise<{ extension: string; width: number; height: number }> {
 		if (!file) {
 			throw new BadRequestException(`${label} file is required`);
 		}
@@ -202,13 +217,11 @@ export class UsersService implements OnApplicationBootstrap {
 			);
 		}
 
-		try {
-			const metadata = await sharp(file.buffer).metadata();
-			if (!metadata.width || !metadata.height) {
-				throw new BadRequestException('Invalid image dimensions');
-			}
-		} catch {
-			throw new BadRequestException('Invalid image content');
+		const dimensions = await getImageDimensions(file.buffer);
+		if (!dimensions) {
+			throw new BadRequestException(
+				'Invalid image content or dimensions',
+			);
 		}
 
 		const extensionMap: Record<string, string> = {
@@ -222,6 +235,10 @@ export class UsersService implements OnApplicationBootstrap {
 			throw new BadRequestException('Unsupported image format');
 		}
 
-		return extension;
+		return {
+			extension,
+			width: dimensions.width,
+			height: dimensions.height,
+		};
 	}
 }

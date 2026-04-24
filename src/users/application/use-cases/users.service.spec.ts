@@ -3,6 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { Role } from '../../infrastructure/database/entities/role.entity';
 import { User } from '../../infrastructure/database/entities/user.entity';
+import { UserImage } from '../../infrastructure/database/entities/user-image.entity';
 import { UsersService } from './users.service';
 import { FilesService } from 'src/files/application/services/files.service';
 import { UserResourcesMapper } from '../mappers/user-resources.mapper';
@@ -29,6 +30,13 @@ describe('UsersService', () => {
 		manager: {
 			query: jest.fn(),
 		},
+	};
+
+	const mockUserImageRepository = {
+		findOne: jest.fn(),
+		save: jest.fn(),
+		create: jest.fn(),
+		delete: jest.fn(),
 	};
 
 	const mockDataSource = {
@@ -63,6 +71,10 @@ describe('UsersService', () => {
 				{
 					provide: getRepositoryToken(Role),
 					useValue: mockRoleRepository,
+				},
+				{
+					provide: getRepositoryToken(UserImage),
+					useValue: mockUserImageRepository,
 				},
 				{
 					provide: DataSource,

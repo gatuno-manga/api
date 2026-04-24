@@ -28,6 +28,12 @@ export class Page {
 	@Column()
 	path: string;
 
+	@Column({ nullable: true })
+	width: number;
+
+	@Column({ nullable: true })
+	height: number;
+
 	@DeleteDateColumn()
 	deletedAt: Date;
 }

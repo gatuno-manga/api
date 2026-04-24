@@ -24,6 +24,12 @@ export class Cover {
 	index: number;
 
 	@Column({ nullable: true })
+	width: number;
+
+	@Column({ nullable: true })
+	height: number;
+
+	@Column({ nullable: true })
 	@Index()
 	imageHash: string;
 

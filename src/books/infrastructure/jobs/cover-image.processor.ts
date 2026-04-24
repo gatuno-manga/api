@@ -75,16 +75,16 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 			for (const [host, group] of groups) {
 				const imageUrls = group.covers.map((c) => c.url);
 				try {
-					const savedPaths =
+					const savedData =
 						await this.scrapingService.scrapeMultipleImages(
 							urlOrigin,
 							imageUrls,
 						);
-					// savedPaths are in same order as imageUrls
-					for (let i = 0; i < savedPaths.length; i++) {
-						const saved = savedPaths[i];
+					// savedData are in same order as imageUrls
+					for (let i = 0; i < savedData.length; i++) {
+						const data = savedData[i];
 						const original = group.covers[i];
-						if (!saved || saved === 'null') {
+						if (!data || data.path === 'null') {
 							this.logger.warn(
 								`Falha ao salvar capa ${original.url} para livro ${book.title}`,
 							);
@@ -102,8 +102,10 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 
 						let savedCover: Cover;
 						if (existingCover) {
-							// Atualiza a capa existente com o caminho local
-							existingCover.url = saved;
+							// Atualiza a capa existente com o caminho local e dimensões
+							existingCover.url = data.path;
+							existingCover.width = data.width;
+							existingCover.height = data.height;
 							savedCover =
 								await this.coverRepository.save(existingCover);
 							this.logger.log(
@@ -113,7 +115,9 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 							// Cria nova capa (fluxo legado)
 							const coverBook = this.coverRepository.create({
 								title: original.title || 'Cover Image',
-								url: saved,
+								url: data.path,
+								width: data.width,
+								height: data.height,
 								originalUrl: original.url,
 								book: book,
 								index: book.covers.length,
@@ -131,7 +135,7 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 						this.eventEmitter.emit('cover.processed', {
 							bookId: book.id,
 							coverId: savedCover.id,
-							url: saved,
+							url: data.path,
 						});
 					}
 				} catch (err) {

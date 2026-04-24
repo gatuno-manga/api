@@ -5,6 +5,8 @@ export class Cover {
 	url: string;
 	title: string;
 	index: number;
+	width: number | null;
+	height: number | null;
 	imageHash: string | null;
 	originalUrl: string | null;
 	selected: boolean;
