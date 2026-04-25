@@ -7,6 +7,7 @@ import { Chapter } from 'src/books/infrastructure/database/entities/chapter.enti
 import { Cover } from 'src/books/infrastructure/database/entities/cover.entity';
 import { Page } from 'src/books/infrastructure/database/entities/page.entity';
 import { User } from 'src/users/infrastructure/database/entities/user.entity';
+import { UserImage } from 'src/users/infrastructure/database/entities/user-image.entity';
 import { NoCompressionAdapter } from './infrastructure/adapters/no-compression.adapter';
 import { SharpAdapter } from './infrastructure/adapters/sharp.adapter';
 import { FileCompressorFactory } from './infrastructure/adapters/file-compressor.factory';
@@ -67,7 +68,7 @@ import { ImageProcessingController } from './infrastructure/controllers/image-pr
 	imports: [
 		AppConfigModule,
 		AuthModule,
-		TypeOrmModule.forFeature([Page, Cover, Book, Chapter, User]),
+		TypeOrmModule.forFeature([Page, Cover, Book, Chapter, User, UserImage]),
 	],
 	exports: [FilesService, FileCleanupService],
 })

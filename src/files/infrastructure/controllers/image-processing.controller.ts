@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { Page } from '../../../books/infrastructure/database/entities/page.entity';
 import { Cover } from '../../../books/infrastructure/database/entities/cover.entity';
 import { User } from '../../../users/infrastructure/database/entities/user.entity';
+import { UserImage } from '../../../users/infrastructure/database/entities/user-image.entity';
 import { StorageBucket } from '../../../common/enum/storage-bucket.enum';
 
 interface ImageProcessingCompletedEvent {
@@ -24,6 +25,8 @@ export class ImageProcessingController {
 		private readonly coverRepository: Repository<Cover>,
 		@InjectRepository(User)
 		private readonly userRepository: Repository<User>,
+		@InjectRepository(UserImage)
+		private readonly userImageRepository: Repository<UserImage>,
 	) {}
 
 	@EventPattern('image.processing.completed')
@@ -54,19 +57,14 @@ export class ImageProcessingController {
 					`Update Books: ${pageUpdate.affected} páginas e ${coverUpdate.affected} capas atualizadas`,
 				);
 			} else if (data.targetBucket === StorageBucket.USERS) {
-				// Atualiza Avatares e Banners (Entity User usa profileImagePath e profileBannerPath)
-				const avatarUpdate = await this.userRepository.update(
-					{ profileImagePath: data.rawPath },
-					{ profileImagePath: finalPath },
-				);
-
-				const bannerUpdate = await this.userRepository.update(
-					{ profileBannerPath: data.rawPath },
-					{ profileBannerPath: finalPath },
+				// Atualiza Imagens de Usuários (Avatares e Banners) na tabela user_images
+				const userImageUpdate = await this.userImageRepository.update(
+					{ path: data.rawPath },
+					{ path: finalPath },
 				);
 
 				this.logger.log(
-					`Update Users: ${avatarUpdate.affected} avatares e ${bannerUpdate.affected} banners atualizados`,
+					`Update Users: ${userImageUpdate.affected} imagens (avatar/banner) atualizadas na tabela user_images`,
 				);
 			} else {
 				this.logger.warn(
