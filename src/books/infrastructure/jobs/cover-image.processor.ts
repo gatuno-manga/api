@@ -91,14 +91,22 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 							continue;
 						}
 
-						// Procura uma capa existente pela originalUrl para atualizar
-						const existingCover =
-							await this.coverRepository.findOne({
-								where: {
-									originalUrl: original.url,
-									book: { id: book.id },
+						// Procura uma capa existente pela originalUrl OU pelo pHash para deduplicação visual
+						const queryBuilder = this.coverRepository
+							.createQueryBuilder('cover')
+							.innerJoin('cover.book', 'book')
+							.where('book.id = :bookId', { bookId: book.id })
+							.andWhere(
+								'(cover.originalUrl = :url OR (JSON_EXTRACT(cover.metadata, "$.pHash") = :pHash AND cover.metadata IS NOT NULL))',
+								{
+									url: original.url,
+									pHash:
+										data.metadata?.pHash ||
+										'NO_PHASH_MATCH',
 								},
-							});
+							);
+
+						const existingCover = await queryBuilder.getOne();
 
 						let savedCover: Cover;
 						if (existingCover) {

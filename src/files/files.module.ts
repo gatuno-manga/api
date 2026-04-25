@@ -17,19 +17,23 @@ import { FilesController } from './infrastructure/controllers/files.controller';
 import { FileCleanupCron } from './infrastructure/framework/file-cleanup.cron';
 import { FileCleanupService } from './application/services/file-cleanup.service';
 import { FilesService } from './application/services/files.service';
+import { ImageMetadataBackfillService } from './application/services/image-metadata-backfill.service';
 import { S3StorageAdapter } from './infrastructure/adapters/s3-storage.adapter';
 import { KafkaEventPublisherAdapter } from './infrastructure/adapters/kafka-event-publisher.adapter';
 import { ImageProcessingController } from './infrastructure/controllers/image-processing.controller';
+import { ImageBackfillController } from './infrastructure/controllers/image-backfill.controller';
 
 @Module({
 	controllers: [
 		FileCleanupController,
 		FilesController,
 		ImageProcessingController,
+		ImageBackfillController,
 	],
 	providers: [
 		FilesService,
 		FileCleanupService,
+		ImageMetadataBackfillService,
 		FileCleanupCron,
 		FileCompressorFactory,
 		SharpAdapter,

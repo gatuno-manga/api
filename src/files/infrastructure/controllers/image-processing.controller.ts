@@ -7,11 +7,13 @@ import { Cover } from '../../../books/infrastructure/database/entities/cover.ent
 import { User } from '../../../users/infrastructure/database/entities/user.entity';
 import { UserImage } from '../../../users/infrastructure/database/entities/user-image.entity';
 import { StorageBucket } from '../../../common/enum/storage-bucket.enum';
+import { ImageMetadata } from '../../../common/domain/value-objects/image-metadata.vo';
 
 interface ImageProcessingCompletedEvent {
 	rawPath: string;
 	targetBucket: string;
 	targetPath: string;
+	metadata?: ImageMetadata;
 }
 
 @Controller()
@@ -40,17 +42,25 @@ export class ImageProcessingController {
 		const finalPath = `${data.targetBucket}/${data.targetPath}`;
 
 		try {
+			const updateData = {
+				path: finalPath,
+				...(data.metadata ? { metadata: data.metadata } : {}),
+			};
+
 			if (data.targetBucket === StorageBucket.BOOKS) {
 				// Atualiza Páginas
 				const pageUpdate = await this.pageRepository.update(
 					{ path: data.rawPath },
-					{ path: finalPath },
+					updateData,
 				);
 
 				// Atualiza Capas
 				const coverUpdate = await this.coverRepository.update(
 					{ url: data.rawPath },
-					{ url: finalPath },
+					{
+						url: finalPath,
+						...(data.metadata ? { metadata: data.metadata } : {}),
+					},
 				);
 
 				this.logger.log(
@@ -60,7 +70,7 @@ export class ImageProcessingController {
 				// Atualiza Imagens de Usuários (Avatares e Banners) na tabela user_images
 				const userImageUpdate = await this.userImageRepository.update(
 					{ path: data.rawPath },
-					{ path: finalPath },
+					updateData,
 				);
 
 				this.logger.log(
