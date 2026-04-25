@@ -1,11 +1,13 @@
+import { Image } from '../../../common/domain/value-objects/image.vo';
+
 export class User {
 	id: string;
 	userName: string;
 	name: string | null;
 	email: string;
 	maxWeightSensitiveContent: number;
-	profileImagePath: string | null;
-	profileBannerPath: string | null;
+	profilePicture: Image | null;
+	profileBanner: Image | null;
 	isBanned: boolean;
 	suspendedUntil: Date | null;
 	suspensionReason: string | null;

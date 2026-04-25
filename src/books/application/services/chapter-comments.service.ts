@@ -308,7 +308,7 @@ export class ChapterCommentsService {
 				comment.user?.id ||
 				'unknown-user',
 			profileImageUrl: this.mediaUrlService.resolveUrl(
-				comment.user?.profileImagePath || null,
+				comment.user?.profilePicture?.path || null,
 				StorageBucket.USERS,
 			),
 			parentId: comment.parent?.id ?? null,
@@ -329,7 +329,7 @@ export class ChapterCommentsService {
 
 		const userName = user?.userName?.trim() || fallback?.trim() || userId;
 		const profileImageUrl = this.mediaUrlService.resolveUrl(
-			user?.profileImagePath || null,
+			user?.profilePicture?.path || null,
 			StorageBucket.USERS,
 		);
 

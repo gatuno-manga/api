@@ -9,6 +9,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectMetric } from '@willsoto/nestjs-prometheus';
 import pLimit from 'p-limit';
 import { Counter, Histogram } from 'prom-client';
+import { getImageDimensions } from 'src/common/utils/image.utils';
 import { CustomLogger } from 'src/custom.logger';
 import { FilesService } from 'src/files/application/services/files.service';
 import {
@@ -122,6 +123,8 @@ export class BookUploadService {
 		try {
 			const extension = path.extname(file.originalname) || '.jpg';
 
+			const dimensions = await getImageDimensions(file.buffer);
+
 			const savedPath = await this.filesService.saveBufferFile(
 				file.buffer,
 				extension,
@@ -131,6 +134,14 @@ export class BookUploadService {
 			const cover = this.coverRepository.create({
 				title: title || file.originalname,
 				url: savedPath,
+				metadata: dimensions
+					? {
+							width: dimensions.width,
+							height: dimensions.height,
+							sizeBytes: file.size,
+							mimeType: file.mimetype,
+						}
+					: null,
 				book: book,
 				index: book.covers.length,
 				selected: book.covers.length === 0,
@@ -247,6 +258,9 @@ export class BookUploadService {
 			}
 
 			const extension = path.extname(file.originalname) || '.jpg';
+
+			const dimensions = await getImageDimensions(file.buffer);
+
 			const savedPath = await this.filesService.saveBufferFile(
 				file.buffer,
 				extension,
@@ -254,6 +268,14 @@ export class BookUploadService {
 			);
 
 			cover.url = savedPath;
+			cover.metadata = dimensions
+				? {
+						width: dimensions.width,
+						height: dimensions.height,
+						sizeBytes: file.size,
+						mimeType: file.mimetype,
+					}
+				: null;
 			if (title !== undefined) {
 				cover.title = title;
 			}
@@ -358,6 +380,11 @@ export class BookUploadService {
 
 						const extension =
 							path.extname(file.originalname) || '.jpg';
+
+						const dimensions = await getImageDimensions(
+							file.buffer,
+						);
+
 						const savedPath =
 							await this.filesService.saveBufferFile(
 								file.buffer,
@@ -369,6 +396,14 @@ export class BookUploadService {
 						return this.coverRepository.create({
 							title: file.originalname,
 							url: savedPath,
+							metadata: dimensions
+								? {
+										width: dimensions.width,
+										height: dimensions.height,
+										sizeBytes: file.size,
+										mimeType: file.mimetype,
+									}
+								: null,
 							book: book,
 							index: book.covers.length + index,
 							selected: book.covers.length === 0 && index === 0,
@@ -506,6 +541,9 @@ export class BookUploadService {
 					}
 
 					const extension = path.extname(file.originalname) || '.jpg';
+
+					const dimensions = await getImageDimensions(file.buffer);
+
 					const savedPath = await this.filesService.saveBufferFile(
 						file.buffer,
 						extension,
@@ -515,6 +553,14 @@ export class BookUploadService {
 					return this.pageRepository.create({
 						index: indices[i],
 						path: savedPath,
+						metadata: dimensions
+							? {
+									width: dimensions.width,
+									height: dimensions.height,
+									sizeBytes: file.size,
+									mimeType: file.mimetype,
+								}
+							: null,
 						chapter: chapter,
 					});
 				}),
