@@ -55,15 +55,13 @@ export class UserResourcesMapper {
 			roles: user.roles,
 			maxWeightSensitiveContent: user.maxWeightSensitiveContent,
 			profileImagePath: user.profilePicture?.path || null,
-			profileImageWidth: user.profilePicture?.width || null,
-			profileImageHeight: user.profilePicture?.height || null,
+			profileImageMetadata: user.profilePicture?.metadata || null,
 			profileImageUrl: this.mediaUrlService.resolveUrl(
 				user.profilePicture?.path || null,
 				StorageBucket.USERS,
 			),
 			profileBannerPath: user.profileBanner?.path || null,
-			profileBannerWidth: user.profileBanner?.width || null,
-			profileBannerHeight: user.profileBanner?.height || null,
+			profileBannerMetadata: user.profileBanner?.metadata || null,
 			profileBannerUrl: this.mediaUrlService.resolveUrl(
 				user.profileBanner?.path || null,
 				StorageBucket.USERS,

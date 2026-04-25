@@ -24,3 +24,20 @@ export async function getImageDimensions(
 		return undefined;
 	}
 }
+
+export function resolveMimeTypeByExtension(extension: string): string {
+	const normalizedExtension = extension.toLowerCase();
+	if (normalizedExtension === '.png') {
+		return 'image/png';
+	}
+	if (normalizedExtension === '.webp') {
+		return 'image/webp';
+	}
+	if (normalizedExtension === '.avif') {
+		return 'image/avif';
+	}
+	if (normalizedExtension === '.gif') {
+		return 'image/gif';
+	}
+	return 'image/jpeg';
+}

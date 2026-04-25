@@ -104,8 +104,7 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 						if (existingCover) {
 							// Atualiza a capa existente com o caminho local e dimensões
 							existingCover.url = data.path;
-							existingCover.width = data.width;
-							existingCover.height = data.height;
+							existingCover.metadata = data.metadata;
 							savedCover =
 								await this.coverRepository.save(existingCover);
 							this.logger.log(
@@ -116,8 +115,7 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 							const coverBook = this.coverRepository.create({
 								title: original.title || 'Cover Image',
 								url: data.path,
-								width: data.width,
-								height: data.height,
+								metadata: data.metadata,
 								originalUrl: original.url,
 								book: book,
 								index: book.covers.length,

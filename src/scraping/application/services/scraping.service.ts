@@ -7,7 +7,10 @@ import {
 } from '@nestjs/common';
 import { Redis } from 'ioredis';
 import { Browser, BrowserContext, Page } from 'playwright';
-import { getImageDimensions } from 'src/common/utils/image.utils';
+import {
+	getImageDimensions,
+	resolveMimeTypeByExtension,
+} from 'src/common/utils/image.utils';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { FilesService } from 'src/files/application/services/files.service';
 import { REDIS_CLIENT } from 'src/infrastructure/redis/redis.constants';
@@ -17,6 +20,7 @@ import {
 	RedisConcurrencyManager,
 } from '../../infrastructure/concurrency';
 import { WebsiteConfigDto } from '../dto/website-config.dto';
+import { ScrapedImageDataDto } from '../dto/scraped-image-data.dto';
 import {
 	CookieConfig,
 	ElementScreenshot,
@@ -197,12 +201,8 @@ export class ScrapingService implements OnApplicationShutdown {
 		imageUrls: string[],
 		failedUrls: string[],
 		networkInterceptor?: NetworkInterceptor,
-	): Promise<({ path: string; width: number; height: number } | null)[]> {
-		const results: ({
-			path: string;
-			width: number;
-			height: number;
-		} | null)[] = [];
+	): Promise<(ScrapedImageDataDto | null)[]> {
+		const results: (ScrapedImageDataDto | null)[] = [];
 
 		for (const imageUrl of imageUrls) {
 			if (failedUrls.includes(imageUrl)) {
@@ -254,6 +254,7 @@ export class ScrapingService implements OnApplicationShutdown {
 			const dimensions = await getImageDimensions(bufferData);
 			const width = dimensions?.width || 0;
 			const height = dimensions?.height || 0;
+			const mimeType = resolveMimeTypeByExtension(extension);
 
 			const savedPath = isPreCompressed
 				? await this.filesService.savePreCompressedFile(
@@ -267,7 +268,15 @@ export class ScrapingService implements OnApplicationShutdown {
 						StorageBucket.BOOKS,
 					);
 
-			results.push({ path: savedPath, width, height });
+			results.push({
+				path: savedPath,
+				metadata: {
+					width,
+					height,
+					sizeBytes: bufferData.length,
+					mimeType,
+				},
+			});
 		}
 
 		return results;
@@ -276,7 +285,7 @@ export class ScrapingService implements OnApplicationShutdown {
 	async scrapePages(
 		url: string,
 		pages = 0,
-	): Promise<{ path: string; width: number; height: number }[] | null> {
+	): Promise<ScrapedImageDataDto[] | null> {
 		const config = await this.getWebsiteConfig(url);
 		const {
 			selector,
@@ -387,13 +396,7 @@ export class ScrapingService implements OnApplicationShutdown {
 				);
 
 				return successfulPaths.filter(
-					(
-						path,
-					): path is {
-						path: string;
-						width: number;
-						height: number;
-					} => path !== null,
+					(path): path is ScrapedImageDataDto => path !== null,
 				);
 			},
 		);
@@ -404,7 +407,7 @@ export class ScrapingService implements OnApplicationShutdown {
 		selector: string,
 		minPages: number,
 		pageComplexity?: { scrollPauseMs: number; scrollWaitMs: number },
-	): Promise<{ path: string; width: number; height: number }[]> {
+	): Promise<ScrapedImageDataDto[]> {
 		const scrollPauseMs = pageComplexity?.scrollPauseMs ?? 1000;
 		const scrollWaitMs = pageComplexity?.scrollWaitMs ?? 300;
 
@@ -426,11 +429,7 @@ export class ScrapingService implements OnApplicationShutdown {
 			`Found ${count} elements. Capturing PNG screenshots...`,
 		);
 
-		const results: ({
-			path: string;
-			width: number;
-			height: number;
-		} | null)[] = [];
+		const results: (ScrapedImageDataDto | null)[] = [];
 
 		for await (const buffer of elementScreenshot.captureAllElementsStream()) {
 			try {
@@ -442,8 +441,12 @@ export class ScrapingService implements OnApplicationShutdown {
 				);
 				results.push({
 					path: savedPath,
-					width: dimensions?.width || 0,
-					height: dimensions?.height || 0,
+					metadata: {
+						width: dimensions?.width || 0,
+						height: dimensions?.height || 0,
+						sizeBytes: buffer.length,
+						mimeType: 'image/png',
+					},
 				});
 			} catch (error) {
 				this.logger.warn('Failed to save screenshot', error);
@@ -452,8 +455,7 @@ export class ScrapingService implements OnApplicationShutdown {
 		}
 
 		const successfulScreenshots = results.filter(
-			(res): res is { path: string; width: number; height: number } =>
-				res !== null,
+			(res): res is ScrapedImageDataDto => res !== null,
 		);
 
 		this.logger.log(
@@ -465,7 +467,7 @@ export class ScrapingService implements OnApplicationShutdown {
 	async scrapeSingleImage(
 		url: string,
 		imageUrl: string,
-	): Promise<{ path: string; width: number; height: number }> {
+	): Promise<ScrapedImageDataDto> {
 		const config = await this.getWebsiteConfig(url);
 
 		return this.runner.run(
@@ -530,8 +532,12 @@ export class ScrapingService implements OnApplicationShutdown {
 
 				return {
 					path: savedPath,
-					width: dimensions?.width || 0,
-					height: dimensions?.height || 0,
+					metadata: {
+						width: dimensions?.width || 0,
+						height: dimensions?.height || 0,
+						sizeBytes: bufferData.length,
+						mimeType: resolveMimeTypeByExtension(extension),
+					},
 				};
 			},
 		);
@@ -615,7 +621,7 @@ export class ScrapingService implements OnApplicationShutdown {
 	async scrapeMultipleImages(
 		url: string,
 		imageUrls: string[],
-	): Promise<({ path: string; width: number; height: number } | null)[]> {
+	): Promise<(ScrapedImageDataDto | null)[]> {
 		const config = await this.getWebsiteConfig(url);
 
 		return this.runner.run(
@@ -625,11 +631,7 @@ export class ScrapingService implements OnApplicationShutdown {
 				await networkInterceptor?.waitForCompressions();
 
 				const imageDownloader = new ImageDownloader(page);
-				const results: ({
-					path: string;
-					width: number;
-					height: number;
-				} | null)[] = [];
+				const results: (ScrapedImageDataDto | null)[] = [];
 
 				for (const imageUrl of imageUrls) {
 					try {
@@ -711,8 +713,12 @@ export class ScrapingService implements OnApplicationShutdown {
 								);
 						results.push({
 							path: saved,
-							width: dimensions?.width || 0,
-							height: dimensions?.height || 0,
+							metadata: {
+								width: dimensions?.width || 0,
+								height: dimensions?.height || 0,
+								sizeBytes: bufferData.length,
+								mimeType: resolveMimeTypeByExtension(extension),
+							},
 						});
 					} catch (err) {
 						this.logger.warn(

@@ -1,11 +1,12 @@
+import { ImageMetadata } from './image-metadata.vo';
+
 export class Image {
 	constructor(
 		public readonly path: string,
-		public readonly width: number | null = null,
-		public readonly height: number | null = null,
+		public readonly metadata: ImageMetadata | null = null,
 	) {}
 
-	static create(path: string, width?: number, height?: number): Image {
-		return new Image(path, width ?? null, height ?? null);
+	static create(path: string, metadata?: ImageMetadata): Image {
+		return new Image(path, metadata ?? null);
 	}
 }

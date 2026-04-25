@@ -5,6 +5,7 @@ import {
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
 } from 'typeorm';
+import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
 
 @Entity('user_images')
 export class UserImage {
@@ -14,11 +15,8 @@ export class UserImage {
 	@Column()
 	path: string;
 
-	@Column({ nullable: true })
-	width: number;
-
-	@Column({ nullable: true })
-	height: number;
+	@Column({ type: 'json', nullable: true })
+	metadata: ImageMetadata | null;
 
 	@CreateDateColumn()
 	createdAt: Date;

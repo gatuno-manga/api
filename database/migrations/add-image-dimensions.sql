@@ -1,22 +1,19 @@
--- Migration: Add image dimensions and extract user images
+-- Migration: Add image metadata and extract user images
 -- Date: 2026-04-24
 
--- 1. Add columns to pages table
+-- 1. Add metadata column to pages table
 ALTER TABLE pages
-ADD COLUMN width INT NULL,
-ADD COLUMN height INT NULL;
+ADD COLUMN metadata JSON NULL;
 
--- 2. Add columns to covers table
+-- 2. Add metadata column to covers table
 ALTER TABLE covers
-ADD COLUMN width INT NULL,
-ADD COLUMN height INT NULL;
+ADD COLUMN metadata JSON NULL;
 
 -- 3. Create user_images table
 CREATE TABLE IF NOT EXISTS user_images (
     id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
     path VARCHAR(255) NOT NULL,
-    width INT NULL,
-    height INT NULL,
+    metadata JSON NULL,
     created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
     temp_userId VARCHAR(36) NULL,
@@ -28,7 +25,7 @@ ALTER TABLE users
 ADD COLUMN profilePictureId VARCHAR(36) NULL,
 ADD COLUMN profileBannerId VARCHAR(36) NULL;
 
--- 5. Data Migration: profile pictures
+-- 5. Data Migration: extract profile pictures and banners
 INSERT INTO user_images (id, path, temp_userId, temp_type)
 SELECT UUID(), profileImagePath, id, 'profile' 
 FROM users 
@@ -59,8 +56,3 @@ ALTER TABLE user_images DROP COLUMN temp_userId, DROP COLUMN temp_type;
 ALTER TABLE users
 DROP COLUMN profileImagePath,
 DROP COLUMN profileBannerPath;
-
--- 7. Create temporary indexes for dimensions update script
-CREATE INDEX idx_temp_pages_dimensions ON pages (width, height);
-CREATE INDEX idx_temp_covers_dimensions ON covers (width, height);
-CREATE INDEX idx_temp_user_images_dimensions ON user_images (width, height);

@@ -134,8 +134,14 @@ export class BookUploadService {
 			const cover = this.coverRepository.create({
 				title: title || file.originalname,
 				url: savedPath,
-				width: dimensions?.width || null,
-				height: dimensions?.height || null,
+				metadata: dimensions
+					? {
+							width: dimensions.width,
+							height: dimensions.height,
+							sizeBytes: file.size,
+							mimeType: file.mimetype,
+						}
+					: null,
 				book: book,
 				index: book.covers.length,
 				selected: book.covers.length === 0,
@@ -262,8 +268,14 @@ export class BookUploadService {
 			);
 
 			cover.url = savedPath;
-			cover.width = dimensions?.width || null;
-			cover.height = dimensions?.height || null;
+			cover.metadata = dimensions
+				? {
+						width: dimensions.width,
+						height: dimensions.height,
+						sizeBytes: file.size,
+						mimeType: file.mimetype,
+					}
+				: null;
 			if (title !== undefined) {
 				cover.title = title;
 			}
@@ -384,8 +396,14 @@ export class BookUploadService {
 						return this.coverRepository.create({
 							title: file.originalname,
 							url: savedPath,
-							width: dimensions?.width || null,
-							height: dimensions?.height || null,
+							metadata: dimensions
+								? {
+										width: dimensions.width,
+										height: dimensions.height,
+										sizeBytes: file.size,
+										mimeType: file.mimetype,
+									}
+								: null,
 							book: book,
 							index: book.covers.length + index,
 							selected: book.covers.length === 0 && index === 0,
@@ -535,8 +553,14 @@ export class BookUploadService {
 					return this.pageRepository.create({
 						index: indices[i],
 						path: savedPath,
-						width: dimensions?.width || null,
-						height: dimensions?.height || null,
+						metadata: dimensions
+							? {
+									width: dimensions.width,
+									height: dimensions.height,
+									sizeBytes: file.size,
+									mimeType: file.mimetype,
+								}
+							: null,
 						chapter: chapter,
 					});
 				}),

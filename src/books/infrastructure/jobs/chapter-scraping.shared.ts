@@ -65,8 +65,7 @@ export class ChapterScrapingSharedService {
 			const newPages = pages.map((pageData) =>
 				this.pageRepository.create({
 					path: pageData.path,
-					width: pageData.width,
-					height: pageData.height,
+					metadata: pageData.metadata,
 					index: index++,
 				}),
 			);

@@ -16,6 +16,7 @@ import { UserImage } from '../../infrastructure/database/entities/user-image.ent
 import { RolesEnum } from '../../domain/enums/roles.enum';
 import { UserResourcesMapper } from '../mappers/user-resources.mapper';
 import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
+import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
 
 @Injectable()
 export class UsersService implements OnApplicationBootstrap {
@@ -119,12 +120,11 @@ export class UsersService implements OnApplicationBootstrap {
 
 	async uploadAvatar(file: Express.Multer.File, userId: string) {
 		const user = await this.findUserOrFail(userId);
-		const { extension, width, height } =
-			await this.validateAndResolveImageInfo(
-				file,
-				this.maxAvatarSizeBytes,
-				'avatar',
-			);
+		const { extension, metadata } = await this.validateAndResolveImageInfo(
+			file,
+			this.maxAvatarSizeBytes,
+			'avatar',
+		);
 		const publicPath = await this.filesService.saveBufferFile(
 			file.buffer,
 			extension,
@@ -141,8 +141,7 @@ export class UsersService implements OnApplicationBootstrap {
 		}
 
 		user.profilePicture.path = publicPath;
-		user.profilePicture.width = width;
-		user.profilePicture.height = height;
+		user.profilePicture.metadata = metadata;
 
 		const savedUser = await this.userRepository.save(user);
 		return this.userResourcesMapper.toUserProfile(savedUser);
@@ -150,12 +149,11 @@ export class UsersService implements OnApplicationBootstrap {
 
 	async uploadBanner(file: Express.Multer.File, userId: string) {
 		const user = await this.findUserOrFail(userId);
-		const { extension, width, height } =
-			await this.validateAndResolveImageInfo(
-				file,
-				this.maxBannerSizeBytes,
-				'banner',
-			);
+		const { extension, metadata } = await this.validateAndResolveImageInfo(
+			file,
+			this.maxBannerSizeBytes,
+			'banner',
+		);
 		const publicPath = await this.filesService.saveBufferFile(
 			file.buffer,
 			extension,
@@ -172,8 +170,7 @@ export class UsersService implements OnApplicationBootstrap {
 		}
 
 		user.profileBanner.path = publicPath;
-		user.profileBanner.width = width;
-		user.profileBanner.height = height;
+		user.profileBanner.metadata = metadata;
 
 		const savedUser = await this.userRepository.save(user);
 		return this.userResourcesMapper.toUserProfile(savedUser);
@@ -195,7 +192,7 @@ export class UsersService implements OnApplicationBootstrap {
 		file: Express.Multer.File,
 		maxSizeBytes: number,
 		label: 'avatar' | 'banner',
-	): Promise<{ extension: string; width: number; height: number }> {
+	): Promise<{ extension: string; metadata: ImageMetadata }> {
 		if (!file) {
 			throw new BadRequestException(`${label} file is required`);
 		}
@@ -237,8 +234,12 @@ export class UsersService implements OnApplicationBootstrap {
 
 		return {
 			extension,
-			width: dimensions.width,
-			height: dimensions.height,
+			metadata: {
+				width: dimensions.width,
+				height: dimensions.height,
+				sizeBytes: file.size,
+				mimeType: file.mimetype,
+			},
 		};
 	}
 }
