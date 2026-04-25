@@ -4,4 +4,8 @@ export type ImageMetadata = {
 	sizeBytes?: number;
 	mimeType?: string;
 	blurHash?: string;
+	dominantColor?: string;
+	pHash?: string;
+	entropy?: number;
+	formatOrigin?: string;
 };
