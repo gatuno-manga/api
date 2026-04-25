@@ -137,4 +137,20 @@ export class WebsiteConfigDto {
 	@IsOptional()
 	@IsObject()
 	timeoutMultipliers?: Record<string, number>;
+
+	@ApiProperty({
+		description: 'Enable FlareSolverr to bypass Cloudflare protection',
+		example: false,
+	})
+	@IsBoolean()
+	@IsOptional()
+	useFlareSolverr?: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Proxy URL for this website',
+		example: 'http://proxy.example.com:8080',
+	})
+	@IsOptional()
+	@IsString()
+	proxyUrl?: string | null;
 }
