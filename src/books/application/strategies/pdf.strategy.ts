@@ -1,18 +1,16 @@
-import { promises as fs } from 'node:fs';
-import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import { Injectable, Logger, StreamableFile } from '@nestjs/common';
 import PDFDocument from 'pdfkit';
 import sharp from 'sharp';
 import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { DownloadStrategy } from './download.strategy';
-
-// Caminho base onde o volume de dados está montado no container
-const DATA_BASE_PATH = '/usr/src/app/data';
+import { FilesService } from '@src/files/application/services/files.service';
 
 @Injectable()
 export class PdfStrategy implements DownloadStrategy {
 	private readonly logger = new Logger(PdfStrategy.name);
+
+	constructor(private readonly filesService: FilesService) {}
 
 	getContentType(): string {
 		return 'application/pdf';
@@ -94,15 +92,9 @@ export class PdfStrategy implements DownloadStrategy {
 				(a, b) => a.index - b.index,
 			)) {
 				try {
-					// O path no banco é /data/filename.ext (caminho público)
-					const cleanPath = page.path.startsWith('/data/')
-						? page.path.substring(6)
-						: page.path;
-
-					const filePath = join(DATA_BASE_PATH, cleanPath);
-
-					// Ler o arquivo da imagem
-					const rawImageBuffer = await fs.readFile(filePath);
+					// Obter buffer do storage centralizado
+					const rawImageBuffer =
+						await this.filesService.getFileBuffer(page.path);
 
 					// Converter para PNG (PDFKit não suporta WebP nativamente)
 					const sharpInstance = sharp(rawImageBuffer);

@@ -437,6 +437,9 @@ export class DownloadService {
 		const tempPath = `${filePath}.tmp`;
 
 		try {
+			// Garantir que o diretório do shard existe
+			await this.cacheService.ensureShardDir(key);
+
 			// Criar write stream para arquivo temporário
 			const fileStream = (await import('node:fs')).createWriteStream(
 				tempPath,

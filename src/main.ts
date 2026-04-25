@@ -1,5 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { Partitioners } from 'kafkajs';
 import cookieParser from 'cookie-parser';
 import { AppConfigService } from './infrastructure/app-config/app-config.service';
 import { AppModule } from './app.module';
@@ -21,6 +23,26 @@ async function bootstrap() {
 	app.enableShutdownHooks();
 	app.use(cookieParser());
 	app.setGlobalPrefix('api');
+
+	// Configura o Microserviço Kafka para consumir eventos
+	app.connectMicroservice<MicroserviceOptions>({
+		transport: Transport.KAFKA,
+		options: {
+			client: {
+				clientId: 'gatuno-api-consumer',
+				brokers: [configService.kafkaBroker],
+			},
+			consumer: {
+				groupId: 'gatuno-api-group',
+				allowAutoTopicCreation: true,
+			},
+			producer: {
+				createPartitioner: Partitioners.LegacyPartitioner,
+			},
+		},
+	});
+
+	await app.startAllMicroservices();
 
 	if (configService.nodeEnv === 'development') {
 		configureSwagger(app);

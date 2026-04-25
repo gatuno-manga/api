@@ -1,14 +1,10 @@
-import { promises as fs } from 'node:fs';
-import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import { Injectable, Logger, StreamableFile } from '@nestjs/common';
 import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { ContentType } from '@books/domain/enums/content-type.enum';
 import { DocumentFormat } from '@books/domain/enums/document-format.enum';
 import { DownloadStrategy } from './download.strategy';
-
-// Caminho base onde o volume de dados está montado no container
-const DATA_BASE_PATH = '/usr/src/app/data';
+import { FilesService } from '@src/files/application/services/files.service';
 
 /**
  * Strategy para download de documentos (PDF/EPUB)
@@ -18,6 +14,8 @@ const DATA_BASE_PATH = '/usr/src/app/data';
 export class DocumentDownloadStrategy implements DownloadStrategy {
 	private readonly logger = new Logger(DocumentDownloadStrategy.name);
 	private documentFormat: DocumentFormat = DocumentFormat.PDF;
+
+	constructor(private readonly filesService: FilesService) {}
 
 	/**
 	 * Define o formato do documento para determinar content-type e extensão
@@ -85,20 +83,11 @@ export class DocumentDownloadStrategy implements DownloadStrategy {
 			throw new Error('Capítulo não possui documento associado');
 		}
 
-		const cleanPath = chapter.documentPath.startsWith('/data/')
-			? chapter.documentPath.substring(6)
-			: chapter.documentPath;
-
-		const filePath = join(DATA_BASE_PATH, cleanPath);
-
-		this.logger.debug(`Streaming document from: ${filePath}`);
-
 		try {
-			// Verifica se o arquivo existe
-			await fs.access(filePath);
-
-			// Lê o arquivo e cria stream
-			const fileBuffer = await fs.readFile(filePath);
+			// Lê o arquivo e cria stream do storage centralizado
+			const fileBuffer = await this.filesService.getFileBuffer(
+				chapter.documentPath,
+			);
 			const outputStream = new PassThrough();
 
 			// Define o formato baseado no capítulo

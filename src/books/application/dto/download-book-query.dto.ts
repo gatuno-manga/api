@@ -1,35 +1,31 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsArray, IsEnum, IsOptional, IsUUID } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { BookDownloadFormat } from './download-book-body.dto';
 
-export enum BookDownloadFormat {
-	IMAGES_ZIP = 'images',
-	PDFS_ZIP = 'pdfs',
-}
-
-export class DownloadBookBodyDto {
+export class DownloadBookQueryDto {
 	@ApiPropertyOptional({
 		description:
 			'Lista de IDs dos capítulos para download. Se não fornecido, baixa todos os capítulos.',
 		type: [String],
-		example: [
-			'550e8400-e29b-41d4-a716-446655440000',
-			'550e8400-e29b-41d4-a716-446655440001',
-		],
 	})
 	@IsOptional()
 	@IsArray()
 	@IsUUID('4', { each: true })
+	@Transform(({ value }) => {
+		if (typeof value === 'string') {
+			return value.split(',');
+		}
+		return value;
+	})
 	chapterIds?: string[];
 
 	@ApiPropertyOptional({
 		description: 'Formato do download do livro',
 		enum: BookDownloadFormat,
-		example: BookDownloadFormat.IMAGES_ZIP,
 		default: BookDownloadFormat.IMAGES_ZIP,
 	})
 	@IsOptional()
-	@IsEnum(BookDownloadFormat, {
-		message: 'Format must be either "images" or "pdfs"',
-	})
+	@IsEnum(BookDownloadFormat)
 	format: BookDownloadFormat = BookDownloadFormat.IMAGES_ZIP;
 }

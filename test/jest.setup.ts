@@ -53,10 +53,21 @@ setEnvDefault('DB_PASS', 'root');
 setEnvDefault('REDIS_HOST', '127.0.0.1');
 setEnvDefault('REDIS_PORT', '6379');
 setEnvDefault('REDIS_PASSWORD', '');
+
+// Force override for local tests
+process.env.KAFKA_HOST = 'localhost';
+process.env.KAFKA_PORT = '9092';
+process.env.DB_MASTER_HOST = process.env.DB_MASTER_HOST || '127.0.0.1';
+process.env.REDIS_HOST = process.env.REDIS_HOST || '127.0.0.1';
+
 setEnvDefault('USERADMIN_EMAIL', 'admin@example.com');
 setEnvDefault('USERADMIN_PASSWORD', 'AdminP@ssw0rd!');
 setEnvDefault('JWT_ACCESS_SECRET', 'default_secret');
 setEnvDefault('JWT_REFRESH_SECRET', 'default_refresh_secret');
+setEnvDefault('API_URL', 'http://localhost:3000');
+setEnvDefault('APP_URL', 'http://localhost:4200');
+setEnvDefault('ALLOWED_URL', 'http://localhost:4200');
+setEnvDefault('KAFKA_BROKER', 'localhost:9092');
 
 const shouldShowLogs = process.env.TEST_LOGS === 'true';
 
