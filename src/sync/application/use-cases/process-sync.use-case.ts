@@ -1,0 +1,126 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
+import { ReadingProgressService } from 'src/users/application/use-cases/reading-progress.service';
+import { SavedPagesService } from 'src/users/application/use-cases/saved-pages.service';
+import {
+	ChapterCommentNode,
+	ChapterCommentsService,
+} from 'src/books/application/services/chapter-comments.service';
+import { SyncRequestDto } from '../../infrastructure/http/dto/sync-request.dto';
+import { ISyncResult } from '../types/sync-result.interface';
+import { SyncResponseDto } from 'src/users/infrastructure/http/dto/reading-progress.dto';
+
+@Injectable()
+export class ProcessSyncUseCase {
+	private readonly logger = new Logger(ProcessSyncUseCase.name);
+
+	constructor(
+		private readonly readingProgressService: ReadingProgressService,
+		private readonly savedPagesService: SavedPagesService,
+		private readonly chapterCommentsService: ChapterCommentsService,
+	) {}
+
+	async execute(
+		user: CurrentUserDto,
+		dto: SyncRequestDto,
+	): Promise<ISyncResult> {
+		this.logger.log(
+			`Iniciando sincronização unificada para o usuário: ${user.userId}`,
+		);
+
+		let readingProgress: SyncResponseDto;
+		const syncedComments: ChapterCommentNode[] = [];
+
+		// 1. Sincronizar progresso de leitura
+		if (dto.readingProgress) {
+			readingProgress = await this.readingProgressService.syncProgress(
+				user.userId,
+				{
+					progress: dto.readingProgress,
+					lastSyncAt: dto.lastSyncAt
+						? new Date(dto.lastSyncAt)
+						: undefined,
+				},
+			);
+		} else {
+			readingProgress = {
+				synced: await this.readingProgressService.getAllProgress(
+					user.userId,
+				),
+				conflicts: [],
+				lastSyncAt: new Date(),
+			};
+		}
+
+		// 2. Sincronizar páginas salvas
+		if (dto.savedPages) {
+			for (const savedPage of dto.savedPages) {
+				try {
+					await this.savedPagesService.savePage(
+						savedPage,
+						user.userId,
+					);
+				} catch (error) {
+					// Ignora erros de "já existe" na sincronização
+					const message =
+						error instanceof Error
+							? error.message
+							: 'Unknown error';
+					this.logger.debug(
+						`Página já salva ou erro na sync: ${message}`,
+					);
+				}
+			}
+		}
+		const savedPages = await this.savedPagesService.getSavedPages(
+			user.userId,
+		);
+
+		// 3. Sincronizar comentários (apenas upload de novos por enquanto)
+		if (dto.comments) {
+			for (const commentDto of dto.comments) {
+				try {
+					if (commentDto.parentId) {
+						const reply =
+							await this.chapterCommentsService.createReply(
+								commentDto.chapterId,
+								commentDto.parentId,
+								{
+									content: commentDto.content,
+									isPublic: commentDto.isPublic,
+								},
+								user,
+							);
+						syncedComments.push(reply);
+					} else {
+						const comment =
+							await this.chapterCommentsService.createComment(
+								commentDto.chapterId,
+								{
+									content: commentDto.content,
+									isPublic: commentDto.isPublic,
+								},
+								user,
+							);
+						syncedComments.push(comment);
+					}
+				} catch (error) {
+					const message =
+						error instanceof Error
+							? error.message
+							: 'Unknown error';
+					this.logger.error(
+						`Erro ao sincronizar comentário: ${message}`,
+					);
+				}
+			}
+		}
+
+		return {
+			readingProgress,
+			savedPages,
+			comments: syncedComments,
+			syncedAt: new Date(),
+		};
+	}
+}

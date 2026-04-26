@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
 	In,
@@ -24,6 +24,7 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 	constructor(
 		@InjectRepository(InfrastructureChapter)
 		repository: Repository<InfrastructureChapter>,
+		@Optional()
 		entityManager?: EntityManager,
 	) {
 		this.repository = entityManager

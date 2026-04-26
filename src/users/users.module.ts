@@ -87,6 +87,11 @@ import { TypeOrmUserRepositoryAdapter } from './infrastructure/database/adapters
 		HighestPageWinsStrategy,
 		SyncStrategyResolver,
 	],
-	exports: [AdminUsersService, I_USER_REPOSITORY],
+	exports: [
+		AdminUsersService,
+		I_USER_REPOSITORY,
+		ReadingProgressService,
+		SavedPagesService,
+	],
 })
 export class UsersModule {}

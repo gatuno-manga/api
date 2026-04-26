@@ -82,6 +82,8 @@ import { TypeOrmChapterCommentRepositoryAdapter } from './infrastructure/databas
 import { I_UNIT_OF_WORK } from 'src/common/application/ports/unit-of-work.interface';
 import { TypeOrmUnitOfWorkAdapter } from './infrastructure/database/adapters/typeorm-unit-of-work.adapter';
 
+import { BookResolver } from './infrastructure/graphql/resolvers/book.resolver';
+
 @Module({
 	imports: [
 		ScrapingModule,
@@ -236,6 +238,7 @@ import { TypeOrmUnitOfWorkAdapter } from './infrastructure/database/adapters/typ
 		FileDeletionEvents,
 		// WebSocket Gateway
 		BooksGateway,
+		BookResolver,
 	],
 	exports: [
 		I_BOOK_REPOSITORY,
@@ -249,6 +252,8 @@ import { TypeOrmUnitOfWorkAdapter } from './infrastructure/database/adapters/typ
 		I_CHAPTER_READ_REPOSITORY,
 		I_CHAPTER_COMMENT_REPOSITORY,
 		I_UNIT_OF_WORK,
+		ChapterCommentsService,
+		ChapterService,
 	],
 })
 export class BooksModule {}

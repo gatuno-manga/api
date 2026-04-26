@@ -11,6 +11,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 import { I_CHAPTER_REPOSITORY } from '../ports/chapter-repository.interface';
 import { I_BOOK_REPOSITORY } from '../ports/book-repository.interface';
+import { I_UNIT_OF_WORK } from 'src/common/application/ports/unit-of-work.interface';
 
 describe('ChapterManagementService', () => {
 	let service: ChapterManagementService;
@@ -18,6 +19,7 @@ describe('ChapterManagementService', () => {
 	let chapterRepository: any;
 	let dataSource: any;
 	let eventEmitter: any;
+	let unitOfWork: any;
 
 	const mockBookId = 'book-1';
 	const mockChapterId = 'chapter-1';
@@ -25,6 +27,7 @@ describe('ChapterManagementService', () => {
 	beforeEach(async () => {
 		bookRepository = {
 			findOne: jest.fn(),
+			findById: jest.fn(),
 			save: jest.fn(),
 		};
 		chapterRepository = {
@@ -33,6 +36,15 @@ describe('ChapterManagementService', () => {
 			findOne: jest.fn(),
 			merge: jest.fn(),
 			saveAll: jest.fn(),
+			findByBookId: jest.fn(),
+		};
+		unitOfWork = {
+			runInTransaction: jest.fn((cb) =>
+				cb({
+					getBookRepository: () => bookRepository,
+					getChapterRepository: () => chapterRepository,
+				}),
+			),
 		};
 		eventEmitter = {
 			emit: jest.fn(),
@@ -69,6 +81,10 @@ describe('ChapterManagementService', () => {
 					useValue: bookRepository,
 				},
 				{
+					provide: I_UNIT_OF_WORK,
+					useValue: unitOfWork,
+				},
+				{
 					provide: EventEmitter2,
 					useValue: eventEmitter,
 				},
@@ -98,7 +114,7 @@ describe('ChapterManagementService', () => {
 				book: mockBook,
 			};
 
-			bookRepository.findOne.mockResolvedValue(mockBook);
+			bookRepository.findById.mockResolvedValue(mockBook);
 			chapterRepository.findOne.mockResolvedValue(null);
 			chapterRepository.create.mockReturnValue(mockChapter);
 			chapterRepository.save.mockResolvedValue(mockChapter);
@@ -124,7 +140,7 @@ describe('ChapterManagementService', () => {
 		});
 
 		it('should throw NotFoundException if book not found', async () => {
-			bookRepository.findOne.mockResolvedValue(null);
+			bookRepository.findById.mockResolvedValue(null);
 
 			await expect(
 				service.createManualChapterWithContent(mockBookId, {
@@ -138,7 +154,7 @@ describe('ChapterManagementService', () => {
 
 		it('should throw BadRequestException if index already exists', async () => {
 			const mockBook = { id: mockBookId, availableFormats: [] };
-			bookRepository.findOne.mockResolvedValue(mockBook);
+			bookRepository.findById.mockResolvedValue(mockBook);
 			chapterRepository.findOne.mockResolvedValue({ id: 'existing' });
 
 			await expect(
@@ -158,7 +174,7 @@ describe('ChapterManagementService', () => {
 				id: mockBookId,
 				availableFormats: [ExportFormat.MARKDOWN],
 			};
-			bookRepository.findOne.mockResolvedValue(mockBook);
+			bookRepository.findById.mockResolvedValue(mockBook);
 			chapterRepository.findOne.mockResolvedValue(null);
 			chapterRepository.create.mockImplementation((dto: any) => ({
 				id: `ch-${dto.index}`,

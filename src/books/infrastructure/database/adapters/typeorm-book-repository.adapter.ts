@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
 	Repository,
@@ -26,6 +26,7 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 	constructor(
 		@InjectRepository(InfrastructureBook)
 		repository: Repository<InfrastructureBook>,
+		@Optional()
 		entityManager?: EntityManager,
 	) {
 		this.repository = entityManager
