@@ -25,19 +25,29 @@ async function bootstrap() {
 	app.setGlobalPrefix('api');
 
 	// Configura o Microserviço Kafka para consumir eventos
+	const kafkaLogger = new Logger('KafkaConsumer');
 	app.connectMicroservice<MicroserviceOptions>({
 		transport: Transport.KAFKA,
 		options: {
 			client: {
 				clientId: 'gatuno-api-consumer',
 				brokers: [configService.kafkaBroker],
+				retry: {
+					initialRetryTime: 1000,
+					retries: 10,
+					maxRetryTime: 30000,
+				},
+				connectionTimeout: 10000,
+				authenticationTimeout: 10000,
 			},
 			consumer: {
 				groupId: 'gatuno-api-group',
 				allowAutoTopicCreation: true,
+				metadataMaxAge: 3000,
 			},
 			producer: {
 				createPartitioner: Partitioners.LegacyPartitioner,
+				allowAutoTopicCreation: true,
 			},
 		},
 	});
