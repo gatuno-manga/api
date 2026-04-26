@@ -13,6 +13,7 @@ import { AppConfigService } from './infrastructure/app-config/app-config.service
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { BookRequestsModule } from './book-requests/book-requests.module';
 import { BooksModule } from './books/books.module';
 import { CommonModule } from './common/common.module';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
@@ -89,6 +90,7 @@ import { UsersModule } from './users/users.module';
 		FilesModule,
 		UsersModule,
 		AuthModule,
+		BookRequestsModule,
 	],
 	controllers: [AppController],
 	providers: [

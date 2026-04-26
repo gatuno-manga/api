@@ -79,6 +79,8 @@ import { I_CHAPTER_READ_REPOSITORY } from './application/ports/chapter-read-repo
 import { TypeOrmChapterReadRepositoryAdapter } from './infrastructure/database/adapters/typeorm-chapter-read-repository.adapter';
 import { I_CHAPTER_COMMENT_REPOSITORY } from './application/ports/chapter-comment-repository.interface';
 import { TypeOrmChapterCommentRepositoryAdapter } from './infrastructure/database/adapters/typeorm-chapter-comment-repository.adapter';
+import { I_UNIT_OF_WORK } from 'src/common/application/ports/unit-of-work.interface';
+import { TypeOrmUnitOfWorkAdapter } from './infrastructure/database/adapters/typeorm-unit-of-work.adapter';
 
 @Module({
 	imports: [
@@ -198,6 +200,10 @@ import { TypeOrmChapterCommentRepositoryAdapter } from './infrastructure/databas
 			provide: I_CHAPTER_COMMENT_REPOSITORY,
 			useClass: TypeOrmChapterCommentRepositoryAdapter,
 		},
+		{
+			provide: I_UNIT_OF_WORK,
+			useClass: TypeOrmUnitOfWorkAdapter,
+		},
 		BooksService,
 		BookScrapingEvents,
 		BookInitEvents,
@@ -242,6 +248,7 @@ import { TypeOrmChapterCommentRepositoryAdapter } from './infrastructure/databas
 		I_BOOK_RELATIONSHIP_REPOSITORY,
 		I_CHAPTER_READ_REPOSITORY,
 		I_CHAPTER_COMMENT_REPOSITORY,
+		I_UNIT_OF_WORK,
 	],
 })
 export class BooksModule {}

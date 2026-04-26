@@ -38,13 +38,17 @@ export class BookRelationshipService {
 	 * Carrega todas as tags em uma única query e faz o match em memória,
 	 * evitando N queries paralelas com JSON_CONTAINS (full table scan).
 	 */
-	async findOrCreateTags(tagNames: string[]): Promise<Tag[]> {
+	async findOrCreateTags(
+		tagNames: string[],
+		repo?: ITagRepository,
+	): Promise<Tag[]> {
 		if (tagNames.length === 0) return [];
+		const tagRepo = repo || this.tagRepository;
 
 		const lowerNames = tagNames.map((n) => n.toLowerCase());
 
 		// Uma única query para carregar todas as tags existentes
-		const allTags = await this.tagRepository.findAll();
+		const allTags = await tagRepo.findAll();
 
 		// Mapas de lookup em memória: name → Tag e altName → Tag
 		const byName = new Map<string, Tag>();
@@ -65,13 +69,12 @@ export class BookRelationshipService {
 				try {
 					const tag = new Tag();
 					tag.name = lowerName;
-					const saved = await this.tagRepository.save(tag);
+					const saved = await tagRepo.save(tag);
 					this.logger.debug(`Tag criada: ${lowerName}`);
 					byName.set(lowerName, saved);
 					result.push(saved);
 				} catch (err) {
-					// Fallback simplificado para build
-					const tag = await this.tagRepository.findByName(lowerName);
+					const tag = await tagRepo.findByName(lowerName);
 					if (tag) {
 						byName.set(lowerName, tag);
 						result.push(tag);
@@ -88,13 +91,15 @@ export class BookRelationshipService {
 	 */
 	async findOrCreateAuthors(
 		authorsDto: CreateAuthorDto[],
+		repo?: IAuthorRepository,
 	): Promise<Author[]> {
 		if (authorsDto.length === 0) return [];
+		const authorRepo = repo || this.authorRepository;
 
 		const names = authorsDto.map((a) => a.name);
 
 		// Busca todos os autores do batch de uma vez
-		const existing = await this.authorRepository.findWithFilters({
+		const existing = await authorRepo.findWithFilters({
 			sensitiveContent: [],
 		}); // Stub
 
@@ -112,14 +117,12 @@ export class BookRelationshipService {
 					const author = new Author();
 					author.name = dto.name;
 					author.biography = dto.biography ?? null;
-					const saved = await this.authorRepository.save(author);
+					const saved = await authorRepo.save(author);
 					this.logger.debug(`Autor criado: ${dto.name}`);
 					byName.set(dto.name, saved);
 					result.push(saved);
 				} catch (err) {
-					const author = await this.authorRepository.findByName(
-						dto.name,
-					);
+					const author = await authorRepo.findByName(dto.name);
 					if (author) {
 						byName.set(dto.name, author);
 						result.push(author);
@@ -137,13 +140,15 @@ export class BookRelationshipService {
 	 */
 	async findOrCreateSensitiveContent(
 		sensitiveContentNames: string[],
+		repo?: ISensitiveContentRepository,
 	): Promise<SensitiveContent[]> {
 		if (sensitiveContentNames.length === 0) return [];
+		const sensitiveRepo = repo || this.sensitiveContentRepository;
 
 		const lowerNames = sensitiveContentNames.map((n) => n.toLowerCase());
 
 		// Uma única query para carregar todos os conteúdos sensíveis existentes
-		const all = await this.sensitiveContentRepository.findAll(100);
+		const all = await sensitiveRepo.findAll(100);
 
 		const byName = new Map<string, SensitiveContent>();
 		const byAltName = new Map<string, SensitiveContent>();
@@ -163,16 +168,12 @@ export class BookRelationshipService {
 				try {
 					const sc = new SensitiveContent();
 					sc.name = lowerName;
-					const saved =
-						await this.sensitiveContentRepository.save(sc);
+					const saved = await sensitiveRepo.save(sc);
 					this.logger.debug(`Conteúdo sensível criado: ${lowerName}`);
 					byName.set(lowerName, saved);
 					result.push(saved);
 				} catch (err) {
-					const sc =
-						await this.sensitiveContentRepository.findByName(
-							lowerName,
-						);
+					const sc = await sensitiveRepo.findByName(lowerName);
 					if (sc) {
 						byName.set(lowerName, sc);
 						result.push(sc);

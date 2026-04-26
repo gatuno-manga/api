@@ -8,7 +8,6 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { BookEvents } from '../../domain/constants/events.constant';
 import { CreateBookDto } from '../dto/create-book.dto';
 import { Book } from '../../domain/entities/book';
-import { Chapter } from '../../domain/entities/chapter';
 import { CoverImageService } from '../../infrastructure/jobs/cover-image.service';
 import { BookRelationshipService } from './book-relationship.service';
 import { ChapterManagementService } from './chapter-management.service';
@@ -17,9 +16,9 @@ import {
 	IBookRepository,
 } from '../ports/book-repository.interface';
 import {
-	I_CHAPTER_REPOSITORY,
-	IChapterRepository,
-} from '../ports/chapter-repository.interface';
+	I_UNIT_OF_WORK,
+	IUnitOfWork,
+} from 'src/common/application/ports/unit-of-work.interface';
 
 /**
  * Service responsável pela criação de livros
@@ -31,8 +30,8 @@ export class BookCreationService {
 	constructor(
 		@Inject(I_BOOK_REPOSITORY)
 		private readonly bookRepository: IBookRepository,
-		@Inject(I_CHAPTER_REPOSITORY)
-		private readonly chapterRepository: IChapterRepository,
+		@Inject(I_UNIT_OF_WORK)
+		private readonly unitOfWork: IUnitOfWork,
 		private readonly bookRelationshipService: BookRelationshipService,
 		private readonly chapterManagementService: ChapterManagementService,
 		private readonly coverImageService: CoverImageService,
@@ -40,7 +39,7 @@ export class BookCreationService {
 	) {}
 
 	/**
-	 * Cria um novo livro com todas as suas relações
+	 * Cria um novo livro com todas as suas relações de forma atômica
 	 */
 	async createBook(dto: CreateBookDto): Promise<Book> {
 		const conflictCheck = await this.bookRepository.checkBookTitleConflict(
@@ -55,60 +54,77 @@ export class BookCreationService {
 			});
 		}
 
-		// A lógica de criação complexa agora reside em um método do repositório ou adapter que gerencia a transação
-		const tags =
-			dto.tags && dto.tags.length > 0
-				? await this.bookRelationshipService.findOrCreateTags(dto.tags)
-				: [];
-		const authors =
-			dto.authors && dto.authors.length > 0
-				? await this.bookRelationshipService.findOrCreateAuthors(
-						dto.authors,
-					)
-				: [];
-		const sensitiveContent =
-			dto.sensitiveContent && dto.sensitiveContent.length > 0
-				? await this.bookRelationshipService.findOrCreateSensitiveContent(
-						dto.sensitiveContent,
-					)
-				: [];
+		return this.unitOfWork.runInTransaction(async (uow) => {
+			const bookRepo = uow.getBookRepository();
+			const chapterRepo = uow.getChapterRepository();
+			const tagRepo = uow.getTagRepository();
+			const authorRepo = uow.getAuthorRepository();
+			const sensitiveRepo = uow.getSensitiveContentRepository();
 
-		const book = new Book();
-		Object.assign(book, {
-			title: dto.title,
-			originalUrl: dto.originalUrl,
-			alternativeTitle: dto.alternativeTitle,
-			description: dto.description,
-			publication: dto.publication,
-			type: dto.type,
-			sensitiveContent,
-			tags,
-			authors,
-			chapters: [],
-		});
+			const tags =
+				dto.tags && dto.tags.length > 0
+					? await this.bookRelationshipService.findOrCreateTags(
+							dto.tags,
+							tagRepo,
+						)
+					: [];
 
-		const savedBook = await this.bookRepository.save(book);
+			const authors =
+				dto.authors && dto.authors.length > 0
+					? await this.bookRelationshipService.findOrCreateAuthors(
+							dto.authors,
+							authorRepo,
+						)
+					: [];
 
-		if (dto.chapters && dto.chapters.length > 0) {
-			const createdChapters =
-				await this.chapterManagementService.createChaptersFromDto(
-					dto.chapters,
-					savedBook,
+			const sensitiveContent =
+				dto.sensitiveContent && dto.sensitiveContent.length > 0
+					? await this.bookRelationshipService.findOrCreateSensitiveContent(
+							dto.sensitiveContent,
+							sensitiveRepo,
+						)
+					: [];
+
+			const book = new Book();
+			Object.assign(book, {
+				title: dto.title,
+				originalUrl: dto.originalUrl,
+				alternativeTitle: dto.alternativeTitle,
+				description: dto.description,
+				publication: dto.publication,
+				type: dto.type,
+				sensitiveContent,
+				tags,
+				authors,
+				chapters: [],
+			});
+
+			const savedBook = await bookRepo.save(book);
+
+			if (dto.chapters && dto.chapters.length > 0) {
+				const createdChapters =
+					await this.chapterManagementService.createChaptersFromDto(
+						dto.chapters,
+						savedBook,
+						chapterRepo,
+					);
+				savedBook.chapters = createdChapters;
+			}
+
+			if (dto.cover?.urlImgs && dto.cover.urlImgs.length > 0) {
+				// Queue job should only be added after commit, but for now we keep it here
+				// or move it outside the transaction block
+				await this.coverImageService.addCoverToQueue(
+					savedBook.id,
+					dto.cover.urlOrigin,
+					dto.cover.urlImgs,
 				);
-			savedBook.chapters = createdChapters;
-		}
+			}
 
-		if (dto.cover?.urlImgs && dto.cover.urlImgs.length > 0) {
-			await this.coverImageService.addCoverToQueue(
-				savedBook.id,
-				dto.cover.urlOrigin,
-				dto.cover.urlImgs,
-			);
-		}
+			this.eventEmitter.emit(BookEvents.CREATED, savedBook);
 
-		this.eventEmitter.emit(BookEvents.CREATED, savedBook);
-
-		return savedBook;
+			return savedBook;
+		});
 	}
 
 	/**

@@ -1,9 +1,10 @@
 import { Logger } from '@nestjs/common';
 import { Browser, BrowserContext, Page } from 'playwright';
-import { PlaywrightBrowserFactory } from '../browser';
+import { ContextOptions, PlaywrightBrowserFactory } from '../browser';
 import { IConcurrencyManager } from '../concurrency';
 import { WebsiteConfigDto } from '../../application/dto/website-config.dto';
 import {
+	FlareSolverrClient,
 	ImageCompressor,
 	NetworkInterceptor,
 	StorageConfig,
@@ -13,12 +14,18 @@ import { ScrapingContext, ScrapingTask } from './scraping-context.interface';
 
 export class ScrapingSessionRunner {
 	private readonly logger = new Logger(ScrapingSessionRunner.name);
+	private readonly flareSolverrClient: FlareSolverrClient | null = null;
 
 	constructor(
 		private readonly browserFactory: PlaywrightBrowserFactory,
 		private readonly concurrencyManager: IConcurrencyManager,
 		private readonly imageCompressor?: ImageCompressor,
-	) {}
+		flareSolverrUrl?: string,
+	) {
+		if (flareSolverrUrl) {
+			this.flareSolverrClient = new FlareSolverrClient(flareSolverrUrl);
+		}
+	}
 
 	async run<T>(
 		url: string,
@@ -26,7 +33,7 @@ export class ScrapingSessionRunner {
 		task: ScrapingTask<T>,
 	): Promise<T> {
 		const domain = new URL(url).hostname;
-		const { concurrencyLimit } = config;
+		const { concurrencyLimit, proxyUrl, useFlareSolverr } = config;
 
 		await this.concurrencyManager.acquire(domain, concurrencyLimit);
 
@@ -37,7 +44,62 @@ export class ScrapingSessionRunner {
 
 		try {
 			browser = await this.browserFactory.launch();
-			context = await this.browserFactory.createContext(browser);
+
+			// Proxy support
+			const contextOptions: ContextOptions = {};
+			if (proxyUrl) {
+				contextOptions.proxy = { server: proxyUrl };
+				this.logger.debug(`Using proxy for session: ${proxyUrl}`);
+			}
+
+			// FlareSolverr bypass (Call before creating context to get the UA)
+			let flareSolverrCookies: Array<{
+				name: string;
+				value: string;
+				domain: string;
+				path: string;
+				expires: number;
+				httpOnly: boolean;
+				secure: boolean;
+				sameSite: 'Strict' | 'Lax' | 'None';
+			}> = [];
+			if (useFlareSolverr && this.flareSolverrClient) {
+				this.logger.log(`Bypassing Cloudflare for ${url}...`);
+				const solution = await this.flareSolverrClient.resolve(
+					url,
+					proxyUrl || undefined,
+				);
+
+				if (solution) {
+					contextOptions.userAgent = solution.userAgent;
+					flareSolverrCookies = solution.cookies.map((c) => ({
+						name: c.name,
+						value: c.value,
+						domain: c.domain,
+						path: c.path,
+						expires: c.expires,
+						httpOnly: c.httpOnly,
+						secure: c.secure,
+						sameSite: (c.sameSite || 'Lax') as
+							| 'Strict'
+							| 'Lax'
+							| 'None',
+					}));
+					this.logger.debug(
+						`Obtained UA and ${flareSolverrCookies.length} cookies from FlareSolverr`,
+					);
+				}
+			}
+
+			context = await this.browserFactory.createContext(
+				browser,
+				contextOptions,
+			);
+
+			if (flareSolverrCookies.length > 0) {
+				await context.addCookies(flareSolverrCookies);
+			}
+
 			page = await this.browserFactory.createPage(context);
 
 			const storageInjector = this.createStorageInjector(config);

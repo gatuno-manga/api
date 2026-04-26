@@ -65,6 +65,7 @@ export class ScrapingService implements OnApplicationShutdown {
 			this.browserFactory,
 			this.concurrencyManager,
 			this.imageCompressor,
+			this.appConfigService.flareSolverrUrl,
 		);
 
 		if (this.appConfigService.playwright.debugMode) {
@@ -138,6 +139,8 @@ export class ScrapingService implements OnApplicationShutdown {
 		let reloadAfterStorageInjection: boolean | undefined;
 		let enableAdaptiveTimeouts = true;
 		let timeoutMultipliers: Record<string, number> | undefined;
+		let useFlareSolverr = false;
+		let proxyUrl: string | null = null;
 
 		const domain = new URL(url).hostname;
 		const website = await this.webSiteService.getByUrl(domain);
@@ -160,6 +163,8 @@ export class ScrapingService implements OnApplicationShutdown {
 				website.reloadAfterStorageInjection ?? false;
 			enableAdaptiveTimeouts = website.enableAdaptiveTimeouts ?? true;
 			timeoutMultipliers = website.timeoutMultipliers || undefined;
+			useFlareSolverr = website.useFlareSolverr ?? false;
+			proxyUrl = website.proxyUrl || null;
 		}
 
 		return {
@@ -179,6 +184,8 @@ export class ScrapingService implements OnApplicationShutdown {
 			reloadAfterStorageInjection,
 			enableAdaptiveTimeouts,
 			timeoutMultipliers,
+			useFlareSolverr,
+			proxyUrl,
 		};
 	}
 

@@ -308,4 +308,11 @@ export class AppConfigService {
 			`${this.apiUrl}/api/data`
 		);
 	}
+
+	get flareSolverrUrl(): string {
+		return (
+			this.config.get<string>('FLARESOLVERR_URL') ||
+			'http://flaresolverr:8191'
+		);
+	}
 }

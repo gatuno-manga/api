@@ -6,6 +6,7 @@ import {
 	FindOptionsWhere,
 	DeepPartial,
 	FindOptionsOrder,
+	EntityManager,
 } from 'typeorm';
 import { IChapterRepository } from '@books/application/ports/chapter-repository.interface';
 import { Chapter as DomainChapter } from '@books/domain/entities/chapter';
@@ -18,11 +19,17 @@ import {
 @Injectable()
 export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 	private readonly logger = new Logger(TypeOrmChapterRepositoryAdapter.name);
+	private readonly repository: Repository<InfrastructureChapter>;
 
 	constructor(
 		@InjectRepository(InfrastructureChapter)
-		private readonly repository: Repository<InfrastructureChapter>,
-	) {}
+		repository: Repository<InfrastructureChapter>,
+		entityManager?: EntityManager,
+	) {
+		this.repository = entityManager
+			? entityManager.getRepository(InfrastructureChapter)
+			: repository;
+	}
 
 	createQueryBuilder(alias: string) {
 		return this.repository.createQueryBuilder(alias);

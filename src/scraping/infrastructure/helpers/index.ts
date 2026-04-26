@@ -15,6 +15,7 @@ export {
 	StorageConfig,
 	CookieConfig,
 } from './storage-injector';
+export { FlareSolverrClient } from './flaresolverr.client';
 export {
 	detectPageComplexity,
 	getComplexityMultipliers,
