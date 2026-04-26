@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { normalizeUrl } from 'src/common/utils/url.utils';
-import { DataSource, In } from 'typeorm';
+import { In } from 'typeorm';
 import { BookEvents } from '@books/domain/constants/events.constant';
 import { ChapterUpdatedEvent } from '@books/infrastructure/events/chapter-updated.event';
 import { CreateChapterBatchItemDto } from '../dto/create-chapter-batch-item.dto';
@@ -17,8 +17,6 @@ import { OrderChaptersDto } from '../dto/order-chapters.dto';
 import { UpdateChapterDto } from '../dto/update-chapter.dto';
 import { Book } from '@books/domain/entities/book';
 import { Chapter } from '@books/domain/entities/chapter';
-import { Book as InfrastructureBook } from '@books/infrastructure/database/entities/book.entity';
-import { Chapter as InfrastructureChapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { ContentFormat } from '@books/domain/enums/content-format.enum';
 import { ContentType } from '@books/domain/enums/content-type.enum';
 import { ExportFormat } from '@books/domain/enums/export-format.enum';
@@ -31,6 +29,10 @@ import {
 	I_CHAPTER_REPOSITORY,
 	IChapterRepository,
 } from '../ports/chapter-repository.interface';
+import {
+	I_UNIT_OF_WORK,
+	IUnitOfWork,
+} from 'src/common/application/ports/unit-of-work.interface';
 
 /**
  * Service responsável por gerenciar capítulos de livros
@@ -44,8 +46,9 @@ export class ChapterManagementService {
 		private readonly chapterRepository: IChapterRepository,
 		@Inject(I_BOOK_REPOSITORY)
 		private readonly bookRepository: IBookRepository,
+		@Inject(I_UNIT_OF_WORK)
+		private readonly unitOfWork: IUnitOfWork,
 		private readonly eventEmitter: EventEmitter2,
-		private readonly dataSource: DataSource,
 	) {}
 
 	private validateManualChapterTextFields(dto: CreateChapterManualDto) {
@@ -150,17 +153,12 @@ export class ChapterManagementService {
 			return this.createManualChapter(bookId, dto);
 		}
 
-		const savedChapter = await this.dataSource.transaction(
-			async (manager) => {
-				const transactionBookRepo =
-					manager.getRepository(InfrastructureBook);
-				const transactionChapterRepo = manager.getRepository(
-					InfrastructureChapter,
-				);
+		const savedChapter = await this.unitOfWork.runInTransaction(
+			async (uow) => {
+				const bookRepo = uow.getBookRepository();
+				const chapterRepo = uow.getChapterRepository();
 
-				const book = await transactionBookRepo.findOne({
-					where: { id: bookId },
-				});
+				const book = await bookRepo.findById(bookId);
 
 				if (!book) {
 					this.logger.warn(`Book with id ${bookId} not found`);
@@ -171,18 +169,21 @@ export class ChapterManagementService {
 
 				let index = dto.index;
 				if (index === undefined || index === null) {
-					const lastChapter = await transactionChapterRepo.findOne({
-						where: { book: { id: bookId } },
-						order: { index: 'DESC' },
-					});
+					const lastChapters = await chapterRepo.findByBookId(
+						bookId,
+						{
+							order: 'DESC',
+							limit: 1,
+						},
+					);
+					const lastChapter =
+						lastChapters.length > 0 ? lastChapters[0] : null;
 					index = (lastChapter ? Number(lastChapter.index) : 0) + 1;
 				}
 
-				const existingChapter = await transactionChapterRepo.findOne({
-					where: {
-						book: { id: bookId },
-						index: index,
-					},
+				const existingChapter = await chapterRepo.findOne({
+					book: { id: bookId },
+					index: index,
 				});
 
 				if (existingChapter) {
@@ -191,7 +192,7 @@ export class ChapterManagementService {
 					);
 				}
 
-				const chapter = transactionChapterRepo.create({
+				const chapter = chapterRepo.create({
 					title: dto.title || `Chapter ${index}`,
 					originalUrl: '',
 					index,
@@ -204,18 +205,17 @@ export class ChapterManagementService {
 					documentFormat: null,
 				});
 
-				const createdChapter =
-					await transactionChapterRepo.save(chapter);
+				const createdChapter = await chapterRepo.save(chapter);
 
 				const exportFormat =
 					this.mapContentFormatToExportFormat(format);
 				const currentFormats = book.availableFormats || [];
 				if (!currentFormats.includes(exportFormat)) {
 					book.availableFormats = [...currentFormats, exportFormat];
-					await transactionBookRepo.save(book);
+					await bookRepo.save(book);
 				}
 
-				return createdChapter as unknown as Chapter;
+				return createdChapter;
 			},
 		);
 
@@ -502,21 +502,16 @@ export class ChapterManagementService {
 		}
 
 		const { savedBook, orderedChapters } =
-			await this.dataSource.transaction(async (manager) => {
-				const transactionChapterRepo = manager.getRepository(
-					InfrastructureChapter,
-				);
-				const transactionBookRepo =
-					manager.getRepository(InfrastructureBook);
+			await this.unitOfWork.runInTransaction(async (uow) => {
+				const transactionChapterRepo = uow.getChapterRepository();
+				const transactionBookRepo = uow.getBookRepository();
 
 				// Usar índices temporários negativos para evitar conflitos de UNIQUE constraint durante o processo
 				let tempIndex = -100_000;
 				for (const chapter of book.chapters) {
 					chapter.index = tempIndex++;
 				}
-				await transactionChapterRepo.save(
-					book.chapters as unknown as InfrastructureChapter[],
-				);
+				await transactionChapterRepo.saveAll(book.chapters);
 
 				// Aplicar os novos índices finais
 				for (const chapterDto of chapters) {
@@ -524,20 +519,16 @@ export class ChapterManagementService {
 					if (chapter) chapter.index = chapterDto.index;
 				}
 
-				const resultChapters = await transactionChapterRepo.save(
-					Array.from(
-						chapterMap.values(),
-					) as unknown as InfrastructureChapter[],
+				const resultChapters = await transactionChapterRepo.saveAll(
+					Array.from(chapterMap.values()),
 				);
-				book.chapters = resultChapters as unknown as Chapter[];
+				book.chapters = resultChapters;
 
-				const resultBook = await transactionBookRepo.save(
-					book as unknown as InfrastructureBook,
-				);
+				const resultBook = await transactionBookRepo.save(book);
 
 				return {
-					savedBook: resultBook as unknown as Book,
-					orderedChapters: resultChapters as unknown as Chapter[],
+					savedBook: resultBook,
+					orderedChapters: resultChapters,
 				};
 			});
 

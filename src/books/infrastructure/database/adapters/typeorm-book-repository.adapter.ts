@@ -1,6 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, DeepPartial } from 'typeorm';
+import {
+	Repository,
+	FindOptionsWhere,
+	DeepPartial,
+	EntityManager,
+} from 'typeorm';
 import { IBookRepository } from '@books/application/ports/book-repository.interface';
 import { Book as DomainBook } from '@books/domain/entities/book';
 import { Book as InfrastructureBook } from '@books/infrastructure/database/entities/book.entity';
@@ -16,11 +21,17 @@ import {
 @Injectable()
 export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 	private readonly logger = new Logger(TypeOrmBookRepositoryAdapter.name);
+	private readonly repository: Repository<InfrastructureBook>;
 
 	constructor(
 		@InjectRepository(InfrastructureBook)
-		private readonly repository: Repository<InfrastructureBook>,
-	) {}
+		repository: Repository<InfrastructureBook>,
+		entityManager?: EntityManager,
+	) {
+		this.repository = entityManager
+			? entityManager.getRepository(InfrastructureBook)
+			: repository;
+	}
 
 	async findById(
 		id: string,
