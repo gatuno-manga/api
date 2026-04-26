@@ -1,0 +1,55 @@
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import {
+	ApiBearerAuth,
+	ApiOperation,
+	ApiResponse,
+	ApiTags,
+} from '@nestjs/swagger';
+import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
+import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
+import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
+import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
+import { BookRequestsService } from '../../application/use-cases/book-requests.service';
+import { CreateBookRequestDto } from '../../application/dto/create-book-request.dto';
+import { mapBookRequestToResponseDtoList } from './book-request-http.mapper';
+import { BookRequestResponseDto } from '../http/dto/book-request-response.dto';
+
+@ApiTags('Book Requests')
+@Controller('book-requests')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
+export class BookRequestsController {
+	constructor(private readonly bookRequestsService: BookRequestsService) {}
+
+	@Post()
+	@ApiOperation({
+		summary: 'Create a new book request',
+		description: 'Allows a user to request a book to be added by an admin',
+	})
+	@ApiResponse({ status: 201, description: 'Request created successfully' })
+	@ApiResponse({ status: 400, description: 'Invalid data' })
+	async create(
+		@Body() dto: CreateBookRequestDto,
+		@CurrentUser() user: CurrentUserDto,
+	) {
+		await this.bookRequestsService.create(dto, user.userId);
+		return { message: 'Book request submitted successfully' };
+	}
+
+	@Get('me')
+	@ApiOperation({
+		summary: 'List my book requests',
+		description: 'Returns a list of book requests made by the current user',
+	})
+	@ApiResponse({
+		status: 200,
+		description: 'List of requests',
+		type: [BookRequestResponseDto],
+	})
+	async listMyRequests(@CurrentUser() user: CurrentUserDto) {
+		const requests = await this.bookRequestsService.listMyRequests(
+			user.userId,
+		);
+		return mapBookRequestToResponseDtoList(requests);
+	}
+}

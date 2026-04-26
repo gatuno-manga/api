@@ -8,6 +8,7 @@ import {
 	Relation,
 } from 'typeorm';
 import { Book } from './book.entity';
+import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
 
 @Entity('covers')
 export class Cover {
@@ -22,6 +23,9 @@ export class Cover {
 
 	@Column({ default: 0 })
 	index: number;
+
+	@Column({ type: 'json', nullable: true })
+	metadata: ImageMetadata | null;
 
 	@Column({ nullable: true })
 	@Index()

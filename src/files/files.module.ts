@@ -6,6 +6,8 @@ import { Book } from 'src/books/infrastructure/database/entities/book.entity';
 import { Chapter } from 'src/books/infrastructure/database/entities/chapter.entity';
 import { Cover } from 'src/books/infrastructure/database/entities/cover.entity';
 import { Page } from 'src/books/infrastructure/database/entities/page.entity';
+import { User } from 'src/users/infrastructure/database/entities/user.entity';
+import { UserImage } from 'src/users/infrastructure/database/entities/user-image.entity';
 import { NoCompressionAdapter } from './infrastructure/adapters/no-compression.adapter';
 import { SharpAdapter } from './infrastructure/adapters/sharp.adapter';
 import { FileCompressorFactory } from './infrastructure/adapters/file-compressor.factory';
@@ -15,34 +17,45 @@ import { FilesController } from './infrastructure/controllers/files.controller';
 import { FileCleanupCron } from './infrastructure/framework/file-cleanup.cron';
 import { FileCleanupService } from './application/services/file-cleanup.service';
 import { FilesService } from './application/services/files.service';
+import { ImageMetadataBackfillService } from './application/services/image-metadata-backfill.service';
 import { S3StorageAdapter } from './infrastructure/adapters/s3-storage.adapter';
+import { KafkaEventPublisherAdapter } from './infrastructure/adapters/kafka-event-publisher.adapter';
+import { ImageProcessingController } from './infrastructure/controllers/image-processing.controller';
+import { ImageBackfillController } from './infrastructure/controllers/image-backfill.controller';
 
 @Module({
-	controllers: [FileCleanupController, FilesController],
+	controllers: [
+		FileCleanupController,
+		FilesController,
+		ImageProcessingController,
+		ImageBackfillController,
+	],
 	providers: [
 		FilesService,
 		FileCleanupService,
+		ImageMetadataBackfillService,
 		FileCleanupCron,
 		FileCompressorFactory,
 		SharpAdapter,
 		NoCompressionAdapter,
 		S3StorageAdapter,
+		KafkaEventPublisherAdapter,
 		{
 			provide: 'STORAGE_PORT',
 			useClass: S3StorageAdapter,
 		},
 		{
+			provide: 'EVENT_PUBLISHER_PORT',
+			useClass: KafkaEventPublisherAdapter,
+		},
+		{
 			provide: 'FILE_COMPRESSORS',
-			useFactory: (
-				sharpAdapter: SharpAdapter,
-				noCompressionAdapter: NoCompressionAdapter,
-			) => {
+			useFactory: (noCompressionAdapter: NoCompressionAdapter) => {
 				return [
-					sharpAdapter,
-					noCompressionAdapter, // Fallback para outros tipos
+					noCompressionAdapter, // Único ativo localmente agora
 				];
 			},
-			inject: [SharpAdapter, NoCompressionAdapter],
+			inject: [NoCompressionAdapter],
 		},
 		{
 			provide: 'COMPRESSOR_FACTORY_INIT',
@@ -59,7 +72,7 @@ import { S3StorageAdapter } from './infrastructure/adapters/s3-storage.adapter';
 	imports: [
 		AppConfigModule,
 		AuthModule,
-		TypeOrmModule.forFeature([Page, Cover, Book, Chapter]),
+		TypeOrmModule.forFeature([Page, Cover, Book, Chapter, User, UserImage]),
 	],
 	exports: [FilesService, FileCleanupService],
 })

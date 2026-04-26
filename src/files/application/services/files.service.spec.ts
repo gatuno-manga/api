@@ -2,11 +2,13 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { FileCompressorFactory } from '../../infrastructure/adapters/file-compressor.factory';
 import { StoragePort } from '../ports/storage.port';
 import { FilesService } from './files.service';
+import { StorageBucket } from '../../../common/enum/storage-bucket.enum';
 
 describe('FilesService', () => {
 	let service: FilesService;
 	let mockCompressorFactory: jest.Mocked<FileCompressorFactory>;
 	let mockStoragePort: jest.Mocked<StoragePort>;
+	let mockEventPublisher: any;
 
 	beforeEach(async () => {
 		mockCompressorFactory = {
@@ -27,6 +29,10 @@ describe('FilesService', () => {
 			listAllFiles: jest.fn(),
 		};
 
+		mockEventPublisher = {
+			publishImageProcessingRequest: jest.fn(),
+		};
+
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				FilesService,
@@ -37,6 +43,10 @@ describe('FilesService', () => {
 				{
 					provide: 'STORAGE_PORT',
 					useValue: mockStoragePort,
+				},
+				{
+					provide: 'EVENT_PUBLISHER_PORT',
+					useValue: mockEventPublisher,
 				},
 			],
 		}).compile();
@@ -49,7 +59,7 @@ describe('FilesService', () => {
 				fileKey: string,
 				mimeType: string,
 				bucket?: string,
-			) => `/data/${fileKey}`,
+			) => fileKey,
 		);
 	});
 
@@ -61,109 +71,49 @@ describe('FilesService', () => {
 		expect(service).toBeDefined();
 	});
 
-	describe('compressFile', () => {
-		it('deve comprimir um arquivo usando a factory', async () => {
-			const base64Data = Buffer.from('test file').toString('base64');
-			const extension = '.jpg';
-			const compressedBuffer = Buffer.from('compressed');
-			mockCompressorFactory.compress.mockResolvedValue({
-				buffer: compressedBuffer,
-				extension: '.webp',
-			});
-
-			const result = await service.compressFile(base64Data, extension);
-
-			expect(mockCompressorFactory.compress).toHaveBeenCalledWith(
-				Buffer.from(base64Data, 'base64'),
-				extension,
-			);
-			expect(result.buffer).toBe(compressedBuffer);
-			expect(result.extension).toBe('.webp');
-		});
-	});
-
 	describe('saveBufferFile', () => {
-		it('deve salvar arquivo com compressão quando disponível', async () => {
+		it('deve salvar arquivo raw no bucket processing e publicar evento Kafka', async () => {
 			const buffer = Buffer.from('test image');
 			const extension = '.jpg';
-			mockCompressorFactory.hasCompressor.mockReturnValue(true);
-			mockCompressorFactory.compress.mockResolvedValue({
-				buffer: Buffer.from('compressed'),
-				extension: '.webp',
-			});
+			const bucket = StorageBucket.BOOKS;
 
-			const result = await service.saveBufferFile(buffer, extension);
-
-			expect(mockCompressorFactory.hasCompressor).toHaveBeenCalledWith(
-				extension,
-			);
-			expect(mockCompressorFactory.compress).toHaveBeenCalledWith(
+			const result = await service.saveBufferFile(
 				buffer,
 				extension,
-			);
-			expect(mockStoragePort.save).toHaveBeenCalledWith(
-				expect.any(Buffer),
-				expect.any(String),
-				'image/webp',
-				undefined,
-			);
-			expect(result).toMatch(/^\/data\/.+\/.+\.webp$/);
-		});
-
-		it('deve salvar arquivo sem compressão quando não disponível', async () => {
-			const buffer = Buffer.from('test document');
-			const extension = '.txt';
-			mockCompressorFactory.hasCompressor.mockReturnValue(false);
-
-			const result = await service.saveBufferFile(buffer, extension);
-
-			expect(mockCompressorFactory.hasCompressor).toHaveBeenCalledWith(
-				extension,
-			);
-			expect(mockCompressorFactory.compress).not.toHaveBeenCalled();
-			expect(mockStoragePort.save).toHaveBeenCalledWith(
-				buffer,
-				expect.any(String),
-				'application/octet-stream',
-				undefined,
-			);
-			expect(result).toMatch(/^\/data\/.+\/.+\.txt$/);
-		});
-
-		it('deve fazer fallback para buffer original quando compressão falha', async () => {
-			const buffer = Buffer.from('test image');
-			const extension = '.jpg';
-			mockCompressorFactory.hasCompressor.mockReturnValue(true);
-			mockCompressorFactory.compress.mockRejectedValue(
-				new Error('Compression failed'),
+				bucket,
 			);
 
-			const result = await service.saveBufferFile(buffer, extension);
-
-			expect(mockCompressorFactory.hasCompressor).toHaveBeenCalledWith(
-				extension,
-			);
-			expect(mockCompressorFactory.compress).toHaveBeenCalled();
+			// Verifica se salvou no bucket processing
 			expect(mockStoragePort.save).toHaveBeenCalledWith(
 				buffer,
 				expect.any(String),
 				'image/jpeg',
-				undefined,
+				StorageBucket.PROCESSING,
 			);
-			expect(result).toMatch(/^\/data\/.+\/.+\.jpg$/);
+
+			// Verifica se publicou o evento Kafka
+			expect(
+				mockEventPublisher.publishImageProcessingRequest,
+			).toHaveBeenCalledWith({
+				rawPath: expect.stringMatching(/^processing\/.+\/.+\.jpg$/),
+				targetBucket: bucket,
+				targetPath: expect.stringMatching(/^.+\/.+\.webp$/),
+			});
+
+			// Verifica o retorno (deve ser o caminho no bucket processing)
+			expect(result).toMatch(/^processing\/.+\/.+\.jpg$/);
 		});
 
 		it('deve gerar UUID único para cada arquivo', async () => {
 			const buffer = Buffer.from('test');
 			const extension = '.png';
-			mockCompressorFactory.hasCompressor.mockReturnValue(false);
 
 			const result1 = await service.saveBufferFile(buffer, extension);
 			const result2 = await service.saveBufferFile(buffer, extension);
 
 			expect(result1).not.toBe(result2);
-			expect(result1).toMatch(/^\/data\/.+\/.+\.png$/);
-			expect(result2).toMatch(/^\/data\/.+\/.+\.png$/);
+			expect(result1).toMatch(/^processing\/.+\/.+\.png$/);
+			expect(result2).toMatch(/^processing\/.+\/.+\.png$/);
 		});
 	});
 
@@ -171,59 +121,40 @@ describe('FilesService', () => {
 		it('deve converter base64 para buffer e chamar saveBufferFile', async () => {
 			const base64Data = Buffer.from('test image').toString('base64');
 			const extension = '.jpg';
-			mockCompressorFactory.hasCompressor.mockReturnValue(true);
-			mockCompressorFactory.compress.mockResolvedValue({
-				buffer: Buffer.from('compressed'),
-				extension: '.webp',
-			});
 
 			const result = await service.saveBase64File(base64Data, extension);
 
-			expect(mockCompressorFactory.hasCompressor).toHaveBeenCalledWith(
-				extension,
-			);
-			expect(mockCompressorFactory.compress).toHaveBeenCalledWith(
+			expect(mockStoragePort.save).toHaveBeenCalledWith(
 				Buffer.from(base64Data, 'base64'),
-				extension,
-			);
-			expect(mockStoragePort.save).toHaveBeenCalledWith(
-				expect.any(Buffer),
 				expect.any(String),
-				'image/webp',
-				undefined,
+				'image/jpeg',
+				StorageBucket.PROCESSING,
 			);
-			expect(result).toMatch(/^\/data\/.+\/.+\.webp$/);
-		});
-
-		it('deve salvar arquivo sem compressão quando não disponível', async () => {
-			const base64Data = Buffer.from('test document').toString('base64');
-			const extension = '.txt';
-			mockCompressorFactory.hasCompressor.mockReturnValue(false);
-
-			const result = await service.saveBase64File(base64Data, extension);
-
-			expect(mockCompressorFactory.hasCompressor).toHaveBeenCalledWith(
-				extension,
-			);
-			expect(mockCompressorFactory.compress).not.toHaveBeenCalled();
-			expect(mockStoragePort.save).toHaveBeenCalledWith(
-				expect.any(Buffer),
-				expect.any(String),
-				'application/octet-stream',
-				undefined,
-			);
-			expect(result).toMatch(/^\/data\/.+\/.+\.txt$/);
+			expect(
+				mockEventPublisher.publishImageProcessingRequest,
+			).toHaveBeenCalled();
+			expect(result).toMatch(/^processing\/.+\/.+\.jpg$/);
 		});
 	});
 
 	describe('deleteFile', () => {
-		it('deve chamar storagePort.delete com o fileKey correto', async () => {
-			const publicPath = '/data/ab/uuid.webp';
-			await service.deleteFile(publicPath);
+		it('deve chamar storagePort.delete com o fileKey correto quando bucket é fornecido', async () => {
+			const publicPath = 'books/ab/uuid.webp';
+			await service.deleteFile(publicPath, StorageBucket.BOOKS);
 
 			expect(mockStoragePort.delete).toHaveBeenCalledWith(
 				'ab/uuid.webp',
-				undefined,
+				StorageBucket.BOOKS,
+			);
+		});
+
+		it('deve lidar com caminhos do bucket processing', async () => {
+			const publicPath = 'processing/ab/uuid.jpg';
+			await service.deleteFile(publicPath, StorageBucket.PROCESSING);
+
+			expect(mockStoragePort.delete).toHaveBeenCalledWith(
+				'ab/uuid.jpg',
+				StorageBucket.PROCESSING,
 			);
 		});
 	});

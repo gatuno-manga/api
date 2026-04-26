@@ -26,6 +26,8 @@ export class Website {
 	reloadAfterStorageInjection: boolean;
 	enableAdaptiveTimeouts: boolean;
 	timeoutMultipliers: Record<string, number> | null;
+	useFlareSolverr: boolean;
+	proxyUrl: string | null;
 	createdAt: Date;
 	updatedAt: Date;
 }

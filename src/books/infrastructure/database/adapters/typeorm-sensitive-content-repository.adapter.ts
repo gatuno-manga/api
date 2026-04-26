@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, LessThanOrEqual, Repository, FindOptionsWhere } from 'typeorm';
+import {
+	In,
+	LessThanOrEqual,
+	Repository,
+	FindOptionsWhere,
+	EntityManager,
+} from 'typeorm';
 import { ISensitiveContentRepository } from '../../../application/ports/sensitive-content-repository.interface';
 import { SensitiveContent as DomainSensitiveContent } from '../../../domain/entities/sensitive-content';
 import { SensitiveContent as InfrastructureSensitiveContent } from '../entities/sensitive-content.entity';
@@ -10,10 +16,17 @@ import { SensitiveContentCriteria } from '@books/domain/types/criteria.types';
 export class TypeOrmSensitiveContentRepositoryAdapter
 	implements ISensitiveContentRepository
 {
+	private readonly repository: Repository<InfrastructureSensitiveContent>;
+
 	constructor(
 		@InjectRepository(InfrastructureSensitiveContent)
-		private readonly repository: Repository<InfrastructureSensitiveContent>,
-	) {}
+		repository: Repository<InfrastructureSensitiveContent>,
+		entityManager?: EntityManager,
+	) {
+		this.repository = entityManager
+			? entityManager.getRepository(InfrastructureSensitiveContent)
+			: repository;
+	}
 
 	async findById(
 		id: string,

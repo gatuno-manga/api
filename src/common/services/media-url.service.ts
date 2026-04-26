@@ -9,9 +9,9 @@ export class MediaUrlService {
 	/**
 	 * Resolves a media path to an absolute URL using Real Multi-Buckets.
 	 *
-	 * @param path The relative path or key (e.g., '0a/uuid.webp')
-	 * @param bucket The real S3 bucket name (StorageBucket enum)
-	 * @returns The absolute URL (e.g., 'http://api.gatuno.local/api/data/books/0a/uuid.webp')
+	 * @param path The relative path or key (e.g., '0a/uuid.webp' or 'processing/0a/uuid.jpg')
+	 * @param bucket The target S3 bucket name (e.g., BOOKS, USERS)
+	 * @returns The absolute URL pointing to the correct bucket (temporary or final)
 	 */
 	resolveUrl(path: string | null, bucket: StorageBucket): string {
 		if (
@@ -23,23 +23,26 @@ export class MediaUrlService {
 			return path || '';
 		}
 
-		// Clean the path to remove leading slashes and legacy prefixes
+		// 1. Limpa o path para pegar apenas o que importa
 		const cleanPath = path
 			.replace(/^\/?(api\/)?data\//, '')
 			.replace(/^\//, '');
 
-		// If the path already includes the bucket name at the start, remove it
-		// (The DB might still have them from the previous attempt)
+		// 2. DETECÇÃO DE STAGING (IMPORTANTE):
+		// Se o path salvo no banco começa com "processing/", significa que a imagem
+		// ainda está no bucket temporário, ignorando o bucket alvo passado por parâmetro.
+		if (cleanPath.startsWith('processing/')) {
+			const internalPath = cleanPath.substring('processing/'.length);
+			return `${this.appConfig.rustfsPublicUrl}/processing/${internalPath}`;
+		}
+
+		// 3. Caso padrão: imagem já processada e no bucket final
 		const bucketName = bucket.toString();
 		let finalInternalPath = cleanPath;
 		if (cleanPath.startsWith(`${bucketName}/`)) {
 			finalInternalPath = cleanPath.substring(bucketName.length + 1);
 		}
 
-		// Since we are using Multi-Buckets in RustFS, the URL structure is:
-		// BASE_URL / BUCKET_NAME / PATH
-		const baseUrl = this.appConfig.rustfsPublicUrl;
-
-		return `${baseUrl}/${bucketName}/${finalInternalPath}`;
+		return `${this.appConfig.rustfsPublicUrl}/${bucketName}/${finalInternalPath}`;
 	}
 }

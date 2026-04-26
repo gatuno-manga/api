@@ -13,7 +13,7 @@ import { REDIS_CLIENT } from '@api/infrastructure/redis/redis.constants';
 @Injectable()
 export class DownloadCacheService implements OnModuleInit {
 	private readonly logger = new Logger(DownloadCacheService.name);
-	private readonly CACHE_DIR = '/usr/src/app/data/cache/downloads';
+	public CACHE_DIR = '/usr/src/app/data/cache/downloads';
 	public readonly REDIS_PREFIX = 'download:cache:';
 	public readonly TTL_SECONDS = 24 * 60 * 60; // 24 horas
 
@@ -27,8 +27,16 @@ export class DownloadCacheService implements OnModuleInit {
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : 'Unknown error';
-			this.logger.error(
-				`Failed to create cache directory: ${errorMessage}`,
+			this.logger.warn(
+				`Failed to create primary cache directory: ${errorMessage}. Falling back to system temp.`,
+			);
+
+			// Fallback para /tmp se o volume de dados não estiver disponível/configurado
+			const os = await import('node:os');
+			this.CACHE_DIR = join(os.tmpdir(), 'gatuno-cache', 'downloads');
+			await fs.mkdir(this.CACHE_DIR, { recursive: true });
+			this.logger.log(
+				`Fallback cache directory initialized: ${this.CACHE_DIR}`,
 			);
 		}
 	}
@@ -53,9 +61,8 @@ export class DownloadCacheService implements OnModuleInit {
 
 	/**
 	 * Garante que o diretório de shard existe
-	 * @private
 	 */
-	private async ensureShardDir(cacheKey: string): Promise<string> {
+	public async ensureShardDir(cacheKey: string): Promise<string> {
 		const shard = cacheKey.substring(0, 2);
 		const shardDir = join(this.CACHE_DIR, shard);
 		await fs.mkdir(shardDir, { recursive: true });

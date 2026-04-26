@@ -7,6 +7,7 @@ import { ChapterManagementService } from './chapter-management.service';
 import { CoverImageService } from '../../infrastructure/jobs/cover-image.service';
 import { I_BOOK_REPOSITORY } from '../ports/book-repository.interface';
 import { I_CHAPTER_REPOSITORY } from '../ports/chapter-repository.interface';
+import { I_UNIT_OF_WORK } from 'src/common/application/ports/unit-of-work.interface';
 import { BookEvents } from '../../domain/constants/events.constant';
 import { Book } from '../../domain/entities/book';
 
@@ -23,6 +24,19 @@ describe('BookCreationService', () => {
 	const mockChapterRepository = {
 		create: jest.fn(),
 		saveAll: jest.fn(),
+	};
+
+	const mockUnitOfWork = {
+		runInTransaction: jest.fn((cb) =>
+			cb({
+				getBookRepository: () => mockBookRepository,
+				getChapterRepository: () => mockChapterRepository,
+				getTagRepository: () => mockBookRelationshipService,
+				getAuthorRepository: () => mockBookRelationshipService,
+				getSensitiveContentRepository: () =>
+					mockBookRelationshipService,
+			}),
+		),
 	};
 
 	const mockBookRelationshipService = {
@@ -54,6 +68,10 @@ describe('BookCreationService', () => {
 				{
 					provide: I_CHAPTER_REPOSITORY,
 					useValue: mockChapterRepository,
+				},
+				{
+					provide: I_UNIT_OF_WORK,
+					useValue: mockUnitOfWork,
 				},
 				{
 					provide: BookRelationshipService,

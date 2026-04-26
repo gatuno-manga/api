@@ -285,6 +285,12 @@ export class AppConfigService {
 		return this.config.get<number>('DOWNLOAD_CACHE_THRESHOLD_MB') || 100;
 	}
 
+	get kafkaBroker(): string {
+		const host = this.config.get<string>('KAFKA_HOST') || 'kafka';
+		const port = this.config.get<number>('KAFKA_PORT') || 9092;
+		return `${host}:${port}`;
+	}
+
 	get rustfs() {
 		return {
 			endpoint: this.config.get<string>(
@@ -300,6 +306,13 @@ export class AppConfigService {
 		return (
 			this.config.get<string>('RUSTFS_PUBLIC_URL') ||
 			`${this.apiUrl}/api/data`
+		);
+	}
+
+	get flareSolverrUrl(): string {
+		return (
+			this.config.get<string>('FLARESOLVERR_URL') ||
+			'http://flaresolverr:8191'
 		);
 	}
 }

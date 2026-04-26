@@ -313,15 +313,21 @@ export class DownloadService {
 	}
 
 	/**
-	 * Estima o tamanho do arquivo baseado nas páginas
+	 * Estima o tamanho do arquivo baseado no tamanho real das páginas (sizeBytes)
 	 */
 	private estimateSize(chapters: Chapter[]): number {
-		const totalPages = chapters.reduce(
-			(sum, ch) => sum + (ch.pages?.length || 0),
-			0,
-		);
-		const avgPageSize = 2 * 1024 * 1024; // 2MB por página (estimativa conservadora)
-		return totalPages * avgPageSize;
+		let totalBytes = 0;
+		const DEFAULT_PAGE_SIZE = 2 * 1024 * 1024; // 2MB fallback
+
+		for (const chapter of chapters) {
+			for (const page of chapter.pages || []) {
+				// Usa o tamanho real se disponível nos metadados, senão usa o padrão
+				totalBytes += page.metadata?.sizeBytes || DEFAULT_PAGE_SIZE;
+			}
+		}
+
+		// Adiciona 10% de margem de segurança para overhead de compactação/formato
+		return Math.ceil(totalBytes * 1.1);
 	}
 
 	/**
@@ -437,6 +443,9 @@ export class DownloadService {
 		const tempPath = `${filePath}.tmp`;
 
 		try {
+			// Garantir que o diretório do shard existe
+			await this.cacheService.ensureShardDir(key);
+
 			// Criar write stream para arquivo temporário
 			const fileStream = (await import('node:fs')).createWriteStream(
 				tempPath,
