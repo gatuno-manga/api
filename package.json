@@ -26,8 +26,11 @@
 		"prepare": "lefthook install"
 	},
 	"dependencies": {
+		"@apollo/server": "^5.5.0",
+		"@as-integrations/express5": "^1.1.2",
 		"@aws-sdk/client-s3": "^3.1035.0",
 		"@keyv/redis": "^4.6.0",
+		"@nestjs/apollo": "^13.3.0",
 		"@nestjs/axios": "^4.0.1",
 		"@nestjs/bullmq": "^11.0.3",
 		"@nestjs/cache-manager": "^3.0.1",
@@ -35,6 +38,7 @@
 		"@nestjs/config": "^4.0.2",
 		"@nestjs/core": "^11.0.1",
 		"@nestjs/event-emitter": "^3.0.1",
+		"@nestjs/graphql": "^13.3.0",
 		"@nestjs/jwt": "^11.0.0",
 		"@nestjs/mapped-types": "*",
 		"@nestjs/microservices": "^11.1.19",
@@ -62,6 +66,7 @@
 		"class-validator": "^0.14.2",
 		"cookie-parser": "^1.4.7",
 		"eventemitter2": "^6.4.9",
+		"graphql": "^16.13.2",
 		"ioredis": "^5.6.1",
 		"joi": "^17.13.3",
 		"kafkajs": "^2.2.4",

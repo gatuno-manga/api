@@ -1,6 +1,7 @@
 import { Field, ID, Int, ObjectType, registerEnumType } from '@nestjs/graphql';
 import { BookType } from '../../../domain/enums/book-type.enum';
 import { ScrapingStatus } from '../../../domain/enums/scrapingStatus.enum';
+import { ChapterModel } from './chapter.model';
 
 registerEnumType(BookType, { name: 'BookType' });
 registerEnumType(ScrapingStatus, { name: 'ScrapingStatus' });
@@ -46,14 +47,20 @@ export class BookModel {
 	@Field(() => [String], { nullable: 'items' })
 	alternativeTitle: string[];
 
-	@Field(() => [AuthorModel])
+	@Field(() => [AuthorModel], { nullable: 'itemsAndList' })
 	authors: AuthorModel[];
 
-	@Field(() => [TagModel])
+	@Field(() => [TagModel], { nullable: 'itemsAndList' })
 	tags: TagModel[];
 
-	@Field(() => [CoverModel])
+	@Field(() => [CoverModel], { nullable: 'itemsAndList' })
 	covers: CoverModel[];
+
+	@Field({ nullable: true })
+	cover?: string;
+
+	@Field(() => [ChapterModel], { nullable: 'itemsAndList' })
+	chapters: ChapterModel[];
 
 	@Field(() => BookType)
 	type: BookType;

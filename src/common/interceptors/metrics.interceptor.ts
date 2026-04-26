@@ -27,6 +27,10 @@ export class MetricsInterceptor implements NestInterceptor {
 		context: ExecutionContext,
 		next: CallHandler,
 	): Observable<unknown> {
+		if (context.getType().toString() === 'graphql') {
+			return next.handle();
+		}
+
 		const httpContext = context.switchToHttp();
 		const request = httpContext.getRequest<Request>();
 		const response = httpContext.getResponse<Response>();

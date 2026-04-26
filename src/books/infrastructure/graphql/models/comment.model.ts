@@ -14,8 +14,14 @@ export class ChapterCommentModel {
 	@Field(() => ID)
 	id: string;
 
+	@Field(() => ID)
+	userId: string;
+
 	@Field()
 	userName: string;
+
+	@Field({ nullable: true })
+	profileImageUrl?: string;
 
 	@Field()
 	content: string;
@@ -24,7 +30,13 @@ export class ChapterCommentModel {
 	isPublic: boolean;
 
 	@Field()
+	isDeleted: boolean;
+
+	@Field()
 	createdAt: Date;
+
+	@Field()
+	updatedAt: Date;
 
 	@Field(() => [ChapterCommentModel], { nullable: 'items' })
 	replies: ChapterCommentModel[];

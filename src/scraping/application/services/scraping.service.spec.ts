@@ -193,6 +193,8 @@ describe('ScrapingService', () => {
 				reloadAfterStorageInjection: undefined,
 				enableAdaptiveTimeouts: true,
 				timeoutMultipliers: undefined,
+				useFlareSolverr: false,
+				proxyUrl: null,
 			});
 		});
 
@@ -229,6 +231,8 @@ describe('ScrapingService', () => {
 				reloadAfterStorageInjection: false,
 				enableAdaptiveTimeouts: true,
 				timeoutMultipliers: undefined,
+				useFlareSolverr: false,
+				proxyUrl: null,
 			});
 		});
 

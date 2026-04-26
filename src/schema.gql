@@ -1,0 +1,244 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type Author {
+  id: ID!
+  name: String!
+}
+
+type Book {
+  alternativeTitle: [String]!
+  authors: [Author]
+  chapters(filter: ChapterFilterInput): PaginatedChapterResponse!
+  cover: String
+  covers: [Cover]
+  createdAt: DateTime!
+  description: String
+  id: ID!
+  publication: Int
+  scrapingStatus: ScrapingStatus!
+  tags: [Tag]
+  title: String!
+  type: BookType!
+  updatedAt: DateTime!
+}
+
+input BookFilterInput {
+  authors: [ID]
+  authorsLogic: FilterLogic = AND
+  cursor: String
+  excludeTags: [ID]
+  excludeTagsLogic: FilterLogic = OR
+  limit: Int = 20
+  order: OrderDirection = DESC
+  orderBy: BookOrderField = CREATED_AT
+  page: Int = 1
+  publication: Int
+  publicationOperator: FilterOperator = EQ
+  search: String
+  sensitiveContent: [String]
+  tags: [ID]
+  tagsLogic: FilterLogic = AND
+  type: [BookType]
+}
+
+enum BookOrderField {
+  CREATED_AT
+  PUBLICATION
+  TITLE
+  UPDATED_AT
+}
+
+enum BookType {
+  BOOK
+  MANGA
+  MANHUA
+  MANHWA
+  OTHER
+}
+
+type Chapter {
+  content: String
+  contentFormat: ContentFormat
+  contentType: ContentType!
+  documentFormat: DocumentFormat
+  id: ID!
+  index: Int!
+  isFinal: Boolean!
+  pages: [Page]
+  scrapingStatus: ScrapingStatus
+  title: String
+}
+
+type ChapterComment {
+  content: String!
+  createdAt: DateTime!
+  id: ID!
+  isDeleted: Boolean!
+  isPublic: Boolean!
+  profileImageUrl: String
+  replies: [ChapterComment]!
+  updatedAt: DateTime!
+  userId: ID!
+  userName: String!
+}
+
+input ChapterFilterInput {
+  cursor: String
+  limit: Int = 100
+  order: OrderDirection = ASC
+  page: Int = 1
+}
+
+input CommentInput {
+  chapterId: ID!
+  content: String!
+  isPublic: Boolean
+  parentId: ID
+}
+
+enum ContentFormat {
+  HTML
+  MARKDOWN
+  PLAIN
+}
+
+enum ContentType {
+  DOCUMENT
+  IMAGE
+  TEXT
+}
+
+type Cover {
+  id: ID!
+  isMain: Boolean!
+  url: String!
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+enum DocumentFormat {
+  EPUB
+  PDF
+}
+
+enum FilterLogic {
+  AND
+  OR
+}
+
+enum FilterOperator {
+  EQ
+  GT
+  GTE
+  LT
+  LTE
+}
+
+type ImageMetadata {
+  blurHash: String
+  dominantColor: String
+  height: Int!
+  mimeType: String
+  sizeBytes: Int
+  width: Int!
+}
+
+type Mutation {
+  sync(input: SyncInput!): SyncResult!
+}
+
+enum OrderDirection {
+  ASC
+  DESC
+}
+
+type Page {
+  id: Int!
+  index: Int!
+  metadata: ImageMetadata
+  path: String!
+}
+
+type PaginatedBookResponse {
+  data: [Book!]!
+  hasNextPage: Boolean
+  lastPage: Int
+  nextCursor: String
+  page: Int
+  total: Int
+}
+
+type PaginatedChapterResponse {
+  data: [Chapter!]!
+  hasNextPage: Boolean
+  lastPage: Int
+  nextCursor: String
+  page: Int
+  total: Int
+}
+
+type PaginatedCommentResponse {
+  data: [ChapterComment!]!
+  hasNextPage: Boolean
+  lastPage: Int
+  nextCursor: String
+  page: Int
+  total: Int
+}
+
+type Query {
+  book(id: ID!): Book
+  bookComments(chapterId: ID!, limit: Int = 20, page: Int = 1): PaginatedCommentResponse!
+  books(filter: BookFilterInput): PaginatedBookResponse!
+  chapter(id: ID!): Chapter
+}
+
+input ReadingProgressInput {
+  bookId: ID!
+  chapterId: ID!
+  pageIndex: Float!
+  updatedAt: DateTime!
+}
+
+type ReadingProgressModel {
+  bookId: ID!
+  chapterId: ID!
+  pageIndex: Float!
+  updatedAt: DateTime!
+}
+
+input SavedPageInput {
+  bookId: ID!
+  chapterId: ID!
+  pageIndex: Float!
+}
+
+enum ScrapingStatus {
+  ERROR
+  PROCESS
+  READY
+}
+
+input SyncInput {
+  comments: [CommentInput]
+  lastSyncAt: DateTime
+  readingProgress: [ReadingProgressInput]
+  savedPages: [SavedPageInput]
+}
+
+type SyncResult {
+  comments: [ChapterComment!]!
+  readingProgress: [ReadingProgressModel!]!
+  savedPagesIds: [ID!]!
+  syncedAt: DateTime!
+}
+
+type Tag {
+  id: ID!
+  name: String!
+}

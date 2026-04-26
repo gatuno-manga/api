@@ -28,7 +28,7 @@ export class BookRequestEntity {
 	@Column()
 	url: string;
 
-	@Column({ nullable: true })
+	@Column({ type: 'text', nullable: true })
 	reason: string | null;
 
 	@Column({
@@ -45,7 +45,7 @@ export class BookRequestEntity {
 	@JoinColumn({ name: 'admin_id' })
 	admin: User | null;
 
-	@Column({ name: 'rejection_message', nullable: true })
+	@Column({ name: 'rejection_message', type: 'text', nullable: true })
 	rejectionMessage: string | null;
 
 	@CreateDateColumn()
