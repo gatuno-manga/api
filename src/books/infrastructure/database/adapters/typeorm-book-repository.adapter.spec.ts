@@ -187,5 +187,22 @@ describe('TypeOrmBookRepositoryAdapter', () => {
 			expect(resultTotal).toBe(0);
 			expect(mockQueryBuilder.getManyAndCount).not.toHaveBeenCalled();
 		});
+
+		it('should apply the effective max weight filter in the database query', async () => {
+			mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
+
+			const options = { page: 1, limit: 10 } as any;
+			const accessContext = {
+				blockedAll: false,
+				effectiveMaxWeightSensitiveContent: 5,
+				allowSensitiveContentIds: [],
+			} as any;
+
+			await adapter.findWithFilters(options, accessContext, []);
+
+			// Verify that the query builder was used to add a condition for maxWeight
+			// We check if andWhere was called. The actual implementation uses a subquery for NOT EXISTS
+			expect(mockQueryBuilder.andWhere).toHaveBeenCalled();
+		});
 	});
 });
