@@ -28,6 +28,7 @@ describe('GraphQL BFF (e2e)', () => {
 			.compile();
 
 		app = moduleFixture.createNestApplication();
+		app.setGlobalPrefix('api');
 		configureValidationPipe(app);
 		app.use(cookieParser());
 		await app.init();
@@ -53,7 +54,7 @@ describe('GraphQL BFF (e2e)', () => {
     `;
 
 		const response = await request(app.getHttpServer())
-			.post('/graphql')
+			.post('/api/graphql')
 			.send({ query });
 
 		expect(response.status).toBe(200);
@@ -71,7 +72,7 @@ describe('GraphQL BFF (e2e)', () => {
     `;
 
 		const response = await request(app.getHttpServer())
-			.post('/graphql')
+			.post('/api/graphql')
 			.send({ query });
 
 		expect(response.body.errors).toBeDefined();
@@ -87,7 +88,7 @@ describe('GraphQL BFF (e2e)', () => {
     `;
 
 		const response = await request(app.getHttpServer())
-			.post('/graphql')
+			.post('/api/graphql')
 			.send({ query });
 
 		// Should be 200 with error message because of GqlJwtAuthGuard returning unauthorized inside GraphQL context

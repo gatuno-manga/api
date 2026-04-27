@@ -49,6 +49,7 @@ import { UsersModule } from './users/users.module';
 			autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
 			sortSchema: true,
 			playground: true,
+			useGlobalPrefix: true,
 			context: ({ req, res }) => ({ req, res }),
 		}),
 		ThrottlerModule.forRoot([
