@@ -1,14 +1,14 @@
-# ARG centraliza a versão — atualize apenas aqui ao fazer upgrade
-ARG PLAYWRIGHT_VERSION=v1.49.1
+ARG NODE_VERSION=24.11.1
 
-# Usar imagem do Playwright que já tem os browsers e dependências
-FROM mcr.microsoft.com/playwright:${PLAYWRIGHT_VERSION}-noble AS development
+# Usar imagem node slim padrão (o browser virá do serviço browserless no docker-compose)
+FROM node:${NODE_VERSION}-bookworm-slim AS development
 
 # Instalar jemalloc para melhor gerenciamento de memória
 RUN apt-get update && apt-get install -y libjemalloc2 && rm -rf /var/lib/apt/lists/*
 ENV LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libjemalloc.so.2"
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-ENV PLAYWRIGHT_CACHE_FALLBACK_PATH=/usr/src/app/.playwright-cache
+
+# Evitar o download do Chromium pelo Playwright
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 
 WORKDIR /usr/src/app
 
@@ -16,9 +16,5 @@ COPY package*.json ./
 RUN npm ci --ignore-scripts
 
 COPY . .
-
-# Reutilizar cache quando a revisão requerida já existir; fallback offline habilitado
-RUN chmod +x ./scripts/install-chromium-with-fallback.sh && \
-    ./scripts/install-chromium-with-fallback.sh
 
 CMD ["npm", "run", "start:dev"]

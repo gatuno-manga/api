@@ -19,7 +19,6 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
       - RUSTFS_ENDPOINT=${RUSTFS_ENDPOINT:-http://rustfs:9000}
       - RUSTFS_ACCESS_KEY=${RUSTFS_ACCESS_KEY:-rustfsadmin}
       - RUSTFS_SECRET_KEY=${RUSTFS_SECRET_KEY:-rustfsadmin}
@@ -27,6 +26,7 @@ services:
       - RUSTFS_REGION=${RUSTFS_REGION:-us-east-1}
       - KAFKA_HOST=${KAFKA_HOST:-kafka}
       - KAFKA_PORT=${KAFKA_PORT:-9092}
+      - PLAYWRIGHT_WS_ENDPOINT=${PLAYWRIGHT_WS_ENDPOINT:-ws://browserless:3000}
     healthcheck:
       test:
         [
@@ -57,6 +57,25 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      browserless:
+        condition: service_started
+    networks:
+      - gatuno-net
+
+  browserless:
+    image: browserless/chrome:latest
+    container_name: gatuno-browserless
+    shm_size: 2g
+    environment:
+      - MAX_CONCURRENT_SESSIONS=${PLAYWRIGHT_MAX_SESSIONS:-10}
+      - CONNECTION_TIMEOUT=600000
+      - PREBOOT_CHROME=true
+      - KEEP_ALIVE=true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - gatuno-net
 

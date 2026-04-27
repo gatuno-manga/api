@@ -27,33 +27,20 @@ ENV LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libjemalloc.so.2"
 
 WORKDIR /usr/src/app
 
-# Path onde o Playwright armazenará os browsers instalados
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-ENV PLAYWRIGHT_CACHE_FALLBACK_PATH=/usr/src/app/.playwright-cache
-
-# Criar grupo/usuário não-root com UID/GID determinísticos (1001)
+# Criar grupo/usuário não-root ANTES das cópias pesadas
+# Isso permite usar --chown nos comandos COPY
 RUN groupadd -r -g 1001 appgroup && \
     useradd -r -u 1001 -g appgroup -d /home/appuser -m appuser && \
-    mkdir -p /ms-playwright /usr/src/app/data && \
-    chown -R appuser:appgroup /ms-playwright /usr/src/app/data
+    mkdir -p /usr/src/app/data && \
+    chown -R appuser:appgroup /usr/src/app/data
 
-# Copiar dependências antes de qualquer instalação de browser
-COPY --from=builder /usr/src/app/node_modules ./node_modules
-COPY --from=builder /usr/src/app/package.json ./package.json
-COPY scripts/install-chromium-with-fallback.sh ./scripts/install-chromium-with-fallback.sh
-COPY .playwright-cache/ ./.playwright-cache/
+# Evitar o download do Chromium pelo Playwright (usaremos Browserless via PLAYWRIGHT_WS_ENDPOINT)
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 
-# Usar cache se revisão requerida já existir; senão tentar instalar com fallback
-RUN chmod +x ./scripts/install-chromium-with-fallback.sh && \
-    ./scripts/install-chromium-with-fallback.sh --with-deps && \
-    rm -rf /var/lib/apt/lists/* /root/.npm
-
-# Copiar código compilado com ownership correto
-# NOTA: .env NÃO é copiado — segredos devem ser injetados via env_file/runtime
+# Copiar dependências e código com ownership correto para evitar camadas extras
+COPY --from=builder --chown=appuser:appgroup /usr/src/app/node_modules ./node_modules
+COPY --from=builder --chown=appuser:appgroup /usr/src/app/package.json ./package.json
 COPY --from=builder --chown=appuser:appgroup /usr/src/app/dist ./dist
-
-# Corrigir ownership do node_modules copiado como root
-RUN chown -R appuser:appgroup ./node_modules /usr/src/app /ms-playwright
 
 USER appuser
 
