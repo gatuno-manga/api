@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { ClientKafka } from '@nestjs/microservices';
 import { Partitioners } from 'kafkajs';
+import { lastValueFrom } from 'rxjs';
 import {
 	EventPublisherPort,
 	ImageProcessingRequestEvent,
@@ -61,11 +62,14 @@ export class KafkaEventPublisherAdapter
 		event: ImageProcessingRequestEvent,
 	): Promise<void> {
 		try {
-			// Usamos emit para eventos Fire and Forget (Async)
-			this.client.emit(
-				'image.processing.requested',
-				JSON.stringify(event),
+			// Usamos lastValueFrom para aguardar a emissão e garantir backpressure
+			await lastValueFrom(
+				this.client.emit(
+					'image.processing.requested',
+					JSON.stringify(event),
+				),
 			);
+
 			this.logger.log(
 				`Evento de processamento de imagem publicado: ${event.rawPath}`,
 			);
