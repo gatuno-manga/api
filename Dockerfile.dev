@@ -3,8 +3,8 @@ ARG NODE_VERSION=24.11.1
 # Usar imagem node slim padrão (o browser virá do serviço browserless no docker-compose)
 FROM node:${NODE_VERSION}-bookworm-slim AS development
 
-# Instalar jemalloc para melhor gerenciamento de memória
-RUN apt-get update && apt-get install -y libjemalloc2 && rm -rf /var/lib/apt/lists/*
+# Instalar jemalloc para melhor gerenciamento de memória e procps para o comando ps
+RUN apt-get update && apt-get install -y libjemalloc2 procps && rm -rf /var/lib/apt/lists/*
 ENV LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libjemalloc.so.2"
 
 # Evitar o download do Chromium pelo Playwright

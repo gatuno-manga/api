@@ -19,7 +19,7 @@ export const validationSchema = Joi.object({
 	DB_PASS: Joi.string().required(),
 	API_URL: Joi.string().required(),
 	APP_URL: Joi.string().required(),
-	ALLOWED_URL: Joi.string().required(),
+	ALLOWED_URL: Joi.string().optional().allow(''),
 	JWT_ACCESS_SECRET: Joi.string().default('default_secret'),
 	JWT_ACCESS_EXPIRATION: Joi.string()
 		.pattern(/^\d+\s*(s|m|h|d|w|y)$/)
