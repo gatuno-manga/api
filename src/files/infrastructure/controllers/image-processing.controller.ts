@@ -1,91 +1,86 @@
-import { Controller, Logger } from '@nestjs/common';
+import { Controller, Logger, OnModuleDestroy } from '@nestjs/common';
 import { EventPattern, Payload } from '@nestjs/microservices';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Page } from '../../../books/infrastructure/database/entities/page.entity';
-import { Cover } from '../../../books/infrastructure/database/entities/cover.entity';
-import { User } from '../../../users/infrastructure/database/entities/user.entity';
-import { UserImage } from '../../../users/infrastructure/database/entities/user-image.entity';
-import { StorageBucket } from '../../../common/enum/storage-bucket.enum';
-import { ImageMetadata } from '../../../common/domain/value-objects/image-metadata.vo';
+import { HandleImageProcessingCompletedUseCase } from '../../application/use-cases/handle-image-processing-completed.use-case';
+import { ImageProcessingCompletedEvent } from '../../application/strategies/image-update/image-update.strategy';
 
-interface ImageProcessingCompletedEvent {
-	rawPath: string;
-	targetBucket: string;
-	targetPath: string;
-	metadata?: ImageMetadata;
+interface PendingEvent {
+	event: ImageProcessingCompletedEvent;
+	resolve: () => void;
+	reject: (error: unknown) => void;
 }
 
 @Controller()
-export class ImageProcessingController {
+export class ImageProcessingController implements OnModuleDestroy {
 	private readonly logger = new Logger(ImageProcessingController.name);
+	private pendingEvents: PendingEvent[] = [];
+	private flushTimer: NodeJS.Timeout | null = null;
+	private readonly BATCH_SIZE = 50;
+	private readonly BATCH_INTERVAL = 500; // ms
 
 	constructor(
-		@InjectRepository(Page)
-		private readonly pageRepository: Repository<Page>,
-		@InjectRepository(Cover)
-		private readonly coverRepository: Repository<Cover>,
-		@InjectRepository(User)
-		private readonly userRepository: Repository<User>,
-		@InjectRepository(UserImage)
-		private readonly userImageRepository: Repository<UserImage>,
+		private readonly handleImageProcessingCompletedUseCase: HandleImageProcessingCompletedUseCase,
 	) {}
 
 	@EventPattern('image.processing.completed')
 	async handleImageProcessingCompleted(
 		@Payload() data: ImageProcessingCompletedEvent,
 	) {
+		return new Promise<void>((resolve, reject) => {
+			this.pendingEvents.push({ event: data, resolve, reject });
+
+			if (this.pendingEvents.length >= this.BATCH_SIZE) {
+				this.flush();
+			} else if (!this.flushTimer) {
+				this.flushTimer = setTimeout(
+					() => this.flush(),
+					this.BATCH_INTERVAL,
+				);
+			}
+		});
+	}
+
+	private async flush() {
+		if (this.flushTimer) {
+			clearTimeout(this.flushTimer);
+			this.flushTimer = null;
+		}
+
+		if (this.pendingEvents.length === 0) return;
+
+		const batchToProcess = [...this.pendingEvents];
+		this.pendingEvents = [];
+
+		const events = batchToProcess.map((p) => p.event);
+
 		this.logger.log(
-			`Recebido evento de conclusão: ${data.rawPath} -> ${data.targetBucket}/${data.targetPath}`,
+			`Processando bloco de ${events.length} eventos Kafka...`,
 		);
 
-		const finalPath = `${data.targetBucket}/${data.targetPath}`;
-
 		try {
-			const updateData = {
-				path: finalPath,
-				...(data.metadata ? { metadata: data.metadata } : {}),
-			};
-
-			if (data.targetBucket === StorageBucket.BOOKS) {
-				// Atualiza Páginas
-				const pageUpdate = await this.pageRepository.update(
-					{ path: data.rawPath },
-					updateData,
-				);
-
-				// Atualiza Capas
-				const coverUpdate = await this.coverRepository.update(
-					{ url: data.rawPath },
-					{
-						url: finalPath,
-						...(data.metadata ? { metadata: data.metadata } : {}),
-					},
-				);
-
-				this.logger.log(
-					`Update Books: ${pageUpdate.affected} páginas e ${coverUpdate.affected} capas atualizadas`,
-				);
-			} else if (data.targetBucket === StorageBucket.USERS) {
-				// Atualiza Imagens de Usuários (Avatares e Banners) na tabela user_images
-				const userImageUpdate = await this.userImageRepository.update(
-					{ path: data.rawPath },
-					updateData,
-				);
-
-				this.logger.log(
-					`Update Users: ${userImageUpdate.affected} imagens (avatar/banner) atualizadas na tabela user_images`,
-				);
-			} else {
-				this.logger.warn(
-					`Bucket de destino desconhecido para atualização: ${data.targetBucket}`,
-				);
+			await this.handleImageProcessingCompletedUseCase.executeBatch(
+				events,
+			);
+			for (const pending of batchToProcess) {
+				pending.resolve();
 			}
 		} catch (error) {
 			this.logger.error(
-				`Erro ao atualizar entidades após processamento de imagem: ${data.rawPath}`,
-				error,
+				`Erro ao processar bloco de imagens: ${error.message}`,
+				error.stack,
 			);
+			for (const pending of batchToProcess) {
+				pending.reject(error);
+			}
+		}
+	}
+
+	onModuleDestroy() {
+		if (this.flushTimer) {
+			clearTimeout(this.flushTimer);
+		}
+		// Tenta processar o que restou antes de desligar
+		if (this.pendingEvents.length > 0) {
+			this.flush();
 		}
 	}
 }

@@ -254,6 +254,56 @@ describe('AdminUsersService', () => {
 		expect(result.blocked).toBe(true);
 	});
 
+	it('preserves base weight when no policies match the user', async () => {
+		userRepository.findOne.mockResolvedValue({ id: 'u1', groups: [] });
+		const qb = {
+			where: jest.fn().mockReturnThis(),
+			andWhere: jest.fn().mockReturnThis(),
+			getMany: jest.fn().mockResolvedValue([]), // No matching policies
+		};
+		accessPolicyRepository.createQueryBuilder.mockReturnValue(qb);
+
+		const result = await service.evaluateAccessForBook({
+			userId: 'u1',
+			bookId: 'b1',
+			bookTagIds: [],
+			bookSensitiveContentIds: [],
+			baseMaxWeightSensitiveContent: 5,
+		});
+
+		expect(result.blocked).toBe(false);
+		expect(result.effectiveMaxWeightSensitiveContent).toBe(5); // Stays at 5
+	});
+
+	it('does not decrease weight if an allow policy has a lower weight than base', async () => {
+		userRepository.findOne.mockResolvedValue({ id: 'u1', groups: [] });
+		const qb = {
+			where: jest.fn().mockReturnThis(),
+			andWhere: jest.fn().mockReturnThis(),
+			getMany: jest.fn().mockResolvedValue([
+				{
+					targetUserId: 'u1',
+					effect: AccessPolicyEffectEnum.ALLOW,
+					scope: AccessPolicyScopeEnum.BOOK,
+					bookId: 'b1',
+					overrideMaxWeightSensitiveContent: 2, // Policy allows up to 2
+				},
+			]),
+		};
+		accessPolicyRepository.createQueryBuilder.mockReturnValue(qb);
+
+		const result = await service.evaluateAccessForBook({
+			userId: 'u1',
+			bookId: 'b1',
+			bookTagIds: [],
+			bookSensitiveContentIds: [],
+			baseMaxWeightSensitiveContent: 10, // User already has 10
+		});
+
+		expect(result.blocked).toBe(false);
+		expect(result.effectiveMaxWeightSensitiveContent).toBe(10); // Keeps the highest (10)
+	});
+
 	it('blocks self role update when admin role is removed from own account', async () => {
 		const targetUser = {
 			id: 'admin-1',

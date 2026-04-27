@@ -22,6 +22,18 @@ import { S3StorageAdapter } from './infrastructure/adapters/s3-storage.adapter';
 import { KafkaEventPublisherAdapter } from './infrastructure/adapters/kafka-event-publisher.adapter';
 import { ImageProcessingController } from './infrastructure/controllers/image-processing.controller';
 import { ImageBackfillController } from './infrastructure/controllers/image-backfill.controller';
+import {
+	HandleImageProcessingCompletedUseCase,
+	IMAGE_UPDATE_STRATEGIES,
+} from './application/use-cases/handle-image-processing-completed.use-case';
+import { BooksImageUpdateStrategy } from './application/strategies/image-update/books-image-update.strategy';
+import { UsersImageUpdateStrategy } from './application/strategies/image-update/users-image-update.strategy';
+import { I_PAGE_REPOSITORY } from 'src/books/application/ports/page-repository.interface';
+import { TypeOrmPageRepositoryAdapter } from 'src/books/infrastructure/database/adapters/typeorm-page-repository.adapter';
+import { I_COVER_REPOSITORY } from 'src/books/application/ports/cover-repository.interface';
+import { TypeOrmCoverRepositoryAdapter } from 'src/books/infrastructure/database/adapters/typeorm-cover-repository.adapter';
+import { I_USER_IMAGE_REPOSITORY } from 'src/users/application/ports/user-image-repository.interface';
+import { TypeOrmUserImageRepositoryAdapter } from 'src/users/infrastructure/database/adapters/typeorm-user-image-repository.adapter';
 
 @Module({
 	controllers: [
@@ -40,6 +52,26 @@ import { ImageBackfillController } from './infrastructure/controllers/image-back
 		NoCompressionAdapter,
 		S3StorageAdapter,
 		KafkaEventPublisherAdapter,
+		HandleImageProcessingCompletedUseCase,
+		BooksImageUpdateStrategy,
+		UsersImageUpdateStrategy,
+		{
+			provide: IMAGE_UPDATE_STRATEGIES,
+			useFactory: (
+				books: BooksImageUpdateStrategy,
+				users: UsersImageUpdateStrategy,
+			) => [books, users],
+			inject: [BooksImageUpdateStrategy, UsersImageUpdateStrategy],
+		},
+		{ provide: I_PAGE_REPOSITORY, useClass: TypeOrmPageRepositoryAdapter },
+		{
+			provide: I_COVER_REPOSITORY,
+			useClass: TypeOrmCoverRepositoryAdapter,
+		},
+		{
+			provide: I_USER_IMAGE_REPOSITORY,
+			useClass: TypeOrmUserImageRepositoryAdapter,
+		},
 		{
 			provide: 'STORAGE_PORT',
 			useClass: S3StorageAdapter,

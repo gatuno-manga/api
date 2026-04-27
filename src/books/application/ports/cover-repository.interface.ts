@@ -9,6 +9,10 @@ export interface ICoverRepository {
 	softRemove(cover: Cover): Promise<void>;
 	findByBookId(bookId: string): Promise<Cover[]>;
 	create(data: Partial<Cover>): Cover;
+	update(criteria: unknown, data: Partial<Cover>): Promise<void>;
+	updateBatch(
+		updates: { oldPath: string; newPath: string; metadata?: unknown }[],
+	): Promise<void>;
 }
 
 export const I_COVER_REPOSITORY = 'ICoverRepository';

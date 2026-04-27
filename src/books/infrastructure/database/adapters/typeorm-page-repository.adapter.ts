@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, DeepPartial } from 'typeorm';
+import { Repository, FindOptionsWhere, DeepPartial, In } from 'typeorm';
 import { IPageRepository } from '../../../application/ports/page-repository.interface';
 import { Page as DomainPage } from '../../../domain/entities/page';
 import { Page as InfrastructurePage } from '../entities/page.entity';
+import { ImageMetadata } from '@src/common/domain/value-objects/image-metadata.vo';
 import { PageCriteria } from '@books/domain/types/criteria.types';
 
 @Injectable()
@@ -72,5 +73,38 @@ export class TypeOrmPageRepositoryAdapter implements IPageRepository {
 			data as unknown as DeepPartial<InfrastructurePage>,
 		);
 		return page as unknown as DomainPage;
+	}
+
+	async update(
+		criteria: PageCriteria,
+		data: Partial<DomainPage>,
+	): Promise<void> {
+		await this.repository.update(
+			criteria as unknown as FindOptionsWhere<InfrastructurePage>,
+			data as unknown as InfrastructurePage,
+		);
+	}
+
+	async updateBatch(
+		updates: { oldPath: string; newPath: string; metadata?: unknown }[],
+	): Promise<void> {
+		const oldPaths = updates.map((u) => u.oldPath);
+		const pages = await this.repository.find({
+			where: {
+				path: In(oldPaths),
+			} as unknown as FindOptionsWhere<InfrastructurePage>,
+		});
+
+		for (const page of pages) {
+			const update = updates.find((u) => u.oldPath === page.path);
+			if (update) {
+				page.path = update.newPath;
+				if (update.metadata) {
+					page.metadata = update.metadata as ImageMetadata;
+				}
+			}
+		}
+
+		await this.repository.save(pages);
 	}
 }

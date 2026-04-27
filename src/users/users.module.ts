@@ -41,6 +41,8 @@ import { UserResourcesMapper } from './application/mappers/user-resources.mapper
 import { UserBookSavedPagesController } from './infrastructure/controllers/user-book-saved-pages.controller';
 import { I_USER_REPOSITORY } from './application/ports/user-repository.interface';
 import { TypeOrmUserRepositoryAdapter } from './infrastructure/database/adapters/typeorm-user-repository.adapter';
+import { I_USER_IMAGE_REPOSITORY } from './application/ports/user-image-repository.interface';
+import { TypeOrmUserImageRepositoryAdapter } from './infrastructure/database/adapters/typeorm-user-image-repository.adapter';
 
 @Module({
 	imports: [
@@ -76,6 +78,10 @@ import { TypeOrmUserRepositoryAdapter } from './infrastructure/database/adapters
 	],
 	providers: [
 		{ provide: I_USER_REPOSITORY, useClass: TypeOrmUserRepositoryAdapter },
+		{
+			provide: I_USER_IMAGE_REPOSITORY,
+			useClass: TypeOrmUserImageRepositoryAdapter,
+		},
 		UsersService,
 		AdminUsersService,
 		CollectionsBooksService,
@@ -90,6 +96,7 @@ import { TypeOrmUserRepositoryAdapter } from './infrastructure/database/adapters
 	exports: [
 		AdminUsersService,
 		I_USER_REPOSITORY,
+		I_USER_IMAGE_REPOSITORY,
 		ReadingProgressService,
 		SavedPagesService,
 	],
