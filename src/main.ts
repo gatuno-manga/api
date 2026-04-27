@@ -1,8 +1,5 @@
-import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { MicroserviceOptions, Transport } from '@nestjs/microservices';
-import { Partitioners } from 'kafkajs';
 import cookieParser from 'cookie-parser';
 import { AppConfigService } from './infrastructure/app-config/app-config.service';
 import { AppModule } from './app.module';
@@ -11,6 +8,7 @@ import { configureCors } from './infrastructure/http/config/cors.config';
 import { configureStaticAssets } from './infrastructure/http/config/static-assets.config';
 import { configureSwagger } from './infrastructure/http/config/swagger.config';
 import { configureValidationPipe } from './infrastructure/http/config/validation-pipe.config';
+import { configureKafka } from './infrastructure/http/config/kafka.config';
 
 async function bootstrap() {
 	const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -20,47 +18,13 @@ async function bootstrap() {
 	configureValidationPipe(app);
 
 	configureCors(app, configService.allowedUrls);
+	configureStaticAssets(app);
 
 	app.enableShutdownHooks();
 	app.use(cookieParser());
 	app.setGlobalPrefix('api');
 
-	// Configura o Microserviço Kafka para consumir eventos
-	const kafkaLogger = new Logger('KafkaConsumer');
-	app.connectMicroservice<MicroserviceOptions>({
-		transport: Transport.KAFKA,
-		options: {
-			client: {
-				clientId: 'gatuno-api-consumer',
-				brokers: [configService.kafkaBroker],
-				retry: {
-					initialRetryTime: 1000,
-					retries: 10,
-					maxRetryTime: 30000,
-				},
-				connectionTimeout: 10000,
-				authenticationTimeout: 10000,
-			},
-			consumer: {
-				groupId: 'gatuno-api-group',
-				allowAutoTopicCreation: true,
-				metadataMaxAge: 3000,
-				sessionTimeout: 60000,
-				heartbeatInterval: 3000,
-				maxBytesPerPartition: 1048576, // 1MB por partição
-				maxBytes: 5242880, // 5MB no total por lote
-			},
-			run: {
-				autoCommit: true,
-				autoCommitInterval: 5000,
-				partitionsConsumedConcurrently: 5,
-			},
-			producer: {
-				createPartitioner: Partitioners.LegacyPartitioner,
-				allowAutoTopicCreation: true,
-			},
-		},
-	});
+	configureKafka(app, configService);
 
 	await app.startAllMicroservices();
 
