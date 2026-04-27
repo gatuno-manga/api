@@ -44,13 +44,20 @@ import { UsersModule } from './users/users.module';
 		AppConfigModule,
 		EventEmitterModule.forRoot(),
 		ScheduleModule.forRoot(),
-		GraphQLModule.forRoot<ApolloDriverConfig>({
+		GraphQLModule.forRootAsync<ApolloDriverConfig>({
 			driver: ApolloDriver,
-			autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
-			sortSchema: true,
-			playground: true,
-			useGlobalPrefix: true,
-			context: ({ req, res }) => ({ req, res }),
+			imports: [AppConfigModule],
+			inject: [AppConfigService],
+			useFactory: (configService: AppConfigService) => ({
+				autoSchemaFile:
+					configService.nodeEnv === 'production'
+						? true
+						: join(process.cwd(), 'src/schema.gql'),
+				sortSchema: true,
+				playground: configService.nodeEnv !== 'production',
+				useGlobalPrefix: true,
+				context: ({ req, res }) => ({ req, res }),
+			}),
 		}),
 		ThrottlerModule.forRoot([
 			{
