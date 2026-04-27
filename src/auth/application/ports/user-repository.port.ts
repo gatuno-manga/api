@@ -5,7 +5,8 @@ export interface UserAuthData {
 	email: string;
 	password?: string;
 	userName: string;
-	roles?: { name: string }[];
+	maxWeightSensitiveContent: number;
+	roles?: { name: string; maxWeightSensitiveContent: number }[];
 }
 
 export interface UserSaveInput {

@@ -33,7 +33,8 @@ describe('TypeOrmUserRepositoryAdapter', () => {
 			email: 'user@example.com',
 			password: 'hashed-password',
 			userName: 'user',
-			roles: [{ name: 'user' }],
+			maxWeightSensitiveContent: 5,
+			roles: [{ name: 'user', maxWeightSensitiveContent: 0 }],
 		} as User;
 		const queryBuilder = {
 			leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -62,7 +63,44 @@ describe('TypeOrmUserRepositoryAdapter', () => {
 			email: 'user@example.com',
 			password: 'hashed-password',
 			userName: 'user',
-			roles: [{ name: 'user' }],
+			maxWeightSensitiveContent: 5,
+			roles: [{ name: 'user', maxWeightSensitiveContent: 0 }],
 		});
+	});
+
+	it('deve mapear corretamente multiplas roles com seus pesos', async () => {
+		const user = {
+			id: 'user-1',
+			email: 'user@example.com',
+			password: 'hashed-password',
+			userName: 'user',
+			maxWeightSensitiveContent: 2,
+			roles: [
+				{ name: 'admin', maxWeightSensitiveContent: 99 },
+				{ name: 'moderator', maxWeightSensitiveContent: 50 },
+			],
+		} as User;
+
+		userRepository.createQueryBuilder.mockReturnValue({
+			leftJoinAndSelect: jest.fn().mockReturnThis(),
+			addSelect: jest.fn().mockReturnThis(),
+			where: jest.fn().mockReturnThis(),
+			getOne: jest.fn().mockResolvedValue(user),
+		} as any);
+
+		const result = await adapter.findCredentialsByEmail(
+			new EmailVO('user@example.com'),
+		);
+
+		expect(result?.roles).toHaveLength(2);
+		expect(result?.roles).toContainEqual({
+			name: 'admin',
+			maxWeightSensitiveContent: 99,
+		});
+		expect(result?.roles).toContainEqual({
+			name: 'moderator',
+			maxWeightSensitiveContent: 50,
+		});
+		expect(result?.maxWeightSensitiveContent).toBe(2);
 	});
 });

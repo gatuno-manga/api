@@ -68,7 +68,11 @@ export class TypeOrmUserRepositoryAdapter implements UserRepositoryPort {
 			email: user.email,
 			password: user.password,
 			userName: user.userName,
-			roles: user.roles?.map((r) => ({ name: r.name })),
+			maxWeightSensitiveContent: user.maxWeightSensitiveContent,
+			roles: user.roles?.map((r) => ({
+				name: r.name,
+				maxWeightSensitiveContent: r.maxWeightSensitiveContent,
+			})),
 		};
 	}
 }
