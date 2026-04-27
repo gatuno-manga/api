@@ -11,7 +11,8 @@ import { UseGuards } from '@nestjs/common';
 import { BooksService } from '../../../application/services/books.service';
 import { ChapterService } from '../../../application/services/chapter.service';
 import { ChapterCommentsService } from '../../../application/services/chapter-comments.service';
-import { BookModel } from '../models/book.model';
+import { BookModel, CoverModel } from '../models/book.model';
+import { ImageMetadataModel } from '../../../../common/infrastructure/graphql/models/image-metadata.model';
 import { ChapterModel } from '../models/chapter.model';
 import { ChapterCommentModel } from '../models/comment.model';
 import { PaginatedBookResponseModel } from '../models/paginated-book-response.model';
@@ -130,6 +131,25 @@ export class BookResolver {
 			nextCursor: result.nextCursor,
 			hasNextPage: result.hasNextPage,
 		};
+	}
+
+	@ResolveField(() => [CoverModel], { name: 'covers' })
+	async getBookCovers(
+		@Parent() book: BookModel,
+		@GqlCurrentUser() user?: CurrentUserDto,
+	): Promise<CoverModel[]> {
+		const covers = await this.booksService.getCovers(
+			book.id,
+			user?.maxWeightSensitiveContent ?? 0,
+			user?.userId,
+		);
+
+		return (covers || []).map((cover) => ({
+			id: cover.id,
+			url: cover.url,
+			isMain: cover.selected,
+			metadata: cover.metadata as ImageMetadataModel,
+		}));
 	}
 
 	@Query(() => ChapterModel, { name: 'chapter', nullable: true })

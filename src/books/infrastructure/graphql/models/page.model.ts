@@ -1,25 +1,5 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
-
-@ObjectType('ImageMetadata')
-export class ImageMetadataModel {
-	@Field(() => Int)
-	width: number;
-
-	@Field(() => Int)
-	height: number;
-
-	@Field(() => Int, { nullable: true })
-	sizeBytes?: number;
-
-	@Field({ nullable: true })
-	mimeType?: string;
-
-	@Field({ nullable: true })
-	blurHash?: string;
-
-	@Field({ nullable: true })
-	dominantColor?: string;
-}
+import { ImageMetadataModel } from '../../../../common/infrastructure/graphql/models/image-metadata.model';
 
 @ObjectType('Page')
 export class PageModel {
