@@ -21,3 +21,6 @@ services:
 
   redis:
     restart: always
+
+  browserless:
+    restart: always

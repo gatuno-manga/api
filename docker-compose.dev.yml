@@ -14,7 +14,7 @@ services:
       - ALLOWED_URL=${ALLOWED_URL:-http://localhost:4200}
       - APP_URL=${APP_SCHEME:-http}://${APP_HOST:-localhost:4200}
       - API_URL=${API_SCHEME:-http}://localhost:${API_PORT}
-      - PLAYWRIGHT_WS_ENDPOINT=${PLAYWRIGHT_WS_ENDPOINT:-ws://playwright-debug:3000}
+      - PLAYWRIGHT_WS_ENDPOINT=${PLAYWRIGHT_WS_ENDPOINT:-ws://browserless:3000}
       - PLAYWRIGHT_DEBUG=${PLAYWRIGHT_DEBUG:-true}
       - PLAYWRIGHT_SLOW_MO=${PLAYWRIGHT_SLOW_MO}
       - KAFKA_HOST=${KAFKA_HOST:-kafka}
@@ -24,7 +24,7 @@ services:
       # - JWT_REFRESH_EXPIRATION=7d
       # - MAX_SESSIONS_PER_USER=0
     depends_on:
-      - playwright-debug
+      - browserless
       - kafka
     develop:
       watch:
@@ -39,7 +39,7 @@ services:
     volumes:
       - ./.env:/usr/src/app/.env
 
-  playwright-debug:
+  browserless:
     image: browserless/chrome:latest
     ports:
       - "${PLAYWRIGHT_NOVNC_PORT}:3000"
