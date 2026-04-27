@@ -29,12 +29,22 @@ export class KafkaEventPublisherAdapter
 						'kafka:9092',
 					),
 				],
+				retry: {
+					initialRetryTime: 1000,
+					retries: 10,
+					maxRetryTime: 30000,
+				},
+				connectionTimeout: 10000,
+				authenticationTimeout: 10000,
 			},
 			consumer: {
-				groupId: 'gatuno-api-group',
+				groupId: 'gatuno-api-publisher-group',
+				allowAutoTopicCreation: true,
+				metadataMaxAge: 3000,
 			},
 			producer: {
 				createPartitioner: Partitioners.LegacyPartitioner,
+				allowAutoTopicCreation: true,
 			},
 		});
 	}

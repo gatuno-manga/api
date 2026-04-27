@@ -91,26 +91,29 @@ export class JwtPayloadBuilder {
 			throw new Error('User must have at least one role assigned');
 		}
 
-		let maxWeightSensitiveContent = 0;
+		// Calculate max weight from roles
+		const roleWeights = user.roles
+			.map(
+				(role) =>
+					(role as { maxWeightSensitiveContent?: number })
+						.maxWeightSensitiveContent ?? 0,
+			)
+			.filter((w) => typeof w === 'number');
+
+		const maxRoleWeight =
+			roleWeights.length > 0 ? Math.max(...roleWeights) : 0;
+
+		// Get user weight
+		let userWeight = 0;
 		if (
 			'maxWeightSensitiveContent' in user &&
 			user.maxWeightSensitiveContent !== undefined
 		) {
-			maxWeightSensitiveContent = user.maxWeightSensitiveContent;
-		} else {
-			// Fallback: try to find max weight in roles if they have it
-			const weights = user.roles
-				.map(
-					(role) =>
-						(role as { maxWeightSensitiveContent?: number })
-							.maxWeightSensitiveContent ?? 0,
-				)
-				.filter((w) => typeof w === 'number');
-
-			if (weights.length > 0) {
-				maxWeightSensitiveContent = Math.max(...weights);
-			}
+			userWeight = user.maxWeightSensitiveContent;
 		}
+
+		// Take the highest weight available
+		const maxWeightSensitiveContent = Math.max(userWeight, maxRoleWeight);
 
 		return this.setSubject(user.id)
 			.setEmail(user.email)
