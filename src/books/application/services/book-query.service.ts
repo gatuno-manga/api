@@ -22,6 +22,7 @@ import { BookPageOptionsDto } from '../dto/book-page-options.dto';
 import { Book } from '../../domain/entities/book';
 import { ScrapingStatus } from '../../domain/enums/scrapingStatus.enum';
 import { SensitiveContentService } from './sensitive-content.service';
+import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
 import { FilterStrategy } from '../strategies';
 import { AdminUsersService } from 'src/users/application/use-cases/admin-users.service';
 import {
@@ -64,7 +65,10 @@ interface RawChapterItem {
 	readCount?: string | number;
 }
 
-type BookListItem = Omit<Book, 'covers'> & { cover: string | null };
+type BookListItem = Omit<Book, 'covers'> & {
+	cover: string | null;
+	coverMetadata: ImageMetadata | null;
+};
 
 @Injectable()
 export class BookQueryService {
@@ -135,13 +139,17 @@ export class BookQueryService {
 			accessContext,
 			filterStrategies,
 		);
-		const data = books.map((b) => ({
-			...b,
-			cover: this.mediaUrlService.resolveUrl(
-				b.covers?.[0]?.url || null,
-				StorageBucket.BOOKS,
-			),
-		}));
+		const data = books.map((b) => {
+			const selectedCover = b.covers?.[0] || null;
+			return {
+				...b,
+				cover: this.mediaUrlService.resolveUrl(
+					selectedCover?.url || null,
+					StorageBucket.BOOKS,
+				),
+				coverMetadata: selectedCover?.metadata || null,
+			};
+		});
 
 		if (options.cursor) {
 			return new CursorPageDto(
@@ -191,12 +199,15 @@ export class BookQueryService {
 		);
 
 		const { covers, ...rest } = book;
+		const selectedCover = covers?.[0] || null;
+
 		return {
 			...rest,
 			cover: this.mediaUrlService.resolveUrl(
-				covers?.[0]?.url || null,
+				selectedCover?.url || null,
 				StorageBucket.BOOKS,
 			),
+			coverMetadata: selectedCover?.metadata || null,
 		};
 	}
 
