@@ -112,6 +112,9 @@ export class BookQueryService {
 			bookSensitiveContentIds: (book.sensitiveContent || []).map(
 				(sensitiveContent) => sensitiveContent.id,
 			),
+			bookSensitiveContentWeights: (book.sensitiveContent || []).map(
+				(sensitiveContent) => sensitiveContent.weight,
+			),
 			baseMaxWeightSensitiveContent: maxWeightSensitiveContent,
 		});
 

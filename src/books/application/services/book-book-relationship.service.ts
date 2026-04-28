@@ -215,6 +215,8 @@ export class BookBookRelationshipService {
 				bookSensitiveContentIds: item.relatedBook.sensitiveContent.map(
 					(sc) => sc.id,
 				),
+				bookSensitiveContentWeights:
+					item.relatedBook.sensitiveContent.map((sc) => sc.weight),
 				baseMaxWeightSensitiveContent: maxWeightSensitiveContent,
 			});
 

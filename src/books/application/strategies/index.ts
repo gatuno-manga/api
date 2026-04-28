@@ -6,3 +6,4 @@ export { TagsFilterStrategy } from './tags-filter.strategy';
 export { ExcludeTagsFilterStrategy } from './exclude-tags-filter.strategy';
 export { PublicationFilterStrategy } from './publication-filter.strategy';
 export { AuthorsFilterStrategy } from './authors-filter.strategy';
+export { SensitiveContentFilterStrategy } from './sensitive-content-filter.strategy';

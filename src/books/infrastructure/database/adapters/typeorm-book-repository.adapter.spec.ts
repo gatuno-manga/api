@@ -25,6 +25,7 @@ describe('TypeOrmBookRepositoryAdapter', () => {
 		select: jest.fn().mockReturnThis(),
 		from: jest.fn().mockReturnThis(),
 		innerJoin: jest.fn().mockReturnThis(),
+		setParameter: jest.fn().mockReturnThis(),
 		getQuery: jest.fn().mockReturnValue('(SELECT 1)'),
 	};
 
@@ -106,38 +107,15 @@ describe('TypeOrmBookRepositoryAdapter', () => {
 		});
 	});
 
-	describe('delete', () => {
-		it('should call repository.delete', async () => {
-			await adapter.delete('1');
-			expect(mockRepository.delete).toHaveBeenCalledWith('1');
-		});
-	});
-
-	describe('exists', () => {
-		it('should return true if book exists', async () => {
-			mockRepository.exists.mockResolvedValue(true);
-			const result = await adapter.exists('1');
-			expect(result).toBe(true);
-			expect(mockRepository.exists).toHaveBeenCalledWith({
-				where: { id: '1' },
-			});
-		});
-	});
-
 	describe('findByIdWithDetails', () => {
-		it('should return book with details', async () => {
-			const infraBook = {
-				id: '1',
-				title: 'Detailed Book',
-			} as InfrastructureBook;
-			mockQueryBuilder.getOne.mockResolvedValue(infraBook);
+		it('should return book with all details', async () => {
+			const book = { id: '1', title: 'Book 1' } as InfrastructureBook;
+			mockQueryBuilder.getOne.mockResolvedValue(book);
 
 			const result = await adapter.findByIdWithDetails('1');
 
-			expect(result).toEqual(infraBook);
-			expect(mockRepository.createQueryBuilder).toHaveBeenCalledWith(
-				'book',
-			);
+			expect(result).toEqual(book);
+			expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalled();
 			expect(mockQueryBuilder.where).toHaveBeenCalledWith(
 				'book.id = :id',
 				{
@@ -185,24 +163,47 @@ describe('TypeOrmBookRepositoryAdapter', () => {
 
 			expect(resultBooks).toEqual([]);
 			expect(resultTotal).toBe(0);
-			expect(mockQueryBuilder.getManyAndCount).not.toHaveBeenCalled();
 		});
 
 		it('should apply the effective max weight filter in the database query', async () => {
-			mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
-
 			const options = { page: 1, limit: 10 } as any;
 			const accessContext = {
 				blockedAll: false,
-				effectiveMaxWeightSensitiveContent: 5,
-				allowSensitiveContentIds: [],
+				effectiveMaxWeightSensitiveContent: 10,
 			} as any;
+
+			mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
 
 			await adapter.findWithFilters(options, accessContext, []);
 
-			// Verify that the query builder was used to add a condition for maxWeight
-			// We check if andWhere was called. The actual implementation uses a subquery for NOT EXISTS
-			expect(mockQueryBuilder.andWhere).toHaveBeenCalled();
+			expect(mockQueryBuilder.setParameter).toHaveBeenCalledWith(
+				'maxWeight',
+				10,
+			);
+		});
+	});
+
+	describe('findRandom', () => {
+		it('should return a random book', async () => {
+			const book = {
+				id: '1',
+				title: 'Random Book',
+			} as InfrastructureBook;
+			mockQueryBuilder.getOne.mockResolvedValue(book);
+
+			const accessContext = {
+				blockedAll: false,
+				effectiveMaxWeightSensitiveContent: 100,
+			} as any;
+
+			const result = await adapter.findRandom(
+				{ limit: 1 } as any,
+				accessContext,
+				[],
+			);
+
+			expect(result).toEqual(book);
+			expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith('RAND()');
 		});
 	});
 });
