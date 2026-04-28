@@ -154,6 +154,17 @@ export class AppConfigService {
 		return this.config.get<string>('LOG_LEVEL') || 'context=*;level=info';
 	}
 
+	get logRedactPaths(): string[] {
+		return this.parseCsv(
+			this.config.get<string>('LOG_REDACT_PATHS') ||
+				'req.headers.authorization,req.headers.cookie,req.body.password,req.body.apiKey,req.body.token,res.headers["set-cookie"]',
+		);
+	}
+
+	get logSamplingRate(): number {
+		return this.config.get<number>('LOG_SAMPLING_RATE') ?? 1.0;
+	}
+
 	get metricsEnabled(): boolean {
 		return this.config.get<boolean>('METRICS_ENABLED') ?? true;
 	}

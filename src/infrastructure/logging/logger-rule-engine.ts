@@ -18,7 +18,10 @@ export class LoggerRuleEngine {
 		error: 4,
 	};
 
-	constructor(rulesString?: string) {
+	constructor(
+		rulesString?: string,
+		private readonly samplingRate = 1.0,
+	) {
 		this.initializeRules(rulesString);
 	}
 
@@ -26,7 +29,19 @@ export class LoggerRuleEngine {
 		const methodLevelNum = this.LOG_LEVEL_MAP[methodLevel];
 		const configuredLevelNum = this.getLogLevelForContext(context);
 
-		return methodLevelNum >= configuredLevelNum;
+		if (methodLevelNum < configuredLevelNum) {
+			return false;
+		}
+
+		// Sampling logic for low-priority logs
+		if (
+			methodLevelNum <= this.LOG_LEVEL_MAP.info &&
+			this.samplingRate < 1.0
+		) {
+			return Math.random() < this.samplingRate;
+		}
+
+		return true;
 	}
 
 	private getLogLevelForContext(context?: string): number {
