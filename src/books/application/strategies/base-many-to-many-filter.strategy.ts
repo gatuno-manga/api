@@ -38,41 +38,55 @@ export abstract class BaseManyToManyFilterStrategy implements FilterStrategy {
 		logic: 'and' | 'or',
 		exclude = false,
 	): void {
+		const alias = `${this.table}_filter`;
+		const parameterName = `ids_${this.table}_${Math.random().toString(36).substring(7)}`;
+
 		if (logic === 'or') {
-			// Lógica OR: livros que possuem QUALQUER um dos IDs fornecidos
-			queryBuilder.andWhere((qb) => {
-				const subQuery = qb
-					.subQuery()
-					.select(`${this.table}.booksId`)
-					.from(this.table, this.table)
-					.where(`${this.table}.${this.columnName} IN (:...ids)`, {
-						ids,
-					})
-					.getQuery();
-				return exclude
-					? `book.id NOT IN ${subQuery}`
-					: `book.id IN ${subQuery}`;
-			});
+			if (exclude) {
+				queryBuilder.andWhere((qb) => {
+					const subQuery = qb
+						.subQuery()
+						.select(`${alias}.booksId`)
+						.from(this.table, alias)
+						.where(
+							`${alias}.${this.columnName} IN (:...${parameterName})`,
+						);
+					return `book.id NOT IN ${subQuery.getQuery()}`;
+				});
+				queryBuilder.setParameter(parameterName, ids);
+			} else {
+				queryBuilder
+					.innerJoin(this.table, alias, `${alias}.booksId = book.id`)
+					.andWhere(
+						`${alias}.${this.columnName} IN (:...${parameterName})`,
+						{
+							[parameterName]: ids,
+						},
+					);
+			}
 		} else {
 			// Lógica AND: livros que possuem TODOS os IDs fornecidos
 			queryBuilder.andWhere((qb) => {
 				const subQuery = qb
 					.subQuery()
-					.select(`${this.table}.booksId`)
-					.from(this.table, this.table)
-					.where(`${this.table}.${this.columnName} IN (:...ids)`, {
-						ids,
-					})
-					.groupBy(`${this.table}.booksId`)
-					.having(
-						`COUNT(DISTINCT ${this.table}.${this.columnName}) = :count`,
-						{ count: ids.length },
+					.select(`${alias}.booksId`)
+					.from(this.table, alias)
+					.where(
+						`${alias}.${this.columnName} IN (:...${parameterName})`,
 					)
-					.getQuery();
+					.groupBy(`${alias}.booksId`)
+					.having(
+						`COUNT(DISTINCT ${alias}.${this.columnName}) = :count`,
+						{
+							count: ids.length,
+						},
+					);
+
 				return exclude
-					? `book.id NOT IN ${subQuery}`
-					: `book.id IN ${subQuery}`;
+					? `book.id NOT IN ${subQuery.getQuery()}`
+					: `book.id IN ${subQuery.getQuery()}`;
 			});
+			queryBuilder.setParameter(parameterName, ids);
 		}
 	}
 }

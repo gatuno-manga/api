@@ -112,7 +112,6 @@ export class JwtPayloadBuilder {
 			userWeight = user.maxWeightSensitiveContent;
 		}
 
-		// Take the highest weight available
 		const maxWeightSensitiveContent = Math.max(userWeight, maxRoleWeight);
 
 		return this.setSubject(user.id)

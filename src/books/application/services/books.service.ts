@@ -28,6 +28,7 @@ import {
 	SearchFilterStrategy,
 	TagsFilterStrategy,
 	TypeFilterStrategy,
+	SensitiveContentFilterStrategy,
 } from '../strategies';
 
 /**
@@ -54,6 +55,7 @@ export class BooksService {
 			new ExcludeTagsFilterStrategy(),
 			new PublicationFilterStrategy(),
 			new AuthorsFilterStrategy(),
+			new SensitiveContentFilterStrategy(),
 		];
 	}
 

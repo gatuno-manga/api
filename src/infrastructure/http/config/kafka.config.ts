@@ -1,15 +1,15 @@
 import { INestApplication } from '@nestjs/common';
-import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { MicroserviceOptions } from '@nestjs/microservices';
 import { Partitioners } from 'kafkajs';
 import { AppConfigService } from '../../app-config/app-config.service';
+import { KafkaBatchStrategy } from './kafka-batch.strategy';
 
 export function configureKafka(
 	app: INestApplication,
 	configService: AppConfigService,
 ) {
 	app.connectMicroservice<MicroserviceOptions>({
-		transport: Transport.KAFKA,
-		options: {
+		strategy: new KafkaBatchStrategy({
 			client: {
 				clientId: 'gatuno-api-consumer',
 				brokers: [configService.kafkaBroker],
@@ -39,6 +39,6 @@ export function configureKafka(
 				createPartitioner: Partitioners.LegacyPartitioner,
 				allowAutoTopicCreation: true,
 			},
-		},
+		}),
 	});
 }

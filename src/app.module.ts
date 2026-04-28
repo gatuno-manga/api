@@ -32,6 +32,8 @@ import { MetricsModule } from './metrics/metrics.module';
 import { ScrapingModule } from './scraping/scraping.module';
 import { SyncModule } from './sync/sync.module';
 import { UsersModule } from './users/users.module';
+import { CollectionsModule } from './collections/collections.module';
+import { InteractionsModule } from './interactions/interactions.module';
 
 @Module({
 	imports: [
@@ -44,6 +46,9 @@ import { UsersModule } from './users/users.module';
 		AppConfigModule,
 		EventEmitterModule.forRoot(),
 		ScheduleModule.forRoot(),
+		CollectionsModule,
+		InteractionsModule,
+
 		GraphQLModule.forRootAsync<ApolloDriverConfig>({
 			driver: ApolloDriver,
 			imports: [AppConfigModule],
