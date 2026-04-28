@@ -16,6 +16,10 @@ import { LoggerRuleEngine } from './logger-rule-engine';
 				return {
 					pinoHttp: {
 						level: isProduction ? 'info' : 'debug',
+						genReqId: (req) =>
+							req.headers['x-correlation-id'] ||
+							req.headers['x-request-id'] ||
+							crypto.randomUUID(),
 
 						transport: isProduction
 							? undefined
@@ -80,14 +84,7 @@ import { LoggerRuleEngine } from './logger-rule-engine';
 							`,"timestamp":"${new Date().toISOString()}"`,
 
 						redact: {
-							paths: [
-								'req.headers.authorization',
-								'req.headers.cookie',
-								'req.body.password',
-								'req.body.apiKey',
-								'req.body.token',
-								'res.headers["set-cookie"]',
-							],
+							paths: config.logRedactPaths,
 							remove: true,
 						},
 
@@ -111,7 +108,10 @@ import { LoggerRuleEngine } from './logger-rule-engine';
 		{
 			provide: LoggerRuleEngine,
 			useFactory: (config: AppConfigService) => {
-				return new LoggerRuleEngine(config.LogLevel);
+				return new LoggerRuleEngine(
+					config.LogLevel,
+					config.logSamplingRate,
+				);
 			},
 			inject: [AppConfigService],
 		},
