@@ -7,16 +7,12 @@ import { Chapter } from 'src/books/infrastructure/database/entities/chapter.enti
 import { Page } from 'src/books/infrastructure/database/entities/page.entity';
 import { Tag } from 'src/books/infrastructure/database/entities/tags.entity';
 import { FilesModule } from 'src/files/files.module';
+import { CollectionsModule } from '../collections/collections.module';
 import { AdminAccessPoliciesController } from './infrastructure/controllers/admin-access-policies.controller';
 import { AdminGroupsController } from './infrastructure/controllers/admin-groups.controller';
 import { AdminRolesController } from './infrastructure/controllers/admin-roles.controller';
 import { AdminUsersController } from './infrastructure/controllers/admin-users.controller';
 import { AdminUsersService } from './application/use-cases/admin-users.service';
-import {
-	CollectionBook,
-	CollectionsBooksController,
-	CollectionsBooksService,
-} from './infrastructure/controllers/collections-books.index';
 import { AccessPolicy } from './infrastructure/database/entities/access-policy.entity';
 import { ReadingProgress } from './infrastructure/database/entities/reading-progress.entity';
 import { Role } from './infrastructure/database/entities/role.entity';
@@ -49,11 +45,11 @@ import { TypeOrmUserImageRepositoryAdapter } from './infrastructure/database/ada
 		AuthModule,
 		AppConfigModule,
 		FilesModule,
+		CollectionsModule,
 		TypeOrmModule.forFeature([
 			User,
 			UserImage,
 			Role,
-			CollectionBook,
 			Book,
 			ReadingProgress,
 			SavedPage,
@@ -72,7 +68,6 @@ import { TypeOrmUserImageRepositoryAdapter } from './infrastructure/database/ada
 		AdminAccessPoliciesController,
 		UserPublicResourcesController,
 		UserBookSavedPagesController,
-		CollectionsBooksController,
 		ReadingProgressController,
 		SavedPagesController,
 	],
@@ -84,7 +79,6 @@ import { TypeOrmUserImageRepositoryAdapter } from './infrastructure/database/ada
 		},
 		UsersService,
 		AdminUsersService,
-		CollectionsBooksService,
 		ReadingProgressService,
 		ReadingProgressGateway,
 		SavedPagesService,

@@ -180,7 +180,7 @@ describe('JwtPayloadBuilder', () => {
 	});
 
 	describe('fromUser method', () => {
-		it('should take the minimum weight between user preference and role allowance', () => {
+		it('should take the maximum weight between user preference and role allowance', () => {
 			const role1 = new Role();
 			role1.name = 'admin';
 			role1.maxWeightSensitiveContent = 99;
@@ -200,10 +200,10 @@ describe('JwtPayloadBuilder', () => {
 			expect(payload.sub).toBe('user-123');
 			expect(payload.email).toBe('admin@example.com');
 			expect(payload.roles).toEqual(['admin', 'moderator']);
-			expect(payload.maxWeightSensitiveContent).toBe(10); // Min entre 10 (user) e 99 (role max)
+			expect(payload.maxWeightSensitiveContent).toBe(99); // Max entre 10 (user) e 99 (role max)
 		});
 
-		it('should respect role weight limit even if user weight is higher', () => {
+		it('should use user weight even if it is higher than role limit', () => {
 			const role = new Role();
 			role.name = 'user';
 			role.maxWeightSensitiveContent = 4;
@@ -216,7 +216,7 @@ describe('JwtPayloadBuilder', () => {
 
 			const payload = builder.fromUser(user).setIssuer('login').build();
 
-			expect(payload.maxWeightSensitiveContent).toBe(4); // Limited by role max (4)
+			expect(payload.maxWeightSensitiveContent).toBe(99); // Takes max (99)
 		});
 
 		it('should return 0 when both user and roles have weight 0', () => {
@@ -331,7 +331,7 @@ describe('JwtPayloadBuilder', () => {
 				iss: 'login',
 				email: 'admin@example.com',
 				roles: ['admin'],
-				maxWeightSensitiveContent: 0,
+				maxWeightSensitiveContent: 5,
 				iat,
 				exp,
 				sessionId: 'session-xyz-789',
