@@ -847,6 +847,7 @@ export class AdminUsersService {
 		bookId: string;
 		bookTagIds: string[];
 		bookSensitiveContentIds: string[];
+		bookSensitiveContentWeights: number[];
 		baseMaxWeightSensitiveContent: number;
 	}) {
 		const context = await this.evaluateListAccessContext({
@@ -907,6 +908,25 @@ export class AdminUsersService {
 				allowTagWeight,
 				allowSensitiveContentWeight,
 			);
+		}
+
+		// Check if any book content weight exceeds effective user weight
+		// and it's NOT explicitly allowed by a policy above
+		const maxBookContentWeight = params.bookSensitiveContentWeights.reduce(
+			(max, w) => Math.max(max, w),
+			0,
+		);
+
+		if (
+			maxBookContentWeight > effectiveMaxWeight &&
+			allowBookWeight === 0 &&
+			allowTagWeight === 0 &&
+			allowSensitiveContentWeight === 0
+		) {
+			return {
+				blocked: true,
+				effectiveMaxWeightSensitiveContent: effectiveMaxWeight,
+			};
 		}
 
 		return {
