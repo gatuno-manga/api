@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { DataEnvelopeInterceptor } from 'src/common/interceptors/data-envelope.interceptor';
-import { CollectionsBooksService } from '../../application/use-cases/collections-books.service';
+import { GetPublicCollectionsUseCase } from '../../../collections/application/use-cases/get-public-collections.use-case';
 import { SavedPagesService } from '../../application/use-cases/saved-pages.service';
 import { UsersService } from '../../application/use-cases/users.service';
 
@@ -16,7 +16,7 @@ import { UsersService } from '../../application/use-cases/users.service';
 @UseInterceptors(DataEnvelopeInterceptor)
 export class UserPublicResourcesController {
 	constructor(
-		private readonly collectionsBooksService: CollectionsBooksService,
+		private readonly getPublicCollectionsUseCase: GetPublicCollectionsUseCase,
 		private readonly savedPagesService: SavedPagesService,
 		private readonly usersService: UsersService,
 	) {}
@@ -49,7 +49,9 @@ export class UserPublicResourcesController {
 	})
 	@ApiResponse({ status: 200, description: 'Public collections retrieved' })
 	async getPublicCollections(@Param('userId', ParseUUIDPipe) userId: string) {
-		return this.collectionsBooksService.getPublicCollections(userId);
+		const collections =
+			await this.getPublicCollectionsUseCase.execute(userId);
+		return collections.map((c) => c.toSnapshot());
 	}
 
 	@Get('saved-pages')
