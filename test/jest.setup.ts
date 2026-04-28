@@ -33,8 +33,10 @@ const slave2Ip = detectDockerContainerIp('gatuno-database-slave-2');
 const redisIp = detectDockerContainerIp('gatuno-redis');
 
 // Força os IPs detectados no process.env para sobrescrever o .env
-if (masterIp) process.env.DB_MASTER_HOST = masterIp;
-if (slave1Ip && slave2Ip) {
+if (masterIp) {
+	process.env.DB_MASTER_HOST = masterIp;
+	process.env.DB_SLAVE_HOSTS = masterIp; // Use master as slave to avoid replication lag in tests
+} else if (slave1Ip && slave2Ip) {
 	process.env.DB_SLAVE_HOSTS = `${slave1Ip},${slave2Ip}`;
 } else if (slave1Ip || slave2Ip) {
 	process.env.DB_SLAVE_HOSTS = slave1Ip || slave2Ip || '';
@@ -56,7 +58,7 @@ setEnvDefault('REDIS_PASSWORD', '');
 
 // Force override for local tests
 process.env.KAFKA_HOST = 'localhost';
-process.env.KAFKA_PORT = '9092';
+process.env.KAFKA_PORT = '9094';
 process.env.DB_MASTER_HOST = process.env.DB_MASTER_HOST || '127.0.0.1';
 process.env.REDIS_HOST = process.env.REDIS_HOST || '127.0.0.1';
 
@@ -67,7 +69,9 @@ setEnvDefault('JWT_REFRESH_SECRET', 'default_refresh_secret');
 setEnvDefault('API_URL', 'http://localhost:3000');
 setEnvDefault('APP_URL', 'http://localhost:4200');
 setEnvDefault('ALLOWED_URL', 'http://localhost:4200');
-setEnvDefault('KAFKA_BROKER', 'localhost:9092');
+setEnvDefault('KAFKA_BROKER', 'localhost:9094');
+
+jest.setTimeout(120000); // 2 minutos para testes pesados
 
 const shouldShowLogs = process.env.TEST_LOGS === 'true';
 
