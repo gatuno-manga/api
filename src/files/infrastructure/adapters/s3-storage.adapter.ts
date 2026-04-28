@@ -46,6 +46,7 @@ export class S3StorageAdapter implements StoragePort {
 				),
 			},
 			forcePathStyle: true, // Obrigatório para RustFS/MinIO
+			tls: endpoint.startsWith('https'),
 		});
 	}
 
