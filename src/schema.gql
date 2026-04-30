@@ -38,6 +38,7 @@ input BookFilterInput {
   publicationOperator: FilterOperator = EQ
   search: String
   sensitiveContent: [String]
+  sites: [String]
   tags: [ID]
   tagsLogic: FilterLogic = AND
   type: [BookType]
@@ -200,6 +201,8 @@ type Query {
   bookComments(chapterId: ID!, limit: Int = 20, page: Int = 1): PaginatedCommentResponse!
   books(filter: BookFilterInput): PaginatedBookResponse!
   chapter(id: ID!): Chapter
+  searchAuthors(query: String!): [Author!]!
+  searchTags(query: String!): [Tag!]!
 }
 
 input ReadingProgressInput {
