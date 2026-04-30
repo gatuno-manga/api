@@ -48,3 +48,10 @@ export class AdminConfig {
 		public readonly password: string,
 	) {}
 }
+
+export class MeiliConfig {
+	constructor(
+		public readonly host: string,
+		public readonly masterKey: string,
+	) {}
+}
