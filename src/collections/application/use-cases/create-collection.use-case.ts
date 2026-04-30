@@ -1,13 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CollectionRepository } from '../ports/collection-repository.port';
 import { Collection } from '../../domain/entities/collection';
 import { UserId } from '../../../common/domain/value-objects/user-id.vo';
+import { CollectionEvents } from '../../domain/constants/events.constant';
 
 @Injectable()
 export class CreateCollectionUseCase {
 	constructor(
 		@Inject('CollectionRepository')
 		private readonly collectionRepository: CollectionRepository,
+		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	async execute(
@@ -18,5 +21,6 @@ export class CreateCollectionUseCase {
 		const owner = UserId.create(ownerId);
 		const collection = Collection.create(owner, title, description);
 		await this.collectionRepository.save(collection);
+		this.eventEmitter.emit(CollectionEvents.CREATED, collection);
 	}
 }

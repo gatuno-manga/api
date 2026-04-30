@@ -3,6 +3,7 @@ import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { BullModule } from '@nestjs/bullmq';
 import { Module, OnApplicationBootstrap } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { SystemEvents } from './common/domain/constants/events.constant';
 import {
 	EventEmitter2,
 	EventEmitterModule,
@@ -150,6 +151,6 @@ export class AppModule implements OnApplicationBootstrap {
 
 	async onApplicationBootstrap() {
 		await this.eventEmitterReadinessWatcher.waitUntilReady();
-		this.eventEmitter.emit('app.ready');
+		this.eventEmitter.emit(SystemEvents.APP_READY);
 	}
 }

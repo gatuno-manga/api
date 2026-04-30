@@ -1,4 +1,5 @@
 import * as path from 'node:path';
+import { BookEvents } from '../../domain/constants/events.constant';
 import {
 	BadRequestException,
 	Inject,
@@ -174,7 +175,7 @@ export class BookUploadService {
 				},
 			});
 
-			this.eventEmitter.emit('cover.uploaded', {
+			this.eventEmitter.emit(BookEvents.COVER_UPLOADED, {
 				bookId: book.id,
 				coverId: savedCover.id,
 				url: savedPath,
@@ -303,7 +304,7 @@ export class BookUploadService {
 				},
 			});
 
-			this.eventEmitter.emit('cover.updated', {
+			this.eventEmitter.emit(BookEvents.COVER_UPDATED, {
 				bookId,
 				coverId,
 				url: savedPath,
@@ -431,7 +432,7 @@ export class BookUploadService {
 				'BookUploadService',
 			);
 
-			this.eventEmitter.emit('covers.uploaded', {
+			this.eventEmitter.emit(BookEvents.COVERS_UPLOADED, {
 				bookId: book.id,
 				count: savedCovers.length,
 				coverIds: savedCovers.map((c) => c.id),
@@ -590,7 +591,7 @@ export class BookUploadService {
 				},
 			});
 
-			this.eventEmitter.emit('chapter.pages.uploaded', {
+			this.eventEmitter.emit(BookEvents.PAGES_UPLOADED, {
 				chapterId: chapter.id,
 				bookId: chapter.book?.id,
 				count: savedPages.length,
@@ -722,7 +723,7 @@ export class BookUploadService {
 				},
 			});
 
-			this.eventEmitter.emit('chapter.document.uploaded', {
+			this.eventEmitter.emit(BookEvents.DOCUMENT_UPLOADED, {
 				chapterId: chapter.id,
 				bookId: chapter.book?.id,
 				format: documentFormat,
@@ -830,7 +831,7 @@ export class BookUploadService {
 				},
 			});
 
-			this.eventEmitter.emit('chapter.content.uploaded', {
+			this.eventEmitter.emit(BookEvents.CONTENT_UPLOADED, {
 				chapterId: chapter.id,
 				bookId: chapter.book?.id,
 				format: dto.format,
