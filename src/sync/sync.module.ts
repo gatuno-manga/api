@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { BooksModule } from '../books/books.module';
 import { UsersModule } from '../users/users.module';
@@ -7,7 +7,11 @@ import { SyncResolver } from './infrastructure/graphql/resolvers/sync.resolver';
 import { SyncController } from './infrastructure/http/sync.controller';
 
 @Module({
-	imports: [UsersModule, BooksModule, AuthModule],
+	imports: [
+		forwardRef(() => UsersModule),
+		forwardRef(() => BooksModule),
+		AuthModule,
+	],
 	controllers: [SyncController],
 	providers: [ProcessSyncUseCase, SyncResolver],
 })
