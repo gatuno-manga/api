@@ -27,6 +27,18 @@ import { AdminUsersService } from '../../application/use-cases/admin-users.servi
 export class AdminUsersController {
 	constructor(private readonly adminUsersService: AdminUsersService) {}
 
+	@Get('search')
+	@ApiOperation({
+		summary: 'Buscar usuários de forma rápida (Meilisearch)',
+		description:
+			'Retorna resultados ranqueados por relevância para autocomplete',
+	})
+	@ApiResponse({ status: 200, description: 'Usuários encontrados' })
+	@ApiQuery({ name: 'q', required: true })
+	search(@Query('q') query: string) {
+		return this.adminUsersService.search(query);
+	}
+
 	@Get()
 	@ApiOperation({
 		summary: 'Listar usuarios com filtros administrativos',
