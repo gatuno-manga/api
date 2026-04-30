@@ -1,24 +1,33 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
-import { ReadingProgressService } from 'src/users/application/use-cases/reading-progress.service';
-import { SavedPagesService } from 'src/users/application/use-cases/saved-pages.service';
+import { ModuleRef } from '@nestjs/core';
+import { CurrentUserDto } from '../../../auth/application/dto/current-user.dto';
+import { ReadingProgressService } from '../../../users/application/use-cases/reading-progress.service';
+import { SavedPagesService } from '../../../users/application/use-cases/saved-pages.service';
 import {
 	ChapterCommentNode,
 	ChapterCommentsService,
-} from 'src/books/application/services/chapter-comments.service';
+} from '../../../books/application/services/chapter-comments.service';
 import { SyncRequestDto } from '../../infrastructure/http/dto/sync-request.dto';
 import { ISyncResult } from '../types/sync-result.interface';
-import { SyncResponseDto } from 'src/users/infrastructure/http/dto/reading-progress.dto';
+import { SyncResponseDto } from '../../../users/infrastructure/http/dto/reading-progress.dto';
 
 @Injectable()
 export class ProcessSyncUseCase {
 	private readonly logger = new Logger(ProcessSyncUseCase.name);
 
-	constructor(
-		private readonly readingProgressService: ReadingProgressService,
-		private readonly savedPagesService: SavedPagesService,
-		private readonly chapterCommentsService: ChapterCommentsService,
-	) {}
+	constructor(private readonly moduleRef: ModuleRef) {}
+
+	private get readingProgressService(): ReadingProgressService {
+		return this.moduleRef.get(ReadingProgressService, { strict: false });
+	}
+
+	private get savedPagesService(): SavedPagesService {
+		return this.moduleRef.get(SavedPagesService, { strict: false });
+	}
+
+	private get chapterCommentsService(): ChapterCommentsService {
+		return this.moduleRef.get(ChapterCommentsService, { strict: false });
+	}
 
 	async execute(
 		user: CurrentUserDto,

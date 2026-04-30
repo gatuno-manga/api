@@ -12,6 +12,8 @@ import {
 	I_BOOK_REPOSITORY,
 	IBookRepository,
 } from '../ports/book-repository.interface';
+import { MEILI_CLIENT } from '../../../infrastructure/meilisearch/meilisearch.constants';
+import { Meilisearch } from 'meilisearch';
 
 @Injectable()
 export class TagsService {
@@ -22,7 +24,28 @@ export class TagsService {
 		@Inject(I_BOOK_REPOSITORY)
 		private readonly bookRepository: IBookRepository,
 		private readonly sensitiveContentService: SensitiveContentService,
+		@Inject(MEILI_CLIENT) private readonly meiliClient: Meilisearch,
 	) {}
+
+	async search(query: string): Promise<Tag[]> {
+		try {
+			const result = await this.meiliClient.index('tags').search(query, {
+				limit: 30,
+			});
+
+			return result.hits.map((hit) => ({
+				id: hit.id as string,
+				name: hit.name as string,
+				altNames: hit.altNames as string[],
+				description: hit.description as string,
+			})) as unknown as Tag[];
+		} catch (error) {
+			this.logger.error(
+				`Error searching tags in Meilisearch: ${error.message}`,
+			);
+			return [];
+		}
+	}
 
 	async get(
 		options: TagsOptions,

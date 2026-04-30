@@ -11,7 +11,14 @@ import { UseGuards } from '@nestjs/common';
 import { BooksService } from '../../../application/services/books.service';
 import { ChapterService } from '../../../application/services/chapter.service';
 import { ChapterCommentsService } from '../../../application/services/chapter-comments.service';
-import { BookModel, CoverModel } from '../models/book.model';
+import { AuthorsService } from '../../../application/services/authors.service';
+import { TagsService } from '../../../application/services/tags.service';
+import {
+	BookModel,
+	CoverModel,
+	AuthorModel,
+	TagModel,
+} from '../models/book.model';
 import { ImageMetadataModel } from '../../../../common/infrastructure/graphql/models/image-metadata.model';
 import { ChapterModel } from '../models/chapter.model';
 import { ChapterCommentModel } from '../models/comment.model';
@@ -35,7 +42,19 @@ export class BookResolver {
 		private readonly booksService: BooksService,
 		private readonly chapterService: ChapterService,
 		private readonly chapterCommentsService: ChapterCommentsService,
+		private readonly authorsService: AuthorsService,
+		private readonly tagsService: TagsService,
 	) {}
+
+	@Query(() => [AuthorModel], { name: 'searchAuthors' })
+	async searchAuthors(@Args('query') query: string) {
+		return this.authorsService.search(query);
+	}
+
+	@Query(() => [TagModel], { name: 'searchTags' })
+	async searchTags(@Args('query') query: string) {
+		return this.tagsService.search(query);
+	}
 
 	@Query(() => PaginatedBookResponseModel, { name: 'books' })
 	@UseGuards(OptionalGqlJwtAuthGuard)

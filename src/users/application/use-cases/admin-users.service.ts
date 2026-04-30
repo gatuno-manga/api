@@ -1,6 +1,7 @@
 import {
 	BadRequestException,
 	ConflictException,
+	Inject,
 	Injectable,
 	NotFoundException,
 } from '@nestjs/common';
@@ -26,6 +27,8 @@ import { User } from '../../infrastructure/database/entities/user.entity';
 import { AccessPolicyEffectEnum } from '../../domain/enums/access-policy-effect.enum';
 import { AccessPolicyScopeEnum } from '../../domain/enums/access-policy-scope.enum';
 import { RolesEnum } from '../../domain/enums/roles.enum';
+import { MEILI_CLIENT } from '../../../infrastructure/meilisearch/meilisearch.constants';
+import { Meilisearch } from 'meilisearch';
 
 type AdminUsersCursorPayload = {
 	createdAt: string;
@@ -43,7 +46,19 @@ export class AdminUsersService {
 		private readonly groupRepository: Repository<UserGroup>,
 		@InjectRepository(AccessPolicy)
 		private readonly accessPolicyRepository: Repository<AccessPolicy>,
+		@Inject(MEILI_CLIENT) private readonly meiliClient: Meilisearch,
 	) {}
+
+	async search(query: string) {
+		try {
+			const result = await this.meiliClient.index('users').search(query, {
+				limit: 20,
+			});
+			return result.hits;
+		} catch (error) {
+			return [];
+		}
+	}
 
 	async listUsers(params: {
 		page: number;

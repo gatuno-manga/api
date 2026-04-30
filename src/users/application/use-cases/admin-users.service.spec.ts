@@ -8,6 +8,7 @@ import { UserGroup } from '../../infrastructure/database/entities/user-group.ent
 import { AccessPolicy } from '../../infrastructure/database/entities/access-policy.entity';
 import { AccessPolicyEffectEnum } from '../../domain/enums/access-policy-effect.enum';
 import { AccessPolicyScopeEnum } from '../../domain/enums/access-policy-scope.enum';
+import { MEILI_CLIENT } from '../../../infrastructure/meilisearch/meilisearch.constants';
 
 describe('AdminUsersService', () => {
 	let service: AdminUsersService;
@@ -15,8 +16,15 @@ describe('AdminUsersService', () => {
 	let roleRepository: jest.Mocked<Repository<Role>>;
 	let userGroupRepository: jest.Mocked<Repository<UserGroup>>;
 	let accessPolicyRepository: jest.Mocked<Repository<AccessPolicy>>;
+	let meiliClient: any;
 
 	beforeEach(async () => {
+		meiliClient = {
+			index: jest.fn().mockReturnValue({
+				search: jest.fn(),
+			}),
+		};
+
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				AdminUsersService,
@@ -58,6 +66,10 @@ describe('AdminUsersService', () => {
 						createQueryBuilder: jest.fn(),
 					},
 				},
+				{
+					provide: MEILI_CLIENT,
+					useValue: meiliClient,
+				},
 			],
 		}).compile();
 
@@ -66,6 +78,31 @@ describe('AdminUsersService', () => {
 		roleRepository = module.get(getRepositoryToken(Role));
 		userGroupRepository = module.get(getRepositoryToken(UserGroup));
 		accessPolicyRepository = module.get(getRepositoryToken(AccessPolicy));
+	});
+
+	describe('search', () => {
+		it('should call meilisearch with the query', async () => {
+			const query = 'admin';
+			const mockHits = [{ id: '1', userName: 'admin' }];
+			meiliClient
+				.index('users')
+				.search.mockResolvedValue({ hits: mockHits });
+
+			const result = await service.search(query);
+
+			expect(meiliClient.index).toHaveBeenCalledWith('users');
+			expect(result).toEqual(mockHits);
+		});
+
+		it('should return empty array on error', async () => {
+			meiliClient
+				.index('users')
+				.search.mockRejectedValue(new Error('Meili Error'));
+
+			const result = await service.search('query');
+
+			expect(result).toEqual([]);
+		});
 	});
 
 	describe('evaluateAccessForBook', () => {

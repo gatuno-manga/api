@@ -8,7 +8,9 @@
 	"transform": {
 		"^.+\\.(t|j)s$": "ts-jest"
 	},
-	"transformIgnorePatterns": ["node_modules/(?!(p-limit|yocto-queue)/)"],
+	"transformIgnorePatterns": [
+		"node_modules/(?!(p-limit|yocto-queue|meilisearch)/)"
+	],
 	"moduleNameMapper": {
 		"^src/(.*)$": "<rootDir>/../src/$1",
 		"^@src/(.*)$": "<rootDir>/../src/$1",
