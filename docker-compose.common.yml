@@ -27,6 +27,8 @@ services:
       - KAFKA_HOST=${KAFKA_HOST:-kafka}
       - KAFKA_PORT=${KAFKA_PORT:-9092}
       - PLAYWRIGHT_WS_ENDPOINT=${PLAYWRIGHT_WS_ENDPOINT:-ws://browserless:3000}
+      - NANOMQ_HOST=${NANOMQ_HOST:-nanomq}
+      - NANOMQ_PORT=${NANOMQ_PORT:-1883}
     healthcheck:
       test:
         [
@@ -59,6 +61,21 @@ services:
         condition: service_healthy
       browserless:
         condition: service_started
+      nanomq:
+        condition: service_started
+    networks:
+      - gatuno-net
+
+  nanomq:
+    image: emqx/nanomq:latest
+    container_name: gatuno-nanomq
+    environment:
+      - NANOMQ_BROKER_MQTT_CONNACK_ACK_TIMEOUT=5s
+    healthcheck:
+      test: ["CMD", "nanomq_cli", "broker", "stats"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - gatuno-net
 

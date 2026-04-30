@@ -30,6 +30,7 @@ import { MeilisearchModule } from './infrastructure/meilisearch/meilisearch.modu
 import { FilesModule } from './files/files.module';
 import { HealthModule } from './infrastructure/health/health.module';
 import { LoggingModule } from './infrastructure/logging/logging.module';
+import { MqttModule } from './infrastructure/mqtt/mqtt.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { ScrapingModule } from './scraping/scraping.module';
 import { SyncModule } from './sync/sync.module';
@@ -47,6 +48,7 @@ import { InteractionsModule } from './interactions/interactions.module';
 		MetricsModule,
 		DatabaseModule,
 		MeilisearchModule,
+		MqttModule,
 		EventEmitterModule.forRoot(),
 		ScheduleModule.forRoot(),
 		CollectionsModule,

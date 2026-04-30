@@ -59,6 +59,7 @@ import { ChapterManagementService } from './application/services/chapter-managem
 import { TagsController } from './infrastructure/http/controllers/tags.controller';
 import { TagsService } from './application/services/tags.service';
 import { AuthorsService } from './application/services/authors.service';
+import { BooksNotifier } from './infrastructure/notifiers/books.notifier';
 
 import { I_BOOK_REPOSITORY } from './application/ports/book-repository.interface';
 import { TypeOrmBookRepositoryAdapter } from './infrastructure/database/adapters/typeorm-book-repository.adapter';
@@ -238,6 +239,7 @@ import { BookResolver } from './infrastructure/graphql/resolvers/book.resolver';
 		BookDeletionService,
 		// Listeners
 		FileDeletionEvents,
+		BooksNotifier,
 		// WebSocket Gateway
 		BooksGateway,
 		BookResolver,

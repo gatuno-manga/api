@@ -186,4 +186,17 @@ export const validationSchema = Joi.object({
 		),
 	KAFKA_HOST: Joi.string().default('kafka').description('Kafka broker host'),
 	KAFKA_PORT: Joi.number().default(9092).description('Kafka broker port'),
+	NANOMQ_HOST: Joi.string()
+		.default('nanomq')
+		.description('NanoMQ broker host'),
+	NANOMQ_PORT: Joi.number()
+		.min(0)
+		.max(65535)
+		.default(1883)
+		.description('NanoMQ MQTT port'),
+	NANOMQ_WS_PORT: Joi.number()
+		.min(0)
+		.max(65535)
+		.default(8083)
+		.description('NanoMQ MQTT over WebSocket port'),
 });
