@@ -12,6 +12,8 @@ import {
 	I_BOOK_REPOSITORY,
 	IBookRepository,
 } from '../ports/book-repository.interface';
+import { MEILI_CLIENT } from '../../../infrastructure/meilisearch/meilisearch.constants';
+import { Meilisearch } from 'meilisearch';
 
 @Injectable()
 export class AuthorsService {
@@ -23,7 +25,32 @@ export class AuthorsService {
 		@Inject(I_BOOK_REPOSITORY)
 		private readonly bookRepository: IBookRepository,
 		private readonly sensitiveContentService: SensitiveContentService,
+		@Inject(MEILI_CLIENT) private readonly meiliClient: Meilisearch,
 	) {}
+
+	async search(query: string): Promise<Author[]> {
+		try {
+			const result = await this.meiliClient
+				.index('authors')
+				.search(query, {
+					limit: 20,
+				});
+
+			return result.hits.map((hit) => ({
+				id: hit.id as string,
+				name: hit.name as string,
+				biography: hit.biography as string,
+				createdAt: new Date((hit.createdAt as number) * 1000),
+				updatedAt: new Date((hit.updatedAt as number) * 1000),
+			})) as unknown as Author[];
+		} catch (error) {
+			this.logger.error(
+				`Error searching authors in Meilisearch: ${error.message}`,
+			);
+			// Fallback ou lista vazia
+			return [];
+		}
+	}
 
 	async get(
 		options: AuthorsOptions,

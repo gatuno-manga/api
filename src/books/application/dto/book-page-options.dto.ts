@@ -139,6 +139,16 @@ export class BookPageOptionsDto extends PageOptionsDto {
 	authorsLogic?: FilterLogic = FilterLogic.AND;
 
 	@ApiPropertyOptional({
+		description: 'Filter by source sites',
+		example: ['manganato.com', 'hiper.cool'],
+		type: [String],
+		isArray: true,
+	})
+	@IsOptional()
+	@ToArray()
+	sites?: string[] = [];
+
+	@ApiPropertyOptional({
 		description: 'Field to order results by',
 		example: BookOrderField.CREATED_AT,
 		enum: BookOrderField,
