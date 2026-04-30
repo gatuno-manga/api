@@ -38,6 +38,7 @@ services:
 
     volumes:
       - ./.env:/usr/src/app/.env
+      - ./tsconfig.json:/usr/src/app/tsconfig.json
 
   browserless:
     image: browserless/chrome:latest
@@ -69,3 +70,13 @@ services:
     ports:
       - "9000:9000"
       - "9001:9001"
+
+  meilisearch:
+    ports:
+      - "7700:7700"
+
+  meilisync:
+    volumes:
+      - ./search/meilisync.yml:/meilisync/config.yml
+      - ./search/progress.json:/meilisync/progress.json
+      - ./search/patch.py:/meilisync/patch.py
