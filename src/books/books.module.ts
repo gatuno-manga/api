@@ -58,6 +58,8 @@ import { BookUploadService } from './application/services/book-upload.service';
 import { ChapterManagementService } from './application/services/chapter-management.service';
 import { TagsController } from './infrastructure/http/controllers/tags.controller';
 import { TagsService } from './application/services/tags.service';
+import { AuthorsService } from './application/services/authors.service';
+import { BooksNotifier } from './infrastructure/notifiers/books.notifier';
 
 import { I_BOOK_REPOSITORY } from './application/ports/book-repository.interface';
 import { TypeOrmBookRepositoryAdapter } from './infrastructure/database/adapters/typeorm-book-repository.adapter';
@@ -213,6 +215,7 @@ import { BookResolver } from './infrastructure/graphql/resolvers/book.resolver';
 		ChapterCommentsService,
 		SensitiveContentService,
 		TagsService,
+		AuthorsService,
 		ChapterScrapingJob,
 		ChapterScrapingService,
 		ChapterScrapingSharedService,
@@ -236,6 +239,7 @@ import { BookResolver } from './infrastructure/graphql/resolvers/book.resolver';
 		BookDeletionService,
 		// Listeners
 		FileDeletionEvents,
+		BooksNotifier,
 		// WebSocket Gateway
 		BooksGateway,
 		BookResolver,
@@ -254,6 +258,8 @@ import { BookResolver } from './infrastructure/graphql/resolvers/book.resolver';
 		I_UNIT_OF_WORK,
 		ChapterCommentsService,
 		ChapterService,
+		AuthorsService,
+		TagsService,
 	],
 })
 export class BooksModule {}

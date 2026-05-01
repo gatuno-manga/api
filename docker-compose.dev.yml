@@ -19,6 +19,8 @@ services:
       - PLAYWRIGHT_SLOW_MO=${PLAYWRIGHT_SLOW_MO}
       - KAFKA_HOST=${KAFKA_HOST:-kafka}
       - KAFKA_PORT=${KAFKA_PORT:-9092}
+      - NANOMQ_HOST=${NANOMQ_HOST:-nanomq}
+      - NANOMQ_PORT=${NANOMQ_PORT:-1883}
       # Session / JWT Settings (defaults in Joi schema: ACCESS=15m, REFRESH=7d, MAX_SESSIONS=0=unlimited)
       # - JWT_ACCESS_EXPIRATION=15m
       # - JWT_REFRESH_EXPIRATION=7d
@@ -26,6 +28,7 @@ services:
     depends_on:
       - browserless
       - kafka
+      - nanomq
     develop:
       watch:
         - action: sync
@@ -38,6 +41,7 @@ services:
 
     volumes:
       - ./.env:/usr/src/app/.env
+      - ./tsconfig.json:/usr/src/app/tsconfig.json
 
   browserless:
     image: browserless/chrome:latest
@@ -69,3 +73,18 @@ services:
     ports:
       - "9000:9000"
       - "9001:9001"
+
+  meilisearch:
+    ports:
+      - "7700:7700"
+
+  meilisync:
+    volumes:
+      - ./search/meilisync.yml:/meilisync/config.yml
+      - ./search/progress.json:/meilisync/progress.json
+      - ./search/patch.py:/meilisync/patch.py
+
+  nanomq:
+    ports:
+      - "${NANOMQ_PORT:-1883}:1883"
+      - "${NANOMQ_WS_PORT:-8083}:8083"

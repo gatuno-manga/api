@@ -3,6 +3,7 @@ import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { BullModule } from '@nestjs/bullmq';
 import { Module, OnApplicationBootstrap } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { SystemEvents } from './common/domain/constants/events.constant';
 import {
 	EventEmitter2,
 	EventEmitterModule,
@@ -25,9 +26,11 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
+import { MeilisearchModule } from './infrastructure/meilisearch/meilisearch.module';
 import { FilesModule } from './files/files.module';
 import { HealthModule } from './infrastructure/health/health.module';
 import { LoggingModule } from './infrastructure/logging/logging.module';
+import { MqttModule } from './infrastructure/mqtt/mqtt.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { ScrapingModule } from './scraping/scraping.module';
 import { SyncModule } from './sync/sync.module';
@@ -37,13 +40,15 @@ import { InteractionsModule } from './interactions/interactions.module';
 
 @Module({
 	imports: [
+		AppConfigModule,
 		CommonModule,
 		DashboardModule,
 		LoggingModule,
 		HealthModule,
 		MetricsModule,
 		DatabaseModule,
-		AppConfigModule,
+		MeilisearchModule,
+		MqttModule,
 		EventEmitterModule.forRoot(),
 		ScheduleModule.forRoot(),
 		CollectionsModule,
@@ -67,23 +72,20 @@ import { InteractionsModule } from './interactions/interactions.module';
 		ThrottlerModule.forRoot([
 			{
 				name: 'short',
-				ttl: 1000, // 1 segundo
-				limit: 100, // Aumentado de 3 para 100
+				ttl: 1000,
+				limit: 100,
 			},
 			{
 				name: 'medium',
-				ttl: 10000, // 10 segundos
-				limit: 200, // Aumentado de 20 para 200
+				ttl: 10000,
+				limit: 200,
 			},
 			{
 				name: 'long',
-				ttl: 60000, // 1 minuto
-				limit: 1000, // Aumentado de 100 para 1000
+				ttl: 60000,
+				limit: 1000,
 			},
 		]),
-		ScrapingModule,
-		BooksModule,
-		SyncModule,
 		BullModule.forRootAsync({
 			imports: [AppConfigModule],
 			inject: [AppConfigService],
@@ -115,9 +117,12 @@ import { InteractionsModule } from './interactions/interactions.module';
 			}),
 		}),
 		FilesModule,
-		UsersModule,
 		AuthModule,
+		UsersModule,
+		ScrapingModule,
+		BooksModule,
 		BookRequestsModule,
+		SyncModule,
 	],
 	controllers: [AppController],
 	providers: [
@@ -148,6 +153,6 @@ export class AppModule implements OnApplicationBootstrap {
 
 	async onApplicationBootstrap() {
 		await this.eventEmitterReadinessWatcher.waitUntilReady();
-		this.eventEmitter.emit('app.ready');
+		this.eventEmitter.emit(SystemEvents.APP_READY);
 	}
 }

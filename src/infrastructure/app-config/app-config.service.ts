@@ -8,6 +8,7 @@ import {
 	AdminConfig,
 	DatabaseConfig,
 	JwtConfig,
+	MeiliConfig,
 	RedisConfig,
 	SecurityConfig,
 } from './app-config.values';
@@ -324,6 +325,13 @@ export class AppConfigService {
 		return (
 			this.config.get<string>('FLARESOLVERR_URL') ||
 			'http://flaresolverr:8191'
+		);
+	}
+
+	get meili(): MeiliConfig {
+		return new MeiliConfig(
+			this.config.get<string>('MEILI_HOST') || 'http://meilisearch:7700',
+			this.config.get<string>('MEILI_MASTER_KEY') || '',
 		);
 	}
 }

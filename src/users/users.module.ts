@@ -20,6 +20,7 @@ import { UserGroup } from './infrastructure/database/entities/user-group.entity'
 import { User } from './infrastructure/database/entities/user.entity';
 import { UserImage } from './infrastructure/database/entities/user-image.entity';
 import { ReadingProgressGateway } from './infrastructure/gateways/reading-progress.gateway';
+import { ReadingProgressNotifier } from './infrastructure/notifiers/reading-progress.notifier';
 import { ReadingProgressController } from './infrastructure/controllers/reading-progress.controller';
 import { ReadingProgressService } from './application/use-cases/reading-progress.service';
 import {
@@ -81,6 +82,7 @@ import { TypeOrmUserImageRepositoryAdapter } from './infrastructure/database/ada
 		AdminUsersService,
 		ReadingProgressService,
 		ReadingProgressGateway,
+		ReadingProgressNotifier,
 		SavedPagesService,
 		UserResourcesMapper,
 		LastWriteWinsStrategy,

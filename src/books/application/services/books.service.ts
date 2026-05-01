@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 import { PageDto } from 'src/common/pagination/page.dto';
 import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
@@ -30,6 +30,8 @@ import {
 	TypeFilterStrategy,
 	SensitiveContentFilterStrategy,
 } from '../strategies';
+import { MEILI_CLIENT } from '../../../infrastructure/meilisearch/meilisearch.constants';
+import { Meilisearch } from 'meilisearch';
 
 /**
  * BooksService refatorado - agora atua como orquestrador (Facade)
@@ -47,10 +49,11 @@ export class BooksService {
 		private readonly chapterManagementService: ChapterManagementService,
 		private readonly bookRelationshipService: BookRelationshipService,
 		private readonly bookBookRelationshipService: BookBookRelationshipService,
+		@Inject(MEILI_CLIENT) private readonly meiliClient: Meilisearch,
 	) {
 		this.filterStrategies = [
 			new TypeFilterStrategy(),
-			new SearchFilterStrategy(),
+			new SearchFilterStrategy(this.meiliClient),
 			new TagsFilterStrategy(),
 			new ExcludeTagsFilterStrategy(),
 			new PublicationFilterStrategy(),

@@ -1,4 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
 	BookRequestRepository,
 	I_BOOK_REQUEST_REPOSITORY,
@@ -23,12 +24,14 @@ import { BookRequestUrl } from '../../domain/value-objects/book-request-url.vo';
 import { BookRequestReason } from '../../domain/value-objects/book-request-reason.vo';
 import { BookRequestStatus } from '../../domain/enums/book-request-status.enum';
 import { RejectionMessage } from '../../domain/value-objects/rejection-message.vo';
+import { BookRequestEvents } from '../../domain/constants/events.constant';
 
 @Injectable()
 export class BookRequestsService {
 	constructor(
 		@Inject(I_BOOK_REQUEST_REPOSITORY)
 		private readonly bookRequestRepository: BookRequestRepository,
+		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	async create(dto: CreateBookRequestDto, userId: string): Promise<void> {
@@ -53,6 +56,7 @@ export class BookRequestsService {
 		);
 
 		await this.bookRequestRepository.save(bookRequest);
+		this.eventEmitter.emit(BookRequestEvents.CREATED, bookRequest);
 	}
 
 	async listMyRequests(userId: string): Promise<BookRequest[]> {
@@ -71,6 +75,7 @@ export class BookRequestsService {
 
 		const approvedRequest = request.approve(adminId);
 		await this.bookRequestRepository.save(approvedRequest);
+		this.eventEmitter.emit(BookRequestEvents.APPROVED, approvedRequest);
 	}
 
 	async reject(
@@ -85,5 +90,6 @@ export class BookRequestsService {
 
 		const rejectedRequest = request.reject(adminId, dto.message ?? null);
 		await this.bookRequestRepository.save(rejectedRequest);
+		this.eventEmitter.emit(BookRequestEvents.REJECTED, rejectedRequest);
 	}
 }

@@ -102,6 +102,12 @@ export class BookFilterInput {
 	@IsEnum(FilterLogic)
 	authorsLogic?: FilterLogic;
 
+	@Field(() => [String], { nullable: 'itemsAndList' })
+	@IsOptional()
+	@IsArray()
+	@IsString({ each: true })
+	sites?: string[];
+
 	@Field(() => BookOrderField, {
 		nullable: true,
 		defaultValue: BookOrderField.CREATED_AT,

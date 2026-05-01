@@ -11,6 +11,7 @@ import { BookQueryService } from './book-query.service';
 import { BookRelationshipService } from './book-relationship.service';
 import { BookUpdateService } from './book-update.service';
 import { ChapterManagementService } from './chapter-management.service';
+import { MEILI_CLIENT } from '../../../infrastructure/meilisearch/meilisearch.constants';
 
 describe('BooksService', () => {
 	let service: BooksService;
@@ -134,6 +135,14 @@ describe('BooksService', () => {
 				{
 					provide: BookBookRelationshipService,
 					useValue: mockBookBookRelationshipService,
+				},
+				{
+					provide: MEILI_CLIENT,
+					useValue: {
+						index: jest.fn().mockReturnValue({
+							search: jest.fn(),
+						}),
+					},
 				},
 			],
 		}).compile();

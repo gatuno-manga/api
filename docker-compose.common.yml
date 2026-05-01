@@ -27,6 +27,8 @@ services:
       - KAFKA_HOST=${KAFKA_HOST:-kafka}
       - KAFKA_PORT=${KAFKA_PORT:-9092}
       - PLAYWRIGHT_WS_ENDPOINT=${PLAYWRIGHT_WS_ENDPOINT:-ws://browserless:3000}
+      - NANOMQ_HOST=${NANOMQ_HOST:-nanomq}
+      - NANOMQ_PORT=${NANOMQ_PORT:-1883}
     healthcheck:
       test:
         [
@@ -59,6 +61,21 @@ services:
         condition: service_healthy
       browserless:
         condition: service_started
+      nanomq:
+        condition: service_started
+    networks:
+      - gatuno-net
+
+  nanomq:
+    image: emqx/nanomq:latest
+    container_name: gatuno-nanomq
+    environment:
+      - NANOMQ_BROKER_MQTT_CONNACK_ACK_TIMEOUT=5s
+    healthcheck:
+      test: ["CMD", "nanomq_cli", "broker", "stats"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - gatuno-net
 
@@ -254,6 +271,48 @@ services:
     networks:
       - gatuno-net
 
+  meilisearch:
+    image: getmeili/meilisearch:v1.12
+    container_name: gatuno-meilisearch
+    environment:
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY}
+      - MEILI_NO_ANALYTICS=true
+      - MEILI_ENV=${NODE_ENV:-development}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - meilisearch-data:/meili_data
+    networks:
+      - gatuno-net
+
+  meilisync:
+    image: long2ice/meilisync:latest
+    container_name: gatuno-meilisync
+    environment:
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY}
+      - MEILI_HOST=http://meilisearch:7700
+      - DB_HOST=database-master
+      - DB_PORT=3306
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASS}
+      - DB_NAME=${DB_NAME}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_DSN=redis://:${REDIS_PASSWORD}@redis:6379/0
+    command: >
+      sh -c "python3 /meilisync/patch.py && python3 -c \"import os, sys; print(os.path.expandvars(sys.stdin.read()))\" < /meilisync/config.yml > /tmp/config.yml && meilisync -c /tmp/config.yml start"
+    depends_on:
+      database-master:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+    networks:
+      - gatuno-net
+
 
 volumes:
   database-data:
@@ -263,6 +322,7 @@ volumes:
   redis_data:
   rustfs_data:
   kafka-data:
+  meilisearch-data:
 
 networks:
   gatuno-net:
