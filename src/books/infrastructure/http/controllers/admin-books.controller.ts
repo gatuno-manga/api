@@ -8,16 +8,20 @@ import {
 	ParseArrayPipe,
 	Patch,
 	Post,
+	UploadedFile,
 	UseGuards,
+	UseInterceptors,
 } from '@nestjs/common';
 import {
 	ApiBearerAuth,
 	ApiBody,
+	ApiConsumes,
 	ApiOperation,
 	ApiParam,
 	ApiResponse,
 	ApiTags,
 } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
@@ -33,6 +37,8 @@ import { ToggleAutoUpdateDto } from '@books/application/dto/toggle-auto-update.d
 import { UpdateBookDto } from '@books/application/dto/update-book.dto';
 import { UpdateChapterDto } from '@books/application/dto/update-chapter.dto';
 import { UpdateCoverDto } from '@books/application/dto/update-cover.dto';
+import { UploadCoverDto } from '@books/application/dto/upload-cover.dto';
+import { ScrapeCoverDto } from '@books/application/dto/scrape-cover.dto';
 import { BookUpdateScheduler } from '@books/infrastructure/jobs/book-update.scheduler';
 import { BookDeletionService } from '@books/application/services/book-deletion.service';
 import { ChapterManagementService } from '@books/application/services/chapter-management.service';
@@ -324,6 +330,58 @@ export class AdminBooksController {
 		@Body() dto: UpdateCoverDto,
 	) {
 		return this.booksService.updateCover(idBook, idCover, dto);
+	}
+
+	@Post(':idBook/covers/manual')
+	@UseInterceptors(FileInterceptor('file'))
+	@ApiConsumes('multipart/form-data')
+	@ApiOperation({
+		summary: 'Upload cover manually',
+		description:
+			'Upload a cover image file for a specific book (Admin only)',
+	})
+	@ApiBody({
+		schema: {
+			type: 'object',
+			properties: {
+				file: {
+					type: 'string',
+					format: 'binary',
+					description: 'Image file (JPG, PNG, WebP)',
+				},
+				title: {
+					type: 'string',
+					description: 'Cover title (optional)',
+				},
+			},
+		},
+	})
+	@ApiResponse({ status: 201, description: 'Cover uploaded successfully' })
+	@ApiResponse({ status: 404, description: 'Book not found' })
+	async uploadCoverManual(
+		@Param('idBook') idBook: string,
+		@UploadedFile() file: Express.Multer.File,
+		@Body() dto: UploadCoverDto,
+	) {
+		if (!file) {
+			throw new BadRequestException('No file uploaded');
+		}
+		return this.booksService.manualUploadCover(idBook, file, dto);
+	}
+
+	@Post(':idBook/covers/scrape')
+	@ApiOperation({
+		summary: 'Scrape cover from URL',
+		description:
+			'Trigger the scraper to fetch a cover from an external URL (Admin only)',
+	})
+	@ApiResponse({ status: 201, description: 'Scrape job scheduled' })
+	@ApiResponse({ status: 404, description: 'Book not found' })
+	async scrapeCover(
+		@Param('idBook') idBook: string,
+		@Body() dto: ScrapeCoverDto,
+	) {
+		return this.booksService.scrapeCover(idBook, dto);
 	}
 
 	@Post(':idBook/chapters/manual')
