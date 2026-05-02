@@ -199,23 +199,6 @@ export class AdminBooksController {
 		return this.booksService.toggleAutoUpdate(idBook, dto.enabled);
 	}
 
-	@Patch(':idBook')
-	@ApiOperation({
-		summary: 'Update book',
-		description: 'Update book information (Admin only)',
-	})
-	@ApiParam({
-		name: 'idBook',
-		description: 'Book unique identifier',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@ApiResponse({ status: 200, description: 'Book updated successfully' })
-	@ApiResponse({ status: 404, description: 'Book not found' })
-	@ApiResponse({ status: 400, description: 'Invalid input data' })
-	updateBook(@Param('idBook') id: string, @Body() dto: UpdateBookDto) {
-		return this.booksService.updateBook(id, dto);
-	}
-
 	@Patch(':idBook/chapters')
 	@ApiOperation({
 		summary: 'Update chapters',
@@ -257,6 +240,23 @@ export class AdminBooksController {
 		@Body() dto: OrderChaptersDto[],
 	) {
 		return this.booksService.orderChapters(idBook, dto);
+	}
+
+	@Patch(':idBook')
+	@ApiOperation({
+		summary: 'Update book',
+		description: 'Update book information (Admin only)',
+	})
+	@ApiParam({
+		name: 'idBook',
+		description: 'Book unique identifier',
+		example: '550e8400-e29b-41d4-a716-446655440000',
+	})
+	@ApiResponse({ status: 200, description: 'Book updated successfully' })
+	@ApiResponse({ status: 404, description: 'Book not found' })
+	@ApiResponse({ status: 400, description: 'Invalid input data' })
+	updateBook(@Param('idBook') id: string, @Body() dto: UpdateBookDto) {
+		return this.booksService.updateBook(id, dto);
 	}
 
 	@Patch(':idBook/covers/:idCover/selected')
@@ -307,31 +307,6 @@ export class AdminBooksController {
 		return this.booksService.orderCovers(idBook, dto);
 	}
 
-	@Patch(':idBook/covers/:idCover')
-	@ApiOperation({
-		summary: 'Update book cover',
-		description: 'Update cover data for a book (Admin only)',
-	})
-	@ApiParam({
-		name: 'idBook',
-		description: 'Book unique identifier',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@ApiParam({
-		name: 'idCover',
-		description: 'Cover unique identifier',
-		example: '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
-	})
-	@ApiResponse({ status: 200, description: 'Cover updated successfully' })
-	@ApiResponse({ status: 404, description: 'Book or cover not found' })
-	updateCover(
-		@Param('idBook') idBook: string,
-		@Param('idCover') idCover: string,
-		@Body() dto: UpdateCoverDto,
-	) {
-		return this.booksService.updateCover(idBook, idCover, dto);
-	}
-
 	@Patch(':idBook/covers/:idCover/fix')
 	@ApiOperation({
 		summary: 'Fix book cover',
@@ -371,6 +346,31 @@ export class AdminBooksController {
 	@ApiResponse({ status: 404, description: 'Book not found' })
 	fixBookCovers(@Param('idBook') idBook: string) {
 		return this.booksService.fixBookCovers(idBook);
+	}
+
+	@Patch(':idBook/covers/:idCover')
+	@ApiOperation({
+		summary: 'Update book cover',
+		description: 'Update cover data for a book (Admin only)',
+	})
+	@ApiParam({
+		name: 'idBook',
+		description: 'Book unique identifier',
+		example: '550e8400-e29b-41d4-a716-446655440000',
+	})
+	@ApiParam({
+		name: 'idCover',
+		description: 'Cover unique identifier',
+		example: '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
+	})
+	@ApiResponse({ status: 200, description: 'Cover updated successfully' })
+	@ApiResponse({ status: 404, description: 'Book or cover not found' })
+	updateCover(
+		@Param('idBook') idBook: string,
+		@Param('idCover') idCover: string,
+		@Body() dto: UpdateCoverDto,
+	) {
+		return this.booksService.updateCover(idBook, idCover, dto);
 	}
 
 	@Post(':idBook/covers/manual')
