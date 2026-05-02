@@ -341,4 +341,15 @@ export class AppConfigService {
 			port: this.config.get<number>('NANOMQ_PORT') || 1883,
 		};
 	}
+
+	get android() {
+		return {
+			packageName:
+				this.config.get<string>('ANDROID_PACKAGE_NAME') ||
+				'com.gatuno.app',
+			sha256Fingerprints: this.parseCsv(
+				this.config.get<string>('ANDROID_SHA256_FINGERPRINTS'),
+			),
+		};
+	}
 }
