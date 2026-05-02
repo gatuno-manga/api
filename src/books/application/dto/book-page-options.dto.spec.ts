@@ -52,4 +52,21 @@ describe('BookPageOptionsDto', () => {
 		expect(errors.length).toBeGreaterThan(0);
 		expect(errors[0].property).toBe('publicationOperator');
 	});
+
+	it('should fail validation with invalid ids', async () => {
+		const dto = new BookPageOptionsDto();
+		dto.ids = ['invalid-uuid'];
+
+		const errors = await validate(dto);
+		expect(errors.length).toBeGreaterThan(0);
+		expect(errors[0].property).toBe('ids');
+	});
+
+	it('should pass validation with valid ids', async () => {
+		const dto = new BookPageOptionsDto();
+		dto.ids = ['550e8400-e29b-41d4-a716-446655440000'];
+
+		const errors = await validate(dto);
+		expect(errors.length).toBe(0);
+	});
 });

@@ -26,6 +26,17 @@ export class BookPageOptionsDto extends PageOptionsDto {
 	cursor?: string;
 
 	@ApiPropertyOptional({
+		description: 'Filter by specific book IDs',
+		example: ['550e8400-e29b-41d4-a716-446655440000'],
+		type: [String],
+		isArray: true,
+	})
+	@IsOptional()
+	@ToArray()
+	@IsUUID('4', { each: true })
+	ids?: string[] = [];
+
+	@ApiPropertyOptional({
 		description: 'Filter by book types',
 		example: [BookType.MANGA, BookType.MANHWA],
 		enum: BookType,

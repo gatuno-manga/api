@@ -28,6 +28,7 @@ import {
 	SearchFilterStrategy,
 	TagsFilterStrategy,
 	TypeFilterStrategy,
+	IdFilterStrategy,
 	SensitiveContentFilterStrategy,
 } from '../strategies';
 import { MEILI_CLIENT } from '../../../infrastructure/meilisearch/meilisearch.constants';
@@ -52,6 +53,7 @@ export class BooksService {
 		@Inject(MEILI_CLIENT) private readonly meiliClient: Meilisearch,
 	) {
 		this.filterStrategies = [
+			new IdFilterStrategy(),
 			new TypeFilterStrategy(),
 			new SearchFilterStrategy(this.meiliClient),
 			new TagsFilterStrategy(),

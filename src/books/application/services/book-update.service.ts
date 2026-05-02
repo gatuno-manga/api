@@ -259,7 +259,7 @@ export class BookUpdateService {
 		const coversToFix = book.covers
 			.filter((c) => c.originalUrl)
 			.map((c) => ({
-				url: c.originalUrl,
+				url: c.originalUrl || '',
 				title: c.title,
 			}));
 
@@ -269,7 +269,7 @@ export class BookUpdateService {
 			);
 			await this.coverImageService.addCoverToQueue(
 				idBook,
-				book.originalUrl || '',
+				book.originalUrl?.[0] || '',
 				coversToFix,
 			);
 		}
