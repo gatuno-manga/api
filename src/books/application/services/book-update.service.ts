@@ -333,4 +333,44 @@ export class BookUpdateService {
 			);
 		}
 	}
+
+	/**
+	 * Conserta uma capa específica re-enfileirando-a para processamento
+	 */
+	async fixCover(idBook: string, idCover: string): Promise<void> {
+		const book = await this.bookRepository.findById(idBook, ['covers']);
+
+		if (!book) {
+			this.logger.warn(`Book with id ${idBook} not found`);
+			throw new NotFoundException(`Book with id ${idBook} not found`);
+		}
+
+		const cover = book.covers.find((c) => c.id === idCover);
+
+		if (!cover) {
+			this.logger.warn(
+				`Cover with id ${idCover} not found for book ${idBook}`,
+			);
+			throw new NotFoundException(
+				`Cover with id ${idCover} not found for book ${idBook}`,
+			);
+		}
+
+		if (!cover.originalUrl) {
+			this.logger.warn(
+				`Cover ${idCover} for book ${idBook} has no original URL to fix`,
+			);
+			throw new Error('Cover has no original URL to fix');
+		}
+
+		this.logger.log(
+			`Enfileirando capa ${idCover} para correção no livro: ${book.title}`,
+		);
+
+		await this.coverImageService.addCoverToQueue(
+			idBook,
+			book.originalUrl?.[0] || '',
+			[{ url: cover.originalUrl, title: cover.title }],
+		);
+	}
 }
