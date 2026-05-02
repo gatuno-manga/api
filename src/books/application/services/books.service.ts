@@ -214,6 +214,7 @@ export class BooksService {
 	}
 
 	async fixBook(idBook: string) {
+		await this.bookUpdateService.fixBookCovers(idBook);
 		return this.chapterManagementService.fixBookChapters(idBook);
 	}
 

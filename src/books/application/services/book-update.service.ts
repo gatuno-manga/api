@@ -239,4 +239,39 @@ export class BookUpdateService {
 			autoUpdate: book.autoUpdate,
 		};
 	}
+
+	/**
+	 * Conserta as capas de um livro re-enfileirando-as para processamento
+	 */
+	async fixBookCovers(idBook: string): Promise<void> {
+		const book = await this.bookRepository.findById(idBook, ['covers']);
+
+		if (!book) {
+			this.logger.warn(`Book with id ${idBook} not found`);
+			throw new NotFoundException(`Book with id ${idBook} not found`);
+		}
+
+		if (!book.covers || book.covers.length === 0) {
+			this.logger.debug(`Book ${book.title} has no covers to fix`);
+			return;
+		}
+
+		const coversToFix = book.covers
+			.filter((c) => c.originalUrl)
+			.map((c) => ({
+				url: c.originalUrl,
+				title: c.title,
+			}));
+
+		if (coversToFix.length > 0) {
+			this.logger.log(
+				`Enfileirando ${coversToFix.length} capas para correção no livro: ${book.title}`,
+			);
+			await this.coverImageService.addCoverToQueue(
+				idBook,
+				book.originalUrl || '',
+				coversToFix,
+			);
+		}
+	}
 }
