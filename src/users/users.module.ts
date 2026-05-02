@@ -8,6 +8,7 @@ import { Page } from 'src/books/infrastructure/database/entities/page.entity';
 import { Tag } from 'src/books/infrastructure/database/entities/tags.entity';
 import { FilesModule } from 'src/files/files.module';
 import { CollectionsModule } from '../collections/collections.module';
+import { EncryptionModule } from 'src/infrastructure/encryption/encryption.module';
 import { AdminAccessPoliciesController } from './infrastructure/controllers/admin-access-policies.controller';
 import { AdminGroupsController } from './infrastructure/controllers/admin-groups.controller';
 import { AdminRolesController } from './infrastructure/controllers/admin-roles.controller';
@@ -46,6 +47,7 @@ import { UserResolver } from './infrastructure/graphql/resolvers/user.resolver';
 	imports: [
 		AuthModule,
 		AppConfigModule,
+		EncryptionModule,
 		FilesModule,
 		CollectionsModule,
 		TypeOrmModule.forFeature([
