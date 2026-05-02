@@ -116,6 +116,14 @@ export class BooksService {
 		return this.bookUpdateService.orderCovers(idBook, dto);
 	}
 
+	async fixCover(idBook: string, idCover: string) {
+		return this.bookUpdateService.fixCover(idBook, idCover);
+	}
+
+	async fixBookCovers(idBook: string) {
+		return this.bookUpdateService.fixBookCovers(idBook);
+	}
+
 	async toggleAutoUpdate(idBook: string, enabled: boolean) {
 		return this.bookUpdateService.toggleAutoUpdate(idBook, enabled);
 	}

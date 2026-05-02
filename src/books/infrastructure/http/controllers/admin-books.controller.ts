@@ -332,6 +332,47 @@ export class AdminBooksController {
 		return this.booksService.updateCover(idBook, idCover, dto);
 	}
 
+	@Patch(':idBook/covers/:idCover/fix')
+	@ApiOperation({
+		summary: 'Fix book cover',
+		description: 'Re-enqueue a specific cover for processing (Admin only)',
+	})
+	@ApiParam({
+		name: 'idBook',
+		description: 'Book unique identifier',
+		example: '550e8400-e29b-41d4-a716-446655440000',
+	})
+	@ApiParam({
+		name: 'idCover',
+		description: 'Cover unique identifier',
+		example: '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
+	})
+	@ApiResponse({ status: 200, description: 'Cover fix job scheduled' })
+	@ApiResponse({ status: 404, description: 'Book or cover not found' })
+	fixCover(
+		@Param('idBook') idBook: string,
+		@Param('idCover') idCover: string,
+	) {
+		return this.booksService.fixCover(idBook, idCover);
+	}
+
+	@Patch(':idBook/covers/fix')
+	@ApiOperation({
+		summary: 'Fix all book covers',
+		description:
+			'Re-enqueue all covers of a book for processing (Admin only)',
+	})
+	@ApiParam({
+		name: 'idBook',
+		description: 'Book unique identifier',
+		example: '550e8400-e29b-41d4-a716-446655440000',
+	})
+	@ApiResponse({ status: 200, description: 'Cover fix jobs scheduled' })
+	@ApiResponse({ status: 404, description: 'Book not found' })
+	fixBookCovers(@Param('idBook') idBook: string) {
+		return this.booksService.fixBookCovers(idBook);
+	}
+
 	@Post(':idBook/covers/manual')
 	@UseInterceptors(FileInterceptor('file'))
 	@ApiConsumes('multipart/form-data')
