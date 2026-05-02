@@ -2,6 +2,7 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { RegisterWebSiteDto } from '../dto/register-website.dto';
 import { UpdateWebsiteDto } from '../dto/update-website.dto';
 import { Website } from '../../domain/entities/website';
+import { minifyScrapingScript } from '../utils/script-minifier.util';
 import {
 	I_WEBSITE_REPOSITORY,
 	IWebsiteRepository,
@@ -15,6 +16,7 @@ export class WebsiteService {
 	) {}
 
 	async registerWebsite(dto: RegisterWebSiteDto): Promise<Website> {
+		this.minifyDtoScripts(dto);
 		const website = new Website();
 		Object.assign(website, dto);
 		return this.websiteRepository.save(website);
@@ -38,11 +40,29 @@ export class WebsiteService {
 
 	async update(id: string, dto: UpdateWebsiteDto): Promise<Website> {
 		const website = await this.findOne(id);
+		this.minifyDtoScripts(dto);
 		Object.assign(website, dto);
 		return this.websiteRepository.save(website);
 	}
 
 	async remove(id: string): Promise<void> {
 		await this.websiteRepository.delete(id);
+	}
+
+	/**
+	 * Minifica os scripts contidos no DTO antes de persistir
+	 */
+	private minifyDtoScripts(dto: RegisterWebSiteDto | UpdateWebsiteDto) {
+		if (dto.preScript) {
+			dto.preScript = minifyScrapingScript(dto.preScript);
+		}
+		if (dto.posScript) {
+			dto.posScript = minifyScrapingScript(dto.posScript);
+		}
+		if (dto.bookInfoExtractScript) {
+			dto.bookInfoExtractScript = minifyScrapingScript(
+				dto.bookInfoExtractScript,
+			);
+		}
 	}
 }
