@@ -3,6 +3,7 @@ import {
 	DashboardRepositoryPort,
 	DashboardStats,
 } from '../ports/dashboard-repository.port';
+import { DashboardFilterDto } from '../dto/dashboard-filter.dto';
 
 @Injectable()
 export class GetDashboardOverviewUseCase {
@@ -11,7 +12,7 @@ export class GetDashboardOverviewUseCase {
 		private readonly dashboardRepository: DashboardRepositoryPort,
 	) {}
 
-	async execute(): Promise<DashboardStats> {
-		return this.dashboardRepository.getOverviewStats();
+	async execute(filter?: DashboardFilterDto): Promise<DashboardStats> {
+		return this.dashboardRepository.getOverviewStats(filter);
 	}
 }

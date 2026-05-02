@@ -1,11 +1,16 @@
+import { extname } from 'node:path';
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { OrderCoversDto } from '../dto/order-covers.dto';
 import { UpdateBookDto } from '../dto/update-book.dto';
 import { UpdateCoverDto } from '../dto/update-cover.dto';
+import { UploadCoverDto } from '../dto/upload-cover.dto';
+import { ScrapeCoverDto } from '../dto/scrape-cover.dto';
 import { Book } from '../../domain/entities/book';
 import { Cover } from '../../domain/entities/cover';
 import { CoverImageService } from '../../infrastructure/jobs/cover-image.service';
+import { FilesService } from '../../../files/application/services/files.service';
+import { StorageBucket } from '../../../common/enum/storage-bucket.enum';
 import { BookRelationshipService } from './book-relationship.service';
 import {
 	I_BOOK_REPOSITORY,
@@ -30,6 +35,7 @@ export class BookUpdateService {
 		private readonly coverRepository: ICoverRepository,
 		private readonly bookRelationshipService: BookRelationshipService,
 		private readonly coverImageService: CoverImageService,
+		private readonly filesService: FilesService,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
@@ -238,5 +244,93 @@ export class BookUpdateService {
 			title: book.title,
 			autoUpdate: book.autoUpdate,
 		};
+	}
+
+	/**
+	 * Upload manual de uma capa
+	 */
+	async manualUploadCover(
+		idBook: string,
+		file: Express.Multer.File,
+		dto: UploadCoverDto,
+	): Promise<Cover> {
+		const book = await this.findBookWith(idBook, ['covers']);
+
+		const extension = extname(file.originalname);
+		const savedPath = await this.filesService.saveBufferFile(
+			file.buffer,
+			extension,
+			StorageBucket.BOOKS,
+		);
+
+		const cover = this.coverRepository.create({
+			title: dto.title || 'Manual Upload Cover',
+			url: savedPath,
+			book: book,
+			index: book.covers.length,
+			selected: book.covers.length === 0,
+		});
+
+		const savedCover = await this.coverRepository.save(cover);
+
+		this.eventEmitter.emit('cover.uploaded.manual', {
+			bookId: idBook,
+			coverId: savedCover.id,
+			url: savedPath,
+		});
+
+		return savedCover;
+	}
+
+	/**
+	 * Dispara o scraping de uma capa específica por URL
+	 */
+	async scrapeCover(idBook: string, dto: ScrapeCoverDto): Promise<void> {
+		const book = await this.findBookWith(idBook, []);
+
+		await this.coverImageService.addCoverToQueue(
+			idBook,
+			book.originalUrl?.[0] || '',
+			[{ url: dto.url, title: 'Scraped Cover' }],
+		);
+
+		this.logger.log(
+			`Scrape de capa enfileirado para o livro: ${book.title} (URL: ${dto.url})`,
+		);
+	}
+
+	/**
+	 * Conserta as capas de um livro re-enfileirando-as para processamento
+	 */
+	async fixBookCovers(idBook: string): Promise<void> {
+		const book = await this.bookRepository.findById(idBook, ['covers']);
+
+		if (!book) {
+			this.logger.warn(`Book with id ${idBook} not found`);
+			throw new NotFoundException(`Book with id ${idBook} not found`);
+		}
+
+		if (!book.covers || book.covers.length === 0) {
+			this.logger.debug(`Book ${book.title} has no covers to fix`);
+			return;
+		}
+
+		const coversToFix = book.covers
+			.filter((c) => c.originalUrl)
+			.map((c) => ({
+				url: c.originalUrl || '',
+				title: c.title,
+			}));
+
+		if (coversToFix.length > 0) {
+			this.logger.log(
+				`Enfileirando ${coversToFix.length} capas para correção no livro: ${book.title}`,
+			);
+			await this.coverImageService.addCoverToQueue(
+				idBook,
+				book.originalUrl?.[0] || '',
+				coversToFix,
+			);
+		}
 	}
 }

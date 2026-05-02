@@ -1,3 +1,5 @@
+import { DashboardFilterDto } from '../dto/dashboard-filter.dto';
+
 export interface DashboardStats {
 	counts: {
 		books: number;
@@ -17,5 +19,5 @@ export interface DashboardStats {
 }
 
 export interface DashboardRepositoryPort {
-	getOverviewStats(): Promise<DashboardStats>;
+	getOverviewStats(filter?: DashboardFilterDto): Promise<DashboardStats>;
 }

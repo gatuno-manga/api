@@ -29,6 +29,7 @@ import { AccessPolicyScopeEnum } from '../../domain/enums/access-policy-scope.en
 import { RolesEnum } from '../../domain/enums/roles.enum';
 import { MEILI_CLIENT } from '../../../infrastructure/meilisearch/meilisearch.constants';
 import { Meilisearch } from 'meilisearch';
+import { PasswordEncryption } from '../../../infrastructure/encryption/password-encryption.provider';
 
 type AdminUsersCursorPayload = {
 	createdAt: string;
@@ -47,6 +48,7 @@ export class AdminUsersService {
 		@InjectRepository(AccessPolicy)
 		private readonly accessPolicyRepository: Repository<AccessPolicy>,
 		@Inject(MEILI_CLIENT) private readonly meiliClient: Meilisearch,
+		private readonly passwordEncryption: PasswordEncryption,
 	) {}
 
 	async search(query: string) {
@@ -294,6 +296,19 @@ export class AdminUsersService {
 
 		const user = await this.getUserById(targetUserId);
 		await this.userRepository.remove(user);
+		return { success: true };
+	}
+
+	async changeUserPassword(userId: string, newPassword: string) {
+		const user = await this.userRepository.findOne({
+			where: { id: userId },
+			select: ['id', 'password'],
+		});
+		if (!user) {
+			throw new NotFoundException(`User with id ${userId} not found`);
+		}
+		user.password = await this.passwordEncryption.encrypt(newPassword);
+		await this.userRepository.save(user);
 		return { success: true };
 	}
 

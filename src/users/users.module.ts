@@ -8,6 +8,7 @@ import { Page } from 'src/books/infrastructure/database/entities/page.entity';
 import { Tag } from 'src/books/infrastructure/database/entities/tags.entity';
 import { FilesModule } from 'src/files/files.module';
 import { CollectionsModule } from '../collections/collections.module';
+import { EncryptionModule } from 'src/infrastructure/encryption/encryption.module';
 import { AdminAccessPoliciesController } from './infrastructure/controllers/admin-access-policies.controller';
 import { AdminGroupsController } from './infrastructure/controllers/admin-groups.controller';
 import { AdminRolesController } from './infrastructure/controllers/admin-roles.controller';
@@ -40,11 +41,13 @@ import { I_USER_REPOSITORY } from './application/ports/user-repository.interface
 import { TypeOrmUserRepositoryAdapter } from './infrastructure/database/adapters/typeorm-user-repository.adapter';
 import { I_USER_IMAGE_REPOSITORY } from './application/ports/user-image-repository.interface';
 import { TypeOrmUserImageRepositoryAdapter } from './infrastructure/database/adapters/typeorm-user-image-repository.adapter';
+import { UserResolver } from './infrastructure/graphql/resolvers/user.resolver';
 
 @Module({
 	imports: [
 		AuthModule,
 		AppConfigModule,
+		EncryptionModule,
 		FilesModule,
 		CollectionsModule,
 		TypeOrmModule.forFeature([
@@ -88,6 +91,7 @@ import { TypeOrmUserImageRepositoryAdapter } from './infrastructure/database/ada
 		LastWriteWinsStrategy,
 		HighestPageWinsStrategy,
 		SyncStrategyResolver,
+		UserResolver,
 	],
 	exports: [
 		AdminUsersService,

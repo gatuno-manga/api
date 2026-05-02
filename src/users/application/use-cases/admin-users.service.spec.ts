@@ -9,6 +9,7 @@ import { AccessPolicy } from '../../infrastructure/database/entities/access-poli
 import { AccessPolicyEffectEnum } from '../../domain/enums/access-policy-effect.enum';
 import { AccessPolicyScopeEnum } from '../../domain/enums/access-policy-scope.enum';
 import { MEILI_CLIENT } from '../../../infrastructure/meilisearch/meilisearch.constants';
+import { PasswordEncryption } from '../../../infrastructure/encryption/password-encryption.provider';
 
 describe('AdminUsersService', () => {
 	let service: AdminUsersService;
@@ -69,6 +70,13 @@ describe('AdminUsersService', () => {
 				{
 					provide: MEILI_CLIENT,
 					useValue: meiliClient,
+				},
+				{
+					provide: PasswordEncryption,
+					useValue: {
+						hash: jest.fn(),
+						compare: jest.fn(),
+					},
 				},
 			],
 		}).compile();

@@ -14,6 +14,8 @@ import { OrderChaptersDto } from '../dto/order-chapters.dto';
 import { OrderCoversDto } from '../dto/order-covers.dto';
 import { UpdateBookDto } from '../dto/update-book.dto';
 import { UpdateChapterDto } from '../dto/update-chapter.dto';
+import { UploadCoverDto } from '../dto/upload-cover.dto';
+import { ScrapeCoverDto } from '../dto/scrape-cover.dto';
 import { BookCreationService } from './book-creation.service';
 import { BookBookRelationshipService } from './book-book-relationship.service';
 import { BookQueryService } from './book-query.service';
@@ -28,6 +30,7 @@ import {
 	SearchFilterStrategy,
 	TagsFilterStrategy,
 	TypeFilterStrategy,
+	IdFilterStrategy,
 	SensitiveContentFilterStrategy,
 } from '../strategies';
 import { MEILI_CLIENT } from '../../../infrastructure/meilisearch/meilisearch.constants';
@@ -52,6 +55,7 @@ export class BooksService {
 		@Inject(MEILI_CLIENT) private readonly meiliClient: Meilisearch,
 	) {
 		this.filterStrategies = [
+			new IdFilterStrategy(),
 			new TypeFilterStrategy(),
 			new SearchFilterStrategy(this.meiliClient),
 			new TagsFilterStrategy(),
@@ -96,8 +100,20 @@ export class BooksService {
 		return this.bookUpdateService.updateCover(idBook, idCover, dto);
 	}
 
-	async orderCovers(idBook: string, covers: OrderCoversDto[]) {
-		return this.bookUpdateService.orderCovers(idBook, covers);
+	async manualUploadCover(
+		idBook: string,
+		file: Express.Multer.File,
+		dto: UploadCoverDto,
+	) {
+		return this.bookUpdateService.manualUploadCover(idBook, file, dto);
+	}
+
+	async scrapeCover(idBook: string, dto: ScrapeCoverDto) {
+		return this.bookUpdateService.scrapeCover(idBook, dto);
+	}
+
+	async orderCovers(idBook: string, dto: OrderCoversDto[]) {
+		return this.bookUpdateService.orderCovers(idBook, dto);
 	}
 
 	async toggleAutoUpdate(idBook: string, enabled: boolean) {
@@ -214,6 +230,7 @@ export class BooksService {
 	}
 
 	async fixBook(idBook: string) {
+		await this.bookUpdateService.fixBookCovers(idBook);
 		return this.chapterManagementService.fixBookChapters(idBook);
 	}
 

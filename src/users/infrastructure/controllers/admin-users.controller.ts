@@ -19,6 +19,7 @@ import { COMMON_RESPONSES } from 'src/common/swagger/common-responses';
 import { AdminUpdateUserDto } from '../http/dto/admin-update-user.dto';
 import { SetUserModerationDto } from '../http/dto/set-user-moderation.dto';
 import { UpdateUserRolesDto } from '../http/dto/update-user-roles.dto';
+import { AdminChangePasswordDto } from '../http/dto/admin-change-password.dto';
 import { AdminUsersService } from '../../application/use-cases/admin-users.service';
 
 @ApiTags('Admin Users')
@@ -118,6 +119,23 @@ export class AdminUsersController {
 			userId,
 			dto,
 			currentUser.userId,
+		);
+	}
+
+	@Patch(':userId/password')
+	@ApiOperation({ summary: 'Alterar senha de um usuário (admin)' })
+	@ApiResponse({ status: 200, description: 'Senha alterada com sucesso' })
+	@ApiResponse(COMMON_RESPONSES.BAD_REQUEST)
+	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
+	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
+	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
+	changePassword(
+		@Param('userId', ParseUUIDPipe) userId: string,
+		@Body() dto: AdminChangePasswordDto,
+	) {
+		return this.adminUsersService.changeUserPassword(
+			userId,
+			dto.newPassword,
 		);
 	}
 
