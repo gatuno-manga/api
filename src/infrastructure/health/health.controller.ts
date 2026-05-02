@@ -4,10 +4,13 @@ import {
 	DiskHealthIndicator,
 	HealthCheck,
 	HealthCheckService,
+	HttpHealthIndicator,
 	MemoryHealthIndicator,
+	MicroserviceHealthIndicator,
 	TypeOrmHealthIndicator,
 } from '@nestjs/terminus';
 import { Redis } from 'ioredis';
+import { Transport } from '@nestjs/microservices';
 import { REDIS_CLIENT } from '../redis/redis.constants';
 import { AppConfigService } from '../app-config/app-config.service';
 
@@ -19,6 +22,8 @@ export class HealthController {
 		private db: TypeOrmHealthIndicator,
 		private memory: MemoryHealthIndicator,
 		private disk: DiskHealthIndicator,
+		private http: HttpHealthIndicator,
+		private microservice: MicroserviceHealthIndicator,
 		private appConfig: AppConfigService,
 		@Inject(REDIS_CLIENT) private readonly redis: Redis,
 	) {}
@@ -28,7 +33,7 @@ export class HealthController {
 	@ApiOperation({
 		summary: 'Health check completo',
 		description:
-			'Verifica status do banco, Redis, memória detalhada e disco',
+			'Verifica status do banco, Redis, Kafka, Meilisearch, RustFS, memória e disco',
 	})
 	@ApiResponse({
 		status: 200,
@@ -48,6 +53,39 @@ export class HealthController {
 					return { redis: { status: 'down', message: e.message } };
 				}
 			},
+			// Kafka Check
+			() =>
+				this.microservice.pingCheck('kafka', {
+					transport: Transport.KAFKA,
+					options: {
+						client: {
+							brokers: [this.appConfig.kafkaBroker],
+						},
+					},
+				}),
+			// Meilisearch Check
+			() =>
+				this.http.pingCheck(
+					'meilisearch',
+					`${this.appConfig.meili.host}/health`,
+				),
+			// RustFS Check
+			() => this.http.pingCheck('rustfs', this.appConfig.rustfs.endpoint),
+			// FlareSolverr Check
+			() =>
+				this.http.pingCheck(
+					'flaresolverr',
+					`${this.appConfig.flareSolverrUrl}/health`,
+				),
+			// Browserless Check (HTTP fallback as WS is harder to ping simply with HttpIndicator)
+			() =>
+				this.http.pingCheck(
+					'browserless',
+					this.appConfig.playwright.wsEndpoint.replace(
+						'ws://',
+						'http://',
+					),
+				),
 			// Memória Detalhada para diagnóstico
 			() => {
 				const mem = process.memoryUsage();

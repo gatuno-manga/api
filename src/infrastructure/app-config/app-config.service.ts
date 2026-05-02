@@ -334,4 +334,11 @@ export class AppConfigService {
 			this.config.get<string>('MEILI_MASTER_KEY') || '',
 		);
 	}
+
+	get nanomq() {
+		return {
+			host: this.config.get<string>('NANOMQ_HOST') || 'nanomq',
+			port: this.config.get<number>('NANOMQ_PORT') || 1883,
+		};
+	}
 }
