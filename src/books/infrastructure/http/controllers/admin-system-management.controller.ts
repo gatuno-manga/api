@@ -9,7 +9,7 @@ import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
 import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
-import { AdminSystemManagementService } from '../../application/services/admin-system-management.service';
+import { AdminSystemManagementService } from '@books/application/services/admin-system-management.service';
 
 @ApiTags('Admin System Management')
 @Controller('admin/system')

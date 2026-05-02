@@ -34,7 +34,11 @@ export class AdminSystemManagementService {
 			let status = 'unknown';
 
 			try {
-				status = cronJob.running ? 'running' : 'stopped';
+				// Determine status based on running property if available
+				const jobWithRunning = cronJob as unknown as {
+					running?: boolean;
+				};
+				status = jobWithRunning.running ? 'running' : 'stopped';
 			} catch (e) {
 				// Fallback if running property is not accessible
 			}
@@ -92,7 +96,8 @@ export class AdminSystemManagementService {
 
 	private async getAutoPauseStatus(queueName: string) {
 		const key = `autopause:counter:${queueName}`;
-		const count = await this.chapterScrapingQueue.client.get(key);
+		const client = await this.chapterScrapingQueue.client;
+		const count = await client.get(key);
 		return {
 			consecutiveFailures: count ? Number.parseInt(count) : 0,
 			threshold: 5, // Poderia vir do config
@@ -101,7 +106,8 @@ export class AdminSystemManagementService {
 
 	async resetAutoPauseCounter(queueName: string) {
 		const key = `autopause:counter:${queueName}`;
-		await this.chapterScrapingQueue.client.del(key);
+		const client = await this.chapterScrapingQueue.client;
+		await client.del(key);
 		return { success: true };
 	}
 
