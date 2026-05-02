@@ -199,4 +199,12 @@ export const validationSchema = Joi.object({
 		.max(65535)
 		.default(8083)
 		.description('NanoMQ MQTT over WebSocket port'),
+	ANDROID_PACKAGE_NAME: Joi.string()
+		.default('com.gatuno.app')
+		.description('Android application package name'),
+	ANDROID_SHA256_FINGERPRINTS: Joi.string()
+		.default(
+			'00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00',
+		)
+		.description('Comma-separated SHA-256 fingerprints for Android app'),
 });
