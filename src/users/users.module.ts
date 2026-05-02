@@ -40,6 +40,7 @@ import { I_USER_REPOSITORY } from './application/ports/user-repository.interface
 import { TypeOrmUserRepositoryAdapter } from './infrastructure/database/adapters/typeorm-user-repository.adapter';
 import { I_USER_IMAGE_REPOSITORY } from './application/ports/user-image-repository.interface';
 import { TypeOrmUserImageRepositoryAdapter } from './infrastructure/database/adapters/typeorm-user-image-repository.adapter';
+import { UserResolver } from './infrastructure/graphql/resolvers/user.resolver';
 
 @Module({
 	imports: [
@@ -88,6 +89,7 @@ import { TypeOrmUserImageRepositoryAdapter } from './infrastructure/database/ada
 		LastWriteWinsStrategy,
 		HighestPageWinsStrategy,
 		SyncStrategyResolver,
+		UserResolver,
 	],
 	exports: [
 		AdminUsersService,
