@@ -7,10 +7,12 @@ import { AuthModule } from '../auth/auth.module';
 import { FilesModule } from '../files/files.module';
 import { LoggingModule } from '../infrastructure/logging/logging.module';
 import { MetricsModule } from '../metrics/metrics.module';
+import { RedisModule } from '../infrastructure/redis/redis.module';
 import { ScrapingModule } from '../scraping/scraping.module';
 import { UsersModule } from '../users/users.module';
 import { User } from '../users/infrastructure/database/entities/user.entity';
 import { AdminBooksDashboardController } from './infrastructure/http/controllers/admin-books-dashboard.controller';
+import { AdminSystemManagementController } from './infrastructure/http/controllers/admin-system-management.controller';
 import { AdminBookRelationshipsController } from './infrastructure/http/controllers/admin-book-relationships.controller';
 import { AdminBooksUploadController } from './infrastructure/http/controllers/admin-books-upload.controller';
 import { AdminBooksController } from './infrastructure/http/controllers/admin-books.controller';
@@ -43,6 +45,7 @@ import { ChapterScrapingService } from './infrastructure/jobs/chapter-scraping.s
 import { ChapterScrapingSharedService } from './infrastructure/jobs/chapter-scraping.shared';
 import { CoverImageProcessor } from './infrastructure/jobs/cover-image.processor';
 import { CoverImageService } from './infrastructure/jobs/cover-image.service';
+import { QueueAutoPauseListener } from './infrastructure/jobs/queue-auto-pause.listener';
 import { FixChapterProcessor } from './infrastructure/jobs/fix-chapter.processor';
 import { FixChapterService } from './infrastructure/jobs/fix-chapter.service';
 import { SensitiveContentController } from './infrastructure/http/controllers/sensitive-content.controller';
@@ -60,6 +63,7 @@ import { TagsController } from './infrastructure/http/controllers/tags.controlle
 import { TagsService } from './application/services/tags.service';
 import { AuthorsService } from './application/services/authors.service';
 import { BooksNotifier } from './infrastructure/notifiers/books.notifier';
+import { AdminSystemManagementService } from './application/services/admin-system-management.service';
 
 import { I_BOOK_REPOSITORY } from './application/ports/book-repository.interface';
 import { TypeOrmBookRepositoryAdapter } from './infrastructure/database/adapters/typeorm-book-repository.adapter';
@@ -93,6 +97,7 @@ import { BookResolver } from './infrastructure/graphql/resolvers/book.resolver';
 		FilesModule,
 		LoggingModule,
 		MetricsModule,
+		RedisModule,
 		ScheduleModule.forRoot(),
 		DownloadModule,
 		UsersModule,
@@ -171,6 +176,7 @@ import { BookResolver } from './infrastructure/graphql/resolvers/book.resolver';
 		AdminBookRelationshipsController,
 		AdminBooksUploadController,
 		AdminBooksDashboardController,
+		AdminSystemManagementController,
 	],
 	providers: [
 		{ provide: I_BOOK_REPOSITORY, useClass: TypeOrmBookRepositoryAdapter },
@@ -221,6 +227,7 @@ import { BookResolver } from './infrastructure/graphql/resolvers/book.resolver';
 		ChapterScrapingSharedService,
 		CoverImageService,
 		CoverImageProcessor,
+		QueueAutoPauseListener,
 		FixChapterService,
 		FixChapterProcessor,
 		// Book Update Jobs
@@ -243,6 +250,7 @@ import { BookResolver } from './infrastructure/graphql/resolvers/book.resolver';
 		// WebSocket Gateway
 		BooksGateway,
 		BookResolver,
+		AdminSystemManagementService,
 	],
 	exports: [
 		I_BOOK_REPOSITORY,

@@ -256,8 +256,8 @@ export class DownloadCacheService implements OnModuleInit {
 	/**
 	 * Limpa arquivos de cache expirados (cron job diário às 03:30 para evitar conflito)
 	 */
-	@Cron('30 3 * * *')
-	async cleanExpiredCache(): Promise<void> {
+	@Cron('30 3 * * *', { name: 'clear-download-cache' })
+	async cleanExpiredCache() {
 		this.logger.log('Starting cache cleanup job (Memory-Safe)...');
 
 		try {

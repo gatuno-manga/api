@@ -17,7 +17,9 @@ export class FileCleanupCron {
 			'true';
 	}
 
-	@Cron(CronExpression.EVERY_DAY_AT_2AM)
+	@Cron(CronExpression.EVERY_DAY_AT_2AM, {
+		name: 'daily-cleanup-old-deleted',
+	})
 	async dailyCleanupOldDeletedFiles() {
 		if (!this.enabled) {
 			this.logger.log('File cleanup is disabled');
@@ -44,7 +46,9 @@ export class FileCleanupCron {
 		}
 	}
 
-	@Cron(CronExpression.MONDAY_TO_FRIDAY_AT_3AM)
+	@Cron(CronExpression.MONDAY_TO_FRIDAY_AT_3AM, {
+		name: 'weekly-orphan-scan',
+	})
 	async weeklyOrphanScan() {
 		if (!this.enabled) {
 			return;
@@ -74,7 +78,7 @@ export class FileCleanupCron {
 		}
 	}
 
-	@Cron('0 4 * * 1')
+	@Cron('0 4 * * 1', { name: 'weekly-integrity-check' })
 	async weeklyIntegrityCheck() {
 		if (!this.enabled) {
 			return;
@@ -111,7 +115,7 @@ export class FileCleanupCron {
 		}
 	}
 
-	@Cron('0 5 1 * *')
+	@Cron('0 5 1 * *', { name: 'monthly-statistics-report' })
 	async monthlyStatisticsReport() {
 		if (!this.enabled) {
 			return;
