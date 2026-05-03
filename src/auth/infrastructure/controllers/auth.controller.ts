@@ -62,29 +62,54 @@ export class AuthController {
 		private readonly configService: AppConfigService,
 	) {}
 
+	private getCookieDomain(req: Request): string | undefined {
+		const origin = req.headers.origin;
+		if (!origin) return undefined;
+
+		try {
+			const hostname = new URL(origin).hostname;
+			if (hostname === 'localhost' || hostname === '127.0.0.1') {
+				return undefined;
+			}
+			return `.${hostname}`;
+		} catch {
+			return undefined;
+		}
+	}
+
 	/**
 	 * Sets the refresh token as an httpOnly cookie on the response.
 	 * This ensures the cookie is set on the API domain, so the browser
 	 * sends it automatically on cross-origin requests with withCredentials.
 	 */
-	private setRefreshTokenCookie(res: Response, refreshToken: string): void {
+	private setRefreshTokenCookie(
+		req: Request,
+		res: Response,
+		refreshToken: string,
+	): void {
 		const isSecure = this.configService.apiUrl.startsWith('https');
+		const domain = this.getCookieDomain(req);
+
 		res.cookie('refreshToken', refreshToken, {
 			httpOnly: true,
 			secure: isSecure,
 			sameSite: 'lax',
 			path: '/api/auth',
+			domain,
 			maxAge: this.configService.refreshTokenTtl,
 		});
 	}
 
-	private clearRefreshTokenCookie(res: Response): void {
+	private clearRefreshTokenCookie(req: Request, res: Response): void {
 		const isSecure = this.configService.apiUrl.startsWith('https');
+		const domain = this.getCookieDomain(req);
+
 		res.clearCookie('refreshToken', {
 			httpOnly: true,
 			secure: isSecure,
 			sameSite: 'lax',
 			path: '/api/auth',
+			domain,
 		});
 	}
 
@@ -92,24 +117,34 @@ export class AuthController {
 		return randomBytes(32).toString('hex');
 	}
 
-	private setCsrfCookie(res: Response, csrfToken: string): void {
+	private setCsrfCookie(
+		req: Request,
+		res: Response,
+		csrfToken: string,
+	): void {
 		const isSecure = this.configService.apiUrl.startsWith('https');
+		const domain = this.getCookieDomain(req);
+
 		res.cookie(this.csrfCookieName, csrfToken, {
 			httpOnly: false,
 			secure: isSecure,
 			sameSite: 'lax',
 			path: '/',
+			domain,
 			maxAge: this.configService.refreshTokenTtl,
 		});
 	}
 
-	private clearCsrfCookie(res: Response): void {
+	private clearCsrfCookie(req: Request, res: Response): void {
 		const isSecure = this.configService.apiUrl.startsWith('https');
+		const domain = this.getCookieDomain(req);
+
 		res.clearCookie(this.csrfCookieName, {
 			httpOnly: false,
 			secure: isSecure,
 			sameSite: 'lax',
 			path: '/',
+			domain,
 		});
 	}
 
@@ -202,8 +237,8 @@ export class AuthController {
 			auditEvent: 'signup_success',
 		});
 
-		this.setRefreshTokenCookie(res, tokens.refreshToken);
-		this.setCsrfCookie(res, this.generateCsrfToken());
+		this.setRefreshTokenCookie(req, res, tokens.refreshToken);
+		this.setCsrfCookie(req, res, this.generateCsrfToken());
 
 		return this.buildAuthResponse(req, tokens);
 	}
@@ -230,13 +265,13 @@ export class AuthController {
 		);
 
 		if (isPendingMfaResult(result)) {
-			this.clearRefreshTokenCookie(res);
-			this.clearCsrfCookie(res);
+			this.clearRefreshTokenCookie(req, res);
+			this.clearCsrfCookie(req, res);
 			return result;
 		}
 
-		this.setRefreshTokenCookie(res, result.refreshToken);
-		this.setCsrfCookie(res, this.generateCsrfToken());
+		this.setRefreshTokenCookie(req, res, result.refreshToken);
+		this.setCsrfCookie(req, res, this.generateCsrfToken());
 		return this.buildAuthResponse(req, result);
 	}
 
@@ -292,8 +327,8 @@ export class AuthController {
 			body.apiKey,
 			this.buildRequestContext(req),
 		);
-		this.setRefreshTokenCookie(res, result.refreshToken);
-		this.setCsrfCookie(res, this.generateCsrfToken());
+		this.setRefreshTokenCookie(req, res, result.refreshToken);
+		this.setCsrfCookie(req, res, this.generateCsrfToken());
 		return this.buildAuthResponse(req, result);
 	}
 
@@ -332,8 +367,8 @@ export class AuthController {
 			refreshToken,
 			this.buildRequestContext(req),
 		);
-		this.setRefreshTokenCookie(res, tokens.refreshToken);
-		this.setCsrfCookie(res, this.generateCsrfToken());
+		this.setRefreshTokenCookie(req, res, tokens.refreshToken);
+		this.setCsrfCookie(req, res, this.generateCsrfToken());
 		return this.buildAuthResponse(req, tokens);
 	}
 
@@ -371,8 +406,8 @@ export class AuthController {
 			refreshToken,
 			this.buildRequestContext(req),
 		);
-		this.clearRefreshTokenCookie(res);
-		this.clearCsrfCookie(res);
+		this.clearRefreshTokenCookie(req, res);
+		this.clearCsrfCookie(req, res);
 		return { message: 'Logged out successfully' };
 	}
 
@@ -399,8 +434,8 @@ export class AuthController {
 			user.userId,
 			this.buildRequestContext(req),
 		);
-		this.clearRefreshTokenCookie(res);
-		this.clearCsrfCookie(res);
+		this.clearRefreshTokenCookie(req, res);
+		this.clearCsrfCookie(req, res);
 		return result;
 	}
 
@@ -465,8 +500,8 @@ export class AuthController {
 			body.mfaToken,
 			body.code,
 		);
-		this.setRefreshTokenCookie(res, result.refreshToken);
-		this.setCsrfCookie(res, this.generateCsrfToken());
+		this.setRefreshTokenCookie(req, res, result.refreshToken);
+		this.setCsrfCookie(req, res, this.generateCsrfToken());
 		return this.buildAuthResponse(req, result);
 	}
 
@@ -497,8 +532,8 @@ export class AuthController {
 			return result;
 		}
 
-		this.setRefreshTokenCookie(res, result.refreshToken);
-		this.setCsrfCookie(res, this.generateCsrfToken());
+		this.setRefreshTokenCookie(req, res, result.refreshToken);
+		this.setCsrfCookie(req, res, this.generateCsrfToken());
 		return this.buildAuthResponse(req, result);
 	}
 
