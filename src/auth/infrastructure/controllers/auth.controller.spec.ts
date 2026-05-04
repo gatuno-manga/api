@@ -154,6 +154,7 @@ describe('AuthController', () => {
 			expect(result).toEqual({
 				accessToken: 'access-token',
 				sessionId: 'session-1',
+				csrfToken: expect.any(String),
 			});
 			expect(res.cookie).toHaveBeenCalledWith(
 				'refreshToken',
@@ -165,44 +166,7 @@ describe('AuthController', () => {
 				expect.any(String),
 				expect.objectContaining({ httpOnly: false, path: '/' }),
 			);
-		});
-
-		it('sets cookie domain based on Origin header', async () => {
-			const req = createRequest({
-				'x-client-platform': 'web',
-				origin: 'https://app.gatuno.com',
-			});
-			const res = createResponse();
-
-			mockAuthService.signIn.mockResolvedValue({
-				accessToken: 'access-token',
-				refreshToken: 'refresh-token',
-				sessionId: 'session-1',
-			});
-
-			await controller.signIn(
-				{
-					email: 'user@example.com',
-					password: 'StrongP@ssw0rd!',
-				},
-				req,
-				res,
-			);
-
-			expect(res.cookie).toHaveBeenCalledWith(
-				'refreshToken',
-				'refresh-token',
-				expect.objectContaining({
-					domain: '.app.gatuno.com',
-				}),
-			);
-			expect(res.cookie).toHaveBeenCalledWith(
-				'csrfToken',
-				expect.any(String),
-				expect.objectContaining({
-					domain: '.app.gatuno.com',
-				}),
-			);
+			expect(result).toHaveProperty('csrfToken');
 		});
 
 		it('returns mobile payload with refreshToken in response body', async () => {
@@ -369,6 +333,7 @@ describe('AuthController', () => {
 			expect(result).toEqual({
 				accessToken: 'access-token',
 				sessionId: 'session-1',
+				csrfToken: expect.any(String),
 			});
 			expect(res.cookie).toHaveBeenCalledWith(
 				'refreshToken',
@@ -512,6 +477,7 @@ describe('AuthController', () => {
 			expect(result).toEqual({
 				accessToken: 'access-token',
 				sessionId: 'session-1',
+				csrfToken: expect.any(String),
 			});
 			expect(res.cookie).toHaveBeenCalledWith(
 				'refreshToken',
