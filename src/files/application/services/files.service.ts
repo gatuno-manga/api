@@ -51,7 +51,7 @@ export class FilesService {
 			? extension
 			: `.${extension}`;
 		const uuid = uuidv7();
-		const shard = uuid.substring(0, 2);
+		const shard = uuid.slice(-2);
 
 		// 1. Salva o arquivo ORIGINAL no bucket de processamento
 		const rawFileName = `${uuid}${cleanExtension}`;
