@@ -15,12 +15,12 @@ export class ListAccessPoliciesQueryDto {
 	scope?: AccessPolicyScopeEnum;
 
 	@IsOptional()
-	@IsUUID('4')
+	@IsUUID('all')
 	@ApiPropertyOptional()
 	targetUserId?: string;
 
 	@IsOptional()
-	@IsUUID('4')
+	@IsUUID('all')
 	@ApiPropertyOptional()
 	targetGroupId?: string;
 

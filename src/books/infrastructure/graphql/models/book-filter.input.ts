@@ -59,7 +59,7 @@ export class BookFilterInput {
 	@Field(() => [ID], { nullable: 'itemsAndList' })
 	@IsOptional()
 	@IsArray()
-	@IsUUID('4', { each: true })
+	@IsUUID('all', { each: true })
 	tags?: string[];
 
 	@Field(() => FilterLogic, { nullable: true, defaultValue: FilterLogic.AND })
@@ -70,7 +70,7 @@ export class BookFilterInput {
 	@Field(() => [ID], { nullable: 'itemsAndList' })
 	@IsOptional()
 	@IsArray()
-	@IsUUID('4', { each: true })
+	@IsUUID('all', { each: true })
 	excludeTags?: string[];
 
 	@Field(() => FilterLogic, { nullable: true, defaultValue: FilterLogic.OR })
@@ -94,7 +94,7 @@ export class BookFilterInput {
 	@Field(() => [ID], { nullable: 'itemsAndList' })
 	@IsOptional()
 	@IsArray()
-	@IsUUID('4', { each: true })
+	@IsUUID('all', { each: true })
 	authors?: string[];
 
 	@Field(() => FilterLogic, { nullable: true, defaultValue: FilterLogic.AND })

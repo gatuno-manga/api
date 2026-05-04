@@ -1,4 +1,4 @@
-import { validate as validateUuid, v4 as uuidv4 } from 'uuid';
+import { validate as validateUuid, v7 as uuidv7 } from 'uuid';
 
 export abstract class Uuid {
 	protected constructor(protected readonly value: string) {
@@ -8,7 +8,7 @@ export abstract class Uuid {
 	}
 
 	public static generateValue(): string {
-		return uuidv4();
+		return uuidv7();
 	}
 
 	public equals(other: Uuid): boolean {

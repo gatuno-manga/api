@@ -24,27 +24,27 @@ export class CreateAccessPolicyDto {
 	scope: AccessPolicyScopeEnum;
 
 	@IsOptional()
-	@IsUUID('4')
+	@IsUUID('all')
 	@ApiPropertyOptional()
 	targetUserId?: string;
 
 	@IsOptional()
-	@IsUUID('4')
+	@IsUUID('all')
 	@ApiPropertyOptional()
 	targetGroupId?: string;
 
 	@IsOptional()
-	@IsUUID('4')
+	@IsUUID('all')
 	@ApiPropertyOptional()
 	bookId?: string;
 
 	@IsOptional()
-	@IsUUID('4')
+	@IsUUID('all')
 	@ApiPropertyOptional()
 	tagId?: string;
 
 	@IsOptional()
-	@IsUUID('4')
+	@IsUUID('all')
 	@ApiPropertyOptional()
 	sensitiveContentId?: string;
 

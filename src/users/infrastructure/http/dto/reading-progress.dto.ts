@@ -13,10 +13,10 @@ import {
 } from 'class-validator';
 
 export class SaveReadingProgressDto {
-	@IsUUID('4')
+	@IsUUID('all')
 	chapterId: string;
 
-	@IsUUID('4')
+	@IsUUID('all')
 	bookId: string;
 
 	@Type(() => Number)

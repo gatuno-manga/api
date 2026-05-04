@@ -1,5 +1,5 @@
 import { INestApplication } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
+import { v7 as uuidv7 } from 'uuid';
 import request from 'supertest';
 import { createAdminAccessToken, createE2EApp } from './helpers/e2e-app.helper';
 
@@ -91,7 +91,7 @@ describe('Scraping pipeline API (e2e)', () => {
 		const delayedBefore = Number(
 			bookUpdateQueueBefore?.counts.delayed ?? 0,
 		);
-		const testBookId = randomUUID();
+		const testBookId = uuidv7();
 
 		const triggerResponse = await request(app.getHttpServer())
 			.post(`/api/books/${testBookId}/check-updates`)

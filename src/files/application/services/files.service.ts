@@ -1,5 +1,5 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 import { StorageBucket } from '../../../common/enum/storage-bucket.enum';
 import { FileCompressorFactory } from '../../infrastructure/adapters/file-compressor.factory';
 import { StoragePort } from '../ports/storage.port';
@@ -50,7 +50,7 @@ export class FilesService {
 		const cleanExtension = extension.startsWith('.')
 			? extension
 			: `.${extension}`;
-		const uuid = uuidv4();
+		const uuid = uuidv7();
 		const shard = uuid.substring(0, 2);
 
 		// 1. Salva o arquivo ORIGINAL no bucket de processamento

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { v7 as uuidv7 } from 'uuid';
 import { LoggerModule } from 'nestjs-pino';
 import { AppConfigModule } from '../app-config/app-config.module';
 import { AppConfigService } from '../app-config/app-config.service';
@@ -19,7 +20,7 @@ import { LoggerRuleEngine } from './logger-rule-engine';
 						genReqId: (req) =>
 							req.headers['x-correlation-id'] ||
 							req.headers['x-request-id'] ||
-							crypto.randomUUID(),
+							uuidv7(),
 
 						transport: isProduction
 							? undefined

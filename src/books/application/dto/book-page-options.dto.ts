@@ -33,7 +33,7 @@ export class BookPageOptionsDto extends PageOptionsDto {
 	})
 	@IsOptional()
 	@ToArray()
-	@IsUUID('4', { each: true })
+	@IsUUID('all', { each: true })
 	ids?: string[] = [];
 
 	@ApiPropertyOptional({
@@ -73,7 +73,7 @@ export class BookPageOptionsDto extends PageOptionsDto {
 	})
 	@IsOptional()
 	@ToArray()
-	@IsUUID('4', { each: true })
+	@IsUUID('all', { each: true })
 	tags?: string[] = [];
 
 	@ApiPropertyOptional({
@@ -94,7 +94,7 @@ export class BookPageOptionsDto extends PageOptionsDto {
 	})
 	@IsOptional()
 	@ToArray()
-	@IsUUID('4', { each: true })
+	@IsUUID('all', { each: true })
 	excludeTags?: string[] = [];
 
 	@ApiPropertyOptional({
@@ -136,7 +136,7 @@ export class BookPageOptionsDto extends PageOptionsDto {
 	})
 	@IsOptional()
 	@ToArray()
-	@IsUUID('4', { each: true })
+	@IsUUID('all', { each: true })
 	authors?: string[] = [];
 
 	@ApiPropertyOptional({

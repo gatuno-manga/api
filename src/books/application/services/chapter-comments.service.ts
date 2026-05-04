@@ -5,7 +5,7 @@ import {
 	Injectable,
 	NotFoundException,
 } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
+import { v7 as uuidv7 } from 'uuid';
 import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
 import { MediaUrlService } from 'src/common/services/media-url.service';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
@@ -145,7 +145,7 @@ export class ChapterCommentsService {
 		);
 
 		const comment = this.chapterCommentRepository.create({
-			id: randomUUID(),
+			id: uuidv7(),
 			chapter: { id: chapterId } as unknown as Chapter,
 			user: { id: user.userId } as unknown as User,
 			userName: userIdentity.userName,
@@ -194,7 +194,7 @@ export class ChapterCommentsService {
 		}
 
 		const reply = this.chapterCommentRepository.create({
-			id: randomUUID(),
+			id: uuidv7(),
 			chapter: { id: chapterId } as unknown as Chapter,
 			parent: { id: parentId } as unknown as ChapterComment,
 			user: { id: user.userId } as unknown as User,

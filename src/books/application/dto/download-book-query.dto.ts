@@ -11,7 +11,7 @@ export class DownloadBookQueryDto {
 	})
 	@IsOptional()
 	@IsArray()
-	@IsUUID('4', { each: true })
+	@IsUUID('all', { each: true })
 	@Transform(({ value }) => {
 		if (typeof value === 'string') {
 			return value.split(',');
