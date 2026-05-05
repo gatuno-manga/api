@@ -18,7 +18,7 @@ export class TypeOrmUserImageRepositoryAdapter implements IUserImageRepository {
 		data: Partial<DomainUserImage>,
 	): Promise<void> {
 		await this.repository.update(
-			criteria as unknown as FindOptionsWhere<InfrastructureUserImage>,
+			criteria as FindOptionsWhere<InfrastructureUserImage>,
 			data as unknown as InfrastructureUserImage,
 		);
 	}

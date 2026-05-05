@@ -192,7 +192,7 @@ export class BookBookRelationshipService {
 				isBidirectional: rel.isBidirectional,
 				order: rel.order,
 				metadata: rel.metadata,
-				direction: direction as 'incoming' | 'outgoing',
+				direction: direction,
 				relatedBook,
 				createdAt: rel.createdAt,
 			};

@@ -6,19 +6,14 @@ import {
 	UseGuards,
 	UseInterceptors,
 } from '@nestjs/common';
-import {
-	ApiBearerAuth,
-	ApiOperation,
-	ApiParam,
-	ApiResponse,
-	ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { DataEnvelopeInterceptor } from 'src/common/interceptors/data-envelope.interceptor';
 import { SavedPagesService } from '../../application/use-cases/saved-pages.service';
+import { ApiDocsGetSavedPagesByBook } from './swagger/user-book-saved-pages.swagger';
 
 @ApiTags('Saved Pages')
 @Controller('users/me/books')
@@ -29,21 +24,7 @@ export class UserBookSavedPagesController {
 	constructor(private readonly savedPagesService: SavedPagesService) {}
 
 	@Get(':bookId/saved-pages')
-	@ApiOperation({
-		summary: 'Get saved pages for a specific book',
-		description:
-			'Retrieve all saved pages of the current user for a specific book',
-	})
-	@ApiParam({
-		name: 'bookId',
-		description: 'Book unique identifier',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Saved pages for the book retrieved successfully',
-	})
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiDocsGetSavedPagesByBook()
 	async getSavedPagesByBook(
 		@Param('bookId', ParseUUIDPipe) bookId: string,
 		@CurrentUser() user: CurrentUserDto,

@@ -80,10 +80,7 @@ export class ScrapingSessionRunner {
 						expires: c.expires,
 						httpOnly: c.httpOnly,
 						secure: c.secure,
-						sameSite: (c.sameSite || 'Lax') as
-							| 'Strict'
-							| 'Lax'
-							| 'None',
+						sameSite: c.sameSite || 'Lax',
 					}));
 					this.logger.debug(
 						`Obtained UA and ${flareSolverrCookies.length} cookies from FlareSolverr`,

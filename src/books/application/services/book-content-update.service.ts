@@ -238,7 +238,7 @@ export class BookContentUpdateService {
 						refererUrl,
 					);
 
-				if (existingHashes.has(imageHash as string)) {
+				if (existingHashes.has(imageHash)) {
 					this.logger.debug(
 						`Cover already exists (hash match): ${scrapedCover.url}`,
 					);
@@ -259,7 +259,7 @@ export class BookContentUpdateService {
 
 				const savedCover = await this.coverRepository.save(cover);
 				book.covers.push(savedCover);
-				existingHashes.add(imageHash as string);
+				existingHashes.add(imageHash);
 				newCoversCount++;
 
 				await this.coverImageService.addCoverToQueue(

@@ -352,4 +352,8 @@ export class AppConfigService {
 			),
 		};
 	}
+
+	get enableSwagger(): boolean {
+		return this.config.get<boolean>('ENABLE_SWAGGER') ?? false;
+	}
 }

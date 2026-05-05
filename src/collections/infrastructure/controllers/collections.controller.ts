@@ -7,7 +7,7 @@ import {
 	UseInterceptors,
 	Param,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../auth/infrastructure/framework/jwt-auth.guard';
 import { CurrentUser } from '../../../auth/infrastructure/framework/current-user.decorator';
 import { CurrentUserDto } from '../../../auth/application/dto/current-user.dto';
@@ -20,6 +20,12 @@ import { CreateCollectionDto } from '../http/dto/create-collection.dto';
 import { AddBookDto } from '../http/dto/add-book.dto';
 import { ShareCollectionDto } from '../http/dto/share-collection.dto';
 import { SWAGGER_AUTH_SCHEME } from '../../../common/swagger/swagger-auth.constants';
+import {
+	ApiDocsGetMyCollections,
+	ApiDocsCreate,
+	ApiDocsAddBook,
+	ApiDocsShare,
+} from './swagger/collections.swagger';
 
 @ApiTags('Collections V2')
 @Controller('collections')
@@ -35,7 +41,7 @@ export class CollectionsController {
 	) {}
 
 	@Get()
-	@ApiOperation({ summary: 'Get my collections' })
+	@ApiDocsGetMyCollections()
 	async getMyCollections(@CurrentUser() user: CurrentUserDto) {
 		const collections = await this.getUserCollectionsUseCase.execute(
 			user.userId,
@@ -44,7 +50,7 @@ export class CollectionsController {
 	}
 
 	@Post()
-	@ApiOperation({ summary: 'Create a collection' })
+	@ApiDocsCreate()
 	async create(
 		@CurrentUser() user: CurrentUserDto,
 		@Body() dto: CreateCollectionDto,
@@ -57,7 +63,7 @@ export class CollectionsController {
 	}
 
 	@Post(':id/books')
-	@ApiOperation({ summary: 'Add a book to a collection' })
+	@ApiDocsAddBook()
 	async addBook(
 		@CurrentUser() user: CurrentUserDto,
 		@Param('id') id: string,
@@ -71,7 +77,7 @@ export class CollectionsController {
 	}
 
 	@Post(':id/share')
-	@ApiOperation({ summary: 'Share a collection with a collaborator' })
+	@ApiDocsShare()
 	async share(
 		@CurrentUser() user: CurrentUserDto,
 		@Param('id') id: string,

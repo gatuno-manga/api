@@ -39,4 +39,31 @@ export default tseslint.config(
 			'@typescript-eslint/no-unsafe-argument': 'warn',
 		},
 	},
+	{
+		files: ['src/**/*.controller.ts'],
+		rules: {
+			'no-restricted-imports': [
+				'error',
+				{
+					paths: [
+						{
+							name: '@nestjs/swagger',
+							importNames: [
+								'ApiOperation',
+								'ApiResponse',
+								'ApiBody',
+								'ApiParam',
+								'ApiQuery',
+								'ApiConsumes',
+								'ApiHeader',
+								'ApiProperty',
+							],
+							message:
+								'Please extract Swagger documentation decorators to a custom decorator in a .swagger.ts file to keep the controller clean.',
+						},
+					],
+				},
+			],
+		},
+	},
 );

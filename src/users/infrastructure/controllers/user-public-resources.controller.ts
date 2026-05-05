@@ -5,11 +5,17 @@ import {
 	ParseUUIDPipe,
 	UseInterceptors,
 } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import { DataEnvelopeInterceptor } from 'src/common/interceptors/data-envelope.interceptor';
 import { GetPublicCollectionsUseCase } from '../../../collections/application/use-cases/get-public-collections.use-case';
 import { SavedPagesService } from '../../application/use-cases/saved-pages.service';
 import { UsersService } from '../../application/use-cases/users.service';
+import {
+	ApiDocsGetPublicProfile,
+	ApiDocsGetPublicCollections,
+	ApiDocsGetPublicSavedPages,
+	ApiDocsGetPublicSavedPagesByBook,
+} from './swagger/user-public-resources.swagger';
 
 @ApiTags('Public User Resources')
 @Controller('users/:userId/public')
@@ -22,32 +28,13 @@ export class UserPublicResourcesController {
 	) {}
 
 	@Get('profile')
-	@ApiOperation({
-		summary: 'Get public profile of a user',
-		description: 'Retrieve public user profile information',
-	})
-	@ApiParam({
-		name: 'userId',
-		description: 'User unique identifier',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@ApiResponse({ status: 200, description: 'Public profile retrieved' })
-	@ApiResponse({ status: 404, description: 'User not found' })
+	@ApiDocsGetPublicProfile()
 	async getPublicProfile(@Param('userId', ParseUUIDPipe) userId: string) {
 		return this.usersService.getPublicUserProfile(userId);
 	}
 
 	@Get('collections')
-	@ApiOperation({
-		summary: 'Get public collections of a user',
-		description: 'Retrieve collections that are marked as public',
-	})
-	@ApiParam({
-		name: 'userId',
-		description: 'User unique identifier',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@ApiResponse({ status: 200, description: 'Public collections retrieved' })
+	@ApiDocsGetPublicCollections()
 	async getPublicCollections(@Param('userId', ParseUUIDPipe) userId: string) {
 		const collections =
 			await this.getPublicCollectionsUseCase.execute(userId);
@@ -55,40 +42,13 @@ export class UserPublicResourcesController {
 	}
 
 	@Get('saved-pages')
-	@ApiOperation({
-		summary: 'Get public saved pages of a user',
-		description: 'Retrieve saved pages that are marked as public',
-	})
-	@ApiParam({
-		name: 'userId',
-		description: 'User unique identifier',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@ApiResponse({ status: 200, description: 'Public saved pages retrieved' })
+	@ApiDocsGetPublicSavedPages()
 	async getPublicSavedPages(@Param('userId', ParseUUIDPipe) userId: string) {
 		return this.savedPagesService.getPublicSavedPages(userId);
 	}
 
 	@Get('books/:bookId/saved-pages')
-	@ApiOperation({
-		summary: 'Get public saved pages of a user by book',
-		description:
-			'Retrieve public saved pages of a user filtered by a specific book',
-	})
-	@ApiParam({
-		name: 'userId',
-		description: 'User unique identifier',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@ApiParam({
-		name: 'bookId',
-		description: 'Book unique identifier',
-		example: '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Public saved pages by book retrieved',
-	})
+	@ApiDocsGetPublicSavedPagesByBook()
 	async getPublicSavedPagesByBook(
 		@Param('userId', ParseUUIDPipe) userId: string,
 		@Param('bookId', ParseUUIDPipe) bookId: string,

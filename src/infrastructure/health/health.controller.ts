@@ -1,5 +1,5 @@
 import { Controller, Get, Inject } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import {
 	DiskHealthIndicator,
 	HealthCheck,
@@ -13,6 +13,12 @@ import { Redis } from 'ioredis';
 import { Transport } from '@nestjs/microservices';
 import { REDIS_CLIENT } from '../redis/redis.constants';
 import { AppConfigService } from '../app-config/app-config.service';
+import {
+	ApiDocsCheck,
+	ApiDocsLiveness,
+	ApiDocsReadiness,
+	ApiDocsStartup,
+} from './swagger/health.swagger';
 
 @ApiTags('Health')
 @Controller('health')
@@ -30,15 +36,7 @@ export class HealthController {
 
 	@Get()
 	@HealthCheck()
-	@ApiOperation({
-		summary: 'Health check completo',
-		description:
-			'Verifica status do banco, Redis, Kafka, Meilisearch, RustFS, memória e disco',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Aplicação saudável',
-	})
+	@ApiDocsCheck()
 	check() {
 		return this.health.check([
 			() => this.db.pingCheck('database'),
@@ -118,14 +116,7 @@ export class HealthController {
 
 	@Get('liveness')
 	@HealthCheck()
-	@ApiOperation({
-		summary: 'Liveness probe',
-		description: 'Verifica se a aplicação está rodando (para Kubernetes)',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Aplicação está viva',
-	})
+	@ApiDocsLiveness()
 	liveness() {
 		return this.health.check([
 			() => Promise.resolve({ liveness: { status: 'up' } }),
@@ -134,19 +125,7 @@ export class HealthController {
 
 	@Get('readiness')
 	@HealthCheck()
-	@ApiOperation({
-		summary: 'Readiness probe',
-		description:
-			'Verifica se a aplicação está pronta para receber tráfego (para Kubernetes)',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Aplicação está pronta',
-	})
-	@ApiResponse({
-		status: 503,
-		description: 'Aplicação não está pronta',
-	})
+	@ApiDocsReadiness()
 	readiness() {
 		return this.health.check([
 			() => this.db.pingCheck('database'),
@@ -160,15 +139,7 @@ export class HealthController {
 
 	@Get('startup')
 	@HealthCheck()
-	@ApiOperation({
-		summary: 'Startup probe',
-		description:
-			'Verifica se a aplicação terminou de inicializar (para Kubernetes)',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Aplicação inicializada',
-	})
+	@ApiDocsStartup()
 	startup() {
 		return this.health.check([() => this.db.pingCheck('database')]);
 	}

@@ -8,19 +8,14 @@ import {
 	StreamableFile,
 	UseGuards,
 } from '@nestjs/common';
-import {
-	ApiBearerAuth,
-	ApiOperation,
-	ApiParam,
-	ApiResponse,
-	ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { DownloadService } from '@books/application/services/download.service';
 import { DownloadChapterQueryDto } from '@books/application/dto/download-chapter-query.dto';
+import { ApiDocsDownloadChapter } from './swagger/chapter-download.swagger';
 
 @ApiTags('Downloads')
 @Controller('chapters')
@@ -33,33 +28,7 @@ export class ChapterDownloadController {
 
 	@Get(':idChapter/download')
 	@Throttle({ default: { limit: 5, ttl: 60000 } })
-	@ApiOperation({
-		summary: 'Download de um capítulo',
-		description:
-			'Baixa um capítulo específico em formato ZIP (imagens) ou PDF',
-	})
-	@ApiParam({
-		name: 'idChapter',
-		description: 'ID do capítulo',
-		type: 'string',
-		format: 'uuid',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Arquivo do capítulo gerado com sucesso',
-		content: {
-			'application/zip': {},
-			'application/pdf': {},
-		},
-	})
-	@ApiResponse({
-		status: 404,
-		description: 'Capítulo não encontrado ou sem páginas',
-	})
-	@ApiResponse({
-		status: 429,
-		description: 'Limite de requisições excedido',
-	})
+	@ApiDocsDownloadChapter()
 	async downloadChapter(
 		@Param('idChapter') idChapter: string,
 		@Query() query: DownloadChapterQueryDto,
