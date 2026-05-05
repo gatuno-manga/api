@@ -43,6 +43,7 @@ export class ReadingProgressResponseDto {
 	totalPages: number;
 	completed: boolean;
 	updatedAt: Date;
+	deleted: boolean;
 }
 
 export class SyncReadingProgressDto {

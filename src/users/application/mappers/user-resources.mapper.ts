@@ -21,6 +21,7 @@ export class UserResourcesMapper {
 			totalPages: progress.totalPages,
 			completed: progress.completed,
 			updatedAt: progress.updatedAt,
+			deleted: !!progress.deletedAt,
 		};
 	}
 
