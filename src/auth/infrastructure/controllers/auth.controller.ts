@@ -437,6 +437,7 @@ export class AuthController {
 	}
 
 	@Post('mfa/totp/setup')
+	@Throttle({ short: { limit: 5, ttl: 60000 } })
 	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 	@UseGuards(JwtAuthGuard)
 	async beginTotpSetup(
@@ -450,6 +451,7 @@ export class AuthController {
 	}
 
 	@Post('mfa/totp/verify-setup')
+	@Throttle({ short: { limit: 5, ttl: 60000 } })
 	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 	@UseGuards(JwtAuthGuard)
 	async verifyTotpSetup(
@@ -465,6 +467,7 @@ export class AuthController {
 	}
 
 	@Post('mfa/totp/disable')
+	@Throttle({ short: { limit: 5, ttl: 60000 } })
 	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 	@UseGuards(JwtAuthGuard)
 	async disableTotp(
