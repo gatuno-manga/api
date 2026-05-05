@@ -5,8 +5,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Job } from 'bullmq';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { Repository } from 'typeorm';
-import { Book } from '../../infrastructure/database/entities/book.entity';
-import { BookContentUpdateService } from '../../application/services/book-content-update.service';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
+import { BookContentUpdateService } from '@books/application/services/book-content-update.service';
 import { CoverImageService } from './cover-image.service';
 
 const QUEUE_NAME = 'book-update-queue';

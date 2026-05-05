@@ -14,13 +14,13 @@ import {
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { FilesService } from 'src/files/application/services/files.service';
 import { REDIS_CLIENT } from 'src/infrastructure/redis/redis.constants';
-import { PlaywrightBrowserFactory } from '../../infrastructure/browser';
+import { PlaywrightBrowserFactory } from '@scraping/infrastructure/browser';
 import {
 	IConcurrencyManager,
 	RedisConcurrencyManager,
-} from '../../infrastructure/concurrency';
-import { WebsiteConfigDto } from '../dto/website-config.dto';
-import { ScrapedImageDataDto } from '../dto/scraped-image-data.dto';
+} from '@scraping/infrastructure/concurrency';
+import { WebsiteConfigDto } from '@scraping/application/dto/website-config.dto';
+import { ScrapedImageDataDto } from '@scraping/application/dto/scraped-image-data.dto';
 import {
 	CookieConfig,
 	ElementScreenshot,
@@ -30,18 +30,18 @@ import {
 	PageScroller,
 	StorageConfig,
 	StorageInjector,
-} from '../../infrastructure/helpers';
+} from '@scraping/infrastructure/helpers';
 import {
 	detectPageComplexity,
 	getComplexityMultipliers,
 	PageSize,
-} from '../../infrastructure/helpers/page-complexity-detector';
+} from '@scraping/infrastructure/helpers/page-complexity-detector';
 import {
 	DEFAULT_SCROLL_CONFIG,
 	getAdaptiveScrollConfig,
-} from '../../infrastructure/helpers/page-scroller';
-import { ScrapingContext } from '../../infrastructure/runner/scraping-context.interface';
-import { ScrapingSessionRunner } from '../../infrastructure/runner/scraping-session.runner';
+} from '@scraping/infrastructure/helpers/page-scroller';
+import { ScrapingContext } from '@scraping/infrastructure/runner/scraping-context.interface';
+import { ScrapingSessionRunner } from '@scraping/infrastructure/runner/scraping-session.runner';
 import { WebsiteService } from './website.service';
 import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
 

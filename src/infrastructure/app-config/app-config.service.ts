@@ -125,11 +125,12 @@ export class AppConfigService {
 		return new DatabaseConfig(
 			this.config.get<string>('DB_TYPE') ?? 'mysql',
 			this.config.get<string>('DB_NAME') ?? '',
-			this.config.get<string>('DB_MASTER_HOST') ?? '',
+			this.config.get<string>('DB_HOST') ??
+				this.config.get<string>('DB_MASTER_HOST') ??
+				'',
 			this.config.get<number>('DB_PORT') ?? 3306,
 			this.config.get<string>('DB_USER') ?? '',
 			this.config.get<string>('DB_PASS') ?? '',
-			this.parseCsv(this.config.get<string>('DB_SLAVE_HOSTS')),
 		);
 	}
 
@@ -351,5 +352,9 @@ export class AppConfigService {
 				this.config.get<string>('ANDROID_SHA256_FINGERPRINTS'),
 			),
 		};
+	}
+
+	get enableSwagger(): boolean {
+		return this.config.get<boolean>('ENABLE_SWAGGER') ?? false;
 	}
 }

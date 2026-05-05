@@ -1,4 +1,4 @@
-import { BookRequest } from '../../domain/entities/book-request';
+import { BookRequest } from '@/book-requests/domain/entities/book-request';
 
 export interface BookRequestRepository {
 	save(bookRequest: BookRequest): Promise<void>;

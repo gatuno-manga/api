@@ -1,15 +1,19 @@
 import { Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
-import {
-	ApiOperation,
-	ApiResponse,
-	ApiTags,
-	ApiBearerAuth,
-} from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
 import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { AdminSystemManagementService } from '@books/application/services/admin-system-management.service';
+import {
+	ApiDocsListCronJobs,
+	ApiDocsStopCronJob,
+	ApiDocsStartCronJob,
+	ApiDocsListQueues,
+	ApiDocsPauseQueue,
+	ApiDocsResumeQueue,
+	ApiDocsResetAutoPause,
+} from './swagger/admin-system-management.swagger';
 
 @ApiTags('Admin System Management')
 @Controller('admin/system')
@@ -22,45 +26,43 @@ export class AdminSystemManagementController {
 	) {}
 
 	@Get('cron')
-	@ApiOperation({ summary: 'List all registered cron jobs' })
+	@ApiDocsListCronJobs()
 	listCronJobs() {
 		return this.systemManagementService.listCronJobs();
 	}
 
 	@Patch('cron/:name/stop')
-	@ApiOperation({ summary: 'Stop a specific cron job' })
+	@ApiDocsStopCronJob()
 	stopCronJob(@Param('name') name: string) {
 		return this.systemManagementService.stopCronJob(name);
 	}
 
 	@Patch('cron/:name/start')
-	@ApiOperation({ summary: 'Start a specific cron job' })
+	@ApiDocsStartCronJob()
 	startCronJob(@Param('name') name: string) {
 		return this.systemManagementService.startCronJob(name);
 	}
 
 	@Get('queues')
-	@ApiOperation({ summary: 'List all managed queues' })
+	@ApiDocsListQueues()
 	listQueues() {
 		return this.systemManagementService.listQueues();
 	}
 
 	@Patch('queues/:name/pause')
-	@ApiOperation({ summary: 'Pause a specific queue' })
+	@ApiDocsPauseQueue()
 	pauseQueue(@Param('name') name: string) {
 		return this.systemManagementService.pauseQueue(name);
 	}
 
 	@Patch('queues/:name/resume')
-	@ApiOperation({ summary: 'Resume a specific queue' })
+	@ApiDocsResumeQueue()
 	resumeQueue(@Param('name') name: string) {
 		return this.systemManagementService.resumeQueue(name);
 	}
 
 	@Patch('queues/:name/reset-autopause')
-	@ApiOperation({
-		summary: 'Reset the auto-pause failure counter for a queue',
-	})
+	@ApiDocsResetAutoPause()
 	resetAutoPause(@Param('name') name: string) {
 		return this.systemManagementService.resetAutoPauseCounter(name);
 	}

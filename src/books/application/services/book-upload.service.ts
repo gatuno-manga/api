@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import { BookEvents } from '../../domain/constants/events.constant';
+import { BookEvents } from '@books/domain/constants/events.constant';
 import {
 	BadRequestException,
 	Inject,
@@ -16,32 +16,32 @@ import { FilesService } from 'src/files/application/services/files.service';
 import {
 	FORMAT_TO_EXTENSION,
 	MIMETYPE_TO_FORMAT,
-} from '../../domain/constants/content-types.constants';
-import { UploadTextContentDto } from '../dto/upload-text-content.dto';
-import { Book } from '../../domain/entities/book';
-import { Chapter } from '../../domain/entities/chapter';
-import { Cover } from '../../domain/entities/cover';
-import { Page } from '../../domain/entities/page';
-import { ContentFormat } from '../../domain/enums/content-format.enum';
-import { ContentType } from '../../domain/enums/content-type.enum';
-import { DocumentFormat } from '../../domain/enums/document-format.enum';
-import { ExportFormat } from '../../domain/enums/export-format.enum';
+} from '@books/domain/constants/content-types.constants';
+import { UploadTextContentDto } from '@books/application/dto/upload-text-content.dto';
+import { Book } from '@books/domain/entities/book';
+import { Chapter } from '@books/domain/entities/chapter';
+import { Cover } from '@books/domain/entities/cover';
+import { Page } from '@books/domain/entities/page';
+import { ContentFormat } from '@books/domain/enums/content-format.enum';
+import { ContentType } from '@books/domain/enums/content-type.enum';
+import { DocumentFormat } from '@books/domain/enums/document-format.enum';
+import { ExportFormat } from '@books/domain/enums/export-format.enum';
 import {
 	I_BOOK_REPOSITORY,
 	IBookRepository,
-} from '../ports/book-repository.interface';
+} from '@books/application/ports/book-repository.interface';
 import {
 	I_CHAPTER_REPOSITORY,
 	IChapterRepository,
-} from '../ports/chapter-repository.interface';
+} from '@books/application/ports/chapter-repository.interface';
 import {
 	I_COVER_REPOSITORY,
 	ICoverRepository,
-} from '../ports/cover-repository.interface';
+} from '@books/application/ports/cover-repository.interface';
 import {
 	I_PAGE_REPOSITORY,
 	IPageRepository,
-} from '../ports/page-repository.interface';
+} from '@books/application/ports/page-repository.interface';
 import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
 
 /**

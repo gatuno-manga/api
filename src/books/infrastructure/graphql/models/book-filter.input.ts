@@ -9,11 +9,11 @@ import {
 	IsString,
 	IsUUID,
 } from 'class-validator';
-import { FilterLogic } from '../../../../common/enum/filter-logic.enum';
-import { FilterOperator } from '../../../../common/enum/filter-operator.enum';
-import { OrderDirection } from '../../../../common/enum/order-direction.enum';
-import { BookOrderField } from '../../../domain/enums/book-order-field.enum';
-import { BookType } from '../../../domain/enums/book-type.enum';
+import { FilterLogic } from '@common/enum/filter-logic.enum';
+import { FilterOperator } from '@common/enum/filter-operator.enum';
+import { OrderDirection } from '@common/enum/order-direction.enum';
+import { BookOrderField } from '@books/domain/enums/book-order-field.enum';
+import { BookType } from '@books/domain/enums/book-type.enum';
 
 registerEnumType(FilterLogic, { name: 'FilterLogic' });
 registerEnumType(FilterOperator, { name: 'FilterOperator' });
@@ -59,7 +59,7 @@ export class BookFilterInput {
 	@Field(() => [ID], { nullable: 'itemsAndList' })
 	@IsOptional()
 	@IsArray()
-	@IsUUID('4', { each: true })
+	@IsUUID('all', { each: true })
 	tags?: string[];
 
 	@Field(() => FilterLogic, { nullable: true, defaultValue: FilterLogic.AND })
@@ -70,7 +70,7 @@ export class BookFilterInput {
 	@Field(() => [ID], { nullable: 'itemsAndList' })
 	@IsOptional()
 	@IsArray()
-	@IsUUID('4', { each: true })
+	@IsUUID('all', { each: true })
 	excludeTags?: string[];
 
 	@Field(() => FilterLogic, { nullable: true, defaultValue: FilterLogic.OR })
@@ -94,7 +94,7 @@ export class BookFilterInput {
 	@Field(() => [ID], { nullable: 'itemsAndList' })
 	@IsOptional()
 	@IsArray()
-	@IsUUID('4', { each: true })
+	@IsUUID('all', { each: true })
 	authors?: string[];
 
 	@Field(() => FilterLogic, { nullable: true, defaultValue: FilterLogic.AND })

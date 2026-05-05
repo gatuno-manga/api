@@ -1,6 +1,6 @@
 import { Collection } from './collection';
-import { UserId } from '../../../common/domain/value-objects/user-id.vo';
-import { BookId } from '../../../common/domain/value-objects/book-id.vo';
+import { UserId } from '@common/domain/value-objects/user-id.vo';
+import { BookId } from '@common/domain/value-objects/book-id.vo';
 
 describe('Collection Domain Entity', () => {
 	it('should create a collection', () => {

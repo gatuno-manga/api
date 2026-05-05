@@ -1,6 +1,6 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
 import { IsInt, IsOptional, IsPositive, IsString, Min } from 'class-validator';
-import { OrderDirection } from '../../../../common/enum/order-direction.enum';
+import { OrderDirection } from '@common/enum/order-direction.enum';
 
 @InputType('ChapterFilterInput')
 export class ChapterFilterInput {

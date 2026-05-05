@@ -2,8 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ClientProxy } from '@nestjs/microservices';
 import { of } from 'rxjs';
 import { ReadingProgressNotifier } from './reading-progress.notifier';
-import { ReadingEvents } from '../../domain/constants/events.constant';
-import { MqttTopics } from '../../../common/domain/constants/mqtt-topics.constant';
+import { ReadingEvents } from '@users/domain/constants/events.constant';
+import { MqttTopics } from '@common/domain/constants/mqtt-topics.constant';
 
 describe('ReadingProgressNotifier', () => {
 	let notifier: ReadingProgressNotifier;

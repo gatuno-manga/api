@@ -1,4 +1,4 @@
-import { Cover } from '../../domain/entities/cover';
+import { Cover } from '@books/domain/entities/cover';
 
 export interface ICoverRepository {
 	findById(id: string, relations?: string[]): Promise<Cover | null>;

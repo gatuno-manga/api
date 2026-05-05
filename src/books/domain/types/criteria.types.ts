@@ -1,12 +1,12 @@
-import { Book } from '../entities/book';
-import { Chapter } from '../entities/chapter';
-import { Page } from '../entities/page';
-import { Author } from '../entities/author';
-import { Tag } from '../entities/tag';
-import { SensitiveContent } from '../entities/sensitive-content';
-import { BookRelationship } from '../entities/book-relationship';
-import { ChapterRead } from '../entities/chapter-read';
-import { ChapterComment } from '../entities/chapter-comment';
+import { Book } from '@books/domain/entities/book';
+import { Chapter } from '@books/domain/entities/chapter';
+import { Page } from '@books/domain/entities/page';
+import { Author } from '@books/domain/entities/author';
+import { Tag } from '@books/domain/entities/tag';
+import { SensitiveContent } from '@books/domain/entities/sensitive-content';
+import { BookRelationship } from '@books/domain/entities/book-relationship';
+import { ChapterRead } from '@books/domain/entities/chapter-read';
+import { ChapterComment } from '@books/domain/entities/chapter-comment';
 
 // Basic criteria based on entity fields
 export type Criteria<T> = {

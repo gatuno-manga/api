@@ -6,16 +6,21 @@ import {
 	UseInterceptors,
 	Param,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../../auth/infrastructure/framework/jwt-auth.guard';
-import { CurrentUser } from '../../../auth/infrastructure/framework/current-user.decorator';
-import { CurrentUserDto } from '../../../auth/application/dto/current-user.dto';
-import { DataEnvelopeInterceptor } from '../../../common/interceptors/data-envelope.interceptor';
-import { FavoriteBookUseCase } from '../../application/use-cases/favorite-book.use-case';
-import { SubscribeToBookUseCase } from '../../application/use-cases/subscribe-to-book.use-case';
-import { ReviewBookUseCase } from '../../application/use-cases/review-book.use-case';
-import { ReviewBookDto } from '../http/dto/review-book.dto';
-import { SWAGGER_AUTH_SCHEME } from '../../../common/swagger/swagger-auth.constants';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
+import { CurrentUser } from '@auth/infrastructure/framework/current-user.decorator';
+import { CurrentUserDto } from '@auth/application/dto/current-user.dto';
+import { DataEnvelopeInterceptor } from '@common/interceptors/data-envelope.interceptor';
+import { FavoriteBookUseCase } from '@/interactions/application/use-cases/favorite-book.use-case';
+import { SubscribeToBookUseCase } from '@/interactions/application/use-cases/subscribe-to-book.use-case';
+import { ReviewBookUseCase } from '@/interactions/application/use-cases/review-book.use-case';
+import { ReviewBookDto } from '@/interactions/infrastructure/http/dto/review-book.dto';
+import { SWAGGER_AUTH_SCHEME } from '@common/swagger/swagger-auth.constants';
+import {
+	ApiDocsFavorite,
+	ApiDocsSubscribe,
+	ApiDocsReview,
+} from './swagger/interactions.swagger';
 
 @ApiTags('Interactions')
 @Controller('books/:id')
@@ -30,7 +35,7 @@ export class InteractionsController {
 	) {}
 
 	@Post('favorite')
-	@ApiOperation({ summary: 'Mark book as favorite' })
+	@ApiDocsFavorite()
 	async favorite(
 		@CurrentUser() user: CurrentUserDto,
 		@Param('id') id: string,
@@ -39,7 +44,7 @@ export class InteractionsController {
 	}
 
 	@Post('subscribe')
-	@ApiOperation({ summary: 'Subscribe to book updates' })
+	@ApiDocsSubscribe()
 	async subscribe(
 		@CurrentUser() user: CurrentUserDto,
 		@Param('id') id: string,
@@ -48,7 +53,7 @@ export class InteractionsController {
 	}
 
 	@Post('reviews')
-	@ApiOperation({ summary: 'Review and rate a book' })
+	@ApiDocsReview()
 	async review(
 		@CurrentUser() user: CurrentUserDto,
 		@Param('id') id: string,

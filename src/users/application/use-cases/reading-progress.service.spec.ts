@@ -3,9 +3,9 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Repository } from 'typeorm';
 import { ReadingProgressService } from './reading-progress.service';
-import { ReadingProgress } from '../../infrastructure/database/entities/reading-progress.entity';
-import { SyncStrategyResolver } from '../strategies/sync-strategy.resolver';
-import { UserResourcesMapper } from '../mappers/user-resources.mapper';
+import { ReadingProgress } from '@users/infrastructure/database/entities/reading-progress.entity';
+import { SyncStrategyResolver } from '@users/application/strategies/sync-strategy.resolver';
+import { UserResourcesMapper } from '@users/application/mappers/user-resources.mapper';
 
 describe('ReadingProgressService', () => {
 	let service: ReadingProgressService;
@@ -19,6 +19,7 @@ describe('ReadingProgressService', () => {
 		save: jest.fn(),
 		create: jest.fn(),
 		delete: jest.fn(),
+		softDelete: jest.fn(),
 	};
 
 	const mockEventEmitter = {
@@ -166,16 +167,47 @@ describe('ReadingProgressService', () => {
 		});
 	});
 
-	describe('deleteProgress', () => {
-		it('should delete progress and emit event', async () => {
-			await service.deleteProgress('u1', 'ch1');
-			expect(mockRepository.delete).toHaveBeenCalledWith({
-				userId: 'u1',
+	describe('syncProgress', () => {
+		const userId = 'user-1';
+
+		it('should perform incremental sync when lastSyncAt is provided and progress is empty', async () => {
+			const lastSyncAt = new Date('2025-01-01');
+			mockRepository.find.mockResolvedValue([]);
+			mockUserResourcesMapper.toReadingProgressDtoList.mockReturnValue(
+				[],
+			);
+
+			await service.syncProgress(userId, { progress: [], lastSyncAt });
+
+			expect(mockRepository.find).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: expect.objectContaining({
+						userId,
+						updatedAt: expect.any(Object),
+					}),
+					withDeleted: true,
+				}),
+			);
+		});
+
+		it('should include deleted records in sync results', async () => {
+			const deletedRecord = {
+				id: '1',
 				chapterId: 'ch1',
-			});
-			expect(mockEventEmitter.emit).toHaveBeenCalledWith(
-				'reading.progress.deleted',
-				{ userId: 'u1', chapterId: 'ch1' },
+				deletedAt: new Date(),
+			};
+			mockRepository.find.mockResolvedValue([deletedRecord]);
+			mockUserResourcesMapper.toReadingProgressDtoList.mockReturnValue([
+				{ chapterId: 'ch1', deleted: true } as any,
+			]);
+
+			const result = await service.syncProgress(userId, { progress: [] });
+
+			expect(result.synced[0].deleted).toBe(true);
+			expect(mockRepository.find).toHaveBeenCalledWith(
+				expect.objectContaining({
+					withDeleted: true,
+				}),
 			);
 		});
 	});

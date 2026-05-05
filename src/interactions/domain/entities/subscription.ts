@@ -1,5 +1,5 @@
-import { UserId } from '../../../common/domain/value-objects/user-id.vo';
-import { BookId } from '../../../common/domain/value-objects/book-id.vo';
+import { UserId } from '@common/domain/value-objects/user-id.vo';
+import { BookId } from '@common/domain/value-objects/book-id.vo';
 
 export interface SubscriptionSnapshot {
 	userId: string;

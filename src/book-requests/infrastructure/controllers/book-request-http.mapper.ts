@@ -1,5 +1,5 @@
-import { BookRequest } from '../../domain/entities/book-request';
-import { BookRequestResponseDto } from '../http/dto/book-request-response.dto';
+import { BookRequest } from '@/book-requests/domain/entities/book-request';
+import { BookRequestResponseDto } from '@/book-requests/infrastructure/http/dto/book-request-response.dto';
 
 export function mapBookRequestToResponseDto(
 	domain: BookRequest,

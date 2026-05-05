@@ -1,21 +1,21 @@
-import { BookRequest } from '../../../domain/entities/book-request';
-import { BookRequestEntity } from '../entities/book-request.entity';
+import { BookRequest } from '@/book-requests/domain/entities/book-request';
+import { BookRequestEntity } from '@/book-requests/infrastructure/database/entities/book-request.entity';
 import {
 	BookRequestHeader,
 	BookRequestIdentity,
 	BookRequestTiming,
-} from '../../../domain/value-objects/book-request-header.vo';
+} from '@/book-requests/domain/value-objects/book-request-header.vo';
 import {
 	BookRequestBody,
 	BookRequestProposition,
 	BookInformation,
 	BookRequestOutcome,
 	ResolutionDetails,
-} from '../../../domain/value-objects/book-request-body.vo';
-import { BookRequestTitle } from '../../../domain/value-objects/book-request-title.vo';
-import { BookRequestUrl } from '../../../domain/value-objects/book-request-url.vo';
-import { BookRequestReason } from '../../../domain/value-objects/book-request-reason.vo';
-import { RejectionMessage } from '../../../domain/value-objects/rejection-message.vo';
+} from '@/book-requests/domain/value-objects/book-request-body.vo';
+import { BookRequestTitle } from '@/book-requests/domain/value-objects/book-request-title.vo';
+import { BookRequestUrl } from '@/book-requests/domain/value-objects/book-request-url.vo';
+import { BookRequestReason } from '@/book-requests/domain/value-objects/book-request-reason.vo';
+import { RejectionMessage } from '@/book-requests/domain/value-objects/rejection-message.vo';
 
 export function mapBookRequestToDomain(entity: BookRequestEntity): BookRequest {
 	return new BookRequest(

@@ -1,12 +1,12 @@
 import { BadRequestException, INestApplication } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
+import { v7 as uuidv7 } from 'uuid';
 import request from 'supertest';
 import { AuthService } from 'src/auth/auth.service';
 import { createE2EApp } from './helpers/e2e-app.helper';
 
 jest.setTimeout(120000);
 
-const ADMIN_EMAIL = `e2e-admin-${randomUUID()}@example.com`;
+const ADMIN_EMAIL = `e2e-admin-${uuidv7()}@example.com`;
 const ADMIN_PASSWORD = 'AdminP@ssw0rd!';
 process.env.USERADMIN_EMAIL = ADMIN_EMAIL;
 process.env.USERADMIN_PASSWORD = ADMIN_PASSWORD;
@@ -75,7 +75,7 @@ describe('Auth login API (e2e)', () => {
 		email: string;
 		password: string;
 	}> => {
-		const email = `e2e-login-${randomUUID()}@example.com`;
+		const email = `e2e-login-${uuidv7()}@example.com`;
 		const password = 'StrongP@ssw0rd!';
 
 		const signupResponse = await request(app.getHttpServer())
@@ -95,7 +95,7 @@ describe('Auth login API (e2e)', () => {
 		const response = await request(app.getHttpServer())
 			.post('/api/auth/signin')
 			.set('x-client-platform', 'mobile')
-			.set('x-device-id', `admin-${randomUUID()}`)
+			.set('x-device-id', `admin-${uuidv7()}`)
 			.set('x-device-name', 'Jest Admin Device')
 			.send({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
@@ -110,7 +110,7 @@ describe('Auth login API (e2e)', () => {
 		const response = await request(app.getHttpServer())
 			.post('/api/auth/signin')
 			.set('x-client-platform', 'web')
-			.set('x-device-id', `web-${randomUUID()}`)
+			.set('x-device-id', `web-${uuidv7()}`)
 			.set('x-device-name', 'Jest Web Device')
 			.send({ email, password });
 
@@ -135,7 +135,7 @@ describe('Auth login API (e2e)', () => {
 		const response = await request(app.getHttpServer())
 			.post('/api/auth/signin')
 			.set('x-client-platform', 'mobile')
-			.set('x-device-id', `mobile-${randomUUID()}`)
+			.set('x-device-id', `mobile-${uuidv7()}`)
 			.set('x-device-name', 'Jest Mobile Device')
 			.send({ email, password });
 
@@ -212,7 +212,7 @@ describe('Auth login API (e2e)', () => {
 		const response = await request(app.getHttpServer())
 			.post('/api/auth/signin')
 			.send({
-				email: `no-user-${randomUUID()}@example.com`,
+				email: `no-user-${uuidv7()}@example.com`,
 				password: 'InvalidP@ssw0rd!',
 			});
 

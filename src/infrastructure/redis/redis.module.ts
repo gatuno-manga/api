@@ -1,7 +1,7 @@
 import { Global, Logger, Module } from '@nestjs/common';
 import { Redis } from 'ioredis';
-import { AppConfigModule } from '../app-config/app-config.module';
-import { AppConfigService } from '../app-config/app-config.service';
+import { AppConfigModule } from '@app-config/app-config.module';
+import { AppConfigService } from '@app-config/app-config.service';
 import { REDIS_CLIENT } from './redis.constants';
 import { RedisService } from './redis.service';
 

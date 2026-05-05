@@ -6,15 +6,18 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { normalizeUrl } from 'src/common/utils/url.utils';
 import { In } from 'typeorm';
 import { BookEvents } from '@books/domain/constants/events.constant';
 import { ChapterUpdatedEvent } from '@books/infrastructure/events/chapter-updated.event';
-import { CreateChapterBatchItemDto } from '../dto/create-chapter-batch-item.dto';
-import { CreateChapterManualDto } from '../dto/create-chapter-manual.dto';
-import { CreateChapterDto } from '../dto/create-chapter.dto';
-import { OrderChaptersDto } from '../dto/order-chapters.dto';
-import { UpdateChapterDto } from '../dto/update-chapter.dto';
+import { CreateChapterBatchItemDto } from '@books/application/dto/create-chapter-batch-item.dto';
+import { CreateChapterManualDto } from '@books/application/dto/create-chapter-manual.dto';
+import { CreateChapterDto } from '@books/application/dto/create-chapter.dto';
+import { OrderChaptersDto } from '@books/application/dto/order-chapters.dto';
+import { UpdateChapterDto } from '@books/application/dto/update-chapter.dto';
+import { QueueTextProcessingDto } from '@books/application/dto/queue-text-processing.dto';
 import { Book } from '@books/domain/entities/book';
 import { Chapter } from '@books/domain/entities/chapter';
 import { ContentFormat } from '@books/domain/enums/content-format.enum';
@@ -24,11 +27,11 @@ import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import {
 	I_BOOK_REPOSITORY,
 	IBookRepository,
-} from '../ports/book-repository.interface';
+} from '@books/application/ports/book-repository.interface';
 import {
 	I_CHAPTER_REPOSITORY,
 	IChapterRepository,
-} from '../ports/chapter-repository.interface';
+} from '@books/application/ports/chapter-repository.interface';
 import {
 	I_UNIT_OF_WORK,
 	IUnitOfWork,
@@ -48,6 +51,8 @@ export class ChapterManagementService {
 		private readonly bookRepository: IBookRepository,
 		@Inject(I_UNIT_OF_WORK)
 		private readonly unitOfWork: IUnitOfWork,
+		@InjectQueue('text-processing-queue')
+		private readonly textProcessingQueue: Queue<QueueTextProcessingDto>,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
@@ -231,6 +236,12 @@ export class ChapterManagementService {
 		this.eventEmitter.emit('chapter.content.uploaded', {
 			chapterId: savedChapter.id,
 			bookId,
+			format,
+		});
+
+		this.textProcessingQueue.add('process-text', {
+			entityId: savedChapter.id,
+			source: 'CHAPTER',
 			format,
 		});
 
@@ -458,6 +469,14 @@ export class ChapterManagementService {
 				BookEvents.CHAPTER_UPDATED,
 				new ChapterUpdatedEvent(chapter.id, idBook),
 			);
+
+			if (chapter.contentType === ContentType.TEXT && chapter.content) {
+				this.textProcessingQueue.add('process-text', {
+					entityId: chapter.id,
+					source: 'CHAPTER',
+					format: chapter.contentFormat || ContentFormat.MARKDOWN,
+				});
+			}
 		}
 
 		return savedChapters;

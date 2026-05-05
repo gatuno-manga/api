@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Job } from 'bullmq';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { DataSource, Repository } from 'typeorm';
-import { Chapter } from '../../infrastructure/database/entities/chapter.entity';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { ChapterScrapingSharedService } from './chapter-scraping.shared';
 
 const QUEUE_NAME = 'chapter-scraping';
@@ -46,31 +46,29 @@ export class ChapterScrapingJob extends WorkerHost implements OnModuleInit {
 		);
 		const startTime = Date.now();
 
-		const chapter = await this.getChapter(chapterId);
+		const queryRunner = this.dataSource.createQueryRunner();
+		await queryRunner.connect();
 
-		if (!chapter) {
-			this.logger.error(
-				`Capítulo com ID ${chapterId} não encontrado. Job ${job.id} falhará.`,
-			);
-			throw new Error(`Capítulo com ID ${chapterId} não encontrado.`);
-		}
-
-		await this.chapterScrapingShared.processChapterPages(chapter);
-
-		const endTime = Date.now();
-		this.logger.debug(
-			`Job ${job.id} finalizado. Tempo total: ${(endTime - startTime) / 1000}s`,
-		);
-	}
-
-	private async getChapter(chapterId: string): Promise<Chapter | null> {
-		const queryRunner = this.dataSource.createQueryRunner('master');
 		try {
-			await queryRunner.connect();
-			return await queryRunner.manager.findOne(Chapter, {
+			const chapter = await queryRunner.manager.findOne(Chapter, {
 				where: { id: chapterId },
 				relations: ['book', 'pages'],
+				comment: 'force_master',
 			});
+
+			if (!chapter) {
+				this.logger.error(
+					`Capítulo com ID ${chapterId} não encontrado. Job ${job.id} falhará.`,
+				);
+				throw new Error(`Capítulo com ID ${chapterId} não encontrado.`);
+			}
+
+			await this.chapterScrapingShared.processChapterPages(chapter);
+
+			const endTime = Date.now();
+			this.logger.debug(
+				`Job ${job.id} finalizado. Tempo total: ${(endTime - startTime) / 1000}s`,
+			);
 		} finally {
 			await queryRunner.release();
 		}
@@ -79,13 +77,15 @@ export class ChapterScrapingJob extends WorkerHost implements OnModuleInit {
 	@OnWorkerEvent('active')
 	async onActive(job: Job<string>): Promise<void> {
 		const chapterId = job.data;
-		const queryRunner = this.dataSource.createQueryRunner('master');
+
+		const queryRunner = this.dataSource.createQueryRunner();
+		await queryRunner.connect();
 
 		try {
-			await queryRunner.connect();
 			const chapter = await queryRunner.manager.findOne(Chapter, {
 				where: { id: chapterId },
 				relations: ['book'],
+				comment: 'force_master',
 			});
 
 			if (chapter) {
@@ -112,13 +112,14 @@ export class ChapterScrapingJob extends WorkerHost implements OnModuleInit {
 			`Job with id ${job.id} FAILED! Attempt Number ${job.attemptsMade} for chapter ID: ${chapterId}`,
 		);
 
-		const queryRunner = this.dataSource.createQueryRunner('master');
+		const queryRunner = this.dataSource.createQueryRunner();
+		await queryRunner.connect();
 
 		try {
-			await queryRunner.connect();
 			const chapter = await queryRunner.manager.findOne(Chapter, {
 				where: { id: chapterId },
 				relations: ['book'],
+				comment: 'force_master',
 			});
 
 			if (chapter) {

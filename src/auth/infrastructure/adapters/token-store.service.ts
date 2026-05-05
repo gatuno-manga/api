@@ -7,11 +7,11 @@ import {
 	UnauthorizedException,
 } from '@nestjs/common';
 import { Cache } from 'cache-manager';
-import { randomUUID } from 'node:crypto';
+import { v7 as uuidv7 } from 'uuid';
 import { Redis } from 'ioredis';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { REDIS_CLIENT } from 'src/infrastructure/redis/redis.constants';
-import { StoredTokenDto } from '../../application/dto/stored-token.dto';
+import { StoredTokenDto } from '@auth/application/dto/stored-token.dto';
 
 @Injectable()
 export class TokenStoreService {
@@ -87,7 +87,7 @@ export class TokenStoreService {
 		userId: string,
 		operation: () => Promise<T>,
 	): Promise<T> {
-		const lockId = randomUUID();
+		const lockId = uuidv7();
 		const acquired = await this.acquireRefreshLock(userId, lockId);
 
 		if (!acquired) {

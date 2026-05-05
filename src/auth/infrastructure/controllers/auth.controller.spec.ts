@@ -1,12 +1,12 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { UnauthorizedException } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { AppConfigService } from '../../../infrastructure/app-config/app-config.service';
+import { AppConfigService } from '@app-config/app-config.service';
 import { AuthController } from './auth.controller';
-import { AuthService } from '../../auth.service';
-import { JwtAuthGuard } from '../framework/jwt-auth.guard';
-import { RefreshTokenGuard } from '../framework/jwt-refresh.guard';
-import { WebauthnService } from '../adapters/webauthn.service';
+import { AuthService } from '@auth/auth.service';
+import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
+import { RefreshTokenGuard } from '@auth/infrastructure/framework/jwt-refresh.guard';
+import { WebauthnService } from '@auth/infrastructure/adapters/webauthn.service';
 
 describe('AuthController', () => {
 	let controller: AuthController;

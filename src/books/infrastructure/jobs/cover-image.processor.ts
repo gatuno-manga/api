@@ -4,11 +4,11 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Job } from 'bullmq';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
-import { ScrapingService } from '../../../scraping/application/services/scraping.service';
+import { ScrapingService } from '@scraping/application/services/scraping.service';
 import { DataSource, Repository } from 'typeorm';
-import { QueueCoverProcessorDto } from '../../application/dto/queue-cover-processor.dto';
-import { Book } from '../../infrastructure/database/entities/book.entity';
-import { Cover } from '../../infrastructure/database/entities/cover.entity';
+import { QueueCoverProcessorDto } from '@books/application/dto/queue-cover-processor.dto';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
+import { Cover } from '@books/infrastructure/database/entities/cover.entity';
 
 const QUEUE_NAME = 'cover-image-queue';
 const JOB_NAME = 'process-cover';
@@ -160,14 +160,11 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 	}
 
 	private async getBook(bookId: string) {
-		const queryRunner = this.dataSource.createQueryRunner('master');
-		await queryRunner.connect();
-		const book = await queryRunner.manager.findOne(Book, {
+		return await this.dataSource.manager.findOne(Book, {
 			where: { id: bookId },
 			relations: ['covers'],
+			comment: 'force_master',
 		});
-		await queryRunner.release();
-		return book;
 	}
 
 	@OnWorkerEvent('failed')

@@ -1,22 +1,24 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { getQueueToken } from '@nestjs/bullmq';
 import { DataSource } from 'typeorm';
 import { ChapterManagementService } from './chapter-management.service';
-import { Book } from '../../infrastructure/database/entities/book.entity';
-import { Chapter } from '../../infrastructure/database/entities/chapter.entity';
-import { ContentFormat } from '../../domain/enums/content-format.enum';
-import { ExportFormat } from '../../domain/enums/export-format.enum';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
+import { ContentFormat } from '@books/domain/enums/content-format.enum';
+import { ExportFormat } from '@books/domain/enums/export-format.enum';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
-import { I_CHAPTER_REPOSITORY } from '../ports/chapter-repository.interface';
-import { I_BOOK_REPOSITORY } from '../ports/book-repository.interface';
+import { I_CHAPTER_REPOSITORY } from '@books/application/ports/chapter-repository.interface';
+import { I_BOOK_REPOSITORY } from '@books/application/ports/book-repository.interface';
 import { I_UNIT_OF_WORK } from 'src/common/application/ports/unit-of-work.interface';
 
 describe('ChapterManagementService', () => {
 	let service: ChapterManagementService;
 	let bookRepository: any;
 	let chapterRepository: any;
+	let textProcessingQueue: any;
 	let dataSource: any;
 	let eventEmitter: any;
 	let unitOfWork: any;
@@ -48,6 +50,9 @@ describe('ChapterManagementService', () => {
 		};
 		eventEmitter = {
 			emit: jest.fn(),
+		};
+		textProcessingQueue = {
+			add: jest.fn(),
 		};
 		dataSource = {
 			transaction: jest.fn((cb) =>
@@ -83,6 +88,10 @@ describe('ChapterManagementService', () => {
 				{
 					provide: I_UNIT_OF_WORK,
 					useValue: unitOfWork,
+				},
+				{
+					provide: getQueueToken('text-processing-queue'),
+					useValue: textProcessingQueue,
 				},
 				{
 					provide: EventEmitter2,

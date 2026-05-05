@@ -9,22 +9,26 @@ import {
 	UseGuards,
 	UseInterceptors,
 } from '@nestjs/common';
-import {
-	ApiBearerAuth,
-	ApiOperation,
-	ApiParam,
-	ApiResponse,
-	ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { DataEnvelopeInterceptor } from 'src/common/interceptors/data-envelope.interceptor';
-import { CollectionsBooksService } from '../../application/use-cases/collections-books.service';
-import { AddBookCollectionDto } from '../http/dto/add-book-collection.dto';
-import { CreateCollectionBookDto } from '../http/dto/create-collection-book.dto';
-import { UpdateCollectionVisibilityDto } from '../http/dto/update-collection-visibility.dto';
+import { CollectionsBooksService } from '@users/application/use-cases/collections-books.service';
+import { AddBookCollectionDto } from '@users/infrastructure/http/dto/add-book-collection.dto';
+import { CreateCollectionBookDto } from '@users/infrastructure/http/dto/create-collection-book.dto';
+import { UpdateCollectionVisibilityDto } from '@users/infrastructure/http/dto/update-collection-visibility.dto';
+import {
+	ApiDocsGetCollectionBooks,
+	ApiDocsGetNameCollectionBooks,
+	ApiDocsGetCollectionById,
+	ApiDocsCreateCollectionBook,
+	ApiDocsAddBookToCollection,
+	ApiDocsRemoveBookFromCollection,
+	ApiDocsDeleteCollection,
+	ApiDocsUpdateVisibility,
+} from './swagger/collections-books.swagger';
 
 @ApiTags('Collections')
 @Controller('users/me/collections')
@@ -37,46 +41,19 @@ export class CollectionsBooksController {
 	) {}
 
 	@Get()
-	@ApiOperation({
-		summary: 'Get all user collections',
-		description: 'Retrieve all book collections for the current user',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Collections retrieved successfully',
-	})
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiDocsGetCollectionBooks()
 	async getCollectionBooks(@CurrentUser() user: CurrentUserDto) {
 		return this.collectionsBooksService.getCollections(user.userId);
 	}
 
 	@Get('names')
-	@ApiOperation({
-		summary: 'Get collection names',
-		description: 'Retrieve only the names of all collections',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Collection names retrieved successfully',
-	})
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiDocsGetNameCollectionBooks()
 	async getNameCollectionBooks(@CurrentUser() user: CurrentUserDto) {
 		return this.collectionsBooksService.getNameCollectionBooks(user.userId);
 	}
 
 	@Get(':idCollection')
-	@ApiOperation({
-		summary: 'Get collection by ID',
-		description: 'Retrieve a specific collection with all its books',
-	})
-	@ApiParam({
-		name: 'idCollection',
-		description: 'Collection unique identifier',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@ApiResponse({ status: 200, description: 'Collection found' })
-	@ApiResponse({ status: 404, description: 'Collection not found' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiDocsGetCollectionById()
 	async getCollectionById(
 		@Param('idCollection') idCollection: string,
 		@CurrentUser() user: CurrentUserDto,
@@ -88,16 +65,7 @@ export class CollectionsBooksController {
 	}
 
 	@Post()
-	@ApiOperation({
-		summary: 'Create a new collection',
-		description: 'Create a new book collection for the user',
-	})
-	@ApiResponse({
-		status: 201,
-		description: 'Collection created successfully',
-	})
-	@ApiResponse({ status: 400, description: 'Invalid input data' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiDocsCreateCollectionBook()
 	async createCollectionBook(
 		@Body() dto: CreateCollectionBookDto,
 		@CurrentUser() user: CurrentUserDto,
@@ -109,18 +77,7 @@ export class CollectionsBooksController {
 	}
 
 	@Post(':idCollection/books')
-	@ApiOperation({
-		summary: 'Add books to collection',
-		description: 'Add one or more books to an existing collection',
-	})
-	@ApiParam({
-		name: 'idCollection',
-		description: 'Collection unique identifier',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@ApiResponse({ status: 200, description: 'Books added successfully' })
-	@ApiResponse({ status: 404, description: 'Collection not found' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiDocsAddBookToCollection()
 	async addBookToCollection(
 		@Body() dto: AddBookCollectionDto,
 		@Param('idCollection') idCollection: string,
@@ -134,23 +91,7 @@ export class CollectionsBooksController {
 	}
 
 	@Delete(':idCollection/books/:idBook')
-	@ApiOperation({
-		summary: 'Remove book from collection',
-		description: 'Remove a specific book from a collection',
-	})
-	@ApiParam({
-		name: 'idCollection',
-		description: 'Collection unique identifier',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@ApiParam({
-		name: 'idBook',
-		description: 'Book unique identifier',
-		example: '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
-	})
-	@ApiResponse({ status: 200, description: 'Book removed successfully' })
-	@ApiResponse({ status: 404, description: 'Collection or book not found' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiDocsRemoveBookFromCollection()
 	async removeBookFromCollection(
 		@Param('idCollection') idCollection: string,
 		@Param('idBook') idBook: string,
@@ -164,21 +105,7 @@ export class CollectionsBooksController {
 	}
 
 	@Delete(':idCollection')
-	@ApiOperation({
-		summary: 'Delete collection',
-		description: 'Delete an entire collection',
-	})
-	@ApiParam({
-		name: 'idCollection',
-		description: 'Collection unique identifier',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Collection deleted successfully',
-	})
-	@ApiResponse({ status: 404, description: 'Collection not found' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiDocsDeleteCollection()
 	async deleteCollection(
 		@Param('idCollection') idCollection: string,
 		@CurrentUser() user: CurrentUserDto,
@@ -190,21 +117,7 @@ export class CollectionsBooksController {
 	}
 
 	@Patch(':idCollection/visibility')
-	@ApiOperation({
-		summary: 'Update collection visibility',
-		description: 'Update whether a collection is public or private',
-	})
-	@ApiParam({
-		name: 'idCollection',
-		description: 'Collection unique identifier',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Visibility updated successfully',
-	})
-	@ApiResponse({ status: 404, description: 'Collection not found' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiDocsUpdateVisibility()
 	async updateVisibility(
 		@Param('idCollection') idCollection: string,
 		@Body() dto: UpdateCollectionVisibilityDto,

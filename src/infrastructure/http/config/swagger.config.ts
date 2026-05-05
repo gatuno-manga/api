@@ -38,7 +38,7 @@ export function configureSwagger(app: INestApplication) {
 			methodKey,
 	});
 
-	SwaggerModule.setup('docs', app, document, {
+	SwaggerModule.setup('api/docs', app, document, {
 		swaggerOptions: {
 			persistAuthorization: true,
 			tagsSorter: 'alpha',

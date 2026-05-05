@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository, FindOptionsWhere, EntityManager } from 'typeorm';
-import { ITagRepository } from '../../../application/ports/tag-repository.interface';
-import { Tag as DomainTag } from '../../../domain/entities/tag';
-import { Tag as InfrastructureTag } from '../entities/tags.entity';
-import { TagsOptions } from '../../../application/dto/tags-options.dto';
-import { Book as InfrastructureBook } from '../entities/book.entity';
+import { ITagRepository } from '@books/application/ports/tag-repository.interface';
+import { Tag as DomainTag } from '@books/domain/entities/tag';
+import { Tag as InfrastructureTag } from '@books/infrastructure/database/entities/tags.entity';
+import { TagsOptions } from '@books/application/dto/tags-options.dto';
+import { Book as InfrastructureBook } from '@books/infrastructure/database/entities/book.entity';
 import { TagCriteria } from '@books/domain/types/criteria.types';
 
 @Injectable()

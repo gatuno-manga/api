@@ -1,17 +1,17 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { In, SelectQueryBuilder } from 'typeorm';
-import { Book } from '../../domain/entities/book';
-import { SensitiveContent } from '../../domain/entities/sensitive-content';
-import { CreateSensitiveContentDto } from '../dto/create-sensitive-content.dto';
-import { UpdateSensitiveContentDto } from '../dto/update-sensitive-content.dto';
+import { Book } from '@books/domain/entities/book';
+import { SensitiveContent } from '@books/domain/entities/sensitive-content';
+import { CreateSensitiveContentDto } from '@books/application/dto/create-sensitive-content.dto';
+import { UpdateSensitiveContentDto } from '@books/application/dto/update-sensitive-content.dto';
 import {
 	I_SENSITIVE_CONTENT_REPOSITORY,
 	ISensitiveContentRepository,
-} from '../ports/sensitive-content-repository.interface';
+} from '@books/application/ports/sensitive-content-repository.interface';
 import {
 	I_BOOK_REPOSITORY,
 	IBookRepository,
-} from '../ports/book-repository.interface';
+} from '@books/application/ports/book-repository.interface';
 
 @Injectable()
 export class SensitiveContentService {

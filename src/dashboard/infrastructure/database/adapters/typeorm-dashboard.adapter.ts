@@ -1,21 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
-import { Author } from '../../../../books/infrastructure/database/entities/author.entity';
-import { Book } from '../../../../books/infrastructure/database/entities/book.entity';
-import { Chapter } from '../../../../books/infrastructure/database/entities/chapter.entity';
-import { Page } from '../../../../books/infrastructure/database/entities/page.entity';
-import { SensitiveContent } from '../../../../books/infrastructure/database/entities/sensitive-content.entity';
-import { Tag } from '../../../../books/infrastructure/database/entities/tags.entity';
-import { User } from '../../../../users/infrastructure/database/entities/user.entity';
+import { Author } from '@books/infrastructure/database/entities/author.entity';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
+import { Page } from '@books/infrastructure/database/entities/page.entity';
+import { SensitiveContent } from '@books/infrastructure/database/entities/sensitive-content.entity';
+import { Tag } from '@books/infrastructure/database/entities/tags.entity';
+import { User } from '@users/infrastructure/database/entities/user.entity';
 import {
 	DashboardRepositoryPort,
 	DashboardStats,
-} from '../../../application/ports/dashboard-repository.port';
+} from '@/dashboard/application/ports/dashboard-repository.port';
 import {
 	DashboardFilterDto,
 	SensitiveContentFilter,
-} from '../../../application/dto/dashboard-filter.dto';
+} from '@/dashboard/application/dto/dashboard-filter.dto';
 
 interface RawStatusCount {
 	status: string | null;

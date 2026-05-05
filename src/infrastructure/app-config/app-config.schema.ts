@@ -12,8 +12,9 @@ export const validationSchema = Joi.object({
 		.description('The port on which the application will run'),
 	DB_TYPE: Joi.string().required(),
 	DB_NAME: Joi.string().required(),
-	DB_MASTER_HOST: Joi.string().required(),
-	DB_SLAVE_HOSTS: Joi.string().required(),
+	DB_HOST: Joi.string().optional(),
+	DB_MASTER_HOST: Joi.string().optional(),
+	DB_SLAVE_HOSTS: Joi.string().optional(),
 	DB_PORT: Joi.number().min(0).max(65535).required(),
 	DB_USER: Joi.string().required(),
 	DB_PASS: Joi.string().required(),
@@ -207,4 +208,7 @@ export const validationSchema = Joi.object({
 			'00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00',
 		)
 		.description('Comma-separated SHA-256 fingerprints for Android app'),
+	ENABLE_SWAGGER: Joi.boolean()
+		.default(false)
+		.description('Force enable Swagger UI regardless of NODE_ENV'),
 });

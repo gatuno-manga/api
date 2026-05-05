@@ -1,7 +1,7 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { PasswordEncryption } from 'src/infrastructure/encryption/password-encryption.provider';
-import { SessionAuditService } from '../../infrastructure/adapters/session-audit.service';
-import { UserRepositoryPort } from '../ports/user-repository.port';
+import { SessionAuditService } from '@auth/infrastructure/adapters/session-audit.service';
+import { UserRepositoryPort } from '@auth/application/ports/user-repository.port';
 import { SignInUseCase } from './sign-in.use-case';
 
 describe('SignInUseCase', () => {

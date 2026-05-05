@@ -1,7 +1,7 @@
 import { SelectQueryBuilder } from 'typeorm';
 import { IdFilterStrategy } from './id-filter.strategy';
-import { BookPageOptionsDto } from '../dto/book-page-options.dto';
-import { Book } from '../../infrastructure/database/entities/book.entity';
+import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
 
 describe('IdFilterStrategy', () => {
 	let strategy: IdFilterStrategy;

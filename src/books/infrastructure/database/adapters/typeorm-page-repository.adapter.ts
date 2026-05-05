@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere, DeepPartial, In } from 'typeorm';
-import { IPageRepository } from '../../../application/ports/page-repository.interface';
-import { Page as DomainPage } from '../../../domain/entities/page';
-import { Page as InfrastructurePage } from '../entities/page.entity';
+import { IPageRepository } from '@books/application/ports/page-repository.interface';
+import { Page as DomainPage } from '@books/domain/entities/page';
+import { Page as InfrastructurePage } from '@books/infrastructure/database/entities/page.entity';
 import { ImageMetadata } from '@src/common/domain/value-objects/image-metadata.vo';
 import { PageCriteria } from '@books/domain/types/criteria.types';
 

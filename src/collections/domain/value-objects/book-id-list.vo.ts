@@ -1,4 +1,4 @@
-import { BookId } from '../../../common/domain/value-objects/book-id.vo';
+import { BookId } from '@common/domain/value-objects/book-id.vo';
 
 export class BookIdList {
 	private constructor(private readonly bookIds: BookId[]) {}

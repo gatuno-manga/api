@@ -1,5 +1,5 @@
-import { Role } from '../../infrastructure/database/entities/role.entity';
-import { User } from '../../infrastructure/database/entities/user.entity';
+import { Role } from '@users/infrastructure/database/entities/role.entity';
+import { User } from '@users/infrastructure/database/entities/user.entity';
 
 /**
  * Builder Pattern para a entidade User

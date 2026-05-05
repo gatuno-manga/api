@@ -8,13 +8,7 @@ import {
 	StreamableFile,
 	UseGuards,
 } from '@nestjs/common';
-import {
-	ApiBearerAuth,
-	ApiOperation,
-	ApiParam,
-	ApiResponse,
-	ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
@@ -23,6 +17,10 @@ import { DownloadService } from '@books/application/services/download.service';
 import { DownloadBookBodyDto } from '@books/application/dto/download-book-body.dto';
 import { DownloadBookQueryDto } from '@books/application/dto/download-book-query.dto';
 import { Get, Query } from '@nestjs/common';
+import {
+	ApiDocsDownloadBookGet,
+	ApiDocsDownloadBook,
+} from './swagger/book-download.swagger';
 
 @ApiTags('Downloads')
 @Controller('books')
@@ -35,24 +33,7 @@ export class BookDownloadController {
 
 	@Get(':idBook/download')
 	@Throttle({ default: { limit: 3, ttl: 120000 } })
-	@ApiOperation({
-		summary: 'Download de um livro (GET)',
-		description:
-			'Baixa capítulos selecionados de um livro em formato ZIP de imagens ou PDFs via link direto',
-	})
-	@ApiParam({
-		name: 'idBook',
-		description: 'ID do livro',
-		type: 'string',
-		format: 'uuid',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Arquivo do livro gerado com sucesso',
-		content: {
-			'application/zip': {},
-		},
-	})
+	@ApiDocsDownloadBookGet()
 	async downloadBookGet(
 		@Param('idBook') idBook: string,
 		@Query() query: DownloadBookQueryDto,
@@ -79,36 +60,7 @@ export class BookDownloadController {
 
 	@Post(':idBook/download')
 	@Throttle({ default: { limit: 3, ttl: 120000 } })
-	@ApiOperation({
-		summary: 'Download de um livro',
-		description:
-			'Baixa capítulos selecionados de um livro em formato ZIP de imagens ou PDFs',
-	})
-	@ApiParam({
-		name: 'idBook',
-		description: 'ID do livro',
-		type: 'string',
-		format: 'uuid',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Arquivo do livro gerado com sucesso',
-		content: {
-			'application/zip': {},
-		},
-	})
-	@ApiResponse({
-		status: 404,
-		description: 'Livro não encontrado ou capítulos sem páginas',
-	})
-	@ApiResponse({
-		status: 400,
-		description: 'Dados inválidos na requisição',
-	})
-	@ApiResponse({
-		status: 429,
-		description: 'Limite de requisições excedido',
-	})
+	@ApiDocsDownloadBook()
 	async downloadBook(
 		@Param('idBook') idBook: string,
 		@Body() body: DownloadBookBodyDto,

@@ -5,16 +5,16 @@ import {
 	UnauthorizedException,
 } from '@nestjs/common';
 import { PasswordEncryption } from 'src/infrastructure/encryption/password-encryption.provider';
-import { EmailVO } from '../../domain/value-objects/email.vo';
+import { EmailVO } from '@auth/domain/value-objects/email.vo';
 import {
 	UserAuthData,
 	UserRepositoryPort,
-} from '../ports/user-repository.port';
-import { SessionAuditService } from '../../infrastructure/adapters/session-audit.service';
+} from '@auth/application/ports/user-repository.port';
+import { SessionAuditService } from '@auth/infrastructure/adapters/session-audit.service';
 import {
 	AuthFlowResult,
 	AuthRequestContext,
-} from '../../types/auth-security.types';
+} from '@auth/types/auth-security.types';
 
 @Injectable()
 export class SignInUseCase {

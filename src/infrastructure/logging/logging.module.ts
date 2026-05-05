@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
+import { v7 as uuidv7 } from 'uuid';
 import { LoggerModule } from 'nestjs-pino';
-import { AppConfigModule } from '../app-config/app-config.module';
-import { AppConfigService } from '../app-config/app-config.service';
-import { CustomLogger } from '../../custom.logger';
+import { AppConfigModule } from '@app-config/app-config.module';
+import { AppConfigService } from '@app-config/app-config.service';
+import { CustomLogger } from '@/custom.logger';
 import { LoggerRuleEngine } from './logger-rule-engine';
 
 @Module({
@@ -15,11 +16,11 @@ import { LoggerRuleEngine } from './logger-rule-engine';
 
 				return {
 					pinoHttp: {
-						level: isProduction ? 'info' : 'debug',
+						level: 'trace',
 						genReqId: (req) =>
 							req.headers['x-correlation-id'] ||
 							req.headers['x-request-id'] ||
-							crypto.randomUUID(),
+							uuidv7(),
 
 						transport: isProduction
 							? undefined
@@ -41,11 +42,8 @@ import { LoggerRuleEngine } from './logger-rule-engine';
 								url: req.url,
 								query: req.query,
 								params: req.params,
-								headers: {
-									host: req.headers.host,
-									'user-agent': req.headers['user-agent'],
-									'content-type': req.headers['content-type'],
-								},
+								headers: req.headers,
+								body: req.raw?.body || req.body,
 								remoteAddress: req.remoteAddress,
 								remotePort: req.remotePort,
 							}),
@@ -85,17 +83,32 @@ import { LoggerRuleEngine } from './logger-rule-engine';
 
 						redact: {
 							paths: config.logRedactPaths,
-							remove: true,
+							remove: false,
 						},
 
 						autoLogging: {
 							ignore: (req) => {
-								return (
-									req.url === '/health' ||
-									req.url === '/health/liveness' ||
-									req.url === '/health/readiness' ||
-									req.url === '/metrics'
-								);
+								const url = req.url || '';
+								const isHealthOrMetrics =
+									url === '/health' ||
+									url === '/health/liveness' ||
+									url === '/health/readiness' ||
+									url === '/metrics' ||
+									url === '/api/health' ||
+									url === '/api/health/liveness' ||
+									url === '/api/health/readiness' ||
+									url === '/api/metrics';
+
+								if (isHealthOrMetrics) return true;
+
+								// Apply sampling to other requests
+								if (config.logSamplingRate < 1.0) {
+									return (
+										Math.random() > config.logSamplingRate
+									);
+								}
+
+								return false;
 							},
 						},
 					},

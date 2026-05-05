@@ -21,7 +21,7 @@ export class DeleteBooksDto {
 	@IsArray()
 	@ArrayMinSize(1)
 	@ArrayMaxSize(100)
-	@IsUUID('4', { each: true })
+	@IsUUID('all', { each: true })
 	bookIds: string[];
 }
 
@@ -34,7 +34,7 @@ export class DeleteChaptersDto {
 	@IsArray()
 	@ArrayMinSize(1)
 	@ArrayMaxSize(100)
-	@IsUUID('4', { each: true })
+	@IsUUID('all', { each: true })
 	chapterIds: string[];
 }
 
@@ -47,7 +47,7 @@ export class DeleteCoversDto {
 	@IsArray()
 	@ArrayMinSize(1)
 	@ArrayMaxSize(100)
-	@IsUUID('4', { each: true })
+	@IsUUID('all', { each: true })
 	coverIds: string[];
 }
 

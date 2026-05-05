@@ -1,15 +1,18 @@
 import { Logger } from '@nestjs/common';
 import { Browser, BrowserContext, Page } from 'playwright';
-import { ContextOptions, PlaywrightBrowserFactory } from '../browser';
-import { IConcurrencyManager } from '../concurrency';
-import { WebsiteConfigDto } from '../../application/dto/website-config.dto';
+import {
+	ContextOptions,
+	PlaywrightBrowserFactory,
+} from '@scraping/infrastructure/browser';
+import { IConcurrencyManager } from '@scraping/infrastructure/concurrency';
+import { WebsiteConfigDto } from '@scraping/application/dto/website-config.dto';
 import {
 	FlareSolverrClient,
 	ImageCompressor,
 	NetworkInterceptor,
 	StorageConfig,
 	StorageInjector,
-} from '../helpers';
+} from '@scraping/infrastructure/helpers';
 import { ScrapingContext, ScrapingTask } from './scraping-context.interface';
 
 export class ScrapingSessionRunner {
@@ -80,10 +83,7 @@ export class ScrapingSessionRunner {
 						expires: c.expires,
 						httpOnly: c.httpOnly,
 						secure: c.secure,
-						sameSite: (c.sameSite || 'Lax') as
-							| 'Strict'
-							| 'Lax'
-							| 'None',
+						sameSite: c.sameSite || 'Lax',
 					}));
 					this.logger.debug(
 						`Obtained UA and ${flareSolverrCookies.length} cookies from FlareSolverr`,

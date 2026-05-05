@@ -11,13 +11,7 @@ import {
 	UseGuards,
 	UseInterceptors,
 } from '@nestjs/common';
-import {
-	ApiBearerAuth,
-	ApiOperation,
-	ApiParam,
-	ApiResponse,
-	ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
@@ -28,6 +22,14 @@ import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-ca
 import { CreateSensitiveContentDto } from '@books/application/dto/create-sensitive-content.dto';
 import { UpdateSensitiveContentDto } from '@books/application/dto/update-sensitive-content.dto';
 import { SensitiveContentService } from '@books/application/services/sensitive-content.service';
+import {
+	ApiDocsGetAll,
+	ApiDocsGetOne,
+	ApiDocsCreate,
+	ApiDocsUpdate,
+	ApiDocsRemove,
+	ApiDocsMergeSensitiveContent,
+} from './swagger/sensitive-content.swagger';
 
 @ApiTags('Sensitive Content')
 @Controller('sensitive-content')
@@ -40,16 +42,8 @@ export class SensitiveContentController {
 	@Throttle({ long: { limit: 100, ttl: 60000 } })
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(3600)
-	@ApiOperation({
-		summary: 'Get all sensitive content tags',
-		description: 'Retrieve all available sensitive content categories',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Sensitive content tags retrieved successfully',
-	})
-	@ApiResponse({ status: 429, description: 'Too many requests' })
 	@UseGuards(OptionalAuthGuard)
+	@ApiDocsGetAll()
 	getAll(@CurrentUser() user?: CurrentUserDto) {
 		return this.sensitiveContentService.getAll(
 			user?.maxWeightSensitiveContent,
@@ -60,107 +54,42 @@ export class SensitiveContentController {
 	@Throttle({ long: { limit: 100, ttl: 60000 } })
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(3600)
-	@ApiOperation({
-		summary: 'Get sensitive content by ID',
-		description: 'Retrieve details of a specific sensitive content tag',
-	})
-	@ApiParam({
-		name: 'id',
-		description: 'Sensitive content unique identifier',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@ApiResponse({ status: 200, description: 'Sensitive content found' })
-	@ApiResponse({ status: 404, description: 'Sensitive content not found' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiResponse({ status: 429, description: 'Too many requests' })
 	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 	@UseGuards(JwtAuthGuard)
+	@ApiDocsGetOne()
 	getOne(@Param('id') id: string) {
 		return this.sensitiveContentService.getOne(id);
 	}
 
 	@Post()
 	@Throttle({ medium: { limit: 20, ttl: 60000 } })
-	@ApiOperation({
-		summary: 'Create sensitive content tag',
-		description: 'Create a new sensitive content category (Admin only)',
-	})
-	@ApiResponse({
-		status: 201,
-		description: 'Sensitive content created successfully',
-	})
-	@ApiResponse({ status: 400, description: 'Invalid input data' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiResponse({ status: 429, description: 'Too many requests' })
 	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 	@UseGuards(JwtAuthGuard)
+	@ApiDocsCreate()
 	create(@Body() dto: CreateSensitiveContentDto) {
 		return this.sensitiveContentService.create(dto);
 	}
 
 	@Put(':id')
-	@ApiOperation({
-		summary: 'Update sensitive content tag',
-		description: 'Update a sensitive content category (Admin only)',
-	})
-	@ApiParam({
-		name: 'id',
-		description: 'Sensitive content unique identifier',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Sensitive content updated successfully',
-	})
-	@ApiResponse({ status: 404, description: 'Sensitive content not found' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
 	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 	@UseGuards(JwtAuthGuard)
+	@ApiDocsUpdate()
 	update(@Param('id') id: string, @Body() dto: UpdateSensitiveContentDto) {
 		return this.sensitiveContentService.update(id, dto);
 	}
 
 	@Delete(':id')
-	@ApiOperation({
-		summary: 'Delete sensitive content tag',
-		description: 'Remove a sensitive content category (Admin only)',
-	})
-	@ApiParam({
-		name: 'id',
-		description: 'Sensitive content unique identifier',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Sensitive content deleted successfully',
-	})
-	@ApiResponse({ status: 404, description: 'Sensitive content not found' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
 	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 	@UseGuards(JwtAuthGuard)
+	@ApiDocsRemove()
 	remove(@Param('id') id: string) {
 		return this.sensitiveContentService.remove(id);
 	}
 
 	@Patch(':contentId/merge')
-	@ApiOperation({
-		summary: 'Merge sensitive content tags',
-		description:
-			'Merge multiple sensitive content tags into one (Admin only)',
-	})
-	@ApiParam({
-		name: 'contentId',
-		description: 'Target sensitive content ID to merge into',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Sensitive content tags merged successfully',
-	})
-	@ApiResponse({ status: 404, description: 'Sensitive content not found' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
 	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 	@UseGuards(JwtAuthGuard)
+	@ApiDocsMergeSensitiveContent()
 	mergeSensitiveContent(
 		@Param('contentId') contentId: string,
 		@Body() dto: string[],

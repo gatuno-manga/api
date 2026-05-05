@@ -1,18 +1,16 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
-import {
-	ApiBearerAuth,
-	ApiOperation,
-	ApiResponse,
-	ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
-import { BookRequestsService } from '../../application/use-cases/book-requests.service';
-import { CreateBookRequestDto } from '../../application/dto/create-book-request.dto';
+import { BookRequestsService } from '@/book-requests/application/use-cases/book-requests.service';
+import { CreateBookRequestDto } from '@/book-requests/application/dto/create-book-request.dto';
 import { mapBookRequestToResponseDtoList } from './book-request-http.mapper';
-import { BookRequestResponseDto } from '../http/dto/book-request-response.dto';
+import {
+	ApiDocsCreate,
+	ApiDocsListMyRequests,
+} from './swagger/book-requests.swagger';
 
 @ApiTags('Book Requests')
 @Controller('book-requests')
@@ -22,12 +20,7 @@ export class BookRequestsController {
 	constructor(private readonly bookRequestsService: BookRequestsService) {}
 
 	@Post()
-	@ApiOperation({
-		summary: 'Create a new book request',
-		description: 'Allows a user to request a book to be added by an admin',
-	})
-	@ApiResponse({ status: 201, description: 'Request created successfully' })
-	@ApiResponse({ status: 400, description: 'Invalid data' })
+	@ApiDocsCreate()
 	async create(
 		@Body() dto: CreateBookRequestDto,
 		@CurrentUser() user: CurrentUserDto,
@@ -37,15 +30,7 @@ export class BookRequestsController {
 	}
 
 	@Get('me')
-	@ApiOperation({
-		summary: 'List my book requests',
-		description: 'Returns a list of book requests made by the current user',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'List of requests',
-		type: [BookRequestResponseDto],
-	})
+	@ApiDocsListMyRequests()
 	async listMyRequests(@CurrentUser() user: CurrentUserDto) {
 		const requests = await this.bookRequestsService.listMyRequests(
 			user.userId,

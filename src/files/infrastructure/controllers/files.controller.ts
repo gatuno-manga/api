@@ -7,7 +7,7 @@ import {
 	Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
-import { StoragePort } from '../../application/ports/storage.port';
+import { StoragePort } from '@files/application/ports/storage.port';
 import { Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SkipThrottle } from '@nestjs/throttler';

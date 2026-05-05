@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthorsService } from './authors.service';
-import { I_AUTHOR_REPOSITORY } from '../ports/author-repository.interface';
-import { I_BOOK_REPOSITORY } from '../ports/book-repository.interface';
+import { I_AUTHOR_REPOSITORY } from '@books/application/ports/author-repository.interface';
+import { I_BOOK_REPOSITORY } from '@books/application/ports/book-repository.interface';
 import { SensitiveContentService } from './sensitive-content.service';
-import { MEILI_CLIENT } from '../../../infrastructure/meilisearch/meilisearch.constants';
+import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants';
 import { Meilisearch } from 'meilisearch';
 
 describe('AuthorsService', () => {

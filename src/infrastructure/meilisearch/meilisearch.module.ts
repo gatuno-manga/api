@@ -1,7 +1,7 @@
 import { Global, Logger, Module } from '@nestjs/common';
 import { Meilisearch } from 'meilisearch';
-import { AppConfigModule } from '../app-config/app-config.module';
-import { AppConfigService } from '../app-config/app-config.service';
+import { AppConfigModule } from '@app-config/app-config.module';
+import { AppConfigService } from '@app-config/app-config.service';
 import { MEILI_CLIENT } from './meilisearch.constants';
 import { MeilisearchIndexInitService } from './meilisearch-index-init.service';
 

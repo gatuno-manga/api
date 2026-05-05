@@ -1,4 +1,4 @@
-import { EmailVO } from '../../domain/value-objects/email.vo';
+import { EmailVO } from '@auth/domain/value-objects/email.vo';
 
 export interface UserAuthData {
 	id: string;

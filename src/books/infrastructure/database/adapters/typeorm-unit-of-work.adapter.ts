@@ -12,12 +12,12 @@ import { TypeOrmAuthorRepositoryAdapter } from './typeorm-author-repository.adap
 import { TypeOrmTagRepositoryAdapter } from './typeorm-tag-repository.adapter';
 import { TypeOrmSensitiveContentRepositoryAdapter } from './typeorm-sensitive-content-repository.adapter';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Book } from '../entities/book.entity';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { Repository } from 'typeorm';
-import { Chapter } from '../entities/chapter.entity';
-import { Author } from '../entities/author.entity';
-import { Tag } from '../entities/tags.entity';
-import { SensitiveContent } from '../entities/sensitive-content.entity';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
+import { Author } from '@books/infrastructure/database/entities/author.entity';
+import { Tag } from '@books/infrastructure/database/entities/tags.entity';
+import { SensitiveContent } from '@books/infrastructure/database/entities/sensitive-content.entity';
 
 @Injectable()
 export class TypeOrmUnitOfWorkAdapter implements IUnitOfWork {

@@ -1,17 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Not, Repository } from 'typeorm';
+import { In, MoreThan, Not, Repository } from 'typeorm';
 import {
 	BulkReadingProgressDto,
 	ReadingProgressResponseDto,
 	SaveReadingProgressDto,
 	SyncReadingProgressDto,
 	SyncResponseDto,
-} from '../../infrastructure/http/dto/reading-progress.dto';
-import { ReadingProgress } from '../../infrastructure/database/entities/reading-progress.entity';
-import { SyncStrategyResolver } from '../strategies/sync-strategy.resolver';
-import { UserResourcesMapper } from '../mappers/user-resources.mapper';
+} from '@users/infrastructure/http/dto/reading-progress.dto';
+import { ReadingProgress } from '@users/infrastructure/database/entities/reading-progress.entity';
+import { SyncStrategyResolver } from '@users/application/strategies/sync-strategy.resolver';
+import { UserResourcesMapper } from '@users/application/mappers/user-resources.mapper';
 
 @Injectable()
 export class ReadingProgressService {
@@ -34,9 +34,15 @@ export class ReadingProgressService {
 	): Promise<ReadingProgressResponseDto> {
 		let progress = await this.progressRepository.findOne({
 			where: { userId, chapterId: dto.chapterId },
+			withDeleted: true,
 		});
 
 		if (progress) {
+			// Se o registro estava deletado, restaura ao salvar novo progresso
+			if (progress.deletedAt) {
+				progress.deletedAt = undefined;
+			}
+
 			// Atualiza apenas se o novo índice for maior ou se for marcado como completo
 			if (dto.pageIndex > progress.pageIndex || dto.completed) {
 				progress.pageIndex = dto.pageIndex;
@@ -131,14 +137,30 @@ export class ReadingProgressService {
 		const lastSyncAt = new Date();
 
 		if (dto.progress.length === 0) {
-			const allRemote = await this.getAllProgress(userId);
-			return { synced: allRemote, conflicts: [], lastSyncAt };
+			const allRemote = await this.progressRepository.find({
+				where: {
+					userId,
+					...(dto.lastSyncAt
+						? { updatedAt: MoreThan(new Date(dto.lastSyncAt)) }
+						: {}),
+				},
+				withDeleted: true,
+				order: { updatedAt: 'DESC' },
+			});
+			return {
+				synced: this.userResourcesMapper.toReadingProgressDtoList(
+					allRemote,
+				),
+				conflicts: [],
+				lastSyncAt,
+			};
 		}
 
 		// Busca todos os registros existentes de uma vez para otimizar
 		const chapterIds = dto.progress.map((p) => p.chapterId);
 		const existingRemoteProgress = await this.progressRepository.find({
 			where: { userId, chapterId: In(chapterIds) },
+			withDeleted: true,
 		});
 
 		const remoteMap = new Map(
@@ -198,7 +220,11 @@ export class ReadingProgressService {
 			where: {
 				userId,
 				chapterId: Not(In(chapterIds)),
+				...(dto.lastSyncAt
+					? { updatedAt: MoreThan(new Date(dto.lastSyncAt)) }
+					: {}),
 			},
+			withDeleted: true,
 		});
 
 		synced.push(
@@ -216,7 +242,7 @@ export class ReadingProgressService {
 	 * Remove progresso de um capítulo
 	 */
 	async deleteProgress(userId: string, chapterId: string): Promise<void> {
-		await this.progressRepository.delete({ userId, chapterId });
+		await this.progressRepository.softDelete({ userId, chapterId });
 
 		this.eventEmitter.emit('reading.progress.deleted', {
 			userId,
@@ -232,7 +258,7 @@ export class ReadingProgressService {
 	 * Remove todo progresso de um livro
 	 */
 	async deleteBookProgress(userId: string, bookId: string): Promise<void> {
-		await this.progressRepository.delete({ userId, bookId });
+		await this.progressRepository.softDelete({ userId, bookId });
 
 		this.eventEmitter.emit('reading.progress.book.deleted', {
 			userId,

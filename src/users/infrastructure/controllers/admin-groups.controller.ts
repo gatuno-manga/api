@@ -8,13 +8,20 @@ import {
 	Patch,
 	Post,
 } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import { AdminApi } from 'src/common/swagger/auth-api.decorators';
-import { COMMON_RESPONSES } from 'src/common/swagger/common-responses';
-import { AdminUsersService } from '../../application/use-cases/admin-users.service';
-import { CreateGroupDto } from '../http/dto/create-group.dto';
-import { UpdateGroupMembersDto } from '../http/dto/update-group-members.dto';
-import { UpdateGroupDto } from '../http/dto/update-group.dto';
+import { AdminUsersService } from '@users/application/use-cases/admin-users.service';
+import { CreateGroupDto } from '@users/infrastructure/http/dto/create-group.dto';
+import { UpdateGroupMembersDto } from '@users/infrastructure/http/dto/update-group-members.dto';
+import { UpdateGroupDto } from '@users/infrastructure/http/dto/update-group.dto';
+import {
+	ApiDocsListGroups,
+	ApiDocsCreateGroup,
+	ApiDocsUpdateGroup,
+	ApiDocsDeleteGroup,
+	ApiDocsAddMembers,
+	ApiDocsRemoveMember,
+} from './swagger/admin-groups.swagger';
 
 @ApiTags('Admin Groups')
 @Controller('admin/groups')
@@ -23,31 +30,19 @@ export class AdminGroupsController {
 	constructor(private readonly adminUsersService: AdminUsersService) {}
 
 	@Get()
-	@ApiOperation({ summary: 'Listar todos os grupos' })
-	@ApiResponse({ status: 200, description: 'Grupos listados com sucesso' })
-	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
-	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
+	@ApiDocsListGroups()
 	listGroups() {
 		return this.adminUsersService.listGroups();
 	}
 
 	@Post()
-	@ApiOperation({ summary: 'Criar grupo' })
-	@ApiResponse({ status: 201, description: 'Grupo criado com sucesso' })
-	@ApiResponse(COMMON_RESPONSES.BAD_REQUEST)
-	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
-	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
+	@ApiDocsCreateGroup()
 	createGroup(@Body() dto: CreateGroupDto) {
 		return this.adminUsersService.createGroup(dto);
 	}
 
 	@Patch(':groupId')
-	@ApiOperation({ summary: 'Atualizar grupo' })
-	@ApiResponse({ status: 200, description: 'Grupo atualizado com sucesso' })
-	@ApiResponse(COMMON_RESPONSES.BAD_REQUEST)
-	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
-	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
-	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
+	@ApiDocsUpdateGroup()
 	updateGroup(
 		@Param('groupId', ParseUUIDPipe) groupId: string,
 		@Body() dto: UpdateGroupDto,
@@ -56,25 +51,13 @@ export class AdminGroupsController {
 	}
 
 	@Delete(':groupId')
-	@ApiOperation({ summary: 'Excluir grupo' })
-	@ApiResponse({ status: 200, description: 'Grupo excluido com sucesso' })
-	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
-	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
-	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
+	@ApiDocsDeleteGroup()
 	deleteGroup(@Param('groupId', ParseUUIDPipe) groupId: string) {
 		return this.adminUsersService.deleteGroup(groupId);
 	}
 
 	@Post(':groupId/members')
-	@ApiOperation({ summary: 'Adicionar membros ao grupo' })
-	@ApiResponse({
-		status: 201,
-		description: 'Membros adicionados com sucesso',
-	})
-	@ApiResponse(COMMON_RESPONSES.BAD_REQUEST)
-	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
-	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
-	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
+	@ApiDocsAddMembers()
 	addMembers(
 		@Param('groupId', ParseUUIDPipe) groupId: string,
 		@Body() dto: UpdateGroupMembersDto,
@@ -83,11 +66,7 @@ export class AdminGroupsController {
 	}
 
 	@Delete(':groupId/members/:userId')
-	@ApiOperation({ summary: 'Remover membro do grupo' })
-	@ApiResponse({ status: 200, description: 'Membro removido com sucesso' })
-	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
-	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
-	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
+	@ApiDocsRemoveMember()
 	removeMember(
 		@Param('groupId', ParseUUIDPipe) groupId: string,
 		@Param('userId', ParseUUIDPipe) userId: string,

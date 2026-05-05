@@ -2,14 +2,14 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AdminUsersService } from './admin-users.service';
-import { User } from '../../infrastructure/database/entities/user.entity';
-import { Role } from '../../infrastructure/database/entities/role.entity';
-import { UserGroup } from '../../infrastructure/database/entities/user-group.entity';
-import { AccessPolicy } from '../../infrastructure/database/entities/access-policy.entity';
-import { AccessPolicyEffectEnum } from '../../domain/enums/access-policy-effect.enum';
-import { AccessPolicyScopeEnum } from '../../domain/enums/access-policy-scope.enum';
-import { MEILI_CLIENT } from '../../../infrastructure/meilisearch/meilisearch.constants';
-import { PasswordEncryption } from '../../../infrastructure/encryption/password-encryption.provider';
+import { User } from '@users/infrastructure/database/entities/user.entity';
+import { Role } from '@users/infrastructure/database/entities/role.entity';
+import { UserGroup } from '@users/infrastructure/database/entities/user-group.entity';
+import { AccessPolicy } from '@users/infrastructure/database/entities/access-policy.entity';
+import { AccessPolicyEffectEnum } from '@users/domain/enums/access-policy-effect.enum';
+import { AccessPolicyScopeEnum } from '@users/domain/enums/access-policy-scope.enum';
+import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants';
+import { PasswordEncryption } from '@encryption/password-encryption.provider';
 
 describe('AdminUsersService', () => {
 	let service: AdminUsersService;

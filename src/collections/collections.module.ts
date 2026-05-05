@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuthModule } from '../auth/auth.module';
+import { AuthModule } from '@auth/auth.module';
 import { CollectionEntity } from './infrastructure/database/entities/collection.entity';
-import { User } from '../users/infrastructure/database/entities/user.entity';
-import { Book } from '../books/infrastructure/database/entities/book.entity';
+import { User } from '@users/infrastructure/database/entities/user.entity';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { TypeOrmCollectionRepository } from './infrastructure/database/repositories/typeorm-collection.repository';
 import { CreateCollectionUseCase } from './application/use-cases/create-collection.use-case';
 import { AddBookToCollectionUseCase } from './application/use-cases/add-book-to-collection.use-case';

@@ -3,10 +3,13 @@ import { Args, Mutation, Resolver } from '@nestjs/graphql';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { GqlCurrentUser } from 'src/auth/infrastructure/framework/gql-current-user.decorator';
 import { GqlJwtAuthGuard } from 'src/auth/infrastructure/framework/gql-jwt-auth.guard';
-import { ProcessSyncUseCase } from '../../../application/use-cases/process-sync.use-case';
-import { SyncInput } from '../models/sync.input';
-import { SyncResultModel, ReadingProgressModel } from '../models/sync.model';
-import { ISyncResult } from '../../../application/types/sync-result.interface';
+import { ProcessSyncUseCase } from '@/sync/application/use-cases/process-sync.use-case';
+import { SyncInput } from '@/sync/infrastructure/graphql/models/sync.input';
+import {
+	SyncResultModel,
+	ReadingProgressModel,
+} from '@/sync/infrastructure/graphql/models/sync.model';
+import { ISyncResult } from '@/sync/application/types/sync-result.interface';
 
 @Resolver()
 @UseGuards(GqlJwtAuthGuard)

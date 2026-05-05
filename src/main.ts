@@ -28,7 +28,10 @@ async function bootstrap() {
 
 	await app.startAllMicroservices();
 
-	if (configService.nodeEnv === 'development') {
+	if (
+		configService.nodeEnv === 'development' ||
+		configService.enableSwagger
+	) {
 		configureSwagger(app);
 	}
 

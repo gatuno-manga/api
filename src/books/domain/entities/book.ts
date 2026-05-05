@@ -1,6 +1,6 @@
-import { BookType } from '../enums/book-type.enum';
-import { ExportFormat } from '../enums/export-format.enum';
-import { ScrapingStatus } from '../enums/scrapingStatus.enum';
+import { BookType } from '@books/domain/enums/book-type.enum';
+import { ExportFormat } from '@books/domain/enums/export-format.enum';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { Author } from './author';
 import { Chapter } from './chapter';
 import { Cover } from './cover';

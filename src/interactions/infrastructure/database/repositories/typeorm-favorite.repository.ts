@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { FavoriteRepository } from '../../../application/ports/favorite-repository.port';
-import { Favorite } from '../../../domain/entities/favorite';
-import { UserId } from '../../../../common/domain/value-objects/user-id.vo';
-import { BookId } from '../../../../common/domain/value-objects/book-id.vo';
-import { FavoriteEntity } from '../entities/favorite.entity';
+import { FavoriteRepository } from '@/interactions/application/ports/favorite-repository.port';
+import { Favorite } from '@/interactions/domain/entities/favorite';
+import { UserId } from '@common/domain/value-objects/user-id.vo';
+import { BookId } from '@common/domain/value-objects/book-id.vo';
+import { FavoriteEntity } from '@/interactions/infrastructure/database/entities/favorite.entity';
 
 @Injectable()
 export class TypeOrmFavoriteRepository implements FavoriteRepository {

@@ -9,8 +9,8 @@ import {
 	IsString,
 	ValidateNested,
 } from 'class-validator';
-import { CreateSavedPageDto } from '../../../../users/infrastructure/http/dto/create-saved-page.dto';
-import { SaveReadingProgressDto } from '../../../../users/infrastructure/http/dto/reading-progress.dto';
+import { CreateSavedPageDto } from '@users/infrastructure/http/dto/create-saved-page.dto';
+import { SaveReadingProgressDto } from '@users/infrastructure/http/dto/reading-progress.dto';
 
 export class SyncCommentDto {
 	@ApiProperty({ description: 'ID do capítulo' })

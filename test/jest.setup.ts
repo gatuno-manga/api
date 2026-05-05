@@ -30,9 +30,18 @@ const detectDockerContainerIp = (containerName: string): string | null => {
 const masterIp = detectDockerContainerIp('gatuno-database');
 const slave1Ip = detectDockerContainerIp('gatuno-database-slave-1');
 const slave2Ip = detectDockerContainerIp('gatuno-database-slave-2');
+const proxyIp = detectDockerContainerIp('gatuno-proxysql');
 const redisIp = detectDockerContainerIp('gatuno-redis');
 
 // Força os IPs detectados no process.env para sobrescrever o .env
+if (proxyIp) {
+	process.env.DB_HOST = proxyIp;
+	process.env.DB_PORT = '6033';
+} else if (masterIp) {
+	process.env.DB_HOST = masterIp;
+	process.env.DB_PORT = '3306';
+}
+
 if (masterIp) {
 	process.env.DB_MASTER_HOST = masterIp;
 	process.env.DB_SLAVE_HOSTS = masterIp; // Use master as slave to avoid replication lag in tests
@@ -47,9 +56,8 @@ if (redisIp) process.env.REDIS_HOST = redisIp;
 setEnvDefault('NODE_ENV', 'test');
 setEnvDefault('DB_TYPE', 'mysql');
 setEnvDefault('DB_NAME', 'gatuno');
-setEnvDefault('DB_MASTER_HOST', '127.0.0.1');
-setEnvDefault('DB_SLAVE_HOSTS', '127.0.0.1');
-setEnvDefault('DB_PORT', '3306');
+setEnvDefault('DB_HOST', '127.0.0.1');
+setEnvDefault('DB_PORT', '6033');
 setEnvDefault('DB_USER', 'root');
 setEnvDefault('DB_PASS', 'root');
 setEnvDefault('REDIS_HOST', '127.0.0.1');

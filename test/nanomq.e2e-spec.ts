@@ -1,9 +1,9 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { AppModule } from '../src/app.module';
+import { AppModule } from '@/app.module';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { BookEvents } from '../src/books/domain/constants/events.constant';
-import { MqttTopics } from '../src/common/domain/constants/mqtt-topics.constant';
+import { BookEvents } from '@books/domain/constants/events.constant';
+import { MqttTopics } from '@common/domain/constants/mqtt-topics.constant';
 import * as mqtt from 'mqtt';
 
 describe('NanoMQ Integration (e2e)', () => {

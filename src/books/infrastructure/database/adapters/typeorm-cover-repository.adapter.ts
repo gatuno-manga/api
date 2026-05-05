@@ -70,7 +70,7 @@ export class TypeOrmCoverRepositoryAdapter implements ICoverRepository {
 
 	async update(criteria: unknown, data: Partial<DomainCover>): Promise<void> {
 		await this.repository.update(
-			criteria as unknown as FindOptionsWhere<InfrastructureCover>,
+			criteria as FindOptionsWhere<InfrastructureCover>,
 			data as unknown as InfrastructureCover,
 		);
 	}

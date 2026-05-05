@@ -3,9 +3,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Queue } from 'bullmq';
 import { Not, Repository } from 'typeorm';
-import { Chapter } from '../../infrastructure/database/entities/chapter.entity';
-import { ContentType } from '../../domain/enums/content-type.enum';
-import { ScrapingStatus } from '../../domain/enums/scrapingStatus.enum';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
+import { ContentType } from '@books/domain/enums/content-type.enum';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 
 const QUEUE_NAME = 'chapter-scraping';
 const JOB_NAME = 'process-chapter';

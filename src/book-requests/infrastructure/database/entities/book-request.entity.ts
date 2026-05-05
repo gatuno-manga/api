@@ -7,8 +7,8 @@ import {
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
 } from 'typeorm';
-import { User } from '../../../../users/infrastructure/database/entities/user.entity';
-import { BookRequestStatus } from '../../../domain/enums/book-request-status.enum';
+import { User } from '@users/infrastructure/database/entities/user.entity';
+import { BookRequestStatus } from '@/book-requests/domain/enums/book-request-status.enum';
 
 @Entity('book_requests')
 export class BookRequestEntity {

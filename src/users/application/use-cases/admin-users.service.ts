@@ -12,24 +12,24 @@ import {
 	decodeCursorPayload,
 	encodeCursorPayload,
 } from 'src/common/pagination/cursor.utils';
-import { CreateAccessPolicyDto } from '../../infrastructure/http/dto/create-access-policy.dto';
-import { CreateGroupDto } from '../../infrastructure/http/dto/create-group.dto';
-import { CreateRoleDto } from '../../infrastructure/http/dto/create-role.dto';
-import { ListAccessPoliciesQueryDto } from '../../infrastructure/http/dto/list-access-policies-query.dto';
-import { SetUserModerationDto } from '../../infrastructure/http/dto/set-user-moderation.dto';
-import { UpdateGroupDto } from '../../infrastructure/http/dto/update-group.dto';
-import { UpdateUserRolesDto } from '../../infrastructure/http/dto/update-user-roles.dto';
-import { UpdateRoleDto } from '../../infrastructure/http/dto/update-role.dto';
-import { AccessPolicy } from '../../infrastructure/database/entities/access-policy.entity';
-import { Role } from '../../infrastructure/database/entities/role.entity';
-import { UserGroup } from '../../infrastructure/database/entities/user-group.entity';
-import { User } from '../../infrastructure/database/entities/user.entity';
-import { AccessPolicyEffectEnum } from '../../domain/enums/access-policy-effect.enum';
-import { AccessPolicyScopeEnum } from '../../domain/enums/access-policy-scope.enum';
-import { RolesEnum } from '../../domain/enums/roles.enum';
-import { MEILI_CLIENT } from '../../../infrastructure/meilisearch/meilisearch.constants';
+import { CreateAccessPolicyDto } from '@users/infrastructure/http/dto/create-access-policy.dto';
+import { CreateGroupDto } from '@users/infrastructure/http/dto/create-group.dto';
+import { CreateRoleDto } from '@users/infrastructure/http/dto/create-role.dto';
+import { ListAccessPoliciesQueryDto } from '@users/infrastructure/http/dto/list-access-policies-query.dto';
+import { SetUserModerationDto } from '@users/infrastructure/http/dto/set-user-moderation.dto';
+import { UpdateGroupDto } from '@users/infrastructure/http/dto/update-group.dto';
+import { UpdateUserRolesDto } from '@users/infrastructure/http/dto/update-user-roles.dto';
+import { UpdateRoleDto } from '@users/infrastructure/http/dto/update-role.dto';
+import { AccessPolicy } from '@users/infrastructure/database/entities/access-policy.entity';
+import { Role } from '@users/infrastructure/database/entities/role.entity';
+import { UserGroup } from '@users/infrastructure/database/entities/user-group.entity';
+import { User } from '@users/infrastructure/database/entities/user.entity';
+import { AccessPolicyEffectEnum } from '@users/domain/enums/access-policy-effect.enum';
+import { AccessPolicyScopeEnum } from '@users/domain/enums/access-policy-scope.enum';
+import { RolesEnum } from '@users/domain/enums/roles.enum';
+import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants';
 import { Meilisearch } from 'meilisearch';
-import { PasswordEncryption } from '../../../infrastructure/encryption/password-encryption.provider';
+import { PasswordEncryption } from '@encryption/password-encryption.provider';
 
 type AdminUsersCursorPayload = {
 	createdAt: string;

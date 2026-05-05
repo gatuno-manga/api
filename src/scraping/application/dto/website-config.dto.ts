@@ -8,7 +8,7 @@ import {
 	IsString,
 	Min,
 } from 'class-validator';
-import { CookieConfig } from '../../infrastructure/helpers/storage-injector';
+import { CookieConfig } from '@scraping/infrastructure/helpers/storage-injector';
 
 export class WebsiteConfigDto {
 	@ApiProperty({

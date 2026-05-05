@@ -1,15 +1,11 @@
 import { Controller, Post, UseGuards } from '@nestjs/common';
-import {
-	ApiBearerAuth,
-	ApiOperation,
-	ApiResponse,
-	ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { RolesEnum } from 'src/users/domain/enums/roles.enum';
-import { ImageMetadataBackfillService } from '../../application/services/image-metadata-backfill.service';
+import { ImageMetadataBackfillService } from '@files/application/services/image-metadata-backfill.service';
+import { ApiDocsBackfill } from './swagger/image-backfill.swagger';
 
 @ApiTags('Admin - Image Backfill')
 @Controller('admin/images')
@@ -22,20 +18,7 @@ export class ImageBackfillController {
 	) {}
 
 	@Post('backfill')
-	@ApiOperation({
-		summary: 'Backfill image metadata',
-		description:
-			'Scan for images without pHash metadata and request processing (Admin only)',
-	})
-	@ApiResponse({
-		status: 202,
-		description: 'Backfill process started successfully',
-	})
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiResponse({
-		status: 403,
-		description: 'Forbidden - Admin role required',
-	})
+	@ApiDocsBackfill()
 	async backfill() {
 		// Inicia em background para não travar a requisição HTTP
 		this.backfillService.backfill().catch((err) => {

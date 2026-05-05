@@ -1,5 +1,5 @@
 import { Field, ID, ObjectType } from '@nestjs/graphql';
-import { ChapterCommentModel } from '../../../../books/infrastructure/graphql/models/comment.model';
+import { ChapterCommentModel } from '@books/infrastructure/graphql/models/comment.model';
 
 @ObjectType('ReadingProgressModel')
 export class ReadingProgressModel {

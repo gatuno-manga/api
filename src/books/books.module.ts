@@ -2,15 +2,15 @@ import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AppConfigModule } from '../infrastructure/app-config/app-config.module';
-import { AuthModule } from '../auth/auth.module';
-import { FilesModule } from '../files/files.module';
-import { LoggingModule } from '../infrastructure/logging/logging.module';
-import { MetricsModule } from '../metrics/metrics.module';
-import { RedisModule } from '../infrastructure/redis/redis.module';
-import { ScrapingModule } from '../scraping/scraping.module';
-import { UsersModule } from '../users/users.module';
-import { User } from '../users/infrastructure/database/entities/user.entity';
+import { AppConfigModule } from '@app-config/app-config.module';
+import { AuthModule } from '@auth/auth.module';
+import { FilesModule } from '@files/files.module';
+import { LoggingModule } from '@logging/logging.module';
+import { MetricsModule } from '@metrics/metrics.module';
+import { RedisModule } from '@/infrastructure/redis/redis.module';
+import { ScrapingModule } from '@scraping/scraping.module';
+import { UsersModule } from '@users/users.module';
+import { User } from '@users/infrastructure/database/entities/user.entity';
 import { AdminBooksDashboardController } from './infrastructure/http/controllers/admin-books-dashboard.controller';
 import { AdminSystemManagementController } from './infrastructure/http/controllers/admin-system-management.controller';
 import { AdminBookRelationshipsController } from './infrastructure/http/controllers/admin-book-relationships.controller';
@@ -48,6 +48,7 @@ import { CoverImageService } from './infrastructure/jobs/cover-image.service';
 import { QueueAutoPauseListener } from './infrastructure/jobs/queue-auto-pause.listener';
 import { FixChapterProcessor } from './infrastructure/jobs/fix-chapter.processor';
 import { FixChapterService } from './infrastructure/jobs/fix-chapter.service';
+import { TextProcessingProcessor } from './infrastructure/jobs/text-processing.processor';
 import { SensitiveContentController } from './infrastructure/http/controllers/sensitive-content.controller';
 import { SensitiveContentService } from './application/services/sensitive-content.service';
 import { BookContentUpdateService } from './application/services/book-content-update.service';
@@ -164,6 +165,18 @@ import { BookResolver } from './infrastructure/graphql/resolvers/book.resolver';
 					},
 				},
 			},
+			{
+				name: 'text-processing-queue',
+				defaultJobOptions: {
+					attempts: 3,
+					removeOnFail: 20,
+					delay: 5000,
+					backoff: {
+						type: 'exponential',
+						delay: 5000,
+					},
+				},
+			},
 		),
 	],
 	controllers: [
@@ -230,6 +243,7 @@ import { BookResolver } from './infrastructure/graphql/resolvers/book.resolver';
 		QueueAutoPauseListener,
 		FixChapterService,
 		FixChapterProcessor,
+		TextProcessingProcessor,
 		// Book Update Jobs
 		BookUpdateJobService,
 		BookUpdateProcessor,

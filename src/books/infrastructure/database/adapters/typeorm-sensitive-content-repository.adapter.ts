@@ -7,9 +7,9 @@ import {
 	FindOptionsWhere,
 	EntityManager,
 } from 'typeorm';
-import { ISensitiveContentRepository } from '../../../application/ports/sensitive-content-repository.interface';
-import { SensitiveContent as DomainSensitiveContent } from '../../../domain/entities/sensitive-content';
-import { SensitiveContent as InfrastructureSensitiveContent } from '../entities/sensitive-content.entity';
+import { ISensitiveContentRepository } from '@books/application/ports/sensitive-content-repository.interface';
+import { SensitiveContent as DomainSensitiveContent } from '@books/domain/entities/sensitive-content';
+import { SensitiveContent as InfrastructureSensitiveContent } from '@books/infrastructure/database/entities/sensitive-content.entity';
 import { SensitiveContentCriteria } from '@books/domain/types/criteria.types';
 
 @Injectable()

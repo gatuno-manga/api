@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import { DataSource, Repository } from 'typeorm';
-import { AuthService } from '../auth.service';
+import { AuthService } from '@auth/auth.service';
 
 export class CreateAdminEvent {
 	private readonly logger = new Logger(CreateAdminEvent.name);
@@ -19,7 +19,6 @@ export class CreateAdminEvent {
 	@OnEvent('app.ready')
 	async handle() {
 		try {
-			const queryRunner = this.dataSource.createQueryRunner('master');
 			const userEmail = this.appConfigService.admin.email;
 			const userPassword = this.appConfigService.admin.password;
 			if (!userEmail || !userPassword) {
@@ -29,10 +28,9 @@ export class CreateAdminEvent {
 				return;
 			}
 
-			const user = await queryRunner.connect().then(() => {
-				return this.userRepository.manager.findOne(User, {
-					where: { email: userEmail },
-				});
+			const user = await this.userRepository.findOne({
+				where: { email: userEmail },
+				comment: 'force_master',
 			});
 
 			if (user) {

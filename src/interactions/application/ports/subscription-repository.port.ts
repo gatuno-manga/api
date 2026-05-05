@@ -1,6 +1,6 @@
-import { Subscription } from '../../domain/entities/subscription';
-import { UserId } from '../../../common/domain/value-objects/user-id.vo';
-import { BookId } from '../../../common/domain/value-objects/book-id.vo';
+import { Subscription } from '@/interactions/domain/entities/subscription';
+import { UserId } from '@common/domain/value-objects/user-id.vo';
+import { BookId } from '@common/domain/value-objects/book-id.vo';
 
 export interface SubscriptionRepository {
 	save(subscription: Subscription): Promise<void>;

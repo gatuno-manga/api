@@ -9,12 +9,12 @@ import { FilesService } from 'src/files/application/services/files.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { getImageDimensions } from 'src/common/utils/image.utils';
-import { UpdateUserDto } from '../../infrastructure/http/dto/update-user.dto';
-import { Role } from '../../infrastructure/database/entities/role.entity';
-import { User } from '../../infrastructure/database/entities/user.entity';
-import { UserImage } from '../../infrastructure/database/entities/user-image.entity';
-import { RolesEnum } from '../../domain/enums/roles.enum';
-import { UserResourcesMapper } from '../mappers/user-resources.mapper';
+import { UpdateUserDto } from '@users/infrastructure/http/dto/update-user.dto';
+import { Role } from '@users/infrastructure/database/entities/role.entity';
+import { User } from '@users/infrastructure/database/entities/user.entity';
+import { UserImage } from '@users/infrastructure/database/entities/user-image.entity';
+import { RolesEnum } from '@users/domain/enums/roles.enum';
+import { UserResourcesMapper } from '@users/application/mappers/user-resources.mapper';
 import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
 import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
 
