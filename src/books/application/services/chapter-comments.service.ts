@@ -5,6 +5,8 @@ import {
 	Injectable,
 	NotFoundException,
 } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { v7 as uuidv7 } from 'uuid';
 import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
 import { MediaUrlService } from 'src/common/services/media-url.service';
@@ -16,9 +18,11 @@ import { MetadataPageDto } from 'src/common/pagination/metadata-page.dto';
 import { PageDto } from 'src/common/pagination/page.dto';
 import { ChapterComment } from '../../domain/entities/chapter-comment';
 import { Chapter } from '../../domain/entities/chapter';
+import { ContentFormat } from '../../domain/enums/content-format.enum';
 import { CreateChapterCommentDto } from '../dto/create-chapter-comment.dto';
 import { ChapterCommentsPageOptionsDto } from '../dto/chapter-comments-page-options.dto';
 import { UpdateChapterCommentDto } from '../dto/update-chapter-comment.dto';
+import { QueueTextProcessingDto } from '../dto/queue-text-processing.dto';
 import {
 	I_CHAPTER_COMMENT_REPOSITORY,
 	IChapterCommentRepository,
@@ -56,6 +60,8 @@ export class ChapterCommentsService {
 		private readonly chapterRepository: IChapterRepository,
 		@Inject(I_USER_REPOSITORY)
 		private readonly userRepository: IUserRepository,
+		@InjectQueue('text-processing-queue')
+		private readonly textProcessingQueue: Queue<QueueTextProcessingDto>,
 		private readonly mediaUrlService: MediaUrlService,
 	) {}
 
@@ -154,6 +160,13 @@ export class ChapterCommentsService {
 		});
 
 		const saved = await this.chapterCommentRepository.save(comment);
+
+		this.textProcessingQueue.add('process-text', {
+			entityId: saved.id,
+			source: 'COMMENT',
+			format: ContentFormat.MARKDOWN,
+		});
+
 		return {
 			id: saved.id,
 			chapterId,
@@ -204,6 +217,13 @@ export class ChapterCommentsService {
 		});
 
 		const saved = await this.chapterCommentRepository.save(reply);
+
+		this.textProcessingQueue.add('process-text', {
+			entityId: saved.id,
+			source: 'COMMENT',
+			format: ContentFormat.MARKDOWN,
+		});
+
 		return {
 			id: saved.id,
 			chapterId,
@@ -246,6 +266,13 @@ export class ChapterCommentsService {
 		}
 
 		await this.chapterCommentRepository.save(comment);
+
+		this.textProcessingQueue.add('process-text', {
+			entityId: comment.id,
+			source: 'COMMENT',
+			format: ContentFormat.MARKDOWN,
+		});
+
 		return this.mapEntityToNode(comment);
 	}
 
