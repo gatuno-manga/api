@@ -6,6 +6,8 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { normalizeUrl } from 'src/common/utils/url.utils';
 import { In } from 'typeorm';
 import { BookEvents } from '@books/domain/constants/events.constant';
@@ -15,6 +17,7 @@ import { CreateChapterManualDto } from '../dto/create-chapter-manual.dto';
 import { CreateChapterDto } from '../dto/create-chapter.dto';
 import { OrderChaptersDto } from '../dto/order-chapters.dto';
 import { UpdateChapterDto } from '../dto/update-chapter.dto';
+import { QueueTextProcessingDto } from '../dto/queue-text-processing.dto';
 import { Book } from '@books/domain/entities/book';
 import { Chapter } from '@books/domain/entities/chapter';
 import { ContentFormat } from '@books/domain/enums/content-format.enum';
@@ -48,6 +51,8 @@ export class ChapterManagementService {
 		private readonly bookRepository: IBookRepository,
 		@Inject(I_UNIT_OF_WORK)
 		private readonly unitOfWork: IUnitOfWork,
+		@InjectQueue('text-processing-queue')
+		private readonly textProcessingQueue: Queue<QueueTextProcessingDto>,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
@@ -231,6 +236,12 @@ export class ChapterManagementService {
 		this.eventEmitter.emit('chapter.content.uploaded', {
 			chapterId: savedChapter.id,
 			bookId,
+			format,
+		});
+
+		this.textProcessingQueue.add('process-text', {
+			entityId: savedChapter.id,
+			source: 'CHAPTER',
 			format,
 		});
 
@@ -458,6 +469,14 @@ export class ChapterManagementService {
 				BookEvents.CHAPTER_UPDATED,
 				new ChapterUpdatedEvent(chapter.id, idBook),
 			);
+
+			if (chapter.contentType === ContentType.TEXT && chapter.content) {
+				this.textProcessingQueue.add('process-text', {
+					entityId: chapter.id,
+					source: 'CHAPTER',
+					format: chapter.contentFormat || ContentFormat.MARKDOWN,
+				});
+			}
 		}
 
 		return savedChapters;

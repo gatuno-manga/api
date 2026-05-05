@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { getQueueToken } from '@nestjs/bullmq';
 import { DataSource } from 'typeorm';
 import { ChapterManagementService } from './chapter-management.service';
 import { Book } from '../../infrastructure/database/entities/book.entity';
@@ -17,6 +18,7 @@ describe('ChapterManagementService', () => {
 	let service: ChapterManagementService;
 	let bookRepository: any;
 	let chapterRepository: any;
+	let textProcessingQueue: any;
 	let dataSource: any;
 	let eventEmitter: any;
 	let unitOfWork: any;
@@ -48,6 +50,9 @@ describe('ChapterManagementService', () => {
 		};
 		eventEmitter = {
 			emit: jest.fn(),
+		};
+		textProcessingQueue = {
+			add: jest.fn(),
 		};
 		dataSource = {
 			transaction: jest.fn((cb) =>
@@ -83,6 +88,10 @@ describe('ChapterManagementService', () => {
 				{
 					provide: I_UNIT_OF_WORK,
 					useValue: unitOfWork,
+				},
+				{
+					provide: getQueueToken('text-processing-queue'),
+					useValue: textProcessingQueue,
 				},
 				{
 					provide: EventEmitter2,

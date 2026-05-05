@@ -48,6 +48,7 @@ import { CoverImageService } from './infrastructure/jobs/cover-image.service';
 import { QueueAutoPauseListener } from './infrastructure/jobs/queue-auto-pause.listener';
 import { FixChapterProcessor } from './infrastructure/jobs/fix-chapter.processor';
 import { FixChapterService } from './infrastructure/jobs/fix-chapter.service';
+import { TextProcessingProcessor } from './infrastructure/jobs/text-processing.processor';
 import { SensitiveContentController } from './infrastructure/http/controllers/sensitive-content.controller';
 import { SensitiveContentService } from './application/services/sensitive-content.service';
 import { BookContentUpdateService } from './application/services/book-content-update.service';
@@ -164,6 +165,18 @@ import { BookResolver } from './infrastructure/graphql/resolvers/book.resolver';
 					},
 				},
 			},
+			{
+				name: 'text-processing-queue',
+				defaultJobOptions: {
+					attempts: 3,
+					removeOnFail: 20,
+					delay: 5000,
+					backoff: {
+						type: 'exponential',
+						delay: 5000,
+					},
+				},
+			},
 		),
 	],
 	controllers: [
@@ -230,6 +243,7 @@ import { BookResolver } from './infrastructure/graphql/resolvers/book.resolver';
 		QueueAutoPauseListener,
 		FixChapterService,
 		FixChapterProcessor,
+		TextProcessingProcessor,
 		// Book Update Jobs
 		BookUpdateJobService,
 		BookUpdateProcessor,
