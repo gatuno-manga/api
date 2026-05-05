@@ -46,37 +46,43 @@ export class ChapterScrapingJob extends WorkerHost implements OnModuleInit {
 		);
 		const startTime = Date.now();
 
-		const chapter = await this.getChapter(chapterId);
+		const queryRunner = this.dataSource.createQueryRunner();
+		await queryRunner.connect();
 
-		if (!chapter) {
-			this.logger.error(
-				`Capítulo com ID ${chapterId} não encontrado. Job ${job.id} falhará.`,
+		try {
+			const chapter = await queryRunner.manager.findOne(Chapter, {
+				where: { id: chapterId },
+				relations: ['book', 'pages'],
+				comment: 'force_master',
+			});
+
+			if (!chapter) {
+				this.logger.error(
+					`Capítulo com ID ${chapterId} não encontrado. Job ${job.id} falhará.`,
+				);
+				throw new Error(`Capítulo com ID ${chapterId} não encontrado.`);
+			}
+
+			await this.chapterScrapingShared.processChapterPages(chapter);
+
+			const endTime = Date.now();
+			this.logger.debug(
+				`Job ${job.id} finalizado. Tempo total: ${(endTime - startTime) / 1000}s`,
 			);
-			throw new Error(`Capítulo com ID ${chapterId} não encontrado.`);
+		} finally {
+			await queryRunner.release();
 		}
-
-		await this.chapterScrapingShared.processChapterPages(chapter);
-
-		const endTime = Date.now();
-		this.logger.debug(
-			`Job ${job.id} finalizado. Tempo total: ${(endTime - startTime) / 1000}s`,
-		);
-	}
-
-	private async getChapter(chapterId: string): Promise<Chapter | null> {
-		return await this.dataSource.manager.findOne(Chapter, {
-			where: { id: chapterId },
-			relations: ['book', 'pages'],
-			comment: 'force_master',
-		});
 	}
 
 	@OnWorkerEvent('active')
 	async onActive(job: Job<string>): Promise<void> {
 		const chapterId = job.data;
 
+		const queryRunner = this.dataSource.createQueryRunner();
+		await queryRunner.connect();
+
 		try {
-			const chapter = await this.dataSource.manager.findOne(Chapter, {
+			const chapter = await queryRunner.manager.findOne(Chapter, {
 				where: { id: chapterId },
 				relations: ['book'],
 				comment: 'force_master',
@@ -88,12 +94,14 @@ export class ChapterScrapingJob extends WorkerHost implements OnModuleInit {
 
 				// Incrementa contador de tentativas
 				chapter.retries += 1;
-				await this.dataSource.manager.save(chapter);
+				await queryRunner.manager.save(chapter);
 			}
 		} catch (error) {
 			this.logger.error(
 				`Erro ao incrementar retentativa para o capítulo ${chapterId}: ${error.message}`,
 			);
+		} finally {
+			await queryRunner.release();
 		}
 	}
 
@@ -104,8 +112,11 @@ export class ChapterScrapingJob extends WorkerHost implements OnModuleInit {
 			`Job with id ${job.id} FAILED! Attempt Number ${job.attemptsMade} for chapter ID: ${chapterId}`,
 		);
 
+		const queryRunner = this.dataSource.createQueryRunner();
+		await queryRunner.connect();
+
 		try {
-			const chapter = await this.dataSource.manager.findOne(Chapter, {
+			const chapter = await queryRunner.manager.findOne(Chapter, {
 				where: { id: chapterId },
 				relations: ['book'],
 				comment: 'force_master',
@@ -121,6 +132,8 @@ export class ChapterScrapingJob extends WorkerHost implements OnModuleInit {
 			this.logger.error(
 				`Erro ao emitir evento de falha para o capítulo ${chapterId}: ${error.message}`,
 			);
+		} finally {
+			await queryRunner.release();
 		}
 	}
 }
