@@ -91,6 +91,10 @@ import { I_UNIT_OF_WORK } from 'src/common/application/ports/unit-of-work.interf
 import { TypeOrmUnitOfWorkAdapter } from './infrastructure/database/adapters/typeorm-unit-of-work.adapter';
 
 import { BookResolver } from './infrastructure/graphql/resolvers/book.resolver';
+import {
+	CoverResolver,
+	PageResolver,
+} from './infrastructure/graphql/resolvers/media.resolver';
 
 @Module({
 	imports: [
@@ -265,6 +269,8 @@ import { BookResolver } from './infrastructure/graphql/resolvers/book.resolver';
 		// WebSocket Gateway
 		BooksGateway,
 		BookResolver,
+		CoverResolver,
+		PageResolver,
 		BookDataLoaderService,
 		AdminSystemManagementService,
 	],

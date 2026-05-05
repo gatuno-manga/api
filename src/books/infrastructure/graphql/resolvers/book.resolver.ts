@@ -15,6 +15,8 @@ import { ChapterCommentsService } from '@books/application/services/chapter-comm
 import { AuthorsService } from '@books/application/services/authors.service';
 import { TagsService } from '@books/application/services/tags.service';
 import { BookDataLoaderService } from '@books/application/services/book-dataloader.service';
+import { MediaUrlService } from 'src/common/services/media-url.service';
+import { StorageBucket } from '@common/enum/storage-bucket.enum';
 import {
 	BookModel,
 	CoverModel,
@@ -48,6 +50,7 @@ export class BookResolver {
 		private readonly authorsService: AuthorsService,
 		private readonly tagsService: TagsService,
 		private readonly dataLoaderService: BookDataLoaderService,
+		private readonly mediaUrlService: MediaUrlService,
 	) {}
 
 	@Query(() => [AuthorModel], { name: 'searchAuthors' })
@@ -190,6 +193,12 @@ export class BookResolver {
 			isMain: cover.selected,
 			metadata: cover.metadata as ImageMetadataModel,
 		}));
+	}
+
+	@ResolveField(() => String, { name: 'cover', nullable: true })
+	async getBookCover(@Parent() book: BookModel): Promise<string | null> {
+		if (!book.cover) return null;
+		return this.mediaUrlService.resolveUrl(book.cover, StorageBucket.BOOKS);
 	}
 
 	@Query(() => ChapterModel, { name: 'chapter', nullable: true })
