@@ -64,28 +64,22 @@ export class ChapterScrapingJob extends WorkerHost implements OnModuleInit {
 	}
 
 	private async getChapter(chapterId: string): Promise<Chapter | null> {
-		const queryRunner = this.dataSource.createQueryRunner('master');
-		try {
-			await queryRunner.connect();
-			return await queryRunner.manager.findOne(Chapter, {
-				where: { id: chapterId },
-				relations: ['book', 'pages'],
-			});
-		} finally {
-			await queryRunner.release();
-		}
+		return await this.dataSource.manager.findOne(Chapter, {
+			where: { id: chapterId },
+			relations: ['book', 'pages'],
+			comment: 'force_master',
+		});
 	}
 
 	@OnWorkerEvent('active')
 	async onActive(job: Job<string>): Promise<void> {
 		const chapterId = job.data;
-		const queryRunner = this.dataSource.createQueryRunner('master');
 
 		try {
-			await queryRunner.connect();
-			const chapter = await queryRunner.manager.findOne(Chapter, {
+			const chapter = await this.dataSource.manager.findOne(Chapter, {
 				where: { id: chapterId },
 				relations: ['book'],
+				comment: 'force_master',
 			});
 
 			if (chapter) {
@@ -94,14 +88,12 @@ export class ChapterScrapingJob extends WorkerHost implements OnModuleInit {
 
 				// Incrementa contador de tentativas
 				chapter.retries += 1;
-				await queryRunner.manager.save(chapter);
+				await this.dataSource.manager.save(chapter);
 			}
 		} catch (error) {
 			this.logger.error(
 				`Erro ao incrementar retentativa para o capítulo ${chapterId}: ${error.message}`,
 			);
-		} finally {
-			await queryRunner.release();
 		}
 	}
 
@@ -112,13 +104,11 @@ export class ChapterScrapingJob extends WorkerHost implements OnModuleInit {
 			`Job with id ${job.id} FAILED! Attempt Number ${job.attemptsMade} for chapter ID: ${chapterId}`,
 		);
 
-		const queryRunner = this.dataSource.createQueryRunner('master');
-
 		try {
-			await queryRunner.connect();
-			const chapter = await queryRunner.manager.findOne(Chapter, {
+			const chapter = await this.dataSource.manager.findOne(Chapter, {
 				where: { id: chapterId },
 				relations: ['book'],
+				comment: 'force_master',
 			});
 
 			if (chapter) {
@@ -131,8 +121,6 @@ export class ChapterScrapingJob extends WorkerHost implements OnModuleInit {
 			this.logger.error(
 				`Erro ao emitir evento de falha para o capítulo ${chapterId}: ${error.message}`,
 			);
-		} finally {
-			await queryRunner.release();
 		}
 	}
 }

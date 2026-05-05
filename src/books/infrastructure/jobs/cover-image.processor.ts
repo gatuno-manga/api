@@ -160,14 +160,11 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 	}
 
 	private async getBook(bookId: string) {
-		const queryRunner = this.dataSource.createQueryRunner('master');
-		await queryRunner.connect();
-		const book = await queryRunner.manager.findOne(Book, {
+		return await this.dataSource.manager.findOne(Book, {
 			where: { id: bookId },
 			relations: ['covers'],
+			comment: 'force_master',
 		});
-		await queryRunner.release();
-		return book;
 	}
 
 	@OnWorkerEvent('failed')

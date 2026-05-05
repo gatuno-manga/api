@@ -19,7 +19,6 @@ export class CreateAdminEvent {
 	@OnEvent('app.ready')
 	async handle() {
 		try {
-			const queryRunner = this.dataSource.createQueryRunner('master');
 			const userEmail = this.appConfigService.admin.email;
 			const userPassword = this.appConfigService.admin.password;
 			if (!userEmail || !userPassword) {
@@ -29,10 +28,9 @@ export class CreateAdminEvent {
 				return;
 			}
 
-			const user = await queryRunner.connect().then(() => {
-				return this.userRepository.manager.findOne(User, {
-					where: { email: userEmail },
-				});
+			const user = await this.userRepository.findOne({
+				where: { email: userEmail },
+				comment: 'force_master',
 			});
 
 			if (user) {

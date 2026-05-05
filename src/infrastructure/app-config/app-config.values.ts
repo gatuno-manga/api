@@ -6,7 +6,6 @@ export class DatabaseConfig {
 		public readonly port: number,
 		public readonly username: string,
 		public readonly password: string,
-		public readonly slaveHosts: string[],
 	) {}
 }
 
