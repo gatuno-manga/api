@@ -7,7 +7,7 @@ services:
     environment:
       PMA_USER: ${DB_USER}
       PMA_PASSWORD: ${DB_PASS}
-      PMA_HOSTS: database-master,database-slave-1,database-slave-2
+      PMA_HOSTS: proxysql,database-master,database-slave-1,database-slave-2
     networks:
       - gatuno-net
 
