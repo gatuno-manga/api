@@ -91,7 +91,7 @@ export class BookResolver {
 		const mappedData = result.data.map((book) => ({
 			...book,
 			// Relations handled by @ResolveField or DataLoaders
-		})) as BookModel[];
+		})) as unknown as BookModel[];
 
 		const metadata =
 			result instanceof PageDto ? result.metadata : undefined;
