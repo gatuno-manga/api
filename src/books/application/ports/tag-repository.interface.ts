@@ -11,6 +11,7 @@ export interface ITagRepository {
 	findByName(name: string): Promise<Tag | null>;
 	exists(id: string): Promise<boolean>;
 	findWithFilters(options: TagsOptions, maxWeight?: number): Promise<Tag[]>;
+	findByBookIds(bookIds: string[]): Promise<(Tag & { bookId: string })[]>;
 	count(criteria?: TagCriteria): Promise<number>;
 }
 

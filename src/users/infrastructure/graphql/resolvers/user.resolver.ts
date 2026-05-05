@@ -1,5 +1,6 @@
-import { UseGuards } from '@nestjs/common';
+import { UseGuards, UseInterceptors } from '@nestjs/common';
 import { Args, ID, Query, Resolver } from '@nestjs/graphql';
+import { CacheTTL } from '@nestjs/cache-manager';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
 import { RolesEnum } from 'src/users/domain/enums/roles.enum';
@@ -8,6 +9,7 @@ import { AdminUsersService } from '@users/application/use-cases/admin-users.serv
 import { UserFilterInput } from '@users/infrastructure/graphql/models/user-filter.input';
 import { PaginatedUserResponseModel } from '@users/infrastructure/graphql/models/paginated-user-response.model';
 import { UserModel } from '@users/infrastructure/graphql/models/user.model';
+import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-cache.interceptor';
 
 @Resolver(() => UserModel)
 @UseGuards(GqlJwtAuthGuard)
@@ -16,6 +18,8 @@ export class UserResolver {
 	constructor(private readonly adminUsersService: AdminUsersService) {}
 
 	@Query(() => PaginatedUserResponseModel, { name: 'users' })
+	@UseInterceptors(UserAwareCacheInterceptor)
+	@CacheTTL(30)
 	async listUsers(
 		@Args('filter', { nullable: true }) filter?: UserFilterInput,
 	) {

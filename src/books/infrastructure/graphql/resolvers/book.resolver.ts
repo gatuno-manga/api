@@ -7,12 +7,14 @@ import {
 	ResolveField,
 	Parent,
 } from '@nestjs/graphql';
-import { UseGuards } from '@nestjs/common';
+import { UseGuards, UseInterceptors } from '@nestjs/common';
+import { CacheTTL } from '@nestjs/cache-manager';
 import { BooksService } from '@books/application/services/books.service';
 import { ChapterService } from '@books/application/services/chapter.service';
 import { ChapterCommentsService } from '@books/application/services/chapter-comments.service';
 import { AuthorsService } from '@books/application/services/authors.service';
 import { TagsService } from '@books/application/services/tags.service';
+import { BookDataLoaderService } from '@books/application/services/book-dataloader.service';
 import {
 	BookModel,
 	CoverModel,
@@ -33,6 +35,7 @@ import { ChapterFilterInput } from '@books/infrastructure/graphql/models/chapter
 import { GqlCurrentUser } from 'src/auth/infrastructure/framework/gql-current-user.decorator';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { OptionalGqlJwtAuthGuard } from 'src/auth/infrastructure/framework/optional-gql-jwt-auth.guard';
+import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-cache.interceptor';
 import { PageDto } from 'src/common/pagination/page.dto';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 
@@ -44,20 +47,27 @@ export class BookResolver {
 		private readonly chapterCommentsService: ChapterCommentsService,
 		private readonly authorsService: AuthorsService,
 		private readonly tagsService: TagsService,
+		private readonly dataLoaderService: BookDataLoaderService,
 	) {}
 
 	@Query(() => [AuthorModel], { name: 'searchAuthors' })
+	@UseInterceptors(UserAwareCacheInterceptor)
+	@CacheTTL(60)
 	async searchAuthors(@Args('query') query: string) {
 		return this.authorsService.search(query);
 	}
 
 	@Query(() => [TagModel], { name: 'searchTags' })
+	@UseInterceptors(UserAwareCacheInterceptor)
+	@CacheTTL(60)
 	async searchTags(@Args('query') query: string) {
 		return this.tagsService.search(query);
 	}
 
 	@Query(() => PaginatedBookResponseModel, { name: 'books' })
 	@UseGuards(OptionalGqlJwtAuthGuard)
+	@UseInterceptors(UserAwareCacheInterceptor)
+	@CacheTTL(180)
 	async getBooks(
 		@Args('filter', { type: () => BookFilterInput, nullable: true })
 		filter?: BookFilterInput,
@@ -80,10 +90,7 @@ export class BookResolver {
 
 		const mappedData = result.data.map((book) => ({
 			...book,
-			authors: book.authors ?? [],
-			tags: book.tags ?? [],
-			covers: [],
-			chapters: [],
+			// Relations handled by @ResolveField or DataLoaders
 		})) as BookModel[];
 
 		const metadata =
@@ -102,6 +109,8 @@ export class BookResolver {
 
 	@Query(() => BookModel, { name: 'book', nullable: true })
 	@UseGuards(OptionalGqlJwtAuthGuard)
+	@UseInterceptors(UserAwareCacheInterceptor)
+	@CacheTTL(300)
 	async getBook(
 		@Args('id', { type: () => ID }) id: string,
 		@GqlCurrentUser() user?: CurrentUserDto,
@@ -116,11 +125,21 @@ export class BookResolver {
 
 		return {
 			...book,
-			authors: book.authors ?? [],
-			tags: book.tags ?? [],
-			covers: [],
-			chapters: [],
 		};
+	}
+
+	@ResolveField(() => [AuthorModel], { name: 'authors' })
+	async getBookAuthors(@Parent() book: BookModel): Promise<AuthorModel[]> {
+		const authors = await this.dataLoaderService.authorsLoader.load(
+			book.id,
+		);
+		return authors as AuthorModel[];
+	}
+
+	@ResolveField(() => [TagModel], { name: 'tags' })
+	async getBookTags(@Parent() book: BookModel): Promise<TagModel[]> {
+		const tags = await this.dataLoaderService.tagsLoader.load(book.id);
+		return tags as TagModel[];
 	}
 
 	@ResolveField(() => PaginatedChapterResponseModel, { name: 'chapters' })
@@ -130,13 +149,22 @@ export class BookResolver {
 		filter?: ChapterFilterInput,
 		@GqlCurrentUser() user?: CurrentUserDto,
 	): Promise<PaginatedChapterResponseModel> {
-		const options = new BookChaptersCursorOptionsDto();
-
-		if (filter) {
-			options.cursor = filter.cursor;
-			options.order = filter.order;
-			Object.assign(options, { limit: filter.limit ?? 100 });
+		// Se não houver filtro, usamos o DataLoader para performance em massa
+		if (!filter) {
+			const chapters = await this.dataLoaderService.chaptersLoader.load(
+				book.id,
+			);
+			return {
+				data: chapters as unknown as ChapterModel[],
+				hasNextPage: false,
+			};
 		}
+
+		// Se houver filtro (ex: paginação por cursor), usamos o serviço tradicional
+		const options = new BookChaptersCursorOptionsDto();
+		options.cursor = filter.cursor;
+		options.order = filter.order;
+		Object.assign(options, { limit: filter.limit ?? 100 });
 
 		const result = await this.booksService.getChapters(
 			book.id,
@@ -153,15 +181,8 @@ export class BookResolver {
 	}
 
 	@ResolveField(() => [CoverModel], { name: 'covers' })
-	async getBookCovers(
-		@Parent() book: BookModel,
-		@GqlCurrentUser() user?: CurrentUserDto,
-	): Promise<CoverModel[]> {
-		const covers = await this.booksService.getCovers(
-			book.id,
-			user?.maxWeightSensitiveContent ?? 0,
-			user?.userId,
-		);
+	async getBookCovers(@Parent() book: BookModel): Promise<CoverModel[]> {
+		const covers = await this.dataLoaderService.coversLoader.load(book.id);
 
 		return (covers || []).map((cover) => ({
 			id: cover.id,
@@ -173,6 +194,8 @@ export class BookResolver {
 
 	@Query(() => ChapterModel, { name: 'chapter', nullable: true })
 	@UseGuards(OptionalGqlJwtAuthGuard)
+	@UseInterceptors(UserAwareCacheInterceptor)
+	@CacheTTL(600)
 	async getChapter(
 		@Args('id', { type: () => ID }) id: string,
 		@GqlCurrentUser() user?: CurrentUserDto,
@@ -182,6 +205,8 @@ export class BookResolver {
 
 	@Query(() => PaginatedCommentResponseModel, { name: 'bookComments' })
 	@UseGuards(OptionalGqlJwtAuthGuard)
+	@UseInterceptors(UserAwareCacheInterceptor)
+	@CacheTTL(120)
 	async getBookComments(
 		@Args('chapterId', { type: () => ID }) chapterId: string,
 		@Args('page', { type: () => Int, nullable: true, defaultValue: 1 })

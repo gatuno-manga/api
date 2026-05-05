@@ -65,6 +65,7 @@ import { TagsService } from './application/services/tags.service';
 import { AuthorsService } from './application/services/authors.service';
 import { BooksNotifier } from './infrastructure/notifiers/books.notifier';
 import { AdminSystemManagementService } from './application/services/admin-system-management.service';
+import { BookDataLoaderService } from './application/services/book-dataloader.service';
 
 import { I_BOOK_REPOSITORY } from './application/ports/book-repository.interface';
 import { TypeOrmBookRepositoryAdapter } from './infrastructure/database/adapters/typeorm-book-repository.adapter';
@@ -264,6 +265,7 @@ import { BookResolver } from './infrastructure/graphql/resolvers/book.resolver';
 		// WebSocket Gateway
 		BooksGateway,
 		BookResolver,
+		BookDataLoaderService,
 		AdminSystemManagementService,
 	],
 	exports: [

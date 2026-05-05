@@ -97,6 +97,19 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 		return chapters as unknown as DomainChapter[];
 	}
 
+	async findByBookIds(bookIds: string[]): Promise<DomainChapter[]> {
+		const chapters = await this.repository.find({
+			where: {
+				book: { id: In(bookIds) },
+			} as unknown as FindOptionsWhere<InfrastructureChapter>,
+			relations: ['book'],
+			order: {
+				index: 'ASC',
+			} as unknown as FindOptionsOrder<InfrastructureChapter>,
+		});
+		return chapters as unknown as DomainChapter[];
+	}
+
 	async count(criteria?: ChapterCriteria): Promise<number> {
 		return this.repository.count({
 			where: criteria as unknown as FindOptionsWhere<InfrastructureChapter>,

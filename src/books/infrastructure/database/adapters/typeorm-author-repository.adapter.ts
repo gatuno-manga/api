@@ -107,4 +107,21 @@ export class TypeOrmAuthorRepositoryAdapter implements IAuthorRepository {
 		});
 		return authors as unknown as DomainAuthor[];
 	}
+
+	async findByBookIds(
+		bookIds: string[],
+	): Promise<(DomainAuthor & { bookId: string })[]> {
+		const results = await this.repository
+			.createQueryBuilder('author')
+			.innerJoin('author.books', 'book')
+			.select(['author.id', 'author.name', 'book.id'])
+			.where('book.id IN (:...bookIds)', { bookIds })
+			.getRawMany();
+
+		return results.map((r) => ({
+			id: r.author_id,
+			name: r.author_name,
+			bookId: r.book_id,
+		})) as unknown as (DomainAuthor & { bookId: string })[];
+	}
 }
