@@ -42,6 +42,7 @@ import { TypeOrmUserRepositoryAdapter } from './infrastructure/database/adapters
 import { I_USER_IMAGE_REPOSITORY } from './application/ports/user-image-repository.interface';
 import { TypeOrmUserImageRepositoryAdapter } from './infrastructure/database/adapters/typeorm-user-image-repository.adapter';
 import { UserResolver } from './infrastructure/graphql/resolvers/user.resolver';
+import { UserImageResolver } from './infrastructure/graphql/resolvers/user-image.resolver';
 
 @Module({
 	imports: [
@@ -92,6 +93,7 @@ import { UserResolver } from './infrastructure/graphql/resolvers/user.resolver';
 		HighestPageWinsStrategy,
 		SyncStrategyResolver,
 		UserResolver,
+		UserImageResolver,
 	],
 	exports: [
 		AdminUsersService,
