@@ -1,18 +1,18 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { In } from 'typeorm';
-import { Book } from '../../domain/entities/book';
-import { Tag } from '../../domain/entities/tag';
+import { Book } from '@books/domain/entities/book';
+import { Tag } from '@books/domain/entities/tag';
 import { SensitiveContentService } from './sensitive-content.service';
-import { TagsOptions } from '../dto/tags-options.dto';
+import { TagsOptions } from '@books/application/dto/tags-options.dto';
 import {
 	I_TAG_REPOSITORY,
 	ITagRepository,
-} from '../ports/tag-repository.interface';
+} from '@books/application/ports/tag-repository.interface';
 import {
 	I_BOOK_REPOSITORY,
 	IBookRepository,
-} from '../ports/book-repository.interface';
-import { MEILI_CLIENT } from '../../../infrastructure/meilisearch/meilisearch.constants';
+} from '@books/application/ports/book-repository.interface';
+import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants';
 import { Meilisearch } from 'meilisearch';
 
 @Injectable()

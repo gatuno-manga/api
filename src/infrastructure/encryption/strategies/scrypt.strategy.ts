@@ -2,7 +2,7 @@ import { scrypt as _scrypt, randomBytes } from 'node:crypto';
 import { promisify } from 'node:util';
 import { Injectable } from '@nestjs/common';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
-import { PasswordHasher } from '../interfaces/password-hasher.interface';
+import { PasswordHasher } from '@encryption/interfaces/password-hasher.interface';
 
 const scrypt = promisify(_scrypt);
 

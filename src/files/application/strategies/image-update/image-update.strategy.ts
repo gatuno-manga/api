@@ -1,5 +1,5 @@
-import { StorageBucket } from '../../../../common/enum/storage-bucket.enum';
-import { ImageMetadata } from '../../../../common/domain/value-objects/image-metadata.vo';
+import { StorageBucket } from '@common/enum/storage-bucket.enum';
+import { ImageMetadata } from '@common/domain/value-objects/image-metadata.vo';
 
 export interface ImageProcessingCompletedEvent {
 	rawPath: string;

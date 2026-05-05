@@ -1,7 +1,7 @@
 import { BookRequestReason } from './book-request-reason.vo';
 import { BookRequestTitle } from './book-request-title.vo';
 import { BookRequestUrl } from './book-request-url.vo';
-import { BookRequestStatus } from '../enums/book-request-status.enum';
+import { BookRequestStatus } from '@/book-requests/domain/enums/book-request-status.enum';
 import { RejectionMessage } from './rejection-message.vo';
 
 export class BookInformation {

@@ -11,7 +11,7 @@ import { lastValueFrom } from 'rxjs';
 import {
 	EventPublisherPort,
 	ImageProcessingRequestEvent,
-} from '../../application/ports/event-publisher.port';
+} from '@files/application/ports/event-publisher.port';
 
 @Injectable()
 export class KafkaEventPublisherAdapter

@@ -15,10 +15,10 @@ import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.deco
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { DataEnvelopeInterceptor } from 'src/common/interceptors/data-envelope.interceptor';
-import { CollectionsBooksService } from '../../application/use-cases/collections-books.service';
-import { AddBookCollectionDto } from '../http/dto/add-book-collection.dto';
-import { CreateCollectionBookDto } from '../http/dto/create-collection-book.dto';
-import { UpdateCollectionVisibilityDto } from '../http/dto/update-collection-visibility.dto';
+import { CollectionsBooksService } from '@users/application/use-cases/collections-books.service';
+import { AddBookCollectionDto } from '@users/infrastructure/http/dto/add-book-collection.dto';
+import { CreateCollectionBookDto } from '@users/infrastructure/http/dto/create-collection-book.dto';
+import { UpdateCollectionVisibilityDto } from '@users/infrastructure/http/dto/update-collection-visibility.dto';
 import {
 	ApiDocsGetCollectionBooks,
 	ApiDocsGetNameCollectionBooks,

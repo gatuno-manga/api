@@ -1,6 +1,6 @@
 import { User } from 'src/users/infrastructure/database/entities/user.entity';
-import { UserAuthData } from '../ports/user-repository.port';
-import { JwtPayloadDto } from '../dto/jwt-payload.dto';
+import { UserAuthData } from '@auth/application/ports/user-repository.port';
+import { JwtPayloadDto } from '@auth/application/dto/jwt-payload.dto';
 
 export class JwtPayloadBuilder {
 	private payload: Partial<JwtPayloadDto> = {};

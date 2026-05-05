@@ -1,4 +1,4 @@
-import { CollectionVisibility } from '../enums/collection-visibility.enum';
+import { CollectionVisibility } from '@/collections/domain/enums/collection-visibility.enum';
 
 export class Visibility {
 	private constructor(private readonly value: CollectionVisibility) {}

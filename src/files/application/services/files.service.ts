@@ -1,9 +1,9 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { v7 as uuidv7 } from 'uuid';
-import { StorageBucket } from '../../../common/enum/storage-bucket.enum';
-import { FileCompressorFactory } from '../../infrastructure/adapters/file-compressor.factory';
-import { StoragePort } from '../ports/storage.port';
-import { EventPublisherPort } from '../ports/event-publisher.port';
+import { StorageBucket } from '@common/enum/storage-bucket.enum';
+import { FileCompressorFactory } from '@files/infrastructure/adapters/file-compressor.factory';
+import { StoragePort } from '@files/application/ports/storage.port';
+import { EventPublisherPort } from '@files/application/ports/event-publisher.port';
 
 @Injectable()
 export class FilesService {

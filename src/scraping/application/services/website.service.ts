@@ -1,12 +1,12 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { RegisterWebSiteDto } from '../dto/register-website.dto';
-import { UpdateWebsiteDto } from '../dto/update-website.dto';
-import { Website } from '../../domain/entities/website';
-import { minifyScrapingScript } from '../utils/script-minifier.util';
+import { RegisterWebSiteDto } from '@scraping/application/dto/register-website.dto';
+import { UpdateWebsiteDto } from '@scraping/application/dto/update-website.dto';
+import { Website } from '@scraping/domain/entities/website';
+import { minifyScrapingScript } from '@scraping/application/utils/script-minifier.util';
 import {
 	I_WEBSITE_REPOSITORY,
 	IWebsiteRepository,
-} from '../ports/website-repository.interface';
+} from '@scraping/application/ports/website-repository.interface';
 
 @Injectable()
 export class WebsiteService {

@@ -8,28 +8,28 @@ import {
 	Parent,
 } from '@nestjs/graphql';
 import { UseGuards } from '@nestjs/common';
-import { BooksService } from '../../../application/services/books.service';
-import { ChapterService } from '../../../application/services/chapter.service';
-import { ChapterCommentsService } from '../../../application/services/chapter-comments.service';
-import { AuthorsService } from '../../../application/services/authors.service';
-import { TagsService } from '../../../application/services/tags.service';
+import { BooksService } from '@books/application/services/books.service';
+import { ChapterService } from '@books/application/services/chapter.service';
+import { ChapterCommentsService } from '@books/application/services/chapter-comments.service';
+import { AuthorsService } from '@books/application/services/authors.service';
+import { TagsService } from '@books/application/services/tags.service';
 import {
 	BookModel,
 	CoverModel,
 	AuthorModel,
 	TagModel,
-} from '../models/book.model';
-import { ImageMetadataModel } from '../../../../common/infrastructure/graphql/models/image-metadata.model';
-import { ChapterModel } from '../models/chapter.model';
-import { ChapterCommentModel } from '../models/comment.model';
-import { PaginatedBookResponseModel } from '../models/paginated-book-response.model';
-import { PaginatedCommentResponseModel } from '../models/paginated-comment-response.model';
-import { PaginatedChapterResponseModel } from '../models/paginated-chapter-response.model';
-import { BookPageOptionsDto } from '../../../application/dto/book-page-options.dto';
-import { BookChaptersCursorOptionsDto } from '../../../application/dto/book-chapters-cursor-options.dto';
-import { ChapterCommentsPageOptionsDto } from '../../../application/dto/chapter-comments-page-options.dto';
-import { BookFilterInput } from '../models/book-filter.input';
-import { ChapterFilterInput } from '../models/chapter-filter.input';
+} from '@books/infrastructure/graphql/models/book.model';
+import { ImageMetadataModel } from '@common/infrastructure/graphql/models/image-metadata.model';
+import { ChapterModel } from '@books/infrastructure/graphql/models/chapter.model';
+import { ChapterCommentModel } from '@books/infrastructure/graphql/models/comment.model';
+import { PaginatedBookResponseModel } from '@books/infrastructure/graphql/models/paginated-book-response.model';
+import { PaginatedCommentResponseModel } from '@books/infrastructure/graphql/models/paginated-comment-response.model';
+import { PaginatedChapterResponseModel } from '@books/infrastructure/graphql/models/paginated-chapter-response.model';
+import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
+import { BookChaptersCursorOptionsDto } from '@books/application/dto/book-chapters-cursor-options.dto';
+import { ChapterCommentsPageOptionsDto } from '@books/application/dto/chapter-comments-page-options.dto';
+import { BookFilterInput } from '@books/infrastructure/graphql/models/book-filter.input';
+import { ChapterFilterInput } from '@books/infrastructure/graphql/models/chapter-filter.input';
 import { GqlCurrentUser } from 'src/auth/infrastructure/framework/gql-current-user.decorator';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { OptionalGqlJwtAuthGuard } from 'src/auth/infrastructure/framework/optional-gql-jwt-auth.guard';

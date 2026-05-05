@@ -11,8 +11,8 @@ import {
 } from '@nestjs/terminus';
 import { Redis } from 'ioredis';
 import { Transport } from '@nestjs/microservices';
-import { REDIS_CLIENT } from '../redis/redis.constants';
-import { AppConfigService } from '../app-config/app-config.service';
+import { REDIS_CLIENT } from '@/infrastructure/redis/redis.constants';
+import { AppConfigService } from '@app-config/app-config.service';
 import {
 	ApiDocsCheck,
 	ApiDocsLiveness,

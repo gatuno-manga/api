@@ -1,6 +1,6 @@
 import { Brackets, SelectQueryBuilder } from 'typeorm';
-import { BookPageOptionsDto } from '../dto/book-page-options.dto';
-import { Book } from '../../infrastructure/database/entities/book.entity';
+import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { FilterStrategy } from './filter-strategy.interface';
 
 export class SensitiveContentFilterStrategy implements FilterStrategy {

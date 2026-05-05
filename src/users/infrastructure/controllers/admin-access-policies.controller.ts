@@ -12,9 +12,9 @@ import { ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { AdminApi } from 'src/common/swagger/auth-api.decorators';
-import { AdminUsersService } from '../../application/use-cases/admin-users.service';
-import { CreateAccessPolicyDto } from '../http/dto/create-access-policy.dto';
-import { ListAccessPoliciesQueryDto } from '../http/dto/list-access-policies-query.dto';
+import { AdminUsersService } from '@users/application/use-cases/admin-users.service';
+import { CreateAccessPolicyDto } from '@users/infrastructure/http/dto/create-access-policy.dto';
+import { ListAccessPoliciesQueryDto } from '@users/infrastructure/http/dto/list-access-policies-query.dto';
 import {
 	ApiDocsListPolicies,
 	ApiDocsCreatePolicy,

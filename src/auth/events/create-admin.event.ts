@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import { DataSource, Repository } from 'typeorm';
-import { AuthService } from '../auth.service';
+import { AuthService } from '@auth/auth.service';
 
 export class CreateAdminEvent {
 	private readonly logger = new Logger(CreateAdminEvent.name);

@@ -1,8 +1,8 @@
 import { Controller, Logger } from '@nestjs/common';
 import { EventPattern, Payload } from '@nestjs/microservices';
 import { KafkaMessage } from 'kafkajs';
-import { HandleImageProcessingCompletedUseCase } from '../../application/use-cases/handle-image-processing-completed.use-case';
-import { ImageProcessingCompletedEvent } from '../../application/strategies/image-update/image-update.strategy';
+import { HandleImageProcessingCompletedUseCase } from '@files/application/use-cases/handle-image-processing-completed.use-case';
+import { ImageProcessingCompletedEvent } from '@files/application/strategies/image-update/image-update.strategy';
 
 @Controller()
 export class ImageProcessingController {

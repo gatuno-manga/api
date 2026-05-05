@@ -1,5 +1,5 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
-import { ImageMetadataModel } from '../../../../common/infrastructure/graphql/models/image-metadata.model';
+import { ImageMetadataModel } from '@common/infrastructure/graphql/models/image-metadata.model';
 
 @ObjectType('Page')
 export class PageModel {

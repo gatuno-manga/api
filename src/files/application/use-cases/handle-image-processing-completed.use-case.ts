@@ -1,9 +1,9 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { StorageBucket } from '../../../common/enum/storage-bucket.enum';
+import { StorageBucket } from '@common/enum/storage-bucket.enum';
 import {
 	ImageProcessingCompletedEvent,
 	ImageUpdateStrategy,
-} from '../strategies/image-update/image-update.strategy';
+} from '@files/application/strategies/image-update/image-update.strategy';
 
 export const IMAGE_UPDATE_STRATEGIES = 'IMAGE_UPDATE_STRATEGIES';
 

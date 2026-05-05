@@ -8,10 +8,10 @@ import {
 	SaveReadingProgressDto,
 	SyncReadingProgressDto,
 	SyncResponseDto,
-} from '../../infrastructure/http/dto/reading-progress.dto';
-import { ReadingProgress } from '../../infrastructure/database/entities/reading-progress.entity';
-import { SyncStrategyResolver } from '../strategies/sync-strategy.resolver';
-import { UserResourcesMapper } from '../mappers/user-resources.mapper';
+} from '@users/infrastructure/http/dto/reading-progress.dto';
+import { ReadingProgress } from '@users/infrastructure/database/entities/reading-progress.entity';
+import { SyncStrategyResolver } from '@users/application/strategies/sync-strategy.resolver';
+import { UserResourcesMapper } from '@users/application/mappers/user-resources.mapper';
 
 @Injectable()
 export class ReadingProgressService {

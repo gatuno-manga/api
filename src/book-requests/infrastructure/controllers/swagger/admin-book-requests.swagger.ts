@@ -1,4 +1,4 @@
-import { BookRequestResponseDto } from '../../http/dto/book-request-response.dto';
+import { BookRequestResponseDto } from '@/book-requests/infrastructure/http/dto/book-request-response.dto';
 import { applyDecorators } from '@nestjs/common';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 

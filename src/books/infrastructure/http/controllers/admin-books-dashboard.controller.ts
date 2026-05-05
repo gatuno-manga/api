@@ -5,7 +5,7 @@ import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { RolesEnum } from 'src/users/domain/enums/roles.enum';
-import { BooksService } from '../../../application/services/books.service';
+import { BooksService } from '@books/application/services/books.service';
 import {
 	ApiDocsDashboard,
 	ApiDocsProcessBookDashboard,

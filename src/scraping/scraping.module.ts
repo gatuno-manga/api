@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AppConfigModule } from '../infrastructure/app-config/app-config.module';
-import { AppConfigService } from '../infrastructure/app-config/app-config.service';
-import { AuthModule } from '../auth/auth.module';
-import { FilesModule } from '../files/files.module';
-import { RedisModule } from '../infrastructure/redis/redis.module';
+import { AppConfigModule } from '@app-config/app-config.module';
+import { AppConfigService } from '@app-config/app-config.service';
+import { AuthModule } from '@auth/auth.module';
+import { FilesModule } from '@files/files.module';
+import { RedisModule } from '@/infrastructure/redis/redis.module';
 import {
 	BrowserConfig,
 	PlaywrightBrowserFactory,

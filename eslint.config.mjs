@@ -37,6 +37,18 @@ export default tseslint.config(
 			'@typescript-eslint/no-explicit-any': 'off',
 			'@typescript-eslint/no-floating-promises': 'warn',
 			'@typescript-eslint/no-unsafe-argument': 'warn',
+			'no-restricted-imports': [
+				'error',
+				{
+					patterns: [
+						{
+							group: ['../*'],
+							message:
+								'Usage of relative parent imports is not allowed. Please use path aliases (e.g., @api/*, @users/*) instead.',
+						},
+					],
+				},
+			],
 		},
 	},
 	{

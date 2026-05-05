@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
-import { ScrapingStatus } from '../../domain/enums/scrapingStatus.enum';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 
 export class BookChapterCursorItemDto {
 	@ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })

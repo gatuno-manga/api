@@ -1,6 +1,6 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Chapter } from '../../infrastructure/database/entities/chapter.entity';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { ChapterScrapingService } from './chapter-scraping.service';
 
 describe('ChapterScrapingService', () => {

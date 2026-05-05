@@ -1,5 +1,5 @@
-import { SaveReadingProgressDto } from '../../infrastructure/http/dto/reading-progress.dto';
-import { ReadingProgress } from '../../infrastructure/database/entities/reading-progress.entity';
+import { SaveReadingProgressDto } from '@users/infrastructure/http/dto/reading-progress.dto';
+import { ReadingProgress } from '@users/infrastructure/database/entities/reading-progress.entity';
 
 export type SyncResolution = 'local' | 'remote' | 'conflict';
 

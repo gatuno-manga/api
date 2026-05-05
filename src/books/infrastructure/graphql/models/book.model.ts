@@ -1,7 +1,7 @@
 import { Field, ID, Int, ObjectType, registerEnumType } from '@nestjs/graphql';
-import { BookType } from '../../../domain/enums/book-type.enum';
-import { ScrapingStatus } from '../../../domain/enums/scrapingStatus.enum';
-import { ImageMetadataModel } from '../../../../common/infrastructure/graphql/models/image-metadata.model';
+import { BookType } from '@books/domain/enums/book-type.enum';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
+import { ImageMetadataModel } from '@common/infrastructure/graphql/models/image-metadata.model';
 import { ChapterModel } from './chapter.model';
 
 registerEnumType(BookType, { name: 'BookType' });

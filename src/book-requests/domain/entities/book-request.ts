@@ -1,11 +1,11 @@
-import { BookRequestHeader } from '../value-objects/book-request-header.vo';
+import { BookRequestHeader } from '@/book-requests/domain/value-objects/book-request-header.vo';
 import {
 	BookRequestBody,
 	BookRequestOutcome,
 	ResolutionDetails,
-} from '../value-objects/book-request-body.vo';
-import { BookRequestStatus } from '../enums/book-request-status.enum';
-import { RejectionMessage } from '../value-objects/rejection-message.vo';
+} from '@/book-requests/domain/value-objects/book-request-body.vo';
+import { BookRequestStatus } from '@/book-requests/domain/enums/book-request-status.enum';
+import { RejectionMessage } from '@/book-requests/domain/value-objects/rejection-message.vo';
 
 export class BookRequest {
 	constructor(

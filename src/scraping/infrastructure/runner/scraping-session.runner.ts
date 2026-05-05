@@ -1,15 +1,18 @@
 import { Logger } from '@nestjs/common';
 import { Browser, BrowserContext, Page } from 'playwright';
-import { ContextOptions, PlaywrightBrowserFactory } from '../browser';
-import { IConcurrencyManager } from '../concurrency';
-import { WebsiteConfigDto } from '../../application/dto/website-config.dto';
+import {
+	ContextOptions,
+	PlaywrightBrowserFactory,
+} from '@scraping/infrastructure/browser';
+import { IConcurrencyManager } from '@scraping/infrastructure/concurrency';
+import { WebsiteConfigDto } from '@scraping/application/dto/website-config.dto';
 import {
 	FlareSolverrClient,
 	ImageCompressor,
 	NetworkInterceptor,
 	StorageConfig,
 	StorageInjector,
-} from '../helpers';
+} from '@scraping/infrastructure/helpers';
 import { ScrapingContext, ScrapingTask } from './scraping-context.interface';
 
 export class ScrapingSessionRunner {

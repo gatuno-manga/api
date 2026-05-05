@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { normalizeUrl as normalizeUrlUtil } from '../utils/url.utils';
+import { normalizeUrl as normalizeUrlUtil } from '@common/utils/url.utils';
 
 /**
  * Decorator that normalizes URLs by removing 'www.' subdomain

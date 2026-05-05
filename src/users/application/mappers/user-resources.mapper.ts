@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
 import { MediaUrlService } from 'src/common/services/media-url.service';
-import { ReadingProgress } from '../../infrastructure/database/entities/reading-progress.entity';
-import { SavedPage } from '../../infrastructure/database/entities/saved-page.entity';
-import { User } from '../../infrastructure/database/entities/user.entity';
-import { ReadingProgressResponseDto } from '../../infrastructure/http/dto/reading-progress.dto';
+import { ReadingProgress } from '@users/infrastructure/database/entities/reading-progress.entity';
+import { SavedPage } from '@users/infrastructure/database/entities/saved-page.entity';
+import { User } from '@users/infrastructure/database/entities/user.entity';
+import { ReadingProgressResponseDto } from '@users/infrastructure/http/dto/reading-progress.dto';
 
 @Injectable()
 export class UserResourcesMapper {

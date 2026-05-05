@@ -1,4 +1,4 @@
-import { UserId } from '../../../common/domain/value-objects/user-id.vo';
+import { UserId } from '@common/domain/value-objects/user-id.vo';
 
 export class CollaboratorList {
 	private constructor(private readonly collaboratorIds: UserId[]) {}

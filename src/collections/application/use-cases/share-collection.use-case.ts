@@ -1,7 +1,7 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { CollectionRepository } from '../ports/collection-repository.port';
-import { CollectionId } from '../../domain/value-objects/collection-id.vo';
-import { UserId } from '../../../common/domain/value-objects/user-id.vo';
+import { CollectionRepository } from '@/collections/application/ports/collection-repository.port';
+import { CollectionId } from '@/collections/domain/value-objects/collection-id.vo';
+import { UserId } from '@common/domain/value-objects/user-id.vo';
 
 @Injectable()
 export class ShareCollectionUseCase {

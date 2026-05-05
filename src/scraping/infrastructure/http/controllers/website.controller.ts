@@ -15,9 +15,9 @@ import { Throttle } from '@nestjs/throttler';
 import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { RolesEnum } from 'src/users/domain/enums/roles.enum';
-import { RegisterWebSiteDto } from '../../../application/dto/register-website.dto';
-import { UpdateWebsiteDto } from '../../../application/dto/update-website.dto';
-import { WebsiteService } from '../../../application/services/website.service';
+import { RegisterWebSiteDto } from '@scraping/application/dto/register-website.dto';
+import { UpdateWebsiteDto } from '@scraping/application/dto/update-website.dto';
+import { WebsiteService } from '@scraping/application/services/website.service';
 import {
 	ApiDocsRegisterWebsite,
 	ApiDocsFindAll,

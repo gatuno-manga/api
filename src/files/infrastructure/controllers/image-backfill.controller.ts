@@ -4,7 +4,7 @@ import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { RolesEnum } from 'src/users/domain/enums/roles.enum';
-import { ImageMetadataBackfillService } from '../../application/services/image-metadata-backfill.service';
+import { ImageMetadataBackfillService } from '@files/application/services/image-metadata-backfill.service';
 import { ApiDocsBackfill } from './swagger/image-backfill.swagger';
 
 @ApiTags('Admin - Image Backfill')

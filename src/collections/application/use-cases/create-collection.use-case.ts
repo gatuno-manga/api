@@ -1,9 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { CollectionRepository } from '../ports/collection-repository.port';
-import { Collection } from '../../domain/entities/collection';
-import { UserId } from '../../../common/domain/value-objects/user-id.vo';
-import { CollectionEvents } from '../../domain/constants/events.constant';
+import { CollectionRepository } from '@/collections/application/ports/collection-repository.port';
+import { Collection } from '@/collections/domain/entities/collection';
+import { UserId } from '@common/domain/value-objects/user-id.vo';
+import { CollectionEvents } from '@/collections/domain/constants/events.constant';
 
 @Injectable()
 export class CreateCollectionUseCase {

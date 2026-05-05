@@ -1,13 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { StorageBucket } from '../../../../common/enum/storage-bucket.enum';
+import { StorageBucket } from '@common/enum/storage-bucket.enum';
 import {
 	I_PAGE_REPOSITORY,
 	IPageRepository,
-} from '../../../../books/application/ports/page-repository.interface';
+} from '@books/application/ports/page-repository.interface';
 import {
 	I_COVER_REPOSITORY,
 	ICoverRepository,
-} from '../../../../books/application/ports/cover-repository.interface';
+} from '@books/application/ports/cover-repository.interface';
 import {
 	ImageProcessingCompletedEvent,
 	ImageUpdateStrategy,

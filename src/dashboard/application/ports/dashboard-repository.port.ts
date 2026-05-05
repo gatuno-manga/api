@@ -1,4 +1,4 @@
-import { DashboardFilterDto } from '../dto/dashboard-filter.dto';
+import { DashboardFilterDto } from '@/dashboard/application/dto/dashboard-filter.dto';
 
 export interface DashboardStats {
 	counts: {

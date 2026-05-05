@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ReviewRepository } from '../../../application/ports/review-repository.port';
-import { Review } from '../../../domain/entities/review';
-import { UserId } from '../../../../common/domain/value-objects/user-id.vo';
-import { BookId } from '../../../../common/domain/value-objects/book-id.vo';
-import { ReviewEntity } from '../entities/review.entity';
+import { ReviewRepository } from '@/interactions/application/ports/review-repository.port';
+import { Review } from '@/interactions/domain/entities/review';
+import { UserId } from '@common/domain/value-objects/user-id.vo';
+import { BookId } from '@common/domain/value-objects/book-id.vo';
+import { ReviewEntity } from '@/interactions/infrastructure/database/entities/review.entity';
 
 @Injectable()
 export class TypeOrmReviewRepository implements ReviewRepository {

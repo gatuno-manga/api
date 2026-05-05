@@ -19,29 +19,29 @@ import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { RolesEnum } from 'src/users/domain/enums/roles.enum';
-import { AuthService } from '../../auth.service';
-import { CurrentUser } from '../framework/current-user.decorator';
-import { Roles } from '../framework/roles.decorator';
-import { BeginPasskeyAuthDto } from '../http/dto/begin-passkey-auth.dto';
-import { CreateLoginApiKeyDto } from '../http/dto/create-login-api-key.dto';
-import { CurrentUserDto } from '../../application/dto/current-user.dto';
-import { ListAuthAuditQueryDto } from '../http/dto/list-auth-audit-query.dto';
-import { RevokeSessionDto } from '../http/dto/revoke-session.dto';
-import { SignInApiKeyAuthDto } from '../http/dto/signin-api-key-auth.dto';
-import { SignInAuthDto } from '../http/dto/signin-auth.dto';
-import { SignUpAuthDto } from '../http/dto/signup-auth.dto';
-import { VerifyMfaLoginDto } from '../http/dto/verify-mfa-login.dto';
-import { VerifyPasskeyAuthDto } from '../http/dto/verify-passkey-auth.dto';
-import { VerifyPasskeyRegistrationDto } from '../http/dto/verify-passkey-registration.dto';
-import { VerifyTotpCodeDto } from '../http/dto/verify-totp-code.dto';
-import { JwtAuthGuard } from '../framework/jwt-auth.guard';
-import { RefreshTokenGuard } from '../framework/jwt-refresh.guard';
-import { WebauthnService } from '../adapters/webauthn.service';
+import { AuthService } from '@auth/auth.service';
+import { CurrentUser } from '@auth/infrastructure/framework/current-user.decorator';
+import { Roles } from '@auth/infrastructure/framework/roles.decorator';
+import { BeginPasskeyAuthDto } from '@auth/infrastructure/http/dto/begin-passkey-auth.dto';
+import { CreateLoginApiKeyDto } from '@auth/infrastructure/http/dto/create-login-api-key.dto';
+import { CurrentUserDto } from '@auth/application/dto/current-user.dto';
+import { ListAuthAuditQueryDto } from '@auth/infrastructure/http/dto/list-auth-audit-query.dto';
+import { RevokeSessionDto } from '@auth/infrastructure/http/dto/revoke-session.dto';
+import { SignInApiKeyAuthDto } from '@auth/infrastructure/http/dto/signin-api-key-auth.dto';
+import { SignInAuthDto } from '@auth/infrastructure/http/dto/signin-auth.dto';
+import { SignUpAuthDto } from '@auth/infrastructure/http/dto/signup-auth.dto';
+import { VerifyMfaLoginDto } from '@auth/infrastructure/http/dto/verify-mfa-login.dto';
+import { VerifyPasskeyAuthDto } from '@auth/infrastructure/http/dto/verify-passkey-auth.dto';
+import { VerifyPasskeyRegistrationDto } from '@auth/infrastructure/http/dto/verify-passkey-registration.dto';
+import { VerifyTotpCodeDto } from '@auth/infrastructure/http/dto/verify-totp-code.dto';
+import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
+import { RefreshTokenGuard } from '@auth/infrastructure/framework/jwt-refresh.guard';
+import { WebauthnService } from '@auth/infrastructure/adapters/webauthn.service';
 import {
 	AuthRequestContext,
 	isPendingMfaResult,
 	SuccessfulAuthResult,
-} from '../../types/auth-security.types';
+} from '@auth/types/auth-security.types';
 import {
 	ApiDocsBeginPasskeyRegistration,
 	ApiDocsBeginTotpSetup,

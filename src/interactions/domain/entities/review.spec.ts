@@ -1,7 +1,7 @@
 import { Review } from './review';
-import { UserId } from '../../../common/domain/value-objects/user-id.vo';
-import { BookId } from '../../../common/domain/value-objects/book-id.vo';
-import { RatingScore } from '../value-objects/rating-score.vo';
+import { UserId } from '@common/domain/value-objects/user-id.vo';
+import { BookId } from '@common/domain/value-objects/book-id.vo';
+import { RatingScore } from '@/interactions/domain/value-objects/rating-score.vo';
 
 describe('Review Domain Entity', () => {
 	it('should create a review with valid rating', () => {

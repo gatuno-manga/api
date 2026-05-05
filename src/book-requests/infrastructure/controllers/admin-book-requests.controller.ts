@@ -6,8 +6,8 @@ import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
-import { BookRequestsService } from '../../application/use-cases/book-requests.service';
-import { RejectBookRequestDto } from '../../application/dto/reject-book-request.dto';
+import { BookRequestsService } from '@/book-requests/application/use-cases/book-requests.service';
+import { RejectBookRequestDto } from '@/book-requests/application/dto/reject-book-request.dto';
 import { mapBookRequestToResponseDtoList } from './book-request-http.mapper';
 import {
 	ApiDocsListAll,

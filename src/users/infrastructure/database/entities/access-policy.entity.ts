@@ -10,8 +10,8 @@ import {
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
 } from 'typeorm';
-import { AccessPolicyEffectEnum } from '../../../domain/enums/access-policy-effect.enum';
-import { AccessPolicyScopeEnum } from '../../../domain/enums/access-policy-scope.enum';
+import { AccessPolicyEffectEnum } from '@users/domain/enums/access-policy-effect.enum';
+import { AccessPolicyScopeEnum } from '@users/domain/enums/access-policy-scope.enum';
 import { UserGroup } from './user-group.entity';
 import { User } from './user.entity';
 

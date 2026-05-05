@@ -2,8 +2,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
 	DashboardRepositoryPort,
 	DashboardStats,
-} from '../ports/dashboard-repository.port';
-import { DashboardFilterDto } from '../dto/dashboard-filter.dto';
+} from '@/dashboard/application/ports/dashboard-repository.port';
+import { DashboardFilterDto } from '@/dashboard/application/dto/dashboard-filter.dto';
 
 @Injectable()
 export class GetDashboardOverviewUseCase {

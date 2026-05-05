@@ -7,8 +7,8 @@ import {
 	UserRepositoryPort,
 	UserAuthData,
 	UserSaveInput,
-} from '../../application/ports/user-repository.port';
-import { EmailVO } from '../../domain/value-objects/email.vo';
+} from '@auth/application/ports/user-repository.port';
+import { EmailVO } from '@auth/domain/value-objects/email.vo';
 
 @Injectable()
 export class TypeOrmUserRepositoryAdapter implements UserRepositoryPort {

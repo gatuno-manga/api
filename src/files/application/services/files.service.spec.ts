@@ -1,8 +1,8 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { FileCompressorFactory } from '../../infrastructure/adapters/file-compressor.factory';
-import { StoragePort } from '../ports/storage.port';
+import { FileCompressorFactory } from '@files/infrastructure/adapters/file-compressor.factory';
+import { StoragePort } from '@files/application/ports/storage.port';
 import { FilesService } from './files.service';
-import { StorageBucket } from '../../../common/enum/storage-bucket.enum';
+import { StorageBucket } from '@common/enum/storage-bucket.enum';
 
 describe('FilesService', () => {
 	let service: FilesService;

@@ -5,16 +5,16 @@ import {
 	Logger,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { BookEvents } from '../../domain/constants/events.constant';
-import { CreateBookDto } from '../dto/create-book.dto';
-import { Book } from '../../domain/entities/book';
-import { CoverImageService } from '../../infrastructure/jobs/cover-image.service';
+import { BookEvents } from '@books/domain/constants/events.constant';
+import { CreateBookDto } from '@books/application/dto/create-book.dto';
+import { Book } from '@books/domain/entities/book';
+import { CoverImageService } from '@books/infrastructure/jobs/cover-image.service';
 import { BookRelationshipService } from './book-relationship.service';
 import { ChapterManagementService } from './chapter-management.service';
 import {
 	I_BOOK_REPOSITORY,
 	IBookRepository,
-} from '../ports/book-repository.interface';
+} from '@books/application/ports/book-repository.interface';
 import {
 	I_UNIT_OF_WORK,
 	IUnitOfWork,

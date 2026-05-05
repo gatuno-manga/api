@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import { ArrayMinSize, IsArray, IsUrl, ValidateNested } from 'class-validator';
-import { NormalizeUrl } from '../../../common/decorators/normalize-url.decorator';
+import { NormalizeUrl } from '@common/decorators/normalize-url.decorator';
 import { UrlImageDto } from './url-image.dto';
 
 export class CoverBookDto {

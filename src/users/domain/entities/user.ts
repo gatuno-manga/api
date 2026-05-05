@@ -1,4 +1,4 @@
-import { Image } from '../../../common/domain/value-objects/image.vo';
+import { Image } from '@common/domain/value-objects/image.vo';
 
 export class User {
 	id: string;

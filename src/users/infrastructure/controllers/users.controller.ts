@@ -12,8 +12,8 @@ import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.deco
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { DataEnvelopeInterceptor } from 'src/common/interceptors/data-envelope.interceptor';
 import { AuthenticatedApi } from 'src/common/swagger/auth-api.decorators';
-import { UpdateUserDto } from '../http/dto/update-user.dto';
-import { UsersService } from '../../application/use-cases/users.service';
+import { UpdateUserDto } from '@users/infrastructure/http/dto/update-user.dto';
+import { UsersService } from '@users/application/use-cases/users.service';
 import {
 	ApiDocsGetCurrentUser,
 	ApiDocsUpdateUser,

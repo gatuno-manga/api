@@ -7,9 +7,9 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { DataEnvelopeInterceptor } from 'src/common/interceptors/data-envelope.interceptor';
-import { GetPublicCollectionsUseCase } from '../../../collections/application/use-cases/get-public-collections.use-case';
-import { SavedPagesService } from '../../application/use-cases/saved-pages.service';
-import { UsersService } from '../../application/use-cases/users.service';
+import { GetPublicCollectionsUseCase } from '@/collections/application/use-cases/get-public-collections.use-case';
+import { SavedPagesService } from '@users/application/use-cases/saved-pages.service';
+import { UsersService } from '@users/application/use-cases/users.service';
 import {
 	ApiDocsGetPublicProfile,
 	ApiDocsGetPublicCollections,

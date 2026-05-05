@@ -12,23 +12,23 @@ import {
 	decodeCursorPayload,
 	encodeCursorPayload,
 } from 'src/common/pagination/cursor.utils';
-import { BookRelationshipsQueryDto } from '../dto/book-relationships-query.dto';
-import { CreateBookRelationshipDto } from '../dto/create-book-relationship.dto';
-import { UpdateBookRelationshipDto } from '../dto/update-book-relationship.dto';
+import { BookRelationshipsQueryDto } from '@books/application/dto/book-relationships-query.dto';
+import { CreateBookRelationshipDto } from '@books/application/dto/create-book-relationship.dto';
+import { UpdateBookRelationshipDto } from '@books/application/dto/update-book-relationship.dto';
 import {
 	BookRelationship,
 	BookRelationshipMetadata,
-} from '../../domain/entities/book-relationship';
-import { Book } from '../../domain/entities/book';
-import { BookRelationType } from '../../domain/enums/book-relation-type.enum';
+} from '@books/domain/entities/book-relationship';
+import { Book } from '@books/domain/entities/book';
+import { BookRelationType } from '@books/domain/enums/book-relation-type.enum';
 import {
 	I_BOOK_RELATIONSHIP_REPOSITORY,
 	IBookRelationshipRepository,
-} from '../ports/book-relationship-repository.interface';
+} from '@books/application/ports/book-relationship-repository.interface';
 import {
 	I_BOOK_REPOSITORY,
 	IBookRepository,
-} from '../ports/book-repository.interface';
+} from '@books/application/ports/book-repository.interface';
 
 export type RelatedBookItem = {
 	relationId: string;

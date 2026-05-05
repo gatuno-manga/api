@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { SubscriptionRepository } from '../ports/subscription-repository.port';
-import { Subscription } from '../../domain/entities/subscription';
-import { UserId } from '../../../common/domain/value-objects/user-id.vo';
-import { BookId } from '../../../common/domain/value-objects/book-id.vo';
+import { SubscriptionRepository } from '@/interactions/application/ports/subscription-repository.port';
+import { Subscription } from '@/interactions/domain/entities/subscription';
+import { UserId } from '@common/domain/value-objects/user-id.vo';
+import { BookId } from '@common/domain/value-objects/book-id.vo';
 
 @Injectable()
 export class SubscribeToBookUseCase {

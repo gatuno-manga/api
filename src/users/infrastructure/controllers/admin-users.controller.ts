@@ -15,11 +15,11 @@ import { ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { AdminApi } from 'src/common/swagger/auth-api.decorators';
-import { AdminUpdateUserDto } from '../http/dto/admin-update-user.dto';
-import { SetUserModerationDto } from '../http/dto/set-user-moderation.dto';
-import { UpdateUserRolesDto } from '../http/dto/update-user-roles.dto';
-import { AdminChangePasswordDto } from '../http/dto/admin-change-password.dto';
-import { AdminUsersService } from '../../application/use-cases/admin-users.service';
+import { AdminUpdateUserDto } from '@users/infrastructure/http/dto/admin-update-user.dto';
+import { SetUserModerationDto } from '@users/infrastructure/http/dto/set-user-moderation.dto';
+import { UpdateUserRolesDto } from '@users/infrastructure/http/dto/update-user-roles.dto';
+import { AdminChangePasswordDto } from '@users/infrastructure/http/dto/admin-change-password.dto';
+import { AdminUsersService } from '@users/application/use-cases/admin-users.service';
 import {
 	ApiDocsSearch,
 	ApiDocsListUsers,

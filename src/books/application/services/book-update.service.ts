@@ -1,25 +1,25 @@
 import { extname } from 'node:path';
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { OrderCoversDto } from '../dto/order-covers.dto';
-import { UpdateBookDto } from '../dto/update-book.dto';
-import { UpdateCoverDto } from '../dto/update-cover.dto';
-import { UploadCoverDto } from '../dto/upload-cover.dto';
-import { ScrapeCoverDto } from '../dto/scrape-cover.dto';
-import { Book } from '../../domain/entities/book';
-import { Cover } from '../../domain/entities/cover';
-import { CoverImageService } from '../../infrastructure/jobs/cover-image.service';
-import { FilesService } from '../../../files/application/services/files.service';
-import { StorageBucket } from '../../../common/enum/storage-bucket.enum';
+import { OrderCoversDto } from '@books/application/dto/order-covers.dto';
+import { UpdateBookDto } from '@books/application/dto/update-book.dto';
+import { UpdateCoverDto } from '@books/application/dto/update-cover.dto';
+import { UploadCoverDto } from '@books/application/dto/upload-cover.dto';
+import { ScrapeCoverDto } from '@books/application/dto/scrape-cover.dto';
+import { Book } from '@books/domain/entities/book';
+import { Cover } from '@books/domain/entities/cover';
+import { CoverImageService } from '@books/infrastructure/jobs/cover-image.service';
+import { FilesService } from '@files/application/services/files.service';
+import { StorageBucket } from '@common/enum/storage-bucket.enum';
 import { BookRelationshipService } from './book-relationship.service';
 import {
 	I_BOOK_REPOSITORY,
 	IBookRepository,
-} from '../ports/book-repository.interface';
+} from '@books/application/ports/book-repository.interface';
 import {
 	I_COVER_REPOSITORY,
 	ICoverRepository,
-} from '../ports/cover-repository.interface';
+} from '@books/application/ports/cover-repository.interface';
 
 /**
  * Service responsável pela atualização de livros

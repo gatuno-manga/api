@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import sharp from 'sharp';
-import { IFileCompressor } from '../../application/ports/file-compressor.interface';
-import { IImageCompressor } from '../../application/ports/image-compressor.interface';
+import { IFileCompressor } from '@files/application/ports/file-compressor.interface';
+import { IImageCompressor } from '@files/application/ports/image-compressor.interface';
 
 // Disable libvips operation cache so it doesn't accumulate decoded images
 // across processing sessions. Without this, libvips quietly grows outside

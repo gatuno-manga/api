@@ -1,5 +1,5 @@
-import { Author } from '../../domain/entities/author';
-import { AuthorsOptions } from '../dto/authors-options.dto';
+import { Author } from '@books/domain/entities/author';
+import { AuthorsOptions } from '@books/application/dto/authors-options.dto';
 import { AuthorCriteria } from '@books/domain/types/criteria.types';
 
 export interface IAuthorRepository {

@@ -1,15 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
-import { CurrentUserDto } from '../../../auth/application/dto/current-user.dto';
-import { ReadingProgressService } from '../../../users/application/use-cases/reading-progress.service';
-import { SavedPagesService } from '../../../users/application/use-cases/saved-pages.service';
+import { CurrentUserDto } from '@auth/application/dto/current-user.dto';
+import { ReadingProgressService } from '@users/application/use-cases/reading-progress.service';
+import { SavedPagesService } from '@users/application/use-cases/saved-pages.service';
 import {
 	ChapterCommentNode,
 	ChapterCommentsService,
-} from '../../../books/application/services/chapter-comments.service';
-import { SyncRequestDto } from '../../infrastructure/http/dto/sync-request.dto';
-import { ISyncResult } from '../types/sync-result.interface';
-import { SyncResponseDto } from '../../../users/infrastructure/http/dto/reading-progress.dto';
+} from '@books/application/services/chapter-comments.service';
+import { SyncRequestDto } from '@/sync/infrastructure/http/dto/sync-request.dto';
+import { ISyncResult } from '@/sync/application/types/sync-result.interface';
+import { SyncResponseDto } from '@users/infrastructure/http/dto/reading-progress.dto';
 
 @Injectable()
 export class ProcessSyncUseCase {

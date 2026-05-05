@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { SubscriptionRepository } from '../../../application/ports/subscription-repository.port';
-import { Subscription } from '../../../domain/entities/subscription';
-import { UserId } from '../../../../common/domain/value-objects/user-id.vo';
-import { BookId } from '../../../../common/domain/value-objects/book-id.vo';
-import { SubscriptionEntity } from '../entities/subscription.entity';
+import { SubscriptionRepository } from '@/interactions/application/ports/subscription-repository.port';
+import { Subscription } from '@/interactions/domain/entities/subscription';
+import { UserId } from '@common/domain/value-objects/user-id.vo';
+import { BookId } from '@common/domain/value-objects/book-id.vo';
+import { SubscriptionEntity } from '@/interactions/infrastructure/database/entities/subscription.entity';
 
 @Injectable()
 export class TypeOrmSubscriptionRepository implements SubscriptionRepository {

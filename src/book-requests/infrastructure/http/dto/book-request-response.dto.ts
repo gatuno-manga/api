@@ -1,4 +1,4 @@
-import { BookRequestStatus } from '../../../domain/enums/book-request-status.enum';
+import { BookRequestStatus } from '@/book-requests/domain/enums/book-request-status.enum';
 
 export class BookRequestResponseDto {
 	id: string;

@@ -5,9 +5,9 @@ import {
 	FULLTEXT_COLUMNS,
 	FULLTEXT_SPECIAL_CHARS_REGEX,
 	LIKE_FALLBACK_COLUMNS,
-} from '../../domain/constants/search.constants';
-import { BookPageOptionsDto } from '../dto/book-page-options.dto';
-import { Book } from '../../infrastructure/database/entities/book.entity';
+} from '@books/domain/constants/search.constants';
+import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { FilterStrategy } from './filter-strategy.interface';
 
 export class SearchFilterStrategy implements FilterStrategy {

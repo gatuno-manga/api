@@ -12,7 +12,7 @@ import {
 	MaxLength,
 	Min,
 } from 'class-validator';
-import { BookRelationType } from '../../domain/enums/book-relation-type.enum';
+import { BookRelationType } from '@books/domain/enums/book-relation-type.enum';
 
 export class CreateBookRelationshipDto {
 	@ApiProperty({

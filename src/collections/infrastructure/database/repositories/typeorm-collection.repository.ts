@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
-import { CollectionRepository } from '../../../application/ports/collection-repository.port';
-import { Collection } from '../../../domain/entities/collection';
-import { CollectionId } from '../../../domain/value-objects/collection-id.vo';
-import { UserId } from '../../../../common/domain/value-objects/user-id.vo';
-import { CollectionEntity } from '../entities/collection.entity';
-import { CollectionMapper } from '../../mappers/collection.mapper';
-import { User } from '../../../../users/infrastructure/database/entities/user.entity';
-import { Book } from '../../../../books/infrastructure/database/entities/book.entity';
+import { CollectionRepository } from '@/collections/application/ports/collection-repository.port';
+import { Collection } from '@/collections/domain/entities/collection';
+import { CollectionId } from '@/collections/domain/value-objects/collection-id.vo';
+import { UserId } from '@common/domain/value-objects/user-id.vo';
+import { CollectionEntity } from '@/collections/infrastructure/database/entities/collection.entity';
+import { CollectionMapper } from '@/collections/infrastructure/mappers/collection.mapper';
+import { User } from '@users/infrastructure/database/entities/user.entity';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
 
 @Injectable()
 export class TypeOrmCollectionRepository implements CollectionRepository {

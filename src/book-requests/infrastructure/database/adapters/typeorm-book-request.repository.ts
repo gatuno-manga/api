@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { BookRequestRepository } from '../../../application/ports/book-request.repository';
-import { BookRequest } from '../../../domain/entities/book-request';
-import { BookRequestEntity } from '../entities/book-request.entity';
+import { BookRequestRepository } from '@/book-requests/application/ports/book-request.repository';
+import { BookRequest } from '@/book-requests/domain/entities/book-request';
+import { BookRequestEntity } from '@/book-requests/infrastructure/database/entities/book-request.entity';
 import {
 	mapBookRequestToDomain,
 	mapBookRequestToEntity,

@@ -1,10 +1,10 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { ClientProxy } from '@nestjs/microservices';
-import { BookEvents } from '../../domain/constants/events.constant';
-import { Book } from '../database/entities/book.entity';
-import { Chapter } from '../database/entities/chapter.entity';
-import { MqttTopics } from '../../../common/domain/constants/mqtt-topics.constant';
+import { BookEvents } from '@books/domain/constants/events.constant';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
+import { MqttTopics } from '@common/domain/constants/mqtt-topics.constant';
 
 @Injectable()
 export class BooksNotifier {

@@ -1,5 +1,5 @@
 import { TransformFnParams } from 'class-transformer';
-import { CoverBookDto } from '../cover-book.dto';
+import { CoverBookDto } from '@books/application/dto/cover-book.dto';
 
 interface LegacyCoverBook {
 	urlImg?: string;

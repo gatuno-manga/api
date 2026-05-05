@@ -1,17 +1,17 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { BooksService } from './books.service';
-import { Author } from '../../infrastructure/database/entities/author.entity';
-import { Book } from '../../infrastructure/database/entities/book.entity';
-import { SensitiveContent } from '../../infrastructure/database/entities/sensitive-content.entity';
-import { Tag } from '../../infrastructure/database/entities/tags.entity';
+import { Author } from '@books/infrastructure/database/entities/author.entity';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
+import { SensitiveContent } from '@books/infrastructure/database/entities/sensitive-content.entity';
+import { Tag } from '@books/infrastructure/database/entities/tags.entity';
 import { BookCreationService } from './book-creation.service';
 import { BookBookRelationshipService } from './book-book-relationship.service';
 import { BookQueryService } from './book-query.service';
 import { BookRelationshipService } from './book-relationship.service';
 import { BookUpdateService } from './book-update.service';
 import { ChapterManagementService } from './chapter-management.service';
-import { MEILI_CLIENT } from '../../../infrastructure/meilisearch/meilisearch.constants';
+import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants';
 
 describe('BooksService', () => {
 	let service: BooksService;

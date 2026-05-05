@@ -8,8 +8,8 @@ import {
 	PrimaryColumn,
 	UpdateDateColumn,
 } from 'typeorm';
-import { User } from '../../../../users/infrastructure/database/entities/user.entity';
-import { Book } from '../../../../books/infrastructure/database/entities/book.entity';
+import { User } from '@users/infrastructure/database/entities/user.entity';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
 
 @Entity('collections')
 export class CollectionEntity {

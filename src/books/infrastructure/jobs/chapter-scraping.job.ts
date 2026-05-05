@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Job } from 'bullmq';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { DataSource, Repository } from 'typeorm';
-import { Chapter } from '../../infrastructure/database/entities/chapter.entity';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { ChapterScrapingSharedService } from './chapter-scraping.shared';
 
 const QUEUE_NAME = 'chapter-scraping';

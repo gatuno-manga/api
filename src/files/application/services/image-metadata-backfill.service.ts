@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { StorageBucket } from '../../../common/enum/storage-bucket.enum';
-import type { EventPublisherPort } from '../ports/event-publisher.port';
+import { StorageBucket } from '@common/enum/storage-bucket.enum';
+import type { EventPublisherPort } from '@files/application/ports/event-publisher.port';
 
 @Injectable()
 export class ImageMetadataBackfillService {

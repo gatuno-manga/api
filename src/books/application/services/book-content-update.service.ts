@@ -1,24 +1,24 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { normalizeUrl } from 'src/common/utils/url.utils';
-import { ScrapingService } from '../../../scraping/application/services/scraping.service';
-import { Book } from '../../domain/entities/book';
-import { Chapter } from '../../domain/entities/chapter';
-import { Cover } from '../../domain/entities/cover';
-import { ScrapingStatus } from '../../domain/enums/scrapingStatus.enum';
-import { CoverImageService } from '../../infrastructure/jobs/cover-image.service';
+import { ScrapingService } from '@scraping/application/services/scraping.service';
+import { Book } from '@books/domain/entities/book';
+import { Chapter } from '@books/domain/entities/chapter';
+import { Cover } from '@books/domain/entities/cover';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
+import { CoverImageService } from '@books/infrastructure/jobs/cover-image.service';
 import {
 	I_BOOK_REPOSITORY,
 	IBookRepository,
-} from '../ports/book-repository.interface';
+} from '@books/application/ports/book-repository.interface';
 import {
 	I_CHAPTER_REPOSITORY,
 	IChapterRepository,
-} from '../ports/chapter-repository.interface';
+} from '@books/application/ports/chapter-repository.interface';
 import {
 	I_COVER_REPOSITORY,
 	ICoverRepository,
-} from '../ports/cover-repository.interface';
+} from '@books/application/ports/cover-repository.interface';
 
 interface ScrapedChapter {
 	title: string;

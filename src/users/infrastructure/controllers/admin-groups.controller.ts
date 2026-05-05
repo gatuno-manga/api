@@ -10,10 +10,10 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AdminApi } from 'src/common/swagger/auth-api.decorators';
-import { AdminUsersService } from '../../application/use-cases/admin-users.service';
-import { CreateGroupDto } from '../http/dto/create-group.dto';
-import { UpdateGroupMembersDto } from '../http/dto/update-group-members.dto';
-import { UpdateGroupDto } from '../http/dto/update-group.dto';
+import { AdminUsersService } from '@users/application/use-cases/admin-users.service';
+import { CreateGroupDto } from '@users/infrastructure/http/dto/create-group.dto';
+import { UpdateGroupMembersDto } from '@users/infrastructure/http/dto/update-group-members.dto';
+import { UpdateGroupDto } from '@users/infrastructure/http/dto/update-group.dto';
 import {
 	ApiDocsListGroups,
 	ApiDocsCreateGroup,

@@ -3,9 +3,9 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Repository } from 'typeorm';
 import { ReadingProgressService } from './reading-progress.service';
-import { ReadingProgress } from '../../infrastructure/database/entities/reading-progress.entity';
-import { SyncStrategyResolver } from '../strategies/sync-strategy.resolver';
-import { UserResourcesMapper } from '../mappers/user-resources.mapper';
+import { ReadingProgress } from '@users/infrastructure/database/entities/reading-progress.entity';
+import { SyncStrategyResolver } from '@users/application/strategies/sync-strategy.resolver';
+import { UserResourcesMapper } from '@users/application/mappers/user-resources.mapper';
 
 describe('ReadingProgressService', () => {
 	let service: ReadingProgressService;

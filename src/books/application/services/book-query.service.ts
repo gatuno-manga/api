@@ -12,43 +12,43 @@ import { MediaUrlService } from 'src/common/services/media-url.service';
 import {
 	BookChaptersCursorPageDto,
 	BookChapterCursorItemDto,
-} from '../dto/book-chapters-cursor-page.dto';
-import { BookChaptersCursorOptionsDto } from '../dto/book-chapters-cursor-options.dto';
-import { QueueCoverProcessorDto } from '../dto/queue-cover-processor.dto';
+} from '@books/application/dto/book-chapters-cursor-page.dto';
+import { BookChaptersCursorOptionsDto } from '@books/application/dto/book-chapters-cursor-options.dto';
+import { QueueCoverProcessorDto } from '@books/application/dto/queue-cover-processor.dto';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 import { MetadataPageDto } from 'src/common/pagination/metadata-page.dto';
 import { PageDto } from 'src/common/pagination/page.dto';
-import { BookPageOptionsDto } from '../dto/book-page-options.dto';
-import { Book } from '../../domain/entities/book';
-import { ScrapingStatus } from '../../domain/enums/scrapingStatus.enum';
+import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
+import { Book } from '@books/domain/entities/book';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { SensitiveContentService } from './sensitive-content.service';
 import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
-import { FilterStrategy } from '../strategies';
+import { FilterStrategy } from '@books/application/strategies';
 import { AdminUsersService } from 'src/users/application/use-cases/admin-users.service';
 import {
 	I_BOOK_REPOSITORY,
 	IBookRepository,
-} from '../ports/book-repository.interface';
+} from '@books/application/ports/book-repository.interface';
 import {
 	I_CHAPTER_REPOSITORY,
 	IChapterRepository,
-} from '../ports/chapter-repository.interface';
+} from '@books/application/ports/chapter-repository.interface';
 import {
 	I_PAGE_REPOSITORY,
 	IPageRepository,
-} from '../ports/page-repository.interface';
+} from '@books/application/ports/page-repository.interface';
 import {
 	I_TAG_REPOSITORY,
 	ITagRepository,
-} from '../ports/tag-repository.interface';
+} from '@books/application/ports/tag-repository.interface';
 import {
 	I_AUTHOR_REPOSITORY,
 	IAuthorRepository,
-} from '../ports/author-repository.interface';
+} from '@books/application/ports/author-repository.interface';
 import {
 	I_SENSITIVE_CONTENT_REPOSITORY,
 	ISensitiveContentRepository,
-} from '../ports/sensitive-content-repository.interface';
+} from '@books/application/ports/sensitive-content-repository.interface';
 
 interface RawChapterItem {
 	// Campos da entidade

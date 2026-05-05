@@ -1,20 +1,20 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { CreateAuthorDto } from '../dto/create-author.dto';
-import { Author } from '../../domain/entities/author';
-import { SensitiveContent } from '../../domain/entities/sensitive-content';
-import { Tag } from '../../domain/entities/tag';
+import { CreateAuthorDto } from '@books/application/dto/create-author.dto';
+import { Author } from '@books/domain/entities/author';
+import { SensitiveContent } from '@books/domain/entities/sensitive-content';
+import { Tag } from '@books/domain/entities/tag';
 import {
 	I_TAG_REPOSITORY,
 	ITagRepository,
-} from '../ports/tag-repository.interface';
+} from '@books/application/ports/tag-repository.interface';
 import {
 	I_AUTHOR_REPOSITORY,
 	IAuthorRepository,
-} from '../ports/author-repository.interface';
+} from '@books/application/ports/author-repository.interface';
 import {
 	I_SENSITIVE_CONTENT_REPOSITORY,
 	ISensitiveContentRepository,
-} from '../ports/sensitive-content-repository.interface';
+} from '@books/application/ports/sensitive-content-repository.interface';
 
 /**
  * Service responsável por gerenciar relacionamentos de livros

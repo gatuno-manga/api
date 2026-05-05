@@ -9,9 +9,9 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AdminApi } from 'src/common/swagger/auth-api.decorators';
-import { AdminUsersService } from '../../application/use-cases/admin-users.service';
-import { CreateRoleDto } from '../http/dto/create-role.dto';
-import { UpdateRoleDto } from '../http/dto/update-role.dto';
+import { AdminUsersService } from '@users/application/use-cases/admin-users.service';
+import { CreateRoleDto } from '@users/infrastructure/http/dto/create-role.dto';
+import { UpdateRoleDto } from '@users/infrastructure/http/dto/update-role.dto';
 import {
 	ApiDocsListRoles,
 	ApiDocsCreateRole,

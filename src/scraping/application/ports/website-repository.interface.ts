@@ -1,4 +1,4 @@
-import { Website } from '../../domain/entities/website';
+import { Website } from '@scraping/domain/entities/website';
 
 export interface IWebsiteRepository {
 	findById(id: string): Promise<Website | null>;

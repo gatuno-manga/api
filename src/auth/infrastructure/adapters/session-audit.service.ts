@@ -7,12 +7,12 @@ import {
 	decodeCursorPayload,
 	encodeCursorPayload,
 } from 'src/common/pagination/cursor.utils';
-import { AuthAuditLog } from '../database/entities/auth-audit-log.entity';
+import { AuthAuditLog } from '@auth/infrastructure/database/entities/auth-audit-log.entity';
 import {
 	AuthMethod,
 	AuthRequestContext,
 	AuthRiskLevel,
-} from '../../types/auth-security.types';
+} from '@auth/types/auth-security.types';
 
 export type SessionAuditEvent =
 	| 'login_success'

@@ -2,20 +2,20 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 import { PageDto } from 'src/common/pagination/page.dto';
 import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
-import { BookRelationshipsQueryDto } from '../dto/book-relationships-query.dto';
-import { BookChaptersCursorPageDto } from '../dto/book-chapters-cursor-page.dto';
-import { BookChaptersCursorOptionsDto } from '../dto/book-chapters-cursor-options.dto';
-import { BookPageOptionsDto } from '../dto/book-page-options.dto';
-import { CreateBookRelationshipDto } from '../dto/create-book-relationship.dto';
-import { UpdateBookRelationshipDto } from '../dto/update-book-relationship.dto';
-import { Book } from '../../domain/entities/book';
-import { CreateBookDto } from '../dto/create-book.dto';
-import { OrderChaptersDto } from '../dto/order-chapters.dto';
-import { OrderCoversDto } from '../dto/order-covers.dto';
-import { UpdateBookDto } from '../dto/update-book.dto';
-import { UpdateChapterDto } from '../dto/update-chapter.dto';
-import { UploadCoverDto } from '../dto/upload-cover.dto';
-import { ScrapeCoverDto } from '../dto/scrape-cover.dto';
+import { BookRelationshipsQueryDto } from '@books/application/dto/book-relationships-query.dto';
+import { BookChaptersCursorPageDto } from '@books/application/dto/book-chapters-cursor-page.dto';
+import { BookChaptersCursorOptionsDto } from '@books/application/dto/book-chapters-cursor-options.dto';
+import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
+import { CreateBookRelationshipDto } from '@books/application/dto/create-book-relationship.dto';
+import { UpdateBookRelationshipDto } from '@books/application/dto/update-book-relationship.dto';
+import { Book } from '@books/domain/entities/book';
+import { CreateBookDto } from '@books/application/dto/create-book.dto';
+import { OrderChaptersDto } from '@books/application/dto/order-chapters.dto';
+import { OrderCoversDto } from '@books/application/dto/order-covers.dto';
+import { UpdateBookDto } from '@books/application/dto/update-book.dto';
+import { UpdateChapterDto } from '@books/application/dto/update-chapter.dto';
+import { UploadCoverDto } from '@books/application/dto/upload-cover.dto';
+import { ScrapeCoverDto } from '@books/application/dto/scrape-cover.dto';
 import { BookCreationService } from './book-creation.service';
 import { BookBookRelationshipService } from './book-book-relationship.service';
 import { BookQueryService } from './book-query.service';
@@ -32,8 +32,8 @@ import {
 	TypeFilterStrategy,
 	IdFilterStrategy,
 	SensitiveContentFilterStrategy,
-} from '../strategies';
-import { MEILI_CLIENT } from '../../../infrastructure/meilisearch/meilisearch.constants';
+} from '@books/application/strategies';
+import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants';
 import { Meilisearch } from 'meilisearch';
 
 /**

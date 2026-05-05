@@ -12,7 +12,7 @@ import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.deco
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { DataEnvelopeInterceptor } from 'src/common/interceptors/data-envelope.interceptor';
-import { SavedPagesService } from '../../application/use-cases/saved-pages.service';
+import { SavedPagesService } from '@users/application/use-cases/saved-pages.service';
 import { ApiDocsGetSavedPagesByBook } from './swagger/user-book-saved-pages.swagger';
 
 @ApiTags('Saved Pages')

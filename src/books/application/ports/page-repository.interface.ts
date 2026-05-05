@@ -1,4 +1,4 @@
-import { Page } from '../../domain/entities/page';
+import { Page } from '@books/domain/entities/page';
 import { PageCriteria } from '@books/domain/types/criteria.types';
 
 export interface IPageRepository {

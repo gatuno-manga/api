@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { CronJob } from 'cron';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { IsNull, Repository } from 'typeorm';
-import { Book } from '../../infrastructure/database/entities/book.entity';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { BookUpdateJobService } from './book-update.service';
 
 const CRON_JOB_NAME = 'book-update-cron';

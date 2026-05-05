@@ -1,4 +1,4 @@
-import { ContentFormat } from '../../domain/enums/content-format.enum';
+import { ContentFormat } from '@books/domain/enums/content-format.enum';
 
 /**
  * DTO para processamento de texto assíncrono (extração e espelhamento de imagens)

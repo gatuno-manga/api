@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Browser, BrowserContext, Page } from 'playwright';
 import { chromium as playwrightChromium } from 'playwright-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-import { PooledBrowser } from '../pool';
+import { PooledBrowser } from '@scraping/infrastructure/pool';
 import {
 	BrowserConfig,
 	DEFAULT_BROWSER_CONFIG,

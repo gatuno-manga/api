@@ -2,11 +2,14 @@ import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
-import { Book } from '../../../books/infrastructure/database/entities/book.entity';
-import { Chapter } from '../../../books/infrastructure/database/entities/chapter.entity';
-import { Cover } from '../../../books/infrastructure/database/entities/cover.entity';
-import { Page } from '../../../books/infrastructure/database/entities/page.entity';
-import { StoragePort, FileMetadata } from '../ports/storage.port';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
+import { Cover } from '@books/infrastructure/database/entities/cover.entity';
+import { Page } from '@books/infrastructure/database/entities/page.entity';
+import {
+	StoragePort,
+	FileMetadata,
+} from '@files/application/ports/storage.port';
 
 export interface OrphanFile {
 	filename: string;

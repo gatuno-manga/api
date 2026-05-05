@@ -1,9 +1,9 @@
-import { CollectionId } from '../value-objects/collection-id.vo';
-import { UserId } from '../../../common/domain/value-objects/user-id.vo';
-import { Visibility } from '../value-objects/visibility.vo';
-import { CollaboratorList } from '../value-objects/collaborator-list.vo';
-import { BookIdList } from '../value-objects/book-id-list.vo';
-import { BookId } from '../../../common/domain/value-objects/book-id.vo';
+import { CollectionId } from '@/collections/domain/value-objects/collection-id.vo';
+import { UserId } from '@common/domain/value-objects/user-id.vo';
+import { Visibility } from '@/collections/domain/value-objects/visibility.vo';
+import { CollaboratorList } from '@/collections/domain/value-objects/collaborator-list.vo';
+import { BookIdList } from '@/collections/domain/value-objects/book-id-list.vo';
+import { BookId } from '@common/domain/value-objects/book-id.vo';
 
 export interface CollectionSnapshot {
 	id: string;

@@ -1,4 +1,4 @@
-import { UserImage } from '../../domain/entities/user-image';
+import { UserImage } from '@users/domain/entities/user-image';
 
 export interface IUserImageRepository {
 	update(criteria: unknown, data: Partial<UserImage>): Promise<void>;

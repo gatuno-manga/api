@@ -11,7 +11,7 @@ import { v7 as uuidv7 } from 'uuid';
 import { Redis } from 'ioredis';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { REDIS_CLIENT } from 'src/infrastructure/redis/redis.constants';
-import { StoredTokenDto } from '../../application/dto/stored-token.dto';
+import { StoredTokenDto } from '@auth/application/dto/stored-token.dto';
 
 @Injectable()
 export class TokenStoreService {

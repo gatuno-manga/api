@@ -11,30 +11,30 @@ import { v7 as uuidv7 } from 'uuid';
 import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
 import { MediaUrlService } from 'src/common/services/media-url.service';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
-import { RolesEnum } from '../../../users/domain/enums/roles.enum';
-import { User } from '../../../users/domain/entities/user';
+import { RolesEnum } from '@users/domain/enums/roles.enum';
+import { User } from '@users/domain/entities/user';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 import { MetadataPageDto } from 'src/common/pagination/metadata-page.dto';
 import { PageDto } from 'src/common/pagination/page.dto';
-import { ChapterComment } from '../../domain/entities/chapter-comment';
-import { Chapter } from '../../domain/entities/chapter';
-import { ContentFormat } from '../../domain/enums/content-format.enum';
-import { CreateChapterCommentDto } from '../dto/create-chapter-comment.dto';
-import { ChapterCommentsPageOptionsDto } from '../dto/chapter-comments-page-options.dto';
-import { UpdateChapterCommentDto } from '../dto/update-chapter-comment.dto';
-import { QueueTextProcessingDto } from '../dto/queue-text-processing.dto';
+import { ChapterComment } from '@books/domain/entities/chapter-comment';
+import { Chapter } from '@books/domain/entities/chapter';
+import { ContentFormat } from '@books/domain/enums/content-format.enum';
+import { CreateChapterCommentDto } from '@books/application/dto/create-chapter-comment.dto';
+import { ChapterCommentsPageOptionsDto } from '@books/application/dto/chapter-comments-page-options.dto';
+import { UpdateChapterCommentDto } from '@books/application/dto/update-chapter-comment.dto';
+import { QueueTextProcessingDto } from '@books/application/dto/queue-text-processing.dto';
 import {
 	I_CHAPTER_COMMENT_REPOSITORY,
 	IChapterCommentRepository,
-} from '../ports/chapter-comment-repository.interface';
+} from '@books/application/ports/chapter-comment-repository.interface';
 import {
 	I_CHAPTER_REPOSITORY,
 	IChapterRepository,
-} from '../ports/chapter-repository.interface';
+} from '@books/application/ports/chapter-repository.interface';
 import {
 	I_USER_REPOSITORY,
 	IUserRepository,
-} from '../../../users/application/ports/user-repository.interface';
+} from '@users/application/ports/user-repository.interface';
 
 export type ChapterCommentNode = {
 	id: string;

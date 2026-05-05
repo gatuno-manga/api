@@ -1,4 +1,4 @@
-import { Uuid } from '../../../common/domain/value-objects/uuid.vo';
+import { Uuid } from '@common/domain/value-objects/uuid.vo';
 
 export class CollectionId extends Uuid {
 	public static create(value: string): CollectionId {

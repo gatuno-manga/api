@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuthModule } from '../auth/auth.module';
+import { AuthModule } from '@auth/auth.module';
 import { FavoriteEntity } from './infrastructure/database/entities/favorite.entity';
 import { SubscriptionEntity } from './infrastructure/database/entities/subscription.entity';
 import { ReviewEntity } from './infrastructure/database/entities/review.entity';
