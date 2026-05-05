@@ -9,6 +9,8 @@ import { QueueTextProcessingDto } from '../../application/dto/queue-text-process
 import { ContentFormat } from '../../domain/enums/content-format.enum';
 import { ScrapingService } from '../../../scraping/application/services/scraping.service';
 import { AppConfigService } from '../../../infrastructure/app-config/app-config.service';
+import { MediaUrlService } from '../../../common/services/media-url.service';
+import { StorageBucket } from '../../../common/enum/storage-bucket.enum';
 import * as cheerio from 'cheerio';
 
 const QUEUE_NAME = 'text-processing-queue';
@@ -24,6 +26,7 @@ export class TextProcessingProcessor extends WorkerHost {
 		private readonly chapterCommentRepository: Repository<ChapterComment>,
 		private readonly scrapingService: ScrapingService,
 		private readonly configService: AppConfigService,
+		private readonly mediaUrlService: MediaUrlService,
 	) {
 		super();
 	}
@@ -85,7 +88,10 @@ export class TextProcessingProcessor extends WorkerHost {
 				const result = mirroredData[i];
 				if (result?.path) {
 					// Resolve path to full internal URL
-					const internalUrl = `${this.configService.rustfsPublicUrl}/books/${result.path}`;
+					const internalUrl = this.mediaUrlService.resolveUrl(
+						result.path,
+						StorageBucket.BOOKS,
+					);
 					urlMap.set(externalUrls[i], internalUrl);
 				}
 			}
