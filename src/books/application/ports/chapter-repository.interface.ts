@@ -14,6 +14,7 @@ export interface IChapterRepository {
 	softRemove(chapter: Chapter): Promise<void>;
 	exists(id: string): Promise<boolean>;
 	findByIds(ids: string[]): Promise<Chapter[]>;
+	findByBookIds(bookIds: string[]): Promise<Chapter[]>;
 	count(criteria?: ChapterCriteria): Promise<number>;
 	findByBookId(
 		bookId: string,

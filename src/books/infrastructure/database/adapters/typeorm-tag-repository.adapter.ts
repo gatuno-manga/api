@@ -110,4 +110,21 @@ export class TypeOrmTagRepositoryAdapter implements ITagRepository {
 		});
 		return tags as unknown as DomainTag[];
 	}
+
+	async findByBookIds(
+		bookIds: string[],
+	): Promise<(DomainTag & { bookId: string })[]> {
+		const results = await this.repository
+			.createQueryBuilder('tag')
+			.innerJoin('books_tags_tags', 'bt', 'tag.id = bt.tagsId')
+			.select(['tag.id', 'tag.name', 'bt.booksId'])
+			.where('bt.booksId IN (:...bookIds)', { bookIds })
+			.getRawMany();
+
+		return results.map((r) => ({
+			id: r.tag_id,
+			name: r.tag_name,
+			bookId: r.bt_booksId,
+		})) as unknown as (DomainTag & { bookId: string })[];
+	}
 }

@@ -67,6 +67,7 @@
 		"class-transformer": "^0.5.1",
 		"class-validator": "^0.14.2",
 		"cookie-parser": "^1.4.7",
+		"dataloader": "^2.2.3",
 		"eventemitter2": "^6.4.9",
 		"graphql": "^16.13.2",
 		"ioredis": "^5.6.1",

@@ -12,6 +12,7 @@ export interface IAuthorRepository {
 		options: AuthorsOptions,
 		maxWeight?: number,
 	): Promise<Author[]>;
+	findByBookIds(bookIds: string[]): Promise<(Author & { bookId: string })[]>;
 	count(criteria?: AuthorCriteria): Promise<number>;
 }
 

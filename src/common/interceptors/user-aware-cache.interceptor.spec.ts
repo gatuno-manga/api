@@ -18,6 +18,7 @@ describe('UserAwareCacheInterceptor', () => {
 			}),
 			getHandler: jest.fn(),
 			getClass: jest.fn(),
+			getType: jest.fn().mockReturnValue('http'),
 		} as unknown as ExecutionContext;
 	});
 

@@ -61,6 +61,16 @@ export class TypeOrmCoverRepositoryAdapter implements ICoverRepository {
 		return covers as unknown as DomainCover[];
 	}
 
+	async findByBookIds(bookIds: string[]): Promise<DomainCover[]> {
+		const covers = await this.repository.find({
+			where: {
+				book: { id: In(bookIds) },
+			} as unknown as FindOptionsWhere<InfrastructureCover>,
+			relations: ['book'],
+		});
+		return covers as unknown as DomainCover[];
+	}
+
 	create(data: Partial<DomainCover>): DomainCover {
 		const cover = this.repository.create(
 			data as unknown as DeepPartial<InfrastructureCover>,
