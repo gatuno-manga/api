@@ -8,6 +8,7 @@ import { UploadCoverDto } from '@books/application/dto/upload-cover.dto';
 import { ScrapeCoverDto } from '@books/application/dto/scrape-cover.dto';
 import { Book } from '@books/domain/entities/book';
 import { Cover } from '@books/domain/entities/cover';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { CoverImageService } from '@books/infrastructure/jobs/cover-image.service';
 import { FilesService } from '@files/application/services/files.service';
 import { StorageBucket } from '@common/enum/storage-bucket.enum';
@@ -286,7 +287,17 @@ export class BookUpdateService {
 	 * Dispara o scraping de uma capa específica por URL
 	 */
 	async scrapeCover(idBook: string, dto: ScrapeCoverDto): Promise<void> {
-		const book = await this.findBookWith(idBook, []);
+		const book = await this.findBookWith(idBook, ['covers']);
+
+		// Verificar se a capa já existe pela URL original
+		const existingCover = book.covers.find(
+			(c) => c.originalUrl === dto.url,
+		);
+		if (existingCover) {
+			existingCover.retries = 0;
+			existingCover.scrapingStatus = ScrapingStatus.PROCESS;
+			await this.coverRepository.save(existingCover);
+		}
 
 		await this.coverImageService.addCoverToQueue(
 			idBook,
@@ -315,21 +326,27 @@ export class BookUpdateService {
 			return;
 		}
 
-		const coversToFix = book.covers
-			.filter((c) => c.originalUrl)
-			.map((c) => ({
-				url: c.originalUrl || '',
-				title: c.title,
-			}));
+		const coversToFix = book.covers.filter((c) => c.originalUrl);
 
 		if (coversToFix.length > 0) {
 			this.logger.log(
 				`Enfileirando ${coversToFix.length} capas para correção no livro: ${book.title}`,
 			);
+
+			// Reset retries and status for manual fix
+			for (const cover of coversToFix) {
+				cover.retries = 0;
+				cover.scrapingStatus = ScrapingStatus.PROCESS;
+			}
+			await this.coverRepository.saveAll(coversToFix);
+
 			await this.coverImageService.addCoverToQueue(
 				idBook,
 				book.originalUrl?.[0] || '',
-				coversToFix,
+				coversToFix.map((c) => ({
+					url: c.originalUrl || '',
+					title: c.title,
+				})),
 			);
 		}
 	}
@@ -366,6 +383,11 @@ export class BookUpdateService {
 		this.logger.log(
 			`Enfileirando capa ${idCover} para correção no livro: ${book.title}`,
 		);
+
+		// Reset retries and status for manual fix
+		cover.retries = 0;
+		cover.scrapingStatus = ScrapingStatus.PROCESS;
+		await this.coverRepository.save(cover);
 
 		await this.coverImageService.addCoverToQueue(
 			idBook,

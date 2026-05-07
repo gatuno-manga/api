@@ -59,6 +59,51 @@ export class CoverImageService {
 	}
 
 	/**
+	 * Adiciona um job de capa à fila por ID da capa.
+	 * Usado para re-enfileirar capas específicas para correção ou recuperação automática.
+	 */
+	public async addCoverToQueueById(coverId: string): Promise<void> {
+		const cover = await this.coverRepository.findOne({
+			where: { id: coverId },
+			relations: ['book'],
+		});
+
+		if (!cover) {
+			this.logger.warn(`Capa com id ${coverId} não encontrada.`);
+			return;
+		}
+
+		if (!cover.originalUrl) {
+			this.logger.warn(`Capa ${coverId} não possui URL original.`);
+			return;
+		}
+
+		const bookId = cover.book.id;
+		const urlOrigin = cover.book.originalUrl?.[0] || '';
+		const jobId = `cover-image-single-${coverId}-${Date.now()}`;
+
+		try {
+			await this.coverImageQueue.add(
+				JOB_NAME,
+				{
+					bookId,
+					urlOrigin,
+					covers: [{ url: cover.originalUrl, title: cover.title }],
+				},
+				{ jobId },
+			);
+			this.logger.debug(
+				`Adicionando job de capa individual para o livro: ${bookId} (Capa: ${coverId})`,
+			);
+		} catch (error) {
+			this.logger.error(
+				`Erro ao adicionar job para capa ${coverId}: ${error.message}`,
+			);
+			throw error;
+		}
+	}
+
+	/**
 	 * Calcula o hash SHA-256 do conteúdo de uma imagem.
 	 * Suporta tanto URLs HTTP/HTTPS quanto caminhos de arquivo locais (Storage).
 	 * @param imageSource URL ou caminho local da imagem

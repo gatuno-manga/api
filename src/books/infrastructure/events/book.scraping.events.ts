@@ -83,6 +83,7 @@ export class BookScrapingEvents {
 			this.chapterRepository.save(
 				chapters.map((chapter) => {
 					chapter.scrapingStatus = ScrapingStatus.PROCESS;
+					chapter.retries = 0;
 					return chapter;
 				}),
 			),

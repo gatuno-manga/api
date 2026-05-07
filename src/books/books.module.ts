@@ -43,6 +43,7 @@ import { BookUpdateJobService } from './infrastructure/jobs/book-update.service'
 import { ChapterScrapingJob } from './infrastructure/jobs/chapter-scraping.job';
 import { ChapterScrapingService } from './infrastructure/jobs/chapter-scraping.service';
 import { ChapterScrapingSharedService } from './infrastructure/jobs/chapter-scraping.shared';
+import { ScrapingRecoveryScheduler } from './infrastructure/jobs/scraping-recovery.scheduler';
 import { CoverImageProcessor } from './infrastructure/jobs/cover-image.processor';
 import { CoverImageService } from './infrastructure/jobs/cover-image.service';
 import { QueueAutoPauseListener } from './infrastructure/jobs/queue-auto-pause.listener';
@@ -243,6 +244,7 @@ import {
 		ChapterScrapingJob,
 		ChapterScrapingService,
 		ChapterScrapingSharedService,
+		ScrapingRecoveryScheduler,
 		CoverImageService,
 		CoverImageProcessor,
 		QueueAutoPauseListener,

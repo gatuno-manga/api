@@ -5,10 +5,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Job } from 'bullmq';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { ScrapingService } from '@scraping/application/services/scraping.service';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { QueueCoverProcessorDto } from '@books/application/dto/queue-cover-processor.dto';
 import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { Cover } from '@books/infrastructure/database/entities/cover.entity';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 
 const QUEUE_NAME = 'cover-image-queue';
 const JOB_NAME = 'process-cover';
@@ -35,6 +36,31 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 			this.configService.queueConcurrency.coverImage;
 	}
 
+	@OnWorkerEvent('active')
+	async onActive(job: Job<QueueCoverProcessorDto>) {
+		const { covers, bookId } = job.data;
+		if (!covers || covers.length === 0) return;
+
+		const urls = covers.map((c) => c.url);
+
+		try {
+			await this.coverRepository
+				.createQueryBuilder()
+				.update(Cover)
+				.set({
+					scrapingStatus: ScrapingStatus.PROCESS,
+					retries: () => 'retries + 1',
+				})
+				.where('bookId = :bookId', { bookId })
+				.andWhere('originalUrl IN (:...urls)', { urls })
+				.execute();
+		} catch (error) {
+			this.logger.error(
+				`Erro ao atualizar status de processamento das capas: ${error.message}`,
+			);
+		}
+	}
+
 	async process(job: Job<QueueCoverProcessorDto>): Promise<void> {
 		const { bookId, urlOrigin } = job.data;
 		// support both legacy single-cover jobs and new batch jobs
@@ -53,7 +79,7 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 		const book = await this.getBook(bookId);
 		if (!book) {
 			this.logger.warn(
-				`Livro com id ${bookId} não encontrado para processar capa.`,
+				`Livro com id ${bookId} not found para processar capa.`,
 			);
 			return;
 		}
@@ -84,10 +110,26 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 					for (let i = 0; i < savedData.length; i++) {
 						const data = savedData[i];
 						const original = group.covers[i];
+
+						// Busca a capa para atualizar status mesmo em falha
+						const coverToUpdate =
+							await this.coverRepository.findOne({
+								where: {
+									book: { id: book.id },
+									originalUrl: original.url,
+								},
+							});
+
 						if (!data || data.path === 'null') {
 							this.logger.warn(
 								`Falha ao salvar capa ${original.url} para livro ${book.title}`,
 							);
+
+							if (coverToUpdate) {
+								coverToUpdate.scrapingStatus =
+									ScrapingStatus.ERROR;
+								await this.coverRepository.save(coverToUpdate);
+							}
 							continue;
 						}
 
@@ -113,6 +155,7 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 							// Atualiza a capa existente com o caminho local e dimensões
 							existingCover.url = data.path;
 							existingCover.metadata = data.metadata;
+							existingCover.scrapingStatus = ScrapingStatus.READY;
 							savedCover =
 								await this.coverRepository.save(existingCover);
 							this.logger.log(
@@ -128,6 +171,7 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 								book: book,
 								index: book.covers.length,
 								selected: book.covers.length === 0,
+								scrapingStatus: ScrapingStatus.READY,
 							});
 							savedCover =
 								await this.coverRepository.save(coverBook);
@@ -149,6 +193,15 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 						`Falha ao baixar capas do host ${host} para o livro: ${book.title}`,
 						err,
 					);
+
+					// Marcar como erro para as capas deste host
+					await this.coverRepository.update(
+						{
+							book: { id: book.id },
+							originalUrl: In(imageUrls),
+						},
+						{ scrapingStatus: ScrapingStatus.ERROR },
+					);
 				}
 			}
 		} catch (err) {
@@ -168,10 +221,29 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 	}
 
 	@OnWorkerEvent('failed')
-	onFailed(job: Job<QueueCoverProcessorDto>) {
+	async onFailed(job: Job<QueueCoverProcessorDto>) {
 		this.logger.error(
 			`Job de capa com id ${job.id} FAILED!`,
 			job.failedReason,
 		);
+
+		const { covers, bookId } = job.data;
+		if (!covers || covers.length === 0) return;
+
+		const urls = covers.map((c) => c.url);
+
+		try {
+			await this.coverRepository.update(
+				{
+					book: { id: bookId },
+					originalUrl: In(urls),
+				},
+				{ scrapingStatus: ScrapingStatus.ERROR },
+			);
+		} catch (error) {
+			this.logger.error(
+				`Erro ao atualizar status de erro das capas: ${error.message}`,
+			);
+		}
 	}
 }

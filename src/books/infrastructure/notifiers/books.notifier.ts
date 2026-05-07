@@ -164,6 +164,21 @@ export class BooksNotifier {
 		this.publish(MqttTopics.BOOKS.ADMIN, BookEvents.SCRAPING_FAILED, data);
 	}
 
+	@OnEvent(BookEvents.SCRAPING_PERMANENT_FAILURE)
+	handleScrapingPermanentFailure(data: {
+		entityType: 'chapter' | 'cover';
+		entityId: string;
+		bookId: string;
+		retries: number;
+		error?: string;
+	}) {
+		this.publish(
+			MqttTopics.BOOKS.ADMIN,
+			BookEvents.SCRAPING_PERMANENT_FAILURE,
+			data,
+		);
+	}
+
 	// ==================== EVENTOS DE CAPA ====================
 
 	@OnEvent(BookEvents.COVER_PROCESSED)

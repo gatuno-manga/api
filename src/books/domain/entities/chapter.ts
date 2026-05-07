@@ -22,5 +22,7 @@ export class Chapter {
 	pages: Page[];
 	comments: ChapterComment[];
 	isFinal: boolean;
+	createdAt: Date;
+	updatedAt: Date;
 	deletedAt: Date | null;
 }

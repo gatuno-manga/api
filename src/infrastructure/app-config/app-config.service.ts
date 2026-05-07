@@ -298,6 +298,22 @@ export class AppConfigService {
 		return this.config.get<number>('DOWNLOAD_CACHE_THRESHOLD_MB') || 100;
 	}
 
+	get scrapingRecovery() {
+		return {
+			enabled:
+				this.config.get<boolean>('SCRAPING_RECOVERY_ENABLED') ?? true,
+			cronExpression:
+				this.config.get<string>('SCRAPING_RECOVERY_CRON') ||
+				'*/30 * * * *', // Every 30 minutes
+			maxRetries:
+				this.config.get<number>('SCRAPING_RECOVERY_MAX_RETRIES') || 5,
+			stuckThresholdHours:
+				this.config.get<number>(
+					'SCRAPING_RECOVERY_STUCK_THRESHOLD_HOURS',
+				) || 1,
+		};
+	}
+
 	get kafkaBroker(): string {
 		const host = this.config.get<string>('KAFKA_HOST') || 'kafka';
 		const port = this.config.get<number>('KAFKA_PORT') || 9092;
