@@ -308,6 +308,7 @@ export class BookQueryService {
 		);
 
 		if (book.covers) {
+			book.covers.sort((a, b) => a.index - b.index);
 			for (const cover of book.covers) {
 				cover.url = this.mediaUrlService.resolveUrl(
 					cover.url,
@@ -335,6 +336,7 @@ export class BookQueryService {
 		);
 
 		if (book.covers) {
+			book.covers.sort((a, b) => a.index - b.index);
 			for (const cover of book.covers) {
 				cover.url = this.mediaUrlService.resolveUrl(
 					cover.url,

@@ -1,6 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, DeepPartial, In } from 'typeorm';
+import {
+	Repository,
+	FindOptionsWhere,
+	DeepPartial,
+	In,
+	FindOptionsOrder,
+	EntityManager,
+} from 'typeorm';
 import { ICoverRepository } from '@books/application/ports/cover-repository.interface';
 import { Cover as DomainCover } from '@books/domain/entities/cover';
 import { Cover as InfrastructureCover } from '@books/infrastructure/database/entities/cover.entity';
@@ -8,10 +15,18 @@ import { ImageMetadata } from '@src/common/domain/value-objects/image-metadata.v
 
 @Injectable()
 export class TypeOrmCoverRepositoryAdapter implements ICoverRepository {
+	private readonly repository: Repository<InfrastructureCover>;
+
 	constructor(
 		@InjectRepository(InfrastructureCover)
-		private readonly repository: Repository<InfrastructureCover>,
-	) {}
+		repository: Repository<InfrastructureCover>,
+		@Optional()
+		entityManager?: EntityManager,
+	) {
+		this.repository = entityManager
+			? entityManager.getRepository(InfrastructureCover)
+			: repository;
+	}
 
 	async findById(
 		id: string,
@@ -57,6 +72,9 @@ export class TypeOrmCoverRepositoryAdapter implements ICoverRepository {
 			where: {
 				book: { id: bookId },
 			} as unknown as FindOptionsWhere<InfrastructureCover>,
+			order: {
+				index: 'ASC',
+			} as unknown as FindOptionsOrder<InfrastructureCover>,
 		});
 		return covers as unknown as DomainCover[];
 	}
@@ -67,6 +85,9 @@ export class TypeOrmCoverRepositoryAdapter implements ICoverRepository {
 				book: { id: In(bookIds) },
 			} as unknown as FindOptionsWhere<InfrastructureCover>,
 			relations: ['book'],
+			order: {
+				index: 'ASC',
+			} as unknown as FindOptionsOrder<InfrastructureCover>,
 		});
 		return covers as unknown as DomainCover[];
 	}

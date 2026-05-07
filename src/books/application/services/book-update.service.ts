@@ -21,6 +21,10 @@ import {
 	I_COVER_REPOSITORY,
 	ICoverRepository,
 } from '@books/application/ports/cover-repository.interface';
+import {
+	I_UNIT_OF_WORK,
+	IUnitOfWork,
+} from 'src/common/application/ports/unit-of-work.interface';
 
 /**
  * Service responsável pela atualização de livros
@@ -34,6 +38,8 @@ export class BookUpdateService {
 		private readonly bookRepository: IBookRepository,
 		@Inject(I_COVER_REPOSITORY)
 		private readonly coverRepository: ICoverRepository,
+		@Inject(I_UNIT_OF_WORK)
+		private readonly unitOfWork: IUnitOfWork,
 		private readonly bookRelationshipService: BookRelationshipService,
 		private readonly coverImageService: CoverImageService,
 		private readonly filesService: FilesService,
@@ -208,14 +214,41 @@ export class BookUpdateService {
 			throw new NotFoundException(`Book with id ${idBook} not found`);
 		}
 
+		const coverMap = new Map<string, Cover>();
+		for (const cover of book.covers) {
+			coverMap.set(cover.id, cover);
+		}
+
+		// Verificar se todas as capas enviadas pertencem ao livro
 		for (const dto of coversDto) {
-			const cover = book.covers.find((c) => c.id === dto.id);
-			if (cover) {
-				cover.index = dto.index;
+			if (!coverMap.has(dto.id)) {
+				throw new NotFoundException(
+					`Cover with id ${dto.id} not found in book ${idBook}`,
+				);
 			}
 		}
 
-		await this.coverRepository.saveAll(book.covers);
+		await this.unitOfWork.runInTransaction(async (uow) => {
+			const transactionCoverRepo = uow.getCoverRepository();
+
+			// 1. Usar índices temporários negativos para evitar conflitos de UNIQUE constraint (se existirem ou forem adicionados)
+			let tempIndex = -100_000;
+			for (const cover of book.covers) {
+				cover.index = tempIndex++;
+			}
+			await transactionCoverRepo.saveAll(book.covers);
+
+			// 2. Aplicar os novos índices finais
+			for (const dto of coversDto) {
+				const cover = coverMap.get(dto.id);
+				if (cover) {
+					cover.index = dto.index;
+				}
+			}
+
+			// 3. Salvar todos os estados finais
+			await transactionCoverRepo.saveAll(Array.from(coverMap.values()));
+		});
 
 		this.eventEmitter.emit('covers.reordered', {
 			bookId: idBook,

@@ -6,8 +6,10 @@ import { IChapterRepository } from 'src/books/application/ports/chapter-reposito
 import { IAuthorRepository } from 'src/books/application/ports/author-repository.interface';
 import { ITagRepository } from 'src/books/application/ports/tag-repository.interface';
 import { ISensitiveContentRepository } from 'src/books/application/ports/sensitive-content-repository.interface';
+import { ICoverRepository } from 'src/books/application/ports/cover-repository.interface';
 import { TypeOrmBookRepositoryAdapter } from './typeorm-book-repository.adapter';
 import { TypeOrmChapterRepositoryAdapter } from './typeorm-chapter-repository.adapter';
+import { TypeOrmCoverRepositoryAdapter } from './typeorm-cover-repository.adapter';
 import { TypeOrmAuthorRepositoryAdapter } from './typeorm-author-repository.adapter';
 import { TypeOrmTagRepositoryAdapter } from './typeorm-tag-repository.adapter';
 import { TypeOrmSensitiveContentRepositoryAdapter } from './typeorm-sensitive-content-repository.adapter';
@@ -15,6 +17,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { Repository } from 'typeorm';
 import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
+import { Cover } from '@books/infrastructure/database/entities/cover.entity';
 import { Author } from '@books/infrastructure/database/entities/author.entity';
 import { Tag } from '@books/infrastructure/database/entities/tags.entity';
 import { SensitiveContent } from '@books/infrastructure/database/entities/sensitive-content.entity';
@@ -30,6 +33,8 @@ export class TypeOrmUnitOfWorkAdapter implements IUnitOfWork {
 		private readonly bookRepo: Repository<Book>,
 		@InjectRepository(Chapter)
 		private readonly chapterRepo: Repository<Chapter>,
+		@InjectRepository(Cover)
+		private readonly coverRepo: Repository<Cover>,
 		@InjectRepository(Author)
 		private readonly authorRepo: Repository<Author>,
 		@InjectRepository(Tag)
@@ -98,6 +103,13 @@ export class TypeOrmUnitOfWorkAdapter implements IUnitOfWork {
 	getChapterRepository(): IChapterRepository {
 		return new TypeOrmChapterRepositoryAdapter(
 			this.chapterRepo,
+			this.queryRunner?.manager,
+		);
+	}
+
+	getCoverRepository(): ICoverRepository {
+		return new TypeOrmCoverRepositoryAdapter(
+			this.coverRepo,
 			this.queryRunner?.manager,
 		);
 	}
