@@ -6,9 +6,11 @@ import { AppConfigService } from 'src/infrastructure/app-config/app-config.servi
 import { LessThan, Repository } from 'typeorm';
 import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { Cover } from '@books/infrastructure/database/entities/cover.entity';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { ChapterScrapingService } from './chapter-scraping.service';
 import { CoverImageService } from './cover-image.service';
+import { BookUpdateJobService } from './book-update.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { BookEvents } from '@books/domain/constants/events.constant';
 
@@ -26,8 +28,11 @@ export class ScrapingRecoveryScheduler implements OnModuleInit {
 		private readonly chapterRepository: Repository<Chapter>,
 		@InjectRepository(Cover)
 		private readonly coverRepository: Repository<Cover>,
+		@InjectRepository(Book)
+		private readonly bookRepository: Repository<Book>,
 		private readonly chapterScrapingService: ChapterScrapingService,
 		private readonly coverImageService: CoverImageService,
+		private readonly bookUpdateJobService: BookUpdateJobService,
 		private readonly configService: AppConfigService,
 		private readonly schedulerRegistry: SchedulerRegistry,
 		private readonly eventEmitter: EventEmitter2,
@@ -62,6 +67,7 @@ export class ScrapingRecoveryScheduler implements OnModuleInit {
 		await Promise.all([
 			this.recoverChapters(),
 			this.recoverCovers(),
+			this.recoverBooksWithoutCovers(),
 			this.cleanStuckJobs(),
 		]);
 
@@ -108,6 +114,31 @@ export class ScrapingRecoveryScheduler implements OnModuleInit {
 				retries: chapter.retries,
 				error: 'Max retries reached',
 			});
+		}
+	}
+
+	/**
+	 * Recupera livros que possuem URL original mas não possuem nenhuma capa
+	 */
+	private async recoverBooksWithoutCovers(): Promise<void> {
+		const booksWithoutCovers = await this.bookRepository
+			.createQueryBuilder('book')
+			.leftJoin('book.covers', 'cover')
+			.where('cover.id IS NULL')
+			.andWhere('book.originalUrl IS NOT NULL')
+			.select(['book.id'])
+			.getMany();
+
+		const booksToQueue = booksWithoutCovers.filter(
+			(book) => book.originalUrl && book.originalUrl.length > 0,
+		);
+
+		if (booksToQueue.length > 0) {
+			this.logger.log(
+				`Found ${booksToQueue.length} books without covers. Re-enqueuing for update...`,
+			);
+			const bookIds = booksToQueue.map((book) => book.id);
+			await this.bookUpdateJobService.addBooksToUpdateQueue(bookIds);
 		}
 	}
 
