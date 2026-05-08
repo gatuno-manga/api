@@ -360,14 +360,32 @@ export class AppConfigService {
 	}
 
 	get android() {
-		return {
-			packageName:
-				this.config.get<string>('ANDROID_PACKAGE_NAME') ||
-				'com.gatuno.app',
-			sha256Fingerprints: this.parseCsv(
-				this.config.get<string>('ANDROID_SHA256_FINGERPRINTS'),
-			),
-		};
+		const appsJson = this.config.get<string>('ANDROID_APPS');
+		if (appsJson) {
+			try {
+				const parsed = JSON.parse(appsJson);
+				if (Array.isArray(parsed)) {
+					return parsed as {
+						packageName: string;
+						sha256Fingerprints: string[];
+					}[];
+				}
+				this.logger.warn('ANDROID_APPS is not an array.');
+			} catch (e) {
+				this.logger.error('Failed to parse ANDROID_APPS as JSON.');
+			}
+		}
+
+		return [
+			{
+				packageName:
+					this.config.get<string>('ANDROID_PACKAGE_NAME') ||
+					'com.gatuno.app',
+				sha256Fingerprints: this.parseCsv(
+					this.config.get<string>('ANDROID_SHA256_FINGERPRINTS'),
+				),
+			},
+		];
 	}
 
 	get enableSwagger(): boolean {

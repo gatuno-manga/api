@@ -185,4 +185,43 @@ describe('AppConfigService', () => {
 			expect(admin).toHaveProperty('password');
 		});
 	});
+
+	describe('android configuration', () => {
+		it('should return default android configuration from legacy variables', () => {
+			mockConfigService.get.mockImplementation((key) => {
+				if (key === 'ANDROID_PACKAGE_NAME') return 'com.legacy.app';
+				if (key === 'ANDROID_SHA256_FINGERPRINTS') return 'F1,F2';
+				return null;
+			});
+			const android = service.android;
+			expect(android).toBeInstanceOf(Array);
+			expect(android[0]).toEqual({
+				packageName: 'com.legacy.app',
+				sha256Fingerprints: ['F1', 'F2'],
+			});
+		});
+
+		it('should return multiple apps from ANDROID_APPS variable', () => {
+			const apps = [
+				{ packageName: 'com.app1', sha256Fingerprints: ['S1'] },
+				{ packageName: 'com.app2', sha256Fingerprints: ['S2'] },
+			];
+			mockConfigService.get.mockImplementation((key) => {
+				if (key === 'ANDROID_APPS') return JSON.stringify(apps);
+				return null;
+			});
+			const android = service.android;
+			expect(android).toEqual(apps);
+		});
+
+		it('should fallback to legacy if ANDROID_APPS is invalid JSON', () => {
+			mockConfigService.get.mockImplementation((key) => {
+				if (key === 'ANDROID_APPS') return 'invalid-json';
+				if (key === 'ANDROID_PACKAGE_NAME') return 'com.fallback.app';
+				return null;
+			});
+			const android = service.android;
+			expect(android[0].packageName).toBe('com.fallback.app');
+		});
+	});
 });

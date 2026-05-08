@@ -15,10 +15,12 @@ describe('AppController', () => {
 				{
 					provide: AppConfigService,
 					useValue: {
-						android: {
-							packageName: 'com.gatuno.app',
-							sha256Fingerprints: ['00:11:22'],
-						},
+						android: [
+							{
+								packageName: 'com.gatuno.app',
+								sha256Fingerprints: ['00:11:22'],
+							},
+						],
 					},
 				},
 			],

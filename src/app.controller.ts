@@ -17,17 +17,15 @@ export class AppController {
 	@Get('.well-known/assetlinks.json')
 	@Header('Content-Type', 'application/json')
 	getAssetLinks() {
-		const { packageName, sha256Fingerprints } = this.configService.android;
+		const apps = this.configService.android;
 
-		return [
-			{
-				relation: ['delegate_permission/common.get_login_creds'],
-				target: {
-					namespace: 'android_app',
-					package_name: packageName,
-					sha256_cert_fingerprints: sha256Fingerprints,
-				},
+		return apps.map((app) => ({
+			relation: ['delegate_permission/common.get_login_creds'],
+			target: {
+				namespace: 'android_app',
+				package_name: app.packageName,
+				sha256_cert_fingerprints: app.sha256Fingerprints,
 			},
-		];
+		}));
 	}
 }
