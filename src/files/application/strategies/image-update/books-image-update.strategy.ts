@@ -27,11 +27,13 @@ export class BooksImageUpdateStrategy implements ImageUpdateStrategy {
 	}
 
 	async updateBatch(events: ImageProcessingCompletedEvent[]): Promise<void> {
-		const updates = events.map((event) => ({
-			oldPath: event.rawPath,
-			newPath: `${event.targetBucket}/${event.targetPath}`,
-			metadata: event.metadata,
-		}));
+		const updates = events
+			.filter((event) => event.results && event.results.length > 0)
+			.map((event) => ({
+				oldPath: event.rawPath,
+				newPath: `${event.targetBucket}/${event.results[0].targetPath}`,
+				metadata: event.results[0].metadata,
+			}));
 
 		// Atualiza Páginas e Capas em lote
 		await Promise.all([
