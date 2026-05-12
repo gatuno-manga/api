@@ -32,11 +32,11 @@ import { HealthModule } from './infrastructure/health/health.module';
 import { LoggingModule } from './infrastructure/logging/logging.module';
 import { MqttModule } from './infrastructure/mqtt/mqtt.module';
 import { MetricsModule } from './metrics/metrics.module';
-import { ScrapingModule } from './scraping/scraping.module';
 import { SyncModule } from './sync/sync.module';
 import { UsersModule } from './users/users.module';
 import { CollectionsModule } from './collections/collections.module';
 import { InteractionsModule } from './interactions/interactions.module';
+import { WebsitesModule } from './websites/websites.module';
 
 @Module({
 	imports: [
@@ -119,7 +119,7 @@ import { InteractionsModule } from './interactions/interactions.module';
 		FilesModule,
 		AuthModule,
 		UsersModule,
-		ScrapingModule,
+		WebsitesModule,
 		BooksModule,
 		BookRequestsModule,
 		SyncModule,

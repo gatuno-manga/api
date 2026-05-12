@@ -16,8 +16,8 @@ interface BookUpdateJobData {
 }
 
 interface BookUpdateResult {
-	newChapters: number;
-	newCovers: number;
+	dispatched: boolean;
+	urlsProcessed: number;
 }
 
 @Processor(QUEUE_NAME, { lockDuration: 120000 })
@@ -38,8 +38,6 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
 	async onModuleInit() {
 		this.worker.concurrency =
 			this.configService.queueConcurrency?.bookUpdate ?? 2;
-
-		await this.coverImageService.recalculateMissingCoverHashes();
 	}
 
 	@OnWorkerEvent('active')
@@ -72,12 +70,12 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
 				bookId: book.id,
 				bookTitle: book.title,
 				jobId: job.id,
-				newChapters: result.newChapters,
-				newCovers: result.newCovers,
+				dispatched: result.dispatched,
+				urlsProcessed: result.urlsProcessed,
 				timestamp: Date.now(),
 			});
 			this.logger.debug(
-				`Update completed for book: ${book.title} (${result.newChapters} new chapters, ${result.newCovers} new covers)`,
+				`Update request dispatched for book: ${book.title} (Urls: ${result.urlsProcessed})`,
 			);
 		}
 	}

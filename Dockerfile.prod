@@ -34,9 +34,6 @@ RUN groupadd -r -g 1001 appgroup && \
     mkdir -p /usr/src/app/data && \
     chown -R appuser:appgroup /usr/src/app/data
 
-# Evitar o download do Chromium pelo Playwright (usaremos Browserless via PLAYWRIGHT_WS_ENDPOINT)
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-
 # Copiar dependências e código com ownership correto para evitar camadas extras
 COPY --from=builder --chown=appuser:appgroup /usr/src/app/node_modules ./node_modules
 COPY --from=builder --chown=appuser:appgroup /usr/src/app/package.json ./package.json

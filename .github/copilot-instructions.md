@@ -9,7 +9,7 @@
 - Root `docker-compose*.yml`: local/dev/prod/monitoring/tooling stacks.
 
 ## Tech stack
-- **Backend**: NestJS, TypeORM (MySQL), BullMQ (Redis), Playwright (Scraping), Pino (Logging).
+- **Backend**: NestJS, TypeORM (MySQL), BullMQ (Redis), Kafka (Messaging), Pino (Logging).
 - **Environment**: Docker & Docker Compose.
 - **Standards**: Biome (Lint/Format), Secretlint (Security), Lefthook (Hooks).
 

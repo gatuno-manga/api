@@ -1,15 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ScrapingService } from '@scraping/application/services/scraping.service';
+import { ClientKafka } from '@nestjs/microservices';
+import { WebsiteService } from '@websites/application/services/website.service';
 import { Repository } from 'typeorm';
 import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { Page } from '@books/infrastructure/database/entities/page.entity';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 
 /**
- * Serviço compartilhado para processamento de scraping de capítulos.
- * Elimina duplicação de código entre ChapterScrapingJob e FixChapterProcessor.
+ * Serviço compartilhado para processamento de scraping de capítulos via microserviço.
  */
 @Injectable()
 export class ChapterScrapingSharedService {
@@ -20,81 +20,82 @@ export class ChapterScrapingSharedService {
 		private readonly pageRepository: Repository<Page>,
 		@InjectRepository(Chapter)
 		private readonly chapterRepository: Repository<Chapter>,
-		private readonly scrapingService: ScrapingService,
+		@Inject('SCRAPER_SERVICE')
+		private readonly scraperClient: ClientKafka,
+		private readonly websiteService: WebsiteService,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	/**
-	 * Processa o scraping de páginas de um capítulo.
+	 * Dispara a requisição de scraping para o microserviço Go.
 	 * @param chapter O capítulo a ser processado
-	 * @param minPages Número mínimo de páginas esperadas (opcional, usado para fix)
-	 * @returns true se o processamento foi bem-sucedido
+	 * @returns true se a requisição foi enviada
 	 */
-	async processChapterPages(
-		chapter: Chapter,
-		minPages?: number,
-	): Promise<boolean> {
-		const startTime = Date.now();
+	async processChapterPages(chapter: Chapter): Promise<boolean> {
 		const chapterInfo = `${chapter.book?.title || 'Unknown'} (${chapter.index})`;
 
-		this.logger.debug(`Iniciando scraping para capítulo: ${chapterInfo}`);
+		this.logger.debug(`Solicitando scraping para capítulo: ${chapterInfo}`);
 
 		try {
-			// Delete páginas existentes
-			await this.pageRepository.delete({ chapter: { id: chapter.id } });
+			const host = new URL(chapter.originalUrl).hostname;
+			const websiteConfig = await this.websiteService.getByUrl(host);
 
-			// Faz o scraping
-			const pages = await this.scrapingService.scrapePages(
-				chapter.originalUrl,
-				minPages,
-			);
-
-			if (!pages || pages.length === 0) {
-				chapter.scrapingStatus = ScrapingStatus.ERROR;
-				await this.chapterRepository.save(chapter);
-				this.logger.warn(
-					`Nenhuma página encontrada para o capítulo: ${chapterInfo}`,
+			if (!websiteConfig) {
+				this.logger.warn(`No website config found for host: ${host}`);
+				this.emitFailedEvent(
+					chapter,
+					'Configuração do site não encontrada',
 				);
-
-				this.emitFailedEvent(chapter, 'Nenhuma página encontrada');
 				return false;
 			}
 
-			// Cria as novas páginas
-			let index = 1;
-			const newPages = pages.map((pageData) =>
-				this.pageRepository.create({
-					path: pageData.path,
-					metadata: pageData.metadata,
-					index: index++,
-				}),
-			);
+			const payload = {
+				jobId: crypto.randomUUID(),
+				chapterId: chapter.id,
+				bookId: chapter.book?.id,
+				targetUrl: chapter.originalUrl,
+				websiteConfig: {
+					name: host,
+					cloudflareBypass: websiteConfig.useFlareSolverr,
+					selectors: {
+						chapterTitle: websiteConfig.selector, // Em capítulos o 'selector' costuma ser o de imagens
+						chapterImages: websiteConfig.selector,
+					},
+					headers: {
+						Referer: host,
+					},
+				},
+				uploadTarget: {
+					bucket: 'processing',
+					pathPrefix: `chapters/${chapter.book?.id}/${chapter.id}`,
+				},
+			};
 
-			chapter.pages = newPages;
-			chapter.scrapingStatus = ScrapingStatus.READY;
+			// Marca como processando e deleta páginas antigas se existirem
+			await this.pageRepository.delete({ chapter: { id: chapter.id } });
+			chapter.scrapingStatus = ScrapingStatus.PROCESS;
 			await this.chapterRepository.save(chapter);
 
-			// Emite eventos de sucesso
-			this.emitCompletedEvent(chapter, pages.length);
+			// Emite o evento para o Kafka
+			this.scraperClient.emit('scraping.chapter.requested', payload);
 
-			const endTime = Date.now();
+			// Emite evento local de início
+			this.emitStartedEvent(chapter);
+
 			this.logger.log(
-				`Páginas salvas para o capítulo: ${chapterInfo} em ${(endTime - startTime) / 1000}s`,
+				`Requisição enviada para o microserviço: ${chapterInfo}`,
 			);
-
 			return true;
 		} catch (error) {
 			this.logger.error(
-				`Falha no scraping do capítulo ${chapter.id}: ${error.message}`,
-				error.stack,
+				`Falha ao disparar scraping do capítulo ${chapter.id}: ${error.message}`,
 			);
 
 			chapter.scrapingStatus = ScrapingStatus.ERROR;
 			await this.chapterRepository.save(chapter);
 
 			this.emitFailedEvent(chapter, error.message);
-
-			throw error;
+			return false;
 		}
 	}
 
@@ -109,17 +110,40 @@ export class ChapterScrapingSharedService {
 	}
 
 	/**
-	 * Emite evento de scraping completado
+	 * Finaliza o processamento do capítulo com as páginas recebidas do microserviço
 	 */
-	private emitCompletedEvent(chapter: Chapter, pagesCount: number): void {
+	async finalizeChapterScraping(
+		chapter: Chapter,
+		pagesPaths: string[],
+	): Promise<void> {
+		const startTime = Date.now();
+
+		// Cria as novas páginas
+		let index = 1;
+		const newPages = pagesPaths.map((path) =>
+			this.pageRepository.create({
+				path: path,
+				index: index++,
+			}),
+		);
+
+		chapter.pages = newPages;
+		chapter.scrapingStatus = ScrapingStatus.READY;
+		await this.chapterRepository.save(chapter);
+
+		// Emite eventos de sucesso
 		this.eventEmitter.emit('chapter.scraping.completed', {
 			chapterId: chapter.id,
 			bookId: chapter.book?.id,
-			pagesCount,
+			pagesCount: pagesPaths.length,
 		});
 
-		// Emite evento de atualização de capítulo
+		// Emite evento de atualização de capítulo para o frontend
 		this.eventEmitter.emit('chapters.updated', chapter);
+
+		this.logger.log(
+			`Capítulo ${chapter.id} finalizado com ${pagesPaths.length} páginas em ${(Date.now() - startTime) / 1000}s`,
+		);
 	}
 
 	/**

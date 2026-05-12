@@ -22,9 +22,6 @@ services:
   redis:
     restart: always
 
-  browserless:
-    restart: always
-
   meilisearch:
     restart: always
 

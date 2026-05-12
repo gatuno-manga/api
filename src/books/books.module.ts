@@ -8,7 +8,7 @@ import { FilesModule } from '@files/files.module';
 import { LoggingModule } from '@logging/logging.module';
 import { MetricsModule } from '@metrics/metrics.module';
 import { RedisModule } from '@/infrastructure/redis/redis.module';
-import { ScrapingModule } from '@scraping/scraping.module';
+import { WebsitesModule } from '@/websites/websites.module';
 import { UsersModule } from '@users/users.module';
 import { User } from '@users/infrastructure/database/entities/user.entity';
 import { AdminBooksDashboardController } from './infrastructure/http/controllers/admin-books-dashboard.controller';
@@ -67,6 +67,7 @@ import { AuthorsService } from './application/services/authors.service';
 import { BooksNotifier } from './infrastructure/notifiers/books.notifier';
 import { AdminSystemManagementService } from './application/services/admin-system-management.service';
 import { BookDataLoaderService } from './application/services/book-dataloader.service';
+import { BooksKafkaConsumer } from './infrastructure/messaging/books-kafka.consumer';
 
 import { I_BOOK_REPOSITORY } from './application/ports/book-repository.interface';
 import { TypeOrmBookRepositoryAdapter } from './infrastructure/database/adapters/typeorm-book-repository.adapter';
@@ -99,7 +100,7 @@ import {
 
 @Module({
 	imports: [
-		ScrapingModule,
+		WebsitesModule,
 		AppConfigModule,
 		FilesModule,
 		LoggingModule,
@@ -196,6 +197,7 @@ import {
 		AdminBooksUploadController,
 		AdminBooksDashboardController,
 		AdminSystemManagementController,
+		BooksKafkaConsumer,
 	],
 	providers: [
 		{ provide: I_BOOK_REPOSITORY, useClass: TypeOrmBookRepositoryAdapter },
@@ -238,8 +240,6 @@ import {
 		BookInitEvents,
 		ChapterService,
 		ChapterCommentsService,
-		SensitiveContentService,
-		TagsService,
 		AuthorsService,
 		ChapterScrapingJob,
 		ChapterScrapingService,

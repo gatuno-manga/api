@@ -247,45 +247,6 @@ export class AppConfigService {
 		return this.config.get<number>('MAX_SESSIONS_PER_USER') ?? 0;
 	}
 
-	get playwright() {
-		return {
-			debugMode: this.config.get<boolean>('PLAYWRIGHT_DEBUG') ?? false,
-			slowMo: this.config.get<number>('PLAYWRIGHT_SLOW_MO') ?? 0,
-			wsEndpoint: this.config.get<string>('PLAYWRIGHT_WS_ENDPOINT') ?? '',
-		};
-	}
-
-	get browserPool() {
-		return {
-			enabled: this.config.get<boolean>('BROWSER_POOL_ENABLED') ?? true,
-			poolSize: this.config.get<number>('BROWSER_POOL_SIZE') ?? 2,
-			maxContextsPerBrowser:
-				this.config.get<number>(
-					'BROWSER_POOL_MAX_CONTEXTS_PER_BROWSER',
-				) ?? 4,
-			acquireTimeout:
-				this.config.get<number>('BROWSER_POOL_ACQUIRE_TIMEOUT') ??
-				30000,
-			idleTimeout:
-				this.config.get<number>('BROWSER_POOL_IDLE_TIMEOUT') ?? 300000,
-			maxContextsBeforeRestart:
-				this.config.get<number>(
-					'BROWSER_POOL_MAX_CONTEXTS_BEFORE_RESTART',
-				) ?? 50,
-		};
-	}
-
-	get networkCache() {
-		return {
-			maxSizeMB:
-				this.config.get<number>('NETWORK_CACHE_MAX_SIZE_MB') ?? 100,
-			largeImageThresholdMB:
-				this.config.get<number>(
-					'NETWORK_CACHE_LARGE_IMAGE_THRESHOLD_MB',
-				) ?? 5,
-		};
-	}
-
 	get bookUpdate() {
 		return {
 			enabled: this.config.get<boolean>('BOOK_UPDATE_ENABLED') ?? true,
@@ -335,13 +296,6 @@ export class AppConfigService {
 		return (
 			this.config.get<string>('RUSTFS_PUBLIC_URL') ||
 			`${this.apiUrl}/api/data`
-		);
-	}
-
-	get flareSolverrUrl(): string {
-		return (
-			this.config.get<string>('FLARESOLVERR_URL') ||
-			'http://flaresolverr:8191'
 		);
 	}
 

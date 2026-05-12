@@ -129,55 +129,6 @@ export const validationSchema = Joi.object({
 		.description(
 			'Disk usage threshold (fraction) for storage health check',
 		),
-	// Playwright / Scraping Debug
-	PLAYWRIGHT_DEBUG: Joi.boolean()
-		.default(false)
-		.description('Enable Playwright debug mode with visible browser'),
-	PLAYWRIGHT_SLOW_MO: Joi.number()
-		.min(0)
-		.default(0)
-		.description('Slow down Playwright operations by specified ms'),
-	PLAYWRIGHT_WS_ENDPOINT: Joi.string()
-		.optional()
-		.allow('')
-		.description('WebSocket endpoint for remote browser connection'),
-	// Browser Pool Settings
-	BROWSER_POOL_ENABLED: Joi.boolean()
-		.default(true)
-		.description('Enable browser pooling'),
-	BROWSER_POOL_SIZE: Joi.number()
-		.min(1)
-		.max(10)
-		.default(2)
-		.description('Number of browsers to maintain in the pool'),
-	BROWSER_POOL_MAX_CONTEXTS_PER_BROWSER: Joi.number()
-		.min(1)
-		.max(20)
-		.default(4)
-		.description('Maximum number of contexts per browser'),
-	BROWSER_POOL_ACQUIRE_TIMEOUT: Joi.number()
-		.min(1000)
-		.default(30000)
-		.description('Timeout in ms to wait for a browser to become available'),
-	BROWSER_POOL_IDLE_TIMEOUT: Joi.number()
-		.min(60000)
-		.default(300000)
-		.description('Idle timeout in ms before browser can be restarted'),
-	BROWSER_POOL_MAX_CONTEXTS_BEFORE_RESTART: Joi.number()
-		.min(10)
-		.default(50)
-		.description('Restart browser after this many contexts created'),
-	// Network Interceptor Memory Settings
-	NETWORK_CACHE_MAX_SIZE_MB: Joi.number()
-		.min(10)
-		.default(100)
-		.description('Maximum size of network cache in MB'),
-	NETWORK_CACHE_LARGE_IMAGE_THRESHOLD_MB: Joi.number()
-		.min(1)
-		.default(5)
-		.description(
-			'Stream images to disk if larger than this threshold in MB',
-		),
 	// Download Cache Settings
 	DOWNLOAD_CACHE_THRESHOLD_MB: Joi.number()
 		.min(1)

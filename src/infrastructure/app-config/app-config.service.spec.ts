@@ -160,14 +160,6 @@ describe('AppConfigService', () => {
 	});
 
 	describe('other configurations', () => {
-		it('should return playwright config', () => {
-			const playwrightConfig = service.playwright;
-			expect(playwrightConfig).toBeDefined();
-			expect(playwrightConfig).toHaveProperty('debugMode');
-			expect(playwrightConfig).toHaveProperty('slowMo');
-			expect(playwrightConfig).toHaveProperty('wsEndpoint');
-		});
-
 		it('should return apiUrl', () => {
 			mockConfigService.get.mockReturnValueOnce('http://api:3000');
 			expect(service.apiUrl).toBe('http://api:3000');

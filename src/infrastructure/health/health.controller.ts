@@ -69,21 +69,6 @@ export class HealthController {
 				),
 			// RustFS Check
 			() => this.http.pingCheck('rustfs', this.appConfig.rustfs.endpoint),
-			// FlareSolverr Check
-			() =>
-				this.http.pingCheck(
-					'flaresolverr',
-					`${this.appConfig.flareSolverrUrl}/health`,
-				),
-			// Browserless Check (HTTP fallback as WS is harder to ping simply with HttpIndicator)
-			() =>
-				this.http.pingCheck(
-					'browserless',
-					this.appConfig.playwright.wsEndpoint.replace(
-						'ws://',
-						'http://',
-					),
-				),
 			// Memória Detalhada para diagnóstico
 			() => {
 				const mem = process.memoryUsage();
