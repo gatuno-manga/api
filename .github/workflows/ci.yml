@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - developer
+  pull_request:
+    branches:
+      - main
+      - developer
+
+jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'src/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'Dockerfile.prod'
+              - '.swcrc'
+              - 'nest-cli.json'
+              - 'tsconfig.json'
+              - 'tsconfig.build.json'
+              - '.github/workflows/ci.yml'
+
+  ci:
+    needs: check-changes
+    if: needs.check-changes.outputs.backend == 'true'
+    uses: gatuno-manga/workflows/.github/workflows/node-ci.yml@main
+    with:
+      node_version: '24.11.1'
+      cache_dependency_path: ./package-lock.json
+
+  build-and-publish:
+    needs: [check-changes, ci]
+    if: |
+      needs.check-changes.outputs.backend == 'true' &&
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/developer')
+    uses: gatuno-manga/workflows/.github/workflows/registry.yml@main
+    with:
+      image_name: gatuno-api
+      image_tag: ${{ github.ref == 'refs/heads/main' && 'latest' || 'staging' }}
+      build_context: .
+      dockerfile_path: Dockerfile.prod
+      runner_labels_json: '["self-hosted","linux","x64"]'
+    secrets: inherit
