@@ -66,6 +66,23 @@ export class WebsiteController {
 		return this.websiteService.update(id, dto);
 	}
 
+	@Post('test-script')
+	@Throttle({ short: { limit: 10, ttl: 60000 } }) // 10 req/min
+	@Roles(RolesEnum.ADMIN)
+	async testScript(
+		@Body('targetUrl') targetUrl: string,
+		@Body('script') script: string,
+		@Body('context') context?: 'NEW_BOOK' | 'UPDATE_BOOK' | 'PAGES',
+		@Body('useFlareSolverr') useFlareSolverr?: boolean,
+	) {
+		return this.websiteService.testScript(
+			targetUrl,
+			script,
+			context,
+			useFlareSolverr,
+		);
+	}
+
 	@Delete(':id')
 	@Throttle({ short: { limit: 5, ttl: 300000 } }) // 5 req/5min
 	@Roles(RolesEnum.ADMIN)

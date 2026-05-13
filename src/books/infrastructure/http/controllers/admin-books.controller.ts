@@ -88,6 +88,15 @@ export class AdminBooksController {
 		return this.booksService.createBook(dto);
 	}
 
+	@Post('auto-create')
+	@Throttle({ short: { limit: 10, ttl: 60000 } }) // 10 req/min
+	async autoCreateBook(@Body('url') url: string) {
+		if (!url) {
+			throw new BadRequestException('URL is required');
+		}
+		return this.booksService.autoCreateBook(url);
+	}
+
 	@Patch(':idBook/fix')
 	@ApiDocsFixBook()
 	fixBook(@Param('idBook') idBook: string) {

@@ -6,6 +6,7 @@ export class Website {
 	selector: string;
 	chapterListSelector: string | null;
 	bookInfoExtractScript: string | null;
+	newBookExtractScript: string | null;
 	concurrencyLimit: number | null;
 	blacklistTerms: string[] | null;
 	whitelistTerms: string[] | null;

@@ -5,6 +5,8 @@ import {
 	Logger,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ClientKafka } from '@nestjs/microservices';
+import { WebsiteService } from '@websites/application/services/website.service';
 import { BookEvents } from '@books/domain/constants/events.constant';
 import { CreateBookDto } from '@books/application/dto/create-book.dto';
 import { Book } from '@books/domain/entities/book';
@@ -32,11 +34,52 @@ export class BookCreationService {
 		private readonly bookRepository: IBookRepository,
 		@Inject(I_UNIT_OF_WORK)
 		private readonly unitOfWork: IUnitOfWork,
+		@Inject('SCRAPER_SERVICE')
+		private readonly scraperClient: ClientKafka,
+		private readonly websiteService: WebsiteService,
 		private readonly bookRelationshipService: BookRelationshipService,
 		private readonly chapterManagementService: ChapterManagementService,
 		private readonly coverImageService: CoverImageService,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
+
+	/**
+	 * Solicita a criação automática de um livro via scraping de uma URL
+	 */
+	async autoCreateBook(url: string): Promise<{ jobId: string }> {
+		const host = new URL(url).hostname;
+		const websiteConfig = await this.websiteService.getByUrl(host);
+
+		if (!websiteConfig) {
+			throw new BadRequestException(
+				`Não há configuração de scraping para o site: ${host}`,
+			);
+		}
+
+		const jobId = crypto.randomUUID();
+
+		const payload = {
+			jobId,
+			targetUrl: url,
+			websiteConfig: {
+				name: host,
+				cloudflareBypass: websiteConfig.useFlareSolverr,
+				selectors: {
+					chapterListSelector: websiteConfig.chapterListSelector,
+					bookInfoExtractScript:
+						websiteConfig.newBookExtractScript ||
+						websiteConfig.bookInfoExtractScript,
+				},
+				headers: {
+					Referer: host,
+				},
+			},
+		};
+
+		this.scraperClient.emit('scraping.new-book.requested', payload);
+
+		return { jobId };
+	}
 
 	/**
 	 * Cria um novo livro com todas as suas relações de forma atômica

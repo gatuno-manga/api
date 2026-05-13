@@ -53,6 +53,22 @@ export class Website {
 	})
 	bookInfoExtractScript: string;
 
+	/**
+	 * Script específico para extrair metadados completos do livro na criação.
+	 * Deve retornar um objeto com:
+	 * - title: string
+	 * - description: string
+	 * - authors: array de string
+	 * - tags: array de string
+	 * - covers: array de {url, title}
+	 * - chapters: array de {title, url, index, isFinal?}
+	 */
+	@Column({
+		type: 'text',
+		nullable: true,
+	})
+	newBookExtractScript: string;
+
 	@Column({
 		type: 'int',
 		nullable: true,

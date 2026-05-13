@@ -156,6 +156,27 @@ Example output:
 	bookInfoExtractScript?: string;
 
 	@ApiPropertyOptional({
+		description: `JavaScript code to extract COMPLETE book metadata for auto-creation. Should return an object with:
+- title: string
+- description: string
+- authors: array of strings
+- tags: array of strings
+- covers: array of {url, title?}
+- chapters: array of {title, url, index, isFinal?}`,
+		example: `(() => ({
+  title: document.querySelector('h1').innerText,
+  description: document.querySelector('.desc').innerText,
+  authors: ["Author Name"],
+  tags: ["Action", "Adventure"],
+  covers: [{ url: "...", title: "Cover" }],
+  chapters: [{ title: "Cap 1", url: "..." }]
+}))()`,
+	})
+	@IsString()
+	@IsOptional()
+	newBookExtractScript?: string;
+
+	@ApiPropertyOptional({
 		description:
 			'Optional concurrency limit for simultaneous scrapes of this site. Null or omitted = unlimited',
 		example: 3,

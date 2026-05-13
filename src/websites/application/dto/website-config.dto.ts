@@ -88,6 +88,17 @@ export class WebsiteConfigDto {
 	@IsOptional()
 	@IsString()
 	bookInfoExtractScript?: string;
+
+	@ApiPropertyOptional({
+		description:
+			'Script to extract complete book metadata (Title, Desc, Authors, Tags) and chapters on creation',
+		example:
+			'(() => ({ title: "", description: "", authors: [], tags: [], covers: [], chapters: [] }))()',
+	})
+	@IsOptional()
+	@IsString()
+	newBookExtractScript?: string;
+
 	/** Cookies to inject before navigation */
 	@ApiPropertyOptional({
 		description: 'Cookies injected before navigation',

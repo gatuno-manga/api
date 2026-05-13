@@ -1,6 +1,7 @@
 import { Controller, Inject, Logger } from '@nestjs/common';
 import { EventPattern, Payload } from '@nestjs/microservices';
 import { BookContentUpdateService } from '@books/application/services/book-content-update.service';
+import { BookCreationService } from '@books/application/services/book-creation.service';
 import { ChapterScrapingSharedService } from '@books/infrastructure/jobs/chapter-scraping.shared';
 import {
 	I_BOOK_REPOSITORY,
@@ -16,6 +17,9 @@ import {
 } from '@books/application/ports/chapter-comment-repository.interface';
 import { MediaUrlService } from '@common/services/media-url.service';
 import { StorageBucket } from '@common/enum/storage-bucket.enum';
+import { RedisService } from '@/infrastructure/redis/redis.service';
+import { CreateBookDto } from '@books/application/dto/create-book.dto';
+import { ContentFormat } from '@books/domain/enums/content-format.enum';
 import * as cheerio from 'cheerio';
 import { Chapter as InfraChapter } from '../database/entities/chapter.entity';
 
@@ -43,6 +47,25 @@ interface ChapterCompletedPayload {
 	images: string[];
 }
 
+interface NewBookCompletedPayload {
+	jobId: string;
+	targetUrl: string;
+	title: string;
+	description?: string;
+	authors?: string[];
+	tags?: string[];
+	chapters: Array<{
+		title: string;
+		url: string;
+		index?: number;
+		isFinal?: boolean;
+	}>;
+	covers: Array<{
+		url: string;
+		title?: string;
+	}>;
+}
+
 interface ImagesCompletedPayload {
 	jobId: string;
 	entityId: string;
@@ -57,6 +80,7 @@ export class BooksKafkaConsumer {
 
 	constructor(
 		private readonly bookContentUpdateService: BookContentUpdateService,
+		private readonly bookCreationService: BookCreationService,
 		private readonly chapterScrapingShared: ChapterScrapingSharedService,
 		@Inject(I_BOOK_REPOSITORY)
 		private readonly bookRepository: IBookRepository,
@@ -65,7 +89,52 @@ export class BooksKafkaConsumer {
 		@Inject(I_CHAPTER_COMMENT_REPOSITORY)
 		private readonly chapterCommentRepository: IChapterCommentRepository,
 		private readonly mediaUrlService: MediaUrlService,
+		private readonly redisService: RedisService,
 	) {}
+
+	@EventPattern('scraping.new-book.completed')
+	async handleNewBookScrapingCompleted(
+		@Payload() data: NewBookCompletedPayload,
+	) {
+		this.logger.log(
+			`Recebido scraping.new-book.completed para job: ${data.jobId}`,
+		);
+
+		try {
+			const createBookDto: CreateBookDto = {
+				title: data.title,
+				description: data.description || '',
+				originalUrl: [data.targetUrl],
+				authors: (data.authors || []).map((name) => ({ name })),
+				tags: data.tags || [],
+				chapters: data.chapters.map((ch) => ({
+					title: ch.title,
+					originalUrl: ch.url,
+					index: ch.index,
+					isFinal: ch.isFinal,
+				})),
+				cover: {
+					urlOrigin: data.targetUrl,
+					urlImgs: data.covers.map((c) => ({
+						url: c.url,
+						title: c.title || 'Cover Image',
+					})),
+				},
+				ignoreConflict: true,
+			};
+
+			const book =
+				await this.bookCreationService.createBook(createBookDto);
+
+			this.logger.log(
+				`Livro criado automaticamente com sucesso: ${book.title} (ID: ${book.id})`,
+			);
+		} catch (error) {
+			this.logger.error(
+				`Erro ao criar livro automaticamente para o job ${data.jobId}: ${error.message}`,
+			);
+		}
+	}
 
 	@EventPattern('scraping.book.completed')
 	async handleBookScrapingCompleted(@Payload() data: BookCompletedPayload) {
@@ -98,6 +167,11 @@ export class BooksKafkaConsumer {
 		this.logger.log(
 			`Processamento de capítulos e capas finalizado para livro: ${book.title}`,
 		);
+
+		// Libera o Lock do Redis
+		await this.redisService
+			.getClient()
+			.del(`lock:scraping:book:${data.bookId}`);
 	}
 
 	@EventPattern('scraping.chapter.completed')
@@ -120,8 +194,7 @@ export class BooksKafkaConsumer {
 		}
 
 		if (data.scrapedTitle && !chapter.title) {
-			// Using unknown to bypass domain entity readonly restrictions if any
-			const mutableChapter = chapter as unknown as { title: string };
+			const mutableChapter = chapter as unknown as InfraChapter;
 			mutableChapter.title = data.scrapedTitle;
 		}
 
@@ -129,6 +202,11 @@ export class BooksKafkaConsumer {
 			chapter as unknown as InfraChapter,
 			data.images,
 		);
+
+		// Libera o Lock do Redis
+		await this.redisService
+			.getClient()
+			.del(`lock:scraping:chapter:${data.chapterId}`);
 	}
 
 	@EventPattern('scraping.images.completed')
@@ -177,7 +255,10 @@ export class BooksKafkaConsumer {
 				internalUrlMap.set(originalUrl, fullUrl);
 			}
 
-			const format = data.format === 'HTML' ? 'HTML' : 'MARKDOWN';
+			const format =
+				data.format === 'HTML'
+					? ContentFormat.HTML
+					: ContentFormat.MARKDOWN;
 			const updatedContent = await this.replaceUrlsInText(
 				content,
 				format,
@@ -185,9 +266,7 @@ export class BooksKafkaConsumer {
 			);
 
 			if (chapter) {
-				const mutableChapter = chapter as unknown as {
-					content: string;
-				};
+				const mutableChapter = chapter as unknown as InfraChapter;
 				mutableChapter.content = updatedContent;
 				await this.chapterRepository.save(chapter);
 			} else if (comment) {
@@ -225,6 +304,11 @@ export class BooksKafkaConsumer {
 				data.error,
 			);
 		}
+
+		// Libera o Lock do Redis
+		await this.redisService
+			.getClient()
+			.del(`lock:scraping:chapter:${data.chapterId}`);
 	}
 
 	/**
@@ -232,10 +316,10 @@ export class BooksKafkaConsumer {
 	 */
 	private async replaceUrlsInText(
 		content: string,
-		format: 'HTML' | 'MARKDOWN',
+		format: ContentFormat,
 		urlMap: Map<string, string>,
 	): Promise<string> {
-		if (format === 'HTML') {
+		if (format === ContentFormat.HTML) {
 			const $ = cheerio.load(content, null, false);
 			$('img').each((_, img) => {
 				const src = $(img).attr('src');
@@ -247,7 +331,7 @@ export class BooksKafkaConsumer {
 			return $.html();
 		}
 
-		if (format === 'MARKDOWN') {
+		if (format === ContentFormat.MARKDOWN) {
 			const { remark } = await import('remark');
 			const { visit } = await import('unist-util-visit');
 			const processor = remark();
