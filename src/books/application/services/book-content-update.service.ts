@@ -1,7 +1,8 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { normalizeUrl } from 'src/common/utils/url.utils';
 import { ClientKafka } from '@nestjs/microservices';
+import { RedisService } from '@/infrastructure/redis/redis.service';
 import { WebsiteService } from '@websites/application/services/website.service';
 import { Book } from '@books/domain/entities/book';
 import { Chapter } from '@books/domain/entities/chapter';
@@ -55,6 +56,7 @@ export class BookContentUpdateService {
 		private readonly coverRepository: ICoverRepository,
 		@Inject('SCRAPER_SERVICE')
 		private readonly scraperClient: ClientKafka,
+		private readonly redisService: RedisService,
 		private readonly websiteService: WebsiteService,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly coverImageService: CoverImageService,
@@ -65,6 +67,22 @@ export class BookContentUpdateService {
 	 */
 	async performUpdate(bookId: string): Promise<BookContentUpdateResult> {
 		this.logger.debug(`Processing book content update for: ${bookId}`);
+
+		// Implementação de Distributed Lock via Redis
+		const lockKey = `lock:scraping:book:${bookId}`;
+		const redis = this.redisService.getClient();
+
+		// Tenta adquirir o lock (NX = apenas se não existir, EX = expiração em segundos)
+		const acquired = await redis.set(lockKey, '1', 'EX', 300, 'NX');
+
+		if (!acquired) {
+			this.logger.warn(
+				`Book ${bookId} is already being scraped. Request ignored.`,
+			);
+			throw new ConflictException(
+				`O livro ${bookId} já está sendo atualizado por outro processo.`,
+			);
+		}
 
 		const book = await this.bookRepository.findById(bookId, [
 			'chapters',
@@ -120,6 +138,10 @@ export class BookContentUpdateService {
 					`Error requesting scrape from URL ${bookUrl}: ${error.message}`,
 				);
 			}
+		}
+
+		if (urlsProcessed === 0) {
+			await redis.del(lockKey);
 		}
 
 		return { dispatched: urlsProcessed > 0, urlsProcessed };

@@ -1,7 +1,8 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClientKafka } from '@nestjs/microservices';
+import { RedisService } from '@/infrastructure/redis/redis.service';
 import { WebsiteService } from '@websites/application/services/website.service';
 import { Repository } from 'typeorm';
 import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
@@ -22,6 +23,7 @@ export class ChapterScrapingSharedService {
 		private readonly chapterRepository: Repository<Chapter>,
 		@Inject('SCRAPER_SERVICE')
 		private readonly scraperClient: ClientKafka,
+		private readonly redisService: RedisService,
 		private readonly websiteService: WebsiteService,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
@@ -35,6 +37,22 @@ export class ChapterScrapingSharedService {
 		const chapterInfo = `${chapter.book?.title || 'Unknown'} (${chapter.index})`;
 
 		this.logger.debug(`Solicitando scraping para capítulo: ${chapterInfo}`);
+
+		// Implementação de Distributed Lock via Redis
+		const lockKey = `lock:scraping:chapter:${chapter.id}`;
+		const redis = this.redisService.getClient();
+
+		// Tenta adquirir o lock (3 minutos de TTL)
+		const acquired = await redis.set(lockKey, '1', 'EX', 180, 'NX');
+
+		if (!acquired) {
+			this.logger.warn(
+				`Chapter ${chapter.id} is already being scraped. Request ignored.`,
+			);
+			throw new ConflictException(
+				`O capítulo ${chapter.id} já está sendo processado.`,
+			);
+		}
 
 		try {
 			const host = new URL(chapter.originalUrl).hostname;
@@ -90,6 +108,10 @@ export class ChapterScrapingSharedService {
 			this.logger.error(
 				`Falha ao disparar scraping do capítulo ${chapter.id}: ${error.message}`,
 			);
+
+			// Libera o lock em caso de erro ANTES de enviar pro Kafka
+			const lockKey = `lock:scraping:chapter:${chapter.id}`;
+			await this.redisService.getClient().del(lockKey);
 
 			chapter.scrapingStatus = ScrapingStatus.ERROR;
 			await this.chapterRepository.save(chapter);

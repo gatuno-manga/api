@@ -65,6 +65,7 @@ import { TagsController } from './infrastructure/http/controllers/tags.controlle
 import { TagsService } from './application/services/tags.service';
 import { AuthorsService } from './application/services/authors.service';
 import { BooksNotifier } from './infrastructure/notifiers/books.notifier';
+import { ContentUploadedListener } from './infrastructure/notifiers/content-uploaded.listener';
 import { AdminSystemManagementService } from './application/services/admin-system-management.service';
 import { BookDataLoaderService } from './application/services/book-dataloader.service';
 import { BooksKafkaConsumer } from './infrastructure/messaging/books-kafka.consumer';
@@ -268,6 +269,7 @@ import {
 		// Listeners
 		FileDeletionEvents,
 		BooksNotifier,
+		ContentUploadedListener,
 		// WebSocket Gateway
 		BooksGateway,
 		BookResolver,
