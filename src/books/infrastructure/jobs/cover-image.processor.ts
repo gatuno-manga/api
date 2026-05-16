@@ -110,7 +110,7 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 				})),
 				uploadTarget: {
 					bucket: 'processing',
-					pathPrefix: `${bookId.slice(-2)}/${bookId}`,
+					pathPrefix: '', // No prefix for covers, let it be at root of bucket (hashed)
 				},
 			};
 

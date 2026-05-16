@@ -25,7 +25,7 @@ export class UsersImageUpdateStrategy implements ImageUpdateStrategy {
 			.filter((event) => event.results && event.results.length > 0)
 			.map((event) => ({
 				oldPath: event.rawPath,
-				newPath: `${event.targetBucket}/${event.results[0].targetPath}`,
+				newPath: event.results[0].targetPath,
 				metadata: event.results[0].metadata,
 			}));
 

@@ -398,7 +398,14 @@ export class BooksKafkaConsumer {
 					// Se tivermos um caminho correspondente no results, usamos
 					// Caso contrário (mismatch de quantidade), mantemos o status READY mas sem trocar a URL se não houver path
 					if (results[i]) {
-						cover.url = results[i];
+						let path = results[i];
+						if (
+							!path.startsWith('http') &&
+							!path.startsWith('processing/')
+						) {
+							path = `processing/${path}`;
+						}
+						cover.url = path;
 					}
 					cover.scrapingStatus = ScrapingStatus.READY;
 					await this.coverRepository.save(cover);
@@ -521,9 +528,15 @@ export class BooksKafkaConsumer {
 				}
 
 				const internalUrlMap = new Map<string, string>();
-				for (const [originalUrl, internalPath] of Object.entries(
+				for (let [originalUrl, internalPath] of Object.entries(
 					urlMap,
 				)) {
+					if (
+						!internalPath.startsWith('http') &&
+						!internalPath.startsWith('processing/')
+					) {
+						internalPath = `processing/${internalPath}`;
+					}
 					const fullUrl = this.mediaUrlService.resolveUrl(
 						internalPath,
 						StorageBucket.BOOKS,

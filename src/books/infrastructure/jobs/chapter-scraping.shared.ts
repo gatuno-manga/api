@@ -184,10 +184,13 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 		let index = 1;
 		const newPages = externalUrls.map((item) => {
 			// Se for objeto { originalUrl, path }, prefere originalUrl para o fast-track (exibição imediata)
-			const path =
+			let path =
 				typeof item === 'string'
 					? item
 					: item.originalUrl || item.original_url || item.path;
+
+			// Salvaguarda: Se o path for local (não http) e não tiver o prefixo de processamento, adiciona-o.
+			path = this.ensureProcessingPrefix(path);
 
 			return this.pageRepository.create({
 				path: path,
@@ -205,6 +208,17 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 		this.logger.log(
 			`Fast-Track: Capítulo ${chapter.id} liberado para leitura com URLs externas.`,
 		);
+	}
+
+	private ensureProcessingPrefix(path: string): string {
+		if (
+			path &&
+			!path.startsWith('http') &&
+			!path.startsWith('processing/')
+		) {
+			return `processing/${path}`;
+		}
+		return path;
 	}
 
 	/**
@@ -232,7 +246,9 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 
 		const optimizedData = await Promise.all(
 			pagesPaths.map(async (item) => {
-				const path = typeof item === 'string' ? item : item.path;
+				let path = typeof item === 'string' ? item : item.path;
+				path = this.ensureProcessingPrefix(path);
+
 				const cacheKey = `pending_optimization:${path}`;
 				const cached = await redis.get(cacheKey);
 				if (cached) {
@@ -280,9 +296,11 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 		chapter.scrapingStatus = ScrapingStatus.READY;
 		await this.chapterRepository.save(chapter);
 
-		const cleanPromises = pagesPaths.map((path) =>
-			redis.del(`pending_optimization:${path}`),
-		);
+		const cleanPromises = pagesPaths.map((item) => {
+			let path = typeof item === 'string' ? item : item.path;
+			path = this.ensureProcessingPrefix(path);
+			return redis.del(`pending_optimization:${path}`);
+		});
 		await Promise.all(cleanPromises).catch(() => {});
 
 		this.eventEmitter.emit('chapter.scraping.completed', {
