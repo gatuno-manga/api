@@ -7,7 +7,8 @@ import {
 	EventEmitterReadinessWatcher,
 } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { AdaptiveThrottlerGuard } from './common/guards/adaptive-throttler.guard';
 import { AppConfigModule } from './infrastructure/app-config/app-config.module';
 import { AppConfigService } from './infrastructure/app-config/app-config.service';
 import { AppController } from './app.controller';
@@ -40,18 +41,18 @@ import { UsersModule } from './users/users.module';
 		ThrottlerModule.forRoot([
 			{
 				name: 'short',
-				ttl: 1000, // 1 segundo
-				limit: 100, // Aumentado de 3 para 100
+				ttl: 1000,
+				limit: 3,
 			},
 			{
 				name: 'medium',
-				ttl: 10000, // 10 segundos
-				limit: 200, // Aumentado de 20 para 200
+				ttl: 10000,
+				limit: 20,
 			},
 			{
 				name: 'long',
-				ttl: 60000, // 1 minuto
-				limit: 1000, // Aumentado de 100 para 1000
+				ttl: 60000,
+				limit: 100,
 			},
 		]),
 		ScrapingModule,
@@ -103,7 +104,7 @@ import { UsersModule } from './users/users.module';
 		},
 		{
 			provide: APP_GUARD,
-			useClass: ThrottlerGuard,
+			useClass: AdaptiveThrottlerGuard,
 		},
 	],
 })
