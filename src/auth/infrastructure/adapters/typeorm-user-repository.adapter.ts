@@ -7,8 +7,8 @@ import {
 	UserRepositoryPort,
 	UserAuthData,
 	UserSaveInput,
-} from '../../application/ports/user-repository.port';
-import { EmailVO } from '../../domain/value-objects/email.vo';
+} from '@auth/application/ports/user-repository.port';
+import { EmailVO } from '@auth/domain/value-objects/email.vo';
 
 @Injectable()
 export class TypeOrmUserRepositoryAdapter implements UserRepositoryPort {
@@ -68,7 +68,11 @@ export class TypeOrmUserRepositoryAdapter implements UserRepositoryPort {
 			email: user.email,
 			password: user.password,
 			userName: user.userName,
-			roles: user.roles?.map((r) => ({ name: r.name })),
+			maxWeightSensitiveContent: user.maxWeightSensitiveContent,
+			roles: user.roles?.map((r) => ({
+				name: r.name,
+				maxWeightSensitiveContent: r.maxWeightSensitiveContent,
+			})),
 		};
 	}
 }

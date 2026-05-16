@@ -11,13 +11,13 @@ import {
 	WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { WsJwtGuard } from '../../../auth/infrastructure/framework/ws-jwt.guard';
-import { ReadingEvents } from '../../domain/constants/events.constant';
+import { WsJwtGuard } from '@auth/infrastructure/framework/ws-jwt.guard';
+import { ReadingEvents } from '@users/domain/constants/events.constant';
 import {
 	ReadingProgressResponseDto,
 	SaveReadingProgressDto,
-} from '../http/dto/reading-progress.dto';
-import { ReadingProgressService } from '../../application/use-cases/reading-progress.service';
+} from '@users/infrastructure/http/dto/reading-progress.dto';
+import { ReadingProgressService } from '@users/application/use-cases/reading-progress.service';
 
 interface ProgressUpdatePayload {
 	userId: string;

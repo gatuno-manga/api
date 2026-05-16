@@ -6,8 +6,8 @@ import {
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { AdminUsersService } from 'src/users/application/use-cases/admin-users.service';
-import { BookRelationship } from '../../domain/entities/book-relationship';
-import { Book } from '../../domain/entities/book';
+import { BookRelationship } from '@books/domain/entities/book-relationship';
+import { Book } from '@books/domain/entities/book';
 import {
 	BookBookRelationshipService,
 	type RelatedBookItem,
@@ -16,11 +16,11 @@ import {
 import {
 	I_BOOK_RELATIONSHIP_REPOSITORY,
 	IBookRelationshipRepository,
-} from '../ports/book-relationship-repository.interface';
+} from '@books/application/ports/book-relationship-repository.interface';
 import {
 	I_BOOK_REPOSITORY,
 	IBookRepository,
-} from '../ports/book-repository.interface';
+} from '@books/application/ports/book-repository.interface';
 
 describe('BookBookRelationshipService', () => {
 	let service: BookBookRelationshipService;

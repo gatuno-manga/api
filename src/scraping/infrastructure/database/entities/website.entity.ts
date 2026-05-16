@@ -163,6 +163,18 @@ export class Website {
 	})
 	timeoutMultipliers: Record<string, number>;
 
+	@Column({
+		type: 'boolean',
+		default: false,
+	})
+	useFlareSolverr: boolean;
+
+	@Column({
+		type: 'text',
+		nullable: true,
+	})
+	proxyUrl: string | null;
+
 	@CreateDateColumn()
 	createdAt: Date;
 

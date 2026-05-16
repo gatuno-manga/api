@@ -1,5 +1,5 @@
 import { validate } from 'class-validator';
-import { BookChaptersCursorOptionsDto } from '../dto/book-chapters-cursor-options.dto';
+import { BookChaptersCursorOptionsDto } from '@books/application/dto/book-chapters-cursor-options.dto';
 import { OrderDirection } from 'src/common/enum/order-direction.enum';
 
 describe('BookChaptersCursorOptionsDto', () => {

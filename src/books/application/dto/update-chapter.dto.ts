@@ -8,7 +8,7 @@ import {
 	IsUrl,
 	MaxLength,
 } from 'class-validator';
-import { NormalizeUrl } from '../../../common/decorators/normalize-url.decorator';
+import { NormalizeUrl } from '@common/decorators/normalize-url.decorator';
 
 export class UpdateChapterDto {
 	@ApiPropertyOptional({

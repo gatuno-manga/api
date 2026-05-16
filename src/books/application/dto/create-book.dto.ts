@@ -12,8 +12,8 @@ import {
 	Min,
 	ValidateNested,
 } from 'class-validator';
-import { NormalizeUrl } from '../../../common/decorators/normalize-url.decorator';
-import { BookType } from '../../domain/enums/book-type.enum';
+import { NormalizeUrl } from '@common/decorators/normalize-url.decorator';
+import { BookType } from '@books/domain/enums/book-type.enum';
 import { CoverBookDto } from './cover-book.dto';
 import { CreateAuthorDto } from './create-author.dto';
 import { CreateChapterDto } from './create-chapter.dto';

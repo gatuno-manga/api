@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { Browser } from 'playwright';
 import { chromium as playwrightChromium } from 'playwright-extra';
-import { BrowserConfig } from '../browser/browser-config.interface';
+import { BrowserConfig } from '@scraping/infrastructure/browser/browser-config.interface';
 import {
 	BrowserPoolConfig,
 	DEFAULT_BROWSER_POOL_CONFIG,

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Book } from '../../infrastructure/database/entities/book.entity';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
 
 export class RelatedBookItemDto {
 	@ApiProperty({ example: 'f47ac10b-58cc-4372-a567-0e02b2c3d479' })

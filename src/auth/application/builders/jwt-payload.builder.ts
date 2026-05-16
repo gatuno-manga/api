@@ -1,6 +1,6 @@
 import { User } from 'src/users/infrastructure/database/entities/user.entity';
-import { UserAuthData } from '../ports/user-repository.port';
-import { JwtPayloadDto } from '../dto/jwt-payload.dto';
+import { UserAuthData } from '@auth/application/ports/user-repository.port';
+import { JwtPayloadDto } from '@auth/application/dto/jwt-payload.dto';
 
 export class JwtPayloadBuilder {
 	private payload: Partial<JwtPayloadDto> = {};
@@ -91,26 +91,28 @@ export class JwtPayloadBuilder {
 			throw new Error('User must have at least one role assigned');
 		}
 
-		let maxWeightSensitiveContent = 0;
+		// Calculate max weight from roles
+		const roleWeights = user.roles
+			.map(
+				(role) =>
+					(role as { maxWeightSensitiveContent?: number })
+						.maxWeightSensitiveContent ?? 0,
+			)
+			.filter((w) => typeof w === 'number');
+
+		const maxRoleWeight =
+			roleWeights.length > 0 ? Math.max(...roleWeights) : 0;
+
+		// Get user weight
+		let userWeight = 0;
 		if (
 			'maxWeightSensitiveContent' in user &&
 			user.maxWeightSensitiveContent !== undefined
 		) {
-			maxWeightSensitiveContent = user.maxWeightSensitiveContent;
-		} else {
-			// Fallback: try to find max weight in roles if they have it
-			const weights = user.roles
-				.map(
-					(role) =>
-						(role as { maxWeightSensitiveContent?: number })
-							.maxWeightSensitiveContent ?? 0,
-				)
-				.filter((w) => typeof w === 'number');
-
-			if (weights.length > 0) {
-				maxWeightSensitiveContent = Math.max(...weights);
-			}
+			userWeight = user.maxWeightSensitiveContent;
 		}
+
+		const maxWeightSensitiveContent = Math.max(userWeight, maxRoleWeight);
 
 		return this.setSubject(user.id)
 			.setEmail(user.email)

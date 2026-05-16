@@ -1,5 +1,5 @@
-import { Author } from '../../domain/entities/author';
-import { AuthorsOptions } from '../dto/authors-options.dto';
+import { Author } from '@books/domain/entities/author';
+import { AuthorsOptions } from '@books/application/dto/authors-options.dto';
 import { AuthorCriteria } from '@books/domain/types/criteria.types';
 
 export interface IAuthorRepository {
@@ -12,6 +12,7 @@ export interface IAuthorRepository {
 		options: AuthorsOptions,
 		maxWeight?: number,
 	): Promise<Author[]>;
+	findByBookIds(bookIds: string[]): Promise<(Author & { bookId: string })[]>;
 	count(criteria?: AuthorCriteria): Promise<number>;
 }
 

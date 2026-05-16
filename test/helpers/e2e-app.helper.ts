@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { randomUUID } from 'node:crypto';
+import { v7 as uuidv7 } from 'uuid';
 import cookieParser from 'cookie-parser';
 import { JwtService } from '@nestjs/jwt';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
@@ -26,11 +26,11 @@ export function createAdminAccessToken(app: INestApplication): string {
 
 	return jwtService.sign(
 		{
-			sub: randomUUID(),
+			sub: uuidv7(),
 			email: 'admin-e2e@gatuno.local',
 			roles: ['admin'],
 			maxWeightSensitiveContent: 99,
-			sessionId: randomUUID(),
+			sessionId: uuidv7(),
 		},
 		{
 			issuer: configService.jwt.issuer,

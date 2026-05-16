@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppConfigModule } from '@app-config/app-config.module';
 import { AuthModule } from '@auth/auth.module';
 import { RedisModule } from '@api/infrastructure/redis/redis.module';
+import { FilesModule } from '@src/files/files.module';
 import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { BookDownloadController } from '@books/infrastructure/http/controllers/book-download.controller';
@@ -21,6 +22,7 @@ import { ZipStrategy } from '@books/application/strategies/zip.strategy';
 		RedisModule,
 		AuthModule,
 		AppConfigModule,
+		FilesModule,
 	],
 	controllers: [ChapterDownloadController, BookDownloadController],
 	providers: [

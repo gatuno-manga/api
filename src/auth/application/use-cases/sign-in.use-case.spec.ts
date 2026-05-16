@@ -1,7 +1,7 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { PasswordEncryption } from 'src/infrastructure/encryption/password-encryption.provider';
-import { SessionAuditService } from '../../infrastructure/adapters/session-audit.service';
-import { UserRepositoryPort } from '../ports/user-repository.port';
+import { SessionAuditService } from '@auth/infrastructure/adapters/session-audit.service';
+import { UserRepositoryPort } from '@auth/application/ports/user-repository.port';
 import { SignInUseCase } from './sign-in.use-case';
 
 describe('SignInUseCase', () => {
@@ -41,7 +41,8 @@ describe('SignInUseCase', () => {
 			email: 'user@example.com',
 			password: 'hashed-password',
 			userName: 'user',
-			roles: [{ name: 'user' }],
+			maxWeightSensitiveContent: 0,
+			roles: [{ name: 'user', maxWeightSensitiveContent: 0 }],
 		};
 		const authResult = {
 			accessToken: 'access-token',
@@ -74,7 +75,8 @@ describe('SignInUseCase', () => {
 			id: 'user-1',
 			email: 'user@example.com',
 			userName: 'user',
-			roles: [{ name: 'user' }],
+			maxWeightSensitiveContent: 0,
+			roles: [{ name: 'user', maxWeightSensitiveContent: 0 }],
 		});
 
 		await expect(
@@ -97,7 +99,8 @@ describe('SignInUseCase', () => {
 			email: 'user@example.com',
 			password: 'hashed-password',
 			userName: 'user',
-			roles: [{ name: 'user' }],
+			maxWeightSensitiveContent: 0,
+			roles: [{ name: 'user', maxWeightSensitiveContent: 0 }],
 		});
 		passwordEncryption.compare.mockResolvedValue(false);
 

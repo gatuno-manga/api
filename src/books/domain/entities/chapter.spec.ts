@@ -1,7 +1,7 @@
 import { Chapter } from './chapter';
 import { Page } from './page';
-import { ContentType } from '../enums/content-type.enum';
-import { ScrapingStatus } from '../enums/scrapingStatus.enum';
+import { ContentType } from '@books/domain/enums/content-type.enum';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 
 describe('Chapter Entity', () => {
 	it('should create a chapter instance', () => {

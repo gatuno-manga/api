@@ -1,5 +1,5 @@
-import { Role } from '../../../users/infrastructure/database/entities/role.entity';
-import { User } from '../../../users/infrastructure/database/entities/user.entity';
+import { Role } from '@users/infrastructure/database/entities/role.entity';
+import { User } from '@users/infrastructure/database/entities/user.entity';
 import { JwtPayloadBuilder } from './jwt-payload.builder';
 
 describe('JwtPayloadBuilder', () => {
@@ -180,26 +180,59 @@ describe('JwtPayloadBuilder', () => {
 	});
 
 	describe('fromUser method', () => {
-		it('should build payload from User entity', () => {
+		it('should take the maximum weight between user preference and role allowance', () => {
 			const role1 = new Role();
 			role1.name = 'admin';
-			role1.maxWeightSensitiveContent = 5;
+			role1.maxWeightSensitiveContent = 99;
 
 			const role2 = new Role();
 			role2.name = 'moderator';
-			role2.maxWeightSensitiveContent = 3;
+			role2.maxWeightSensitiveContent = 50;
 
 			const user = new User();
 			user.id = 'user-123';
 			user.email = 'admin@example.com';
 			user.roles = [role1, role2];
+			user.maxWeightSensitiveContent = 10;
 
 			const payload = builder.fromUser(user).setIssuer('login').build();
 
 			expect(payload.sub).toBe('user-123');
 			expect(payload.email).toBe('admin@example.com');
 			expect(payload.roles).toEqual(['admin', 'moderator']);
-			expect(payload.maxWeightSensitiveContent).toBe(5); // Máximo entre 5 e 3
+			expect(payload.maxWeightSensitiveContent).toBe(99); // Max entre 10 (user) e 99 (role max)
+		});
+
+		it('should use user weight even if it is higher than role limit', () => {
+			const role = new Role();
+			role.name = 'user';
+			role.maxWeightSensitiveContent = 4;
+
+			const user = new User();
+			user.id = 'user-123';
+			user.email = 'user@example.com';
+			user.roles = [role];
+			user.maxWeightSensitiveContent = 99; // User wants adult content
+
+			const payload = builder.fromUser(user).setIssuer('login').build();
+
+			expect(payload.maxWeightSensitiveContent).toBe(99); // Takes max (99)
+		});
+
+		it('should return 0 when both user and roles have weight 0', () => {
+			const role = new Role();
+			role.name = 'user';
+			role.maxWeightSensitiveContent = 0;
+
+			const user = new User();
+			user.id = 'user-123';
+			user.email = 'user@example.com';
+			user.roles = [role];
+			user.maxWeightSensitiveContent = 0;
+
+			const payload = builder.fromUser(user).setIssuer('login').build();
+
+			expect(payload.maxWeightSensitiveContent).toBe(0);
 		});
 
 		it('should throw error when user has no roles', () => {

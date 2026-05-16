@@ -1,7 +1,7 @@
 import { BrowserContext, Page } from 'playwright';
-import { WebsiteConfigDto } from '../../application/dto/website-config.dto';
-import { NetworkInterceptor } from '../helpers/network-interceptor';
-import { StorageInjector } from '../helpers/storage-injector';
+import { WebsiteConfigDto } from '@scraping/application/dto/website-config.dto';
+import { NetworkInterceptor } from '@scraping/infrastructure/helpers/network-interceptor';
+import { StorageInjector } from '@scraping/infrastructure/helpers/storage-injector';
 
 export interface ScrapingContext {
 	page: Page;

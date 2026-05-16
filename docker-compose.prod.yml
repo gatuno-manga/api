@@ -21,3 +21,14 @@ services:
 
   redis:
     restart: always
+
+  browserless:
+    restart: always
+
+  meilisearch:
+    restart: always
+
+  meilisync:
+    restart: always
+    volumes:
+      - ./search/meilisync.yml:/meilisync/config.yml

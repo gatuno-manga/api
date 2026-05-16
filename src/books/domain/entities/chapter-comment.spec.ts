@@ -1,7 +1,7 @@
 import { ChapterComment } from './chapter-comment';
 import { ChapterRead } from './chapter-read';
 import { Chapter } from './chapter';
-import { User } from '../../../users/domain/entities/user';
+import { User } from '@users/domain/entities/user';
 
 describe('ChapterComment Entity', () => {
 	it('should create a chapter comment instance', () => {

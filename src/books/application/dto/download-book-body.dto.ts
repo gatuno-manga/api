@@ -18,16 +18,18 @@ export class DownloadBookBodyDto {
 	})
 	@IsOptional()
 	@IsArray()
-	@IsUUID('4', { each: true })
+	@IsUUID('all', { each: true })
 	chapterIds?: string[];
 
-	@ApiProperty({
+	@ApiPropertyOptional({
 		description: 'Formato do download do livro',
 		enum: BookDownloadFormat,
 		example: BookDownloadFormat.IMAGES_ZIP,
+		default: BookDownloadFormat.IMAGES_ZIP,
 	})
+	@IsOptional()
 	@IsEnum(BookDownloadFormat, {
 		message: 'Format must be either "images" or "pdfs"',
 	})
-	format: BookDownloadFormat;
+	format: BookDownloadFormat = BookDownloadFormat.IMAGES_ZIP;
 }

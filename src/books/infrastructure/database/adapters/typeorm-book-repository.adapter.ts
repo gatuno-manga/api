@@ -1,6 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, DeepPartial } from 'typeorm';
+import {
+	Repository,
+	FindOptionsWhere,
+	DeepPartial,
+	EntityManager,
+} from 'typeorm';
 import { IBookRepository } from '@books/application/ports/book-repository.interface';
 import { Book as DomainBook } from '@books/domain/entities/book';
 import { Book as InfrastructureBook } from '@books/infrastructure/database/entities/book.entity';
@@ -16,11 +21,18 @@ import {
 @Injectable()
 export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 	private readonly logger = new Logger(TypeOrmBookRepositoryAdapter.name);
+	private readonly repository: Repository<InfrastructureBook>;
 
 	constructor(
 		@InjectRepository(InfrastructureBook)
-		private readonly repository: Repository<InfrastructureBook>,
-	) {}
+		repository: Repository<InfrastructureBook>,
+		@Optional()
+		entityManager?: EntityManager,
+	) {
+		this.repository = entityManager
+			? entityManager.getRepository(InfrastructureBook)
+			: repository;
+	}
 
 	async findById(
 		id: string,
@@ -135,7 +147,7 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 		// Apply Max Weight Sensitive Content
 		const maxWeight = accessContext.effectiveMaxWeightSensitiveContent;
 
-		// Filter by sensitive content weight using NOT EXISTS
+		// Filter by sensitive content weight using NOT EXISTS pattern that preserves parameters
 		queryBuilder.andWhere((qb) => {
 			const subQuery = qb
 				.subQuery()
@@ -147,7 +159,7 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 					'sc.id = bsc.sensitiveContentId',
 				)
 				.where('bsc.booksId = book.id')
-				.andWhere('sc.weight > :maxWeight', { maxWeight });
+				.andWhere('sc.weight > :maxWeight');
 
 			if (accessContext.allowSensitiveContentIds?.length) {
 				subQuery.andWhere('sc.id NOT IN (:...allowScIds)', {
@@ -157,6 +169,13 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 
 			return `NOT EXISTS ${subQuery.getQuery()}`;
 		});
+		queryBuilder.setParameter('maxWeight', maxWeight);
+		if (accessContext.allowSensitiveContentIds?.length) {
+			queryBuilder.setParameter(
+				'allowScIds',
+				accessContext.allowSensitiveContentIds,
+			);
+		}
 
 		// Deny specific sensitive content IDs
 		if (accessContext.denySensitiveContentIds?.length) {
@@ -169,11 +188,13 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 						'dsc_bsc',
 					)
 					.where('dsc_bsc.booksId = book.id')
-					.andWhere('dsc_bsc.sensitiveContentId IN (:...denyScIds)', {
-						denyScIds: accessContext.denySensitiveContentIds,
-					});
+					.andWhere('dsc_bsc.sensitiveContentId IN (:...denyScIds)');
 				return `NOT EXISTS ${subQuery.getQuery()}`;
 			});
+			queryBuilder.setParameter(
+				'denyScIds',
+				accessContext.denySensitiveContentIds,
+			);
 		}
 
 		// Deny specific tag IDs
@@ -184,11 +205,10 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 					.select('1')
 					.from('books_tags_tags', 'dt_bt')
 					.where('dt_bt.booksId = book.id')
-					.andWhere('dt_bt.tagsId IN (:...denyTagIds)', {
-						denyTagIds: accessContext.denyTagIds,
-					});
+					.andWhere('dt_bt.tagsId IN (:...denyTagIds)');
 				return `NOT EXISTS ${subQuery.getQuery()}`;
 			});
+			queryBuilder.setParameter('denyTagIds', accessContext.denyTagIds);
 		}
 
 		// 3. Apply Filter Strategies
@@ -266,7 +286,7 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 					'sc.id = sc_bsc.sensitiveContentId',
 				)
 				.where('sc_bsc.booksId = book.id')
-				.andWhere('sc.weight > :maxWeight', { maxWeight });
+				.andWhere('sc.weight > :maxWeight');
 
 			if (accessContext.allowSensitiveContentIds?.length) {
 				subQuery.andWhere('sc.id NOT IN (:...allowScIds)', {
@@ -276,6 +296,13 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 
 			return `NOT EXISTS ${subQuery.getQuery()}`;
 		});
+		queryBuilder.setParameter('maxWeight', maxWeight);
+		if (accessContext.allowSensitiveContentIds?.length) {
+			queryBuilder.setParameter(
+				'allowScIds',
+				accessContext.allowSensitiveContentIds,
+			);
+		}
 
 		if (accessContext.denySensitiveContentIds?.length) {
 			queryBuilder.andWhere((qb) => {
@@ -287,11 +314,13 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 						'dsc_bsc',
 					)
 					.where('dsc_bsc.booksId = book.id')
-					.andWhere('dsc_bsc.sensitiveContentId IN (:...denyScIds)', {
-						denyScIds: accessContext.denySensitiveContentIds,
-					});
+					.andWhere('dsc_bsc.sensitiveContentId IN (:...denyScIds)');
 				return `NOT EXISTS ${subQuery.getQuery()}`;
 			});
+			queryBuilder.setParameter(
+				'denyScIds',
+				accessContext.denySensitiveContentIds,
+			);
 		}
 
 		if (accessContext.denyTagIds?.length) {
@@ -301,11 +330,10 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 					.select('1')
 					.from('books_tags_tags', 'dt_bt')
 					.where('dt_bt.booksId = book.id')
-					.andWhere('dt_bt.tagsId IN (:...denyTagIds)', {
-						denyTagIds: accessContext.denyTagIds,
-					});
+					.andWhere('dt_bt.tagsId IN (:...denyTagIds)');
 				return `NOT EXISTS ${subQuery.getQuery()}`;
 			});
+			queryBuilder.setParameter('denyTagIds', accessContext.denyTagIds);
 		}
 
 		// 3. Apply Filter Strategies

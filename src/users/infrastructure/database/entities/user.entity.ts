@@ -2,13 +2,16 @@ import {
 	Column,
 	CreateDateColumn,
 	Entity,
+	JoinColumn,
 	JoinTable,
 	ManyToMany,
+	OneToOne,
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
 } from 'typeorm';
 import { Role } from './role.entity';
 import { UserGroup } from './user-group.entity';
+import { UserImage } from './user-image.entity';
 
 @Entity('users')
 export class User {
@@ -32,11 +35,13 @@ export class User {
 	@Column({ default: 0 })
 	maxWeightSensitiveContent: number;
 
-	@Column({ type: 'varchar', length: 255, nullable: true })
-	profileImagePath: string | null;
+	@OneToOne(() => UserImage, { nullable: true, cascade: true, eager: true })
+	@JoinColumn({ name: 'profilePictureId' })
+	profilePicture: UserImage | null;
 
-	@Column({ type: 'varchar', length: 255, nullable: true })
-	profileBannerPath: string | null;
+	@OneToOne(() => UserImage, { nullable: true, cascade: true, eager: true })
+	@JoinColumn({ name: 'profileBannerId' })
+	profileBanner: UserImage | null;
 
 	@Column({ default: false })
 	isBanned: boolean;

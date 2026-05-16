@@ -9,6 +9,7 @@ import {
 	Unique,
 } from 'typeorm';
 import { Chapter } from './chapter.entity';
+import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
 
 @Entity('pages')
 @Unique(['index', 'chapter'])
@@ -27,6 +28,9 @@ export class Page {
 
 	@Column()
 	path: string;
+
+	@Column({ type: 'json', nullable: true })
+	metadata: ImageMetadata | null;
 
 	@DeleteDateColumn()
 	deletedAt: Date;

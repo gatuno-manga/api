@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { IFileCompressor } from '../../application/ports/file-compressor.interface';
+import { IFileCompressor } from '@files/application/ports/file-compressor.interface';
 
 /**
  * Factory para selecionar o compressor adequado baseado no tipo de arquivo

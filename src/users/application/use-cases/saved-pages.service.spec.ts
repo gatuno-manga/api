@@ -3,11 +3,11 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { SavedPagesService } from './saved-pages.service';
-import { SavedPage } from '../../infrastructure/database/entities/saved-page.entity';
+import { SavedPage } from '@users/infrastructure/database/entities/saved-page.entity';
 import { Page } from 'src/books/infrastructure/database/entities/page.entity';
 import { Chapter } from 'src/books/infrastructure/database/entities/chapter.entity';
 import { Book } from 'src/books/infrastructure/database/entities/book.entity';
-import { UserResourcesMapper } from '../mappers/user-resources.mapper';
+import { UserResourcesMapper } from '@users/application/mappers/user-resources.mapper';
 
 describe('SavedPagesService', () => {
 	let service: SavedPagesService;

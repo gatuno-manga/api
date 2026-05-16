@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from '../src/app.module';
+import { AppModule } from '@/app.module';
 import { DataSource } from 'typeorm';
 import * as fs from 'node:fs';
 import * as path from 'node:path';

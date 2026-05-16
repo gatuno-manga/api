@@ -1,8 +1,11 @@
 import {
 	BadRequestException,
+	Inject,
 	Injectable,
 	UnauthorizedException,
 } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import {
 	createCipheriv,
 	createDecipheriv,
@@ -15,7 +18,7 @@ import { Repository } from 'typeorm';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { PasswordEncryption } from 'src/infrastructure/encryption/password-encryption.provider';
 import { User } from 'src/users/infrastructure/database/entities/user.entity';
-import { UserMfa } from '../database/entities/user-mfa.entity';
+import { UserMfa } from '@auth/infrastructure/database/entities/user-mfa.entity';
 
 interface MfaStatusResult {
 	totpEnabled: boolean;
@@ -31,6 +34,7 @@ export class MfaService {
 		private readonly userRepository: Repository<User>,
 		private readonly appConfig: AppConfigService,
 		private readonly passwordEncryption: PasswordEncryption,
+		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 	) {
 		authenticator.options = {
 			step: 30,
@@ -159,15 +163,28 @@ export class MfaService {
 		plainCodes: string[];
 		hashedCodes: string[];
 	}> {
-		const plainCodes = Array.from({ length: 8 }, () =>
-			randomBytes(4).toString('hex').toUpperCase(),
-		);
+		const plainCodes = Array.from({ length: 8 }, () => {
+			const bytes = randomBytes(10).toString('hex').toUpperCase();
+			return `${bytes.slice(0, 5)}-${bytes.slice(5, 10)}`;
+		});
 
-		const hashedCodes = await Promise.all(
-			plainCodes.map((code) => this.passwordEncryption.encrypt(code)),
+		const hashedCodes = plainCodes.map((code) =>
+			createHash('sha256').update(code).digest('hex'),
 		);
 
 		return { plainCodes, hashedCodes };
+	}
+
+	private async checkAndLockTotp(
+		userId: string,
+		code: string,
+	): Promise<void> {
+		const cacheKey = `totp_used:${userId}:${code}`;
+		const isUsed = await this.cacheManager.get(cacheKey);
+		if (isUsed) {
+			throw new UnauthorizedException('TOTP code already used');
+		}
+		await this.cacheManager.set(cacheKey, true, 30000);
 	}
 
 	async verifyTotpSetup(
@@ -189,6 +206,8 @@ export class MfaService {
 			throw new UnauthorizedException('Invalid MFA verification code');
 		}
 
+		await this.checkAndLockTotp(userId, code);
+
 		const { plainCodes, hashedCodes } = await this.generateBackupCodes();
 		config.isTotpEnabled = true;
 		config.backupCodesHash = hashedCodes;
@@ -207,8 +226,22 @@ export class MfaService {
 		code: string,
 	): Promise<boolean> {
 		const backupCodes = config.backupCodesHash ?? [];
+		const inputHash = createHash('sha256').update(code).digest('hex');
+
 		for (let i = 0; i < backupCodes.length; i++) {
-			if (await this.passwordEncryption.compare(backupCodes[i], code)) {
+			const storedHash = backupCodes[i];
+			let isMatch = false;
+
+			if (storedHash.startsWith('$')) {
+				isMatch = await this.passwordEncryption.compare(
+					storedHash,
+					code,
+				);
+			} else {
+				isMatch = storedHash === inputHash;
+			}
+
+			if (isMatch) {
 				backupCodes.splice(i, 1);
 				config.backupCodesHash = backupCodes;
 				config.backupCodesUsed = (config.backupCodesUsed ?? 0) + 1;
@@ -237,6 +270,7 @@ export class MfaService {
 		});
 
 		if (validTotp) {
+			await this.checkAndLockTotp(userId, code);
 			config.lastVerifiedAt = new Date();
 			await this.userMfaRepository.save(config);
 			return true;

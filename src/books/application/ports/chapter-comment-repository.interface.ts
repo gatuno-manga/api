@@ -1,4 +1,4 @@
-import { ChapterComment } from '../../domain/entities/chapter-comment';
+import { ChapterComment } from '@books/domain/entities/chapter-comment';
 import {
 	ViewerContext,
 	PaginationOptions,

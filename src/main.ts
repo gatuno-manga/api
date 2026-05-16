@@ -8,6 +8,7 @@ import { configureCors } from './infrastructure/http/config/cors.config';
 import { configureStaticAssets } from './infrastructure/http/config/static-assets.config';
 import { configureSwagger } from './infrastructure/http/config/swagger.config';
 import { configureValidationPipe } from './infrastructure/http/config/validation-pipe.config';
+import { configureKafka } from './infrastructure/http/config/kafka.config';
 
 async function bootstrap() {
 	const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -17,13 +18,21 @@ async function bootstrap() {
 	configureValidationPipe(app);
 
 	configureCors(app, configService.allowedUrls);
+	configureStaticAssets(app);
 
 	app.enableShutdownHooks();
 	app.use(cookieParser());
 	app.setGlobalPrefix('api');
 	app.getHttpAdapter().getInstance().set('trust proxy', true);
 
-	if (configService.nodeEnv === 'development') {
+	configureKafka(app, configService);
+
+	await app.startAllMicroservices();
+
+	if (
+		configService.nodeEnv === 'development' ||
+		configService.enableSwagger
+	) {
 		configureSwagger(app);
 	}
 

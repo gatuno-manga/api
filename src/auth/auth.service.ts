@@ -5,7 +5,8 @@ import {
 	NotFoundException,
 	UnauthorizedException,
 } from '@nestjs/common';
-import { randomBytes, randomUUID } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
+import { v7 as uuidv7 } from 'uuid';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import ms from 'ms';
@@ -690,15 +691,15 @@ export class AuthService {
 			throw new BadRequestException('User has no roles assigned');
 		}
 
-		const sessionId = rotation?.sessionId ?? randomUUID();
+		const sessionId = rotation?.sessionId ?? uuidv7();
 		const payload = new JwtPayloadBuilder()
 			.fromUser(user)
 			.setIssuer(this.configService.jwt.issuer)
 			.setSessionId(sessionId)
 			.build();
 
-		const refreshTokenId = randomUUID();
-		const refreshTokenFamilyId = rotation?.familyId ?? randomUUID();
+		const refreshTokenId = uuidv7();
+		const refreshTokenFamilyId = rotation?.familyId ?? uuidv7();
 		const refreshPayload = {
 			...payload,
 			jti: refreshTokenId,
@@ -739,7 +740,7 @@ export class AuthService {
 		const authMethod = options?.authMethod ?? 'password';
 		const riskLevel = options?.riskLevel ?? 'low';
 		const mfaVerified = options?.mfaVerified ?? false;
-		const sessionId = options?.sessionId ?? randomUUID();
+		const sessionId = options?.sessionId ?? uuidv7();
 		const tokens = await this.getTokens(user, {
 			sessionId,
 			familyId: options?.rotation?.familyId,
@@ -1098,13 +1099,11 @@ export class AuthService {
 			}
 
 			const currentFamilyId =
-				rotatedToken?.familyId ??
-				refreshTokenMeta.familyId ??
-				randomUUID();
+				rotatedToken?.familyId ?? refreshTokenMeta.familyId ?? uuidv7();
 			const currentSessionId =
 				rotatedToken?.sessionId ??
 				refreshTokenMeta.sessionId ??
-				randomUUID();
+				uuidv7();
 
 			const tokens = await this.generateTokensForUser(user, {
 				authMethod: 'password',

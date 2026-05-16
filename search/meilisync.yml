@@ -1,0 +1,35 @@
+source:
+  type: mysql
+  host: ${DB_HOST}
+  port: ${DB_PORT}
+  user: ${DB_USER}
+  password: ${DB_PASSWORD}
+  database: ${DB_NAME}
+  charset: utf8mb4
+
+meilisearch:
+  api_url: ${MEILI_HOST}
+  api_key: ${MEILI_MASTER_KEY}
+
+progress:
+  type: file
+  path: /meilisync/progress.json
+
+sync:
+  - table: books
+    index: books
+    full: true
+    sql: "SELECT * FROM books_search_view WHERE id = :id"
+  - table: authors
+    index: authors
+    full: true
+  - table: tags
+    index: tags
+    full: true
+  - table: users
+    index: users
+    full: true
+    fields:
+      id: id
+      userName: userName
+      name: name

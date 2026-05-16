@@ -1,7 +1,7 @@
-import { PlaywrightBrowserFactory } from '../browser';
-import { IConcurrencyManager } from '../concurrency';
-import { WebsiteConfigDto } from '../../application/dto/website-config.dto';
-import { NetworkInterceptor } from '../helpers';
+import { PlaywrightBrowserFactory } from '@scraping/infrastructure/browser';
+import { IConcurrencyManager } from '@scraping/infrastructure/concurrency';
+import { WebsiteConfigDto } from '@scraping/application/dto/website-config.dto';
+import { NetworkInterceptor } from '@scraping/infrastructure/helpers';
 import { ScrapingSessionRunner } from './scraping-session.runner';
 
 describe('ScrapingSessionRunner', () => {

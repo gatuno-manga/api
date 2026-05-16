@@ -30,11 +30,22 @@ const detectDockerContainerIp = (containerName: string): string | null => {
 const masterIp = detectDockerContainerIp('gatuno-database');
 const slave1Ip = detectDockerContainerIp('gatuno-database-slave-1');
 const slave2Ip = detectDockerContainerIp('gatuno-database-slave-2');
+const proxyIp = detectDockerContainerIp('gatuno-proxysql');
 const redisIp = detectDockerContainerIp('gatuno-redis');
 
 // Força os IPs detectados no process.env para sobrescrever o .env
-if (masterIp) process.env.DB_MASTER_HOST = masterIp;
-if (slave1Ip && slave2Ip) {
+if (proxyIp) {
+	process.env.DB_HOST = proxyIp;
+	process.env.DB_PORT = '6033';
+} else if (masterIp) {
+	process.env.DB_HOST = masterIp;
+	process.env.DB_PORT = '3306';
+}
+
+if (masterIp) {
+	process.env.DB_MASTER_HOST = masterIp;
+	process.env.DB_SLAVE_HOSTS = masterIp; // Use master as slave to avoid replication lag in tests
+} else if (slave1Ip && slave2Ip) {
 	process.env.DB_SLAVE_HOSTS = `${slave1Ip},${slave2Ip}`;
 } else if (slave1Ip || slave2Ip) {
 	process.env.DB_SLAVE_HOSTS = slave1Ip || slave2Ip || '';
@@ -45,18 +56,30 @@ if (redisIp) process.env.REDIS_HOST = redisIp;
 setEnvDefault('NODE_ENV', 'test');
 setEnvDefault('DB_TYPE', 'mysql');
 setEnvDefault('DB_NAME', 'gatuno');
-setEnvDefault('DB_MASTER_HOST', '127.0.0.1');
-setEnvDefault('DB_SLAVE_HOSTS', '127.0.0.1');
-setEnvDefault('DB_PORT', '3306');
+setEnvDefault('DB_HOST', '127.0.0.1');
+setEnvDefault('DB_PORT', '6033');
 setEnvDefault('DB_USER', 'root');
 setEnvDefault('DB_PASS', 'root');
 setEnvDefault('REDIS_HOST', '127.0.0.1');
 setEnvDefault('REDIS_PORT', '6379');
 setEnvDefault('REDIS_PASSWORD', '');
+
+// Force override for local tests
+process.env.KAFKA_HOST = 'localhost';
+process.env.KAFKA_PORT = '9094';
+process.env.DB_MASTER_HOST = process.env.DB_MASTER_HOST || '127.0.0.1';
+process.env.REDIS_HOST = process.env.REDIS_HOST || '127.0.0.1';
+
 setEnvDefault('USERADMIN_EMAIL', 'admin@example.com');
 setEnvDefault('USERADMIN_PASSWORD', 'AdminP@ssw0rd!');
 setEnvDefault('JWT_ACCESS_SECRET', 'default_secret');
 setEnvDefault('JWT_REFRESH_SECRET', 'default_refresh_secret');
+setEnvDefault('API_URL', 'http://localhost:3000');
+setEnvDefault('APP_URL', 'http://localhost:4200');
+setEnvDefault('ALLOWED_URL', 'http://localhost:4200');
+setEnvDefault('KAFKA_BROKER', 'localhost:9094');
+
+jest.setTimeout(120000); // 2 minutos para testes pesados
 
 const shouldShowLogs = process.env.TEST_LOGS === 'true';
 

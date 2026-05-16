@@ -9,13 +9,7 @@ import {
 	UseGuards,
 	UseInterceptors,
 } from '@nestjs/common';
-import {
-	ApiBearerAuth,
-	ApiOperation,
-	ApiParam,
-	ApiResponse,
-	ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
@@ -25,6 +19,7 @@ import { OptionalAuthGuard } from 'src/auth/infrastructure/framework/optional-au
 import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-cache.interceptor';
 import { TagsOptions } from '@books/application/dto/tags-options.dto';
 import { TagsService } from '@books/application/services/tags.service';
+import { ApiDocsGetAll, ApiDocsMergeTags } from './swagger/tags.swagger';
 
 @ApiTags('Tags')
 @Controller('tags')
@@ -37,14 +32,8 @@ export class TagsController {
 	@Throttle({ long: { limit: 100, ttl: 60000 } })
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(1800)
-	@ApiOperation({
-		summary: 'Get all tags',
-		description: 'Retrieve a list of all tags with pagination',
-	})
-	@ApiResponse({ status: 200, description: 'Tags retrieved successfully' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiResponse({ status: 429, description: 'Too many requests' })
 	@UseGuards(OptionalAuthGuard)
+	@ApiDocsGetAll()
 	getAll(
 		@Query() options: TagsOptions,
 		@CurrentUser() user?: CurrentUserDto,
@@ -54,19 +43,7 @@ export class TagsController {
 
 	@Patch(':tagId/merge')
 	@Throttle({ medium: { limit: 10, ttl: 60000 } })
-	@ApiOperation({
-		summary: 'Merge tags',
-		description: 'Merge multiple tags into one (Admin only)',
-	})
-	@ApiParam({
-		name: 'tagId',
-		description: 'Target tag ID to merge into',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@ApiResponse({ status: 200, description: 'Tags merged successfully' })
-	@ApiResponse({ status: 404, description: 'Tag not found' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiResponse({ status: 429, description: 'Too many requests' })
+	@ApiDocsMergeTags()
 	mergeTags(@Param('tagId') tagId: string, @Body() dto: string[]) {
 		return this.tagsService.mergeTags(tagId, dto);
 	}

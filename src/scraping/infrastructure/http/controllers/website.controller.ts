@@ -9,21 +9,22 @@ import {
 	Post,
 	UseGuards,
 } from '@nestjs/common';
-import {
-	ApiBearerAuth,
-	ApiOperation,
-	ApiParam,
-	ApiResponse,
-	ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Throttle } from '@nestjs/throttler';
 import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { RolesEnum } from 'src/users/domain/enums/roles.enum';
-import { RegisterWebSiteDto } from '../../../application/dto/register-website.dto';
-import { UpdateWebsiteDto } from '../../../application/dto/update-website.dto';
-import { WebsiteService } from '../../../application/services/website.service';
+import { RegisterWebSiteDto } from '@scraping/application/dto/register-website.dto';
+import { UpdateWebsiteDto } from '@scraping/application/dto/update-website.dto';
+import { WebsiteService } from '@scraping/application/services/website.service';
+import {
+	ApiDocsRegisterWebsite,
+	ApiDocsFindAll,
+	ApiDocsFindOne,
+	ApiDocsUpdate,
+	ApiDocsRemove,
+} from './swagger/website.swagger';
 
 @ApiTags('Website Scraping')
 @Controller('website')
@@ -35,59 +36,21 @@ export class WebsiteController {
 	@Post()
 	@Throttle({ short: { limit: 5, ttl: 300000 } }) // 5 req/5min
 	@Roles(RolesEnum.ADMIN)
-	@ApiOperation({
-		summary: 'Register website for scraping',
-		description:
-			'Register a new website configuration for content scraping (Admin only)',
-	})
-	@ApiResponse({
-		status: 201,
-		description: 'Website registered successfully',
-	})
-	@ApiResponse({ status: 400, description: 'Invalid input data' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiResponse({
-		status: 403,
-		description: 'Forbidden - Admin role required',
-	})
-	@ApiResponse({ status: 429, description: 'Too many requests' })
+	@ApiDocsRegisterWebsite()
 	async registerWebsite(@Body() dto: RegisterWebSiteDto) {
 		return this.websiteService.registerWebsite(dto);
 	}
 
 	@Get()
 	@Roles(RolesEnum.ADMIN)
-	@ApiOperation({
-		summary: 'List all websites',
-		description: 'Get all registered website configurations (Admin only)',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'List of websites returned successfully',
-	})
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiResponse({
-		status: 403,
-		description: 'Forbidden - Admin role required',
-	})
+	@ApiDocsFindAll()
 	async findAll() {
 		return this.websiteService.findAll();
 	}
 
 	@Get(':id')
 	@Roles(RolesEnum.ADMIN)
-	@ApiOperation({
-		summary: 'Get website by ID',
-		description: 'Get a specific website configuration by ID (Admin only)',
-	})
-	@ApiParam({ name: 'id', description: 'Website UUID', type: 'string' })
-	@ApiResponse({ status: 200, description: 'Website returned successfully' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiResponse({
-		status: 403,
-		description: 'Forbidden - Admin role required',
-	})
-	@ApiResponse({ status: 404, description: 'Website not found' })
+	@ApiDocsFindOne()
 	async findOne(@Param('id', ParseUUIDPipe) id: string) {
 		return this.websiteService.findOne(id);
 	}
@@ -95,20 +58,7 @@ export class WebsiteController {
 	@Patch(':id')
 	@Throttle({ short: { limit: 10, ttl: 300000 } }) // 10 req/5min
 	@Roles(RolesEnum.ADMIN)
-	@ApiOperation({
-		summary: 'Update website',
-		description: 'Update an existing website configuration (Admin only)',
-	})
-	@ApiParam({ name: 'id', description: 'Website UUID', type: 'string' })
-	@ApiResponse({ status: 200, description: 'Website updated successfully' })
-	@ApiResponse({ status: 400, description: 'Invalid input data' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiResponse({
-		status: 403,
-		description: 'Forbidden - Admin role required',
-	})
-	@ApiResponse({ status: 404, description: 'Website not found' })
-	@ApiResponse({ status: 429, description: 'Too many requests' })
+	@ApiDocsUpdate()
 	async update(
 		@Param('id', ParseUUIDPipe) id: string,
 		@Body() dto: UpdateWebsiteDto,
@@ -119,19 +69,7 @@ export class WebsiteController {
 	@Delete(':id')
 	@Throttle({ short: { limit: 5, ttl: 300000 } }) // 5 req/5min
 	@Roles(RolesEnum.ADMIN)
-	@ApiOperation({
-		summary: 'Delete website',
-		description: 'Delete a website configuration (Admin only)',
-	})
-	@ApiParam({ name: 'id', description: 'Website UUID', type: 'string' })
-	@ApiResponse({ status: 200, description: 'Website deleted successfully' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiResponse({
-		status: 403,
-		description: 'Forbidden - Admin role required',
-	})
-	@ApiResponse({ status: 404, description: 'Website not found' })
-	@ApiResponse({ status: 429, description: 'Too many requests' })
+	@ApiDocsRemove()
 	async remove(@Param('id', ParseUUIDPipe) id: string) {
 		await this.websiteService.remove(id);
 		return { message: 'Website deleted successfully' };

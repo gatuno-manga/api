@@ -11,15 +11,25 @@ import {
 	Patch,
 	Query,
 } from '@nestjs/common';
-import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { AdminApi } from 'src/common/swagger/auth-api.decorators';
-import { COMMON_RESPONSES } from 'src/common/swagger/common-responses';
-import { AdminUpdateUserDto } from '../http/dto/admin-update-user.dto';
-import { SetUserModerationDto } from '../http/dto/set-user-moderation.dto';
-import { UpdateUserRolesDto } from '../http/dto/update-user-roles.dto';
-import { AdminUsersService } from '../../application/use-cases/admin-users.service';
+import { AdminUpdateUserDto } from '@users/infrastructure/http/dto/admin-update-user.dto';
+import { SetUserModerationDto } from '@users/infrastructure/http/dto/set-user-moderation.dto';
+import { UpdateUserRolesDto } from '@users/infrastructure/http/dto/update-user-roles.dto';
+import { AdminChangePasswordDto } from '@users/infrastructure/http/dto/admin-change-password.dto';
+import { AdminUsersService } from '@users/application/use-cases/admin-users.service';
+import {
+	ApiDocsSearch,
+	ApiDocsListUsers,
+	ApiDocsGetUserById,
+	ApiDocsUpdateUser,
+	ApiDocsUpdateUserRoles,
+	ApiDocsChangePassword,
+	ApiDocsSetModeration,
+	ApiDocsDeleteUser,
+} from './swagger/admin-users.swagger';
 
 @ApiTags('Admin Users')
 @Controller('admin/users')
@@ -27,21 +37,14 @@ import { AdminUsersService } from '../../application/use-cases/admin-users.servi
 export class AdminUsersController {
 	constructor(private readonly adminUsersService: AdminUsersService) {}
 
+	@Get('search')
+	@ApiDocsSearch()
+	search(@Query('q') query: string) {
+		return this.adminUsersService.search(query);
+	}
+
 	@Get()
-	@ApiOperation({
-		summary: 'Listar usuarios com filtros administrativos',
-		description: 'Suporta paginação por page/limit e por cursor',
-	})
-	@ApiResponse({ status: 200, description: 'Usuarios listados com sucesso' })
-	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
-	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
-	@ApiQuery({ name: 'page', required: false })
-	@ApiQuery({ name: 'limit', required: false })
-	@ApiQuery({ name: 'cursor', required: false })
-	@ApiQuery({ name: 'search', required: false })
-	@ApiQuery({ name: 'role', required: false })
-	@ApiQuery({ name: 'isBanned', required: false })
-	@ApiQuery({ name: 'isSuspended', required: false })
+	@ApiDocsListUsers()
 	listUsers(
 		@Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
 		@Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
@@ -65,24 +68,13 @@ export class AdminUsersController {
 	}
 
 	@Get(':userId')
-	@ApiOperation({ summary: 'Buscar usuario por id (admin)' })
-	@ApiResponse({ status: 200, description: 'Usuario retornado com sucesso' })
-	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
-	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
-	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
+	@ApiDocsGetUserById()
 	getUserById(@Param('userId', ParseUUIDPipe) userId: string) {
 		return this.adminUsersService.getUserById(userId);
 	}
 
 	@Patch(':userId')
-	@ApiOperation({
-		summary: 'Atualizar configuracoes de perfil do usuario (admin)',
-	})
-	@ApiResponse({ status: 200, description: 'Usuario atualizado com sucesso' })
-	@ApiResponse(COMMON_RESPONSES.BAD_REQUEST)
-	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
-	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
-	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
+	@ApiDocsUpdateUser()
 	updateUser(
 		@Param('userId', ParseUUIDPipe) userId: string,
 		@Body() dto: AdminUpdateUserDto,
@@ -91,12 +83,7 @@ export class AdminUsersController {
 	}
 
 	@Patch(':userId/roles')
-	@ApiOperation({ summary: 'Substituir roles de um usuario (admin)' })
-	@ApiResponse({ status: 200, description: 'Roles atualizadas com sucesso' })
-	@ApiResponse(COMMON_RESPONSES.BAD_REQUEST)
-	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
-	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
-	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
+	@ApiDocsUpdateUserRoles()
 	updateUserRoles(
 		@Param('userId', ParseUUIDPipe) userId: string,
 		@Body() dto: UpdateUserRolesDto,
@@ -109,13 +96,20 @@ export class AdminUsersController {
 		);
 	}
 
+	@Patch(':userId/password')
+	@ApiDocsChangePassword()
+	changePassword(
+		@Param('userId', ParseUUIDPipe) userId: string,
+		@Body() dto: AdminChangePasswordDto,
+	) {
+		return this.adminUsersService.changeUserPassword(
+			userId,
+			dto.newPassword,
+		);
+	}
+
 	@Patch(':userId/moderation')
-	@ApiOperation({ summary: 'Aplicar banimento/suspensao ao usuario' })
-	@ApiResponse({ status: 200, description: 'Moderacao aplicada com sucesso' })
-	@ApiResponse(COMMON_RESPONSES.BAD_REQUEST)
-	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
-	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
-	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
+	@ApiDocsSetModeration()
 	setModeration(
 		@Param('userId', ParseUUIDPipe) userId: string,
 		@Body() dto: SetUserModerationDto,
@@ -129,11 +123,7 @@ export class AdminUsersController {
 	}
 
 	@Delete(':userId')
-	@ApiOperation({ summary: 'Excluir conta de usuario (admin)' })
-	@ApiResponse({ status: 200, description: 'Usuario excluido com sucesso' })
-	@ApiResponse(COMMON_RESPONSES.NOT_FOUND)
-	@ApiResponse(COMMON_RESPONSES.UNAUTHORIZED)
-	@ApiResponse(COMMON_RESPONSES.FORBIDDEN_ADMIN)
+	@ApiDocsDeleteUser()
 	deleteUser(
 		@Param('userId', ParseUUIDPipe) userId: string,
 		@CurrentUser() currentUser: CurrentUserDto,

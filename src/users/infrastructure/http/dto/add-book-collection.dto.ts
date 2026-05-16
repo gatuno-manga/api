@@ -14,6 +14,6 @@ export class AddBookCollectionDto {
 	@IsArray()
 	@ArrayMinSize(1)
 	@ArrayMaxSize(100)
-	@IsUUID('4', { each: true })
+	@IsUUID('all', { each: true })
 	idsBook: string[];
 }

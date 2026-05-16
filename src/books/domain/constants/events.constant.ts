@@ -25,11 +25,14 @@ export const BookEvents = {
 	CHAPTERS_FIX: 'chapters.fix',
 	CHAPTER_DELETED: 'chapter.deleted',
 	PAGES_UPLOADED: 'chapter.pages.uploaded',
+	DOCUMENT_UPLOADED: 'chapter.document.uploaded',
+	CONTENT_UPLOADED: 'chapter.content.uploaded',
 
 	// Scraping Events
 	SCRAPING_STARTED: 'chapter.scraping.started',
 	SCRAPING_COMPLETED: 'chapter.scraping.completed',
 	SCRAPING_FAILED: 'chapter.scraping.failed',
+	SCRAPING_PERMANENT_FAILURE: 'scraping.permanent_failure',
 
 	// Cover Events
 	COVER_PROCESSED: 'cover.processed',

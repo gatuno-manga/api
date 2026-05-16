@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { FileCleanupService } from '../../../files/application/services/file-cleanup.service';
-import { BookEvents } from '../../domain/constants/events.constant';
+import { FileCleanupService } from '@files/application/services/file-cleanup.service';
+import { BookEvents } from '@books/domain/constants/events.constant';
 
 @Injectable()
 export class FileDeletionEvents {

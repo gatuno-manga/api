@@ -1,4 +1,4 @@
-import { DocumentFormat } from '../../domain/enums/document-format.enum';
+import { DocumentFormat } from '@books/domain/enums/document-format.enum';
 
 /**
  * Mimetypes aceitos para upload de documentos

@@ -1,7 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
-import { AppModule } from '../src/app.module';
+import { AppModule } from '@/app.module';
 
 /**
  * E2E Tests for Cache Isolation by Sensitivity Level

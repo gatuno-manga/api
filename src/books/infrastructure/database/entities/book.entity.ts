@@ -12,9 +12,9 @@ import {
 	Relation,
 	UpdateDateColumn,
 } from 'typeorm';
-import { BookType } from '../../../domain/enums/book-type.enum';
-import { ExportFormat } from '../../../domain/enums/export-format.enum';
-import { ScrapingStatus } from '../../../domain/enums/scrapingStatus.enum';
+import { BookType } from '@books/domain/enums/book-type.enum';
+import { ExportFormat } from '@books/domain/enums/export-format.enum';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { Author } from './author.entity';
 import { Chapter } from './chapter.entity';
 import { Cover } from './cover.entity';

@@ -11,7 +11,7 @@ import {
 import {
 	StoragePort,
 	FileMetadata,
-} from '../../application/ports/storage.port';
+} from '@files/application/ports/storage.port';
 
 @Injectable()
 export class S3StorageAdapter implements StoragePort {
@@ -46,6 +46,7 @@ export class S3StorageAdapter implements StoragePort {
 				),
 			},
 			forcePathStyle: true, // Obrigatório para RustFS/MinIO
+			tls: endpoint.startsWith('https'),
 		});
 	}
 

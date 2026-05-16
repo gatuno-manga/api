@@ -1,21 +1,32 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository, FindOptionsWhere } from 'typeorm';
-import { ITagRepository } from '../../../application/ports/tag-repository.interface';
-import { Tag as DomainTag } from '../../../domain/entities/tag';
-import { Tag as InfrastructureTag } from '../entities/tags.entity';
-import { TagsOptions } from '../../../application/dto/tags-options.dto';
-import { Book as InfrastructureBook } from '../entities/book.entity';
+import { In, Repository, FindOptionsWhere, EntityManager } from 'typeorm';
+import { ITagRepository } from '@books/application/ports/tag-repository.interface';
+import { Tag as DomainTag } from '@books/domain/entities/tag';
+import { Tag as InfrastructureTag } from '@books/infrastructure/database/entities/tags.entity';
+import { TagsOptions } from '@books/application/dto/tags-options.dto';
+import { Book as InfrastructureBook } from '@books/infrastructure/database/entities/book.entity';
 import { TagCriteria } from '@books/domain/types/criteria.types';
 
 @Injectable()
 export class TypeOrmTagRepositoryAdapter implements ITagRepository {
+	private readonly repository: Repository<InfrastructureTag>;
+	private readonly bookRepository: Repository<InfrastructureBook>;
+
 	constructor(
 		@InjectRepository(InfrastructureTag)
-		private readonly repository: Repository<InfrastructureTag>,
+		repository: Repository<InfrastructureTag>,
 		@InjectRepository(InfrastructureBook)
-		private readonly bookRepository: Repository<InfrastructureBook>,
-	) {}
+		bookRepository: Repository<InfrastructureBook>,
+		entityManager?: EntityManager,
+	) {
+		this.repository = entityManager
+			? entityManager.getRepository(InfrastructureTag)
+			: repository;
+		this.bookRepository = entityManager
+			? entityManager.getRepository(InfrastructureBook)
+			: bookRepository;
+	}
 
 	async findById(
 		id: string,
@@ -98,5 +109,22 @@ export class TypeOrmTagRepositoryAdapter implements ITagRepository {
 			order: { name: 'ASC' },
 		});
 		return tags as unknown as DomainTag[];
+	}
+
+	async findByBookIds(
+		bookIds: string[],
+	): Promise<(DomainTag & { bookId: string })[]> {
+		const results = await this.repository
+			.createQueryBuilder('tag')
+			.innerJoin('books_tags_tags', 'bt', 'tag.id = bt.tagsId')
+			.select(['tag.id', 'tag.name', 'bt.booksId'])
+			.where('bt.booksId IN (:...bookIds)', { bookIds })
+			.getRawMany();
+
+		return results.map((r) => ({
+			id: r.tag_id,
+			name: r.tag_name,
+			bookId: r.bt_booksId,
+		})) as unknown as (DomainTag & { bookId: string })[];
 	}
 }

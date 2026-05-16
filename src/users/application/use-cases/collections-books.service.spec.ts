@@ -3,9 +3,9 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { CollectionsBooksService } from './collections-books.service';
-import { CollectionBook } from '../../infrastructure/database/entities/collection-book.entity';
+import { CollectionBook } from '@users/infrastructure/database/entities/collection-book.entity';
 import { Book } from 'src/books/infrastructure/database/entities/book.entity';
-import { User } from '../../infrastructure/database/entities/user.entity';
+import { User } from '@users/infrastructure/database/entities/user.entity';
 
 describe('CollectionsBooksService', () => {
 	let service: CollectionsBooksService;

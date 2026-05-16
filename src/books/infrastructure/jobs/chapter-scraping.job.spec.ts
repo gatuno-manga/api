@@ -2,7 +2,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
-import { Chapter } from '../../infrastructure/database/entities/chapter.entity';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { ChapterScrapingJob } from './chapter-scraping.job';
 import { ChapterScrapingSharedService } from './chapter-scraping.shared';
 

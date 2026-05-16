@@ -12,14 +12,15 @@ export const validationSchema = Joi.object({
 		.description('The port on which the application will run'),
 	DB_TYPE: Joi.string().required(),
 	DB_NAME: Joi.string().required(),
-	DB_MASTER_HOST: Joi.string().required(),
-	DB_SLAVE_HOSTS: Joi.string().required(),
+	DB_HOST: Joi.string().optional(),
+	DB_MASTER_HOST: Joi.string().optional(),
+	DB_SLAVE_HOSTS: Joi.string().optional(),
 	DB_PORT: Joi.number().min(0).max(65535).required(),
 	DB_USER: Joi.string().required(),
 	DB_PASS: Joi.string().required(),
 	API_URL: Joi.string().required(),
 	APP_URL: Joi.string().required(),
-	ALLOWED_URL: Joi.string().required(),
+	ALLOWED_URL: Joi.string().optional().allow(''),
 	JWT_ACCESS_SECRET: Joi.string().default('default_secret'),
 	JWT_ACCESS_EXPIRATION: Joi.string()
 		.pattern(/^\d+\s*(s|m|h|d|w|y)$/)
@@ -184,4 +185,30 @@ export const validationSchema = Joi.object({
 		.description(
 			'Size threshold in MB for switching from buffer to streaming mode in downloads',
 		),
+	KAFKA_HOST: Joi.string().default('kafka').description('Kafka broker host'),
+	KAFKA_PORT: Joi.number().default(9092).description('Kafka broker port'),
+	NANOMQ_HOST: Joi.string()
+		.default('nanomq')
+		.description('NanoMQ broker host'),
+	NANOMQ_PORT: Joi.number()
+		.min(0)
+		.max(65535)
+		.default(1883)
+		.description('NanoMQ MQTT port'),
+	NANOMQ_WS_PORT: Joi.number()
+		.min(0)
+		.max(65535)
+		.default(8083)
+		.description('NanoMQ MQTT over WebSocket port'),
+	ANDROID_PACKAGE_NAME: Joi.string()
+		.default('com.gatuno.app')
+		.description('Android application package name'),
+	ANDROID_SHA256_FINGERPRINTS: Joi.string()
+		.default(
+			'00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00',
+		)
+		.description('Comma-separated SHA-256 fingerprints for Android app'),
+	ENABLE_SWAGGER: Joi.boolean()
+		.default(false)
+		.description('Force enable Swagger UI regardless of NODE_ENV'),
 });

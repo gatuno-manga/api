@@ -4,8 +4,8 @@ import { Request } from 'express';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { DataEncryptionProvider } from 'src/infrastructure/encryption/data-encryption.provider';
-import { PayloadAuthDto } from '../../application/dto/payload-auth.dto';
-import { TokenStoreService } from '../adapters/token-store.service';
+import { PayloadAuthDto } from '@auth/application/dto/payload-auth.dto';
+import { TokenStoreService } from '@auth/infrastructure/adapters/token-store.service';
 
 @Injectable()
 export class JwtRefreshStrategy extends PassportStrategy(

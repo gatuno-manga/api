@@ -1,4 +1,4 @@
-import { ChapterRead } from '../../domain/entities/chapter-read';
+import { ChapterRead } from '@books/domain/entities/chapter-read';
 import { ChapterReadCriteria } from '@books/domain/types/criteria.types';
 
 export interface IChapterReadRepository {

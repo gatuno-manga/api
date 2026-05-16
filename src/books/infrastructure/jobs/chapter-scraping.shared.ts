@@ -1,11 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ScrapingService } from '../../../scraping/application/services/scraping.service';
+import { ScrapingService } from '@scraping/application/services/scraping.service';
 import { Repository } from 'typeorm';
-import { Chapter } from '../../infrastructure/database/entities/chapter.entity';
-import { Page } from '../../infrastructure/database/entities/page.entity';
-import { ScrapingStatus } from '../../domain/enums/scrapingStatus.enum';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
+import { Page } from '@books/infrastructure/database/entities/page.entity';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 
 /**
  * Serviço compartilhado para processamento de scraping de capítulos.
@@ -62,9 +62,10 @@ export class ChapterScrapingSharedService {
 
 			// Cria as novas páginas
 			let index = 1;
-			const newPages = pages.map((pageContent) =>
+			const newPages = pages.map((pageData) =>
 				this.pageRepository.create({
-					path: pageContent,
+					path: pageData.path,
+					metadata: pageData.metadata,
 					index: index++,
 				}),
 			);

@@ -19,8 +19,8 @@ import {
 	SaveReadingProgressDto,
 	SyncReadingProgressDto,
 	SyncResponseDto,
-} from '../http/dto/reading-progress.dto';
-import { ReadingProgressService } from '../../application/use-cases/reading-progress.service';
+} from '@users/infrastructure/http/dto/reading-progress.dto';
+import { ReadingProgressService } from '@users/application/use-cases/reading-progress.service';
 
 @Controller('users/me/reading-progress')
 @UseGuards(JwtAuthGuard)

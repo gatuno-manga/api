@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
-import { AuthSession } from '../database/entities/auth-session.entity';
+import { AuthSession } from '@auth/infrastructure/database/entities/auth-session.entity';
 import {
 	AuthMethod,
 	AuthRequestContext,
 	AuthRiskLevel,
-} from '../../types/auth-security.types';
+} from '@auth/types/auth-security.types';
 
 interface CreateSessionInput {
 	userId: string;

@@ -1,4 +1,4 @@
-import { Page } from '../../domain/entities/page';
+import { Page } from '@books/domain/entities/page';
 import { PageCriteria } from '@books/domain/types/criteria.types';
 
 export interface IPageRepository {
@@ -11,6 +11,10 @@ export interface IPageRepository {
 	findByChapterId(chapterId: string): Promise<Page[]>;
 	count(criteria?: PageCriteria): Promise<number>;
 	create(data: Partial<Page>): Page;
+	update(criteria: PageCriteria, data: Partial<Page>): Promise<void>;
+	updateBatch(
+		updates: { oldPath: string; newPath: string; metadata?: unknown }[],
+	): Promise<void>;
 }
 
 export const I_PAGE_REPOSITORY = 'IPageRepository';

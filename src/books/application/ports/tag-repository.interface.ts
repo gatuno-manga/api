@@ -1,5 +1,5 @@
-import { Tag } from '../../domain/entities/tag';
-import { TagsOptions } from '../dto/tags-options.dto';
+import { Tag } from '@books/domain/entities/tag';
+import { TagsOptions } from '@books/application/dto/tags-options.dto';
 import { TagCriteria } from '@books/domain/types/criteria.types';
 
 export interface ITagRepository {
@@ -11,6 +11,7 @@ export interface ITagRepository {
 	findByName(name: string): Promise<Tag | null>;
 	exists(id: string): Promise<boolean>;
 	findWithFilters(options: TagsOptions, maxWeight?: number): Promise<Tag[]>;
+	findByBookIds(bookIds: string[]): Promise<(Tag & { bookId: string })[]>;
 	count(criteria?: TagCriteria): Promise<number>;
 }
 

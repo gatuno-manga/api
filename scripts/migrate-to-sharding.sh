@@ -23,24 +23,25 @@ echo "[1/3] Mapeando arquivos e criando estrutura de pastas..."
 docker run --rm -v ${VOLUME_NAME}:${CONTAINER_DATA_PATH} -i bash:5.2 bash <<'EOF_INSIDE' > ${TEMP_SQL_FILE}
     cd ${CONTAINER_DATA_PATH}
     echo 'SET FOREIGN_KEY_CHECKS = 0;' > /tmp/migration.sql
-    
+
     count=0
-    
+
     # 1. Processa arquivos que ainda estão na raiz
     for f in *; do
         [ -f "$f" ] || continue
-        
-        # Pega os 2 primeiros caracteres do UUID
-        shard=${f:0:2}
-        
+
+        # Pega os últimos 2 caracteres do UUID
+        uuid_part="${f%.*}"
+        shard="${uuid_part: -2}"
+
         # Cria diretório e move
         mkdir -p "$shard"
         mv "$f" "$shard/"
-        
+
         # Gera SQL para as duas tabelas principais
         echo "UPDATE pages SET path = '/data/$shard/$f' WHERE path = '/data/$f';" >> /tmp/migration.sql
         echo "UPDATE covers SET url = '/data/$shard/$f' WHERE url = '/data/$f';" >> /tmp/migration.sql
-        
+
         count=$((count + 1))
         if [ $((count % 500)) -eq 0 ]; then
             echo "Processados $count arquivos da raiz..." >&2
@@ -59,7 +60,7 @@ docker run --rm -v ${VOLUME_NAME}:${CONTAINER_DATA_PATH} -i bash:5.2 bash <<'EOF
             echo "UPDATE covers SET url = '/data/$f' WHERE url = '/data/$fname';" >> /tmp/migration.sql
         done
     done
-    
+
     echo 'SET FOREIGN_KEY_CHECKS = 1;' >> /tmp/migration.sql
     cat /tmp/migration.sql
 EOF_INSIDE

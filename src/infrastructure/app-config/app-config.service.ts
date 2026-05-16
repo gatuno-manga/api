@@ -8,6 +8,7 @@ import {
 	AdminConfig,
 	DatabaseConfig,
 	JwtConfig,
+	MeiliConfig,
 	RedisConfig,
 	SecurityConfig,
 } from './app-config.values';
@@ -124,11 +125,12 @@ export class AppConfigService {
 		return new DatabaseConfig(
 			this.config.get<string>('DB_TYPE') ?? 'mysql',
 			this.config.get<string>('DB_NAME') ?? '',
-			this.config.get<string>('DB_MASTER_HOST') ?? '',
+			this.config.get<string>('DB_HOST') ??
+				this.config.get<string>('DB_MASTER_HOST') ??
+				'',
 			this.config.get<number>('DB_PORT') ?? 3306,
 			this.config.get<string>('DB_USER') ?? '',
 			this.config.get<string>('DB_PASS') ?? '',
-			this.parseCsv(this.config.get<string>('DB_SLAVE_HOSTS')),
 		);
 	}
 
@@ -152,6 +154,17 @@ export class AppConfigService {
 
 	get LogLevel(): string {
 		return this.config.get<string>('LOG_LEVEL') || 'context=*;level=info';
+	}
+
+	get logRedactPaths(): string[] {
+		return this.parseCsv(
+			this.config.get<string>('LOG_REDACT_PATHS') ||
+				'req.headers.authorization,req.headers.cookie,req.body.password,req.body.apiKey,req.body.token,res.headers["set-cookie"]',
+		);
+	}
+
+	get logSamplingRate(): number {
+		return this.config.get<number>('LOG_SAMPLING_RATE') ?? 1.0;
 	}
 
 	get metricsEnabled(): boolean {
@@ -285,6 +298,28 @@ export class AppConfigService {
 		return this.config.get<number>('DOWNLOAD_CACHE_THRESHOLD_MB') || 100;
 	}
 
+	get scrapingRecovery() {
+		return {
+			enabled:
+				this.config.get<boolean>('SCRAPING_RECOVERY_ENABLED') ?? true,
+			cronExpression:
+				this.config.get<string>('SCRAPING_RECOVERY_CRON') ||
+				'*/30 * * * *', // Every 30 minutes
+			maxRetries:
+				this.config.get<number>('SCRAPING_RECOVERY_MAX_RETRIES') || 5,
+			stuckThresholdHours:
+				this.config.get<number>(
+					'SCRAPING_RECOVERY_STUCK_THRESHOLD_HOURS',
+				) || 1,
+		};
+	}
+
+	get kafkaBroker(): string {
+		const host = this.config.get<string>('KAFKA_HOST') || 'kafka';
+		const port = this.config.get<number>('KAFKA_PORT') || 9092;
+		return `${host}:${port}`;
+	}
+
 	get rustfs() {
 		return {
 			endpoint: this.config.get<string>(
@@ -301,5 +336,59 @@ export class AppConfigService {
 			this.config.get<string>('RUSTFS_PUBLIC_URL') ||
 			`${this.apiUrl}/api/data`
 		);
+	}
+
+	get flareSolverrUrl(): string {
+		return (
+			this.config.get<string>('FLARESOLVERR_URL') ||
+			'http://flaresolverr:8191'
+		);
+	}
+
+	get meili(): MeiliConfig {
+		return new MeiliConfig(
+			this.config.get<string>('MEILI_HOST') || 'http://meilisearch:7700',
+			this.config.get<string>('MEILI_MASTER_KEY') || '',
+		);
+	}
+
+	get nanomq() {
+		return {
+			host: this.config.get<string>('NANOMQ_HOST') || 'nanomq',
+			port: this.config.get<number>('NANOMQ_PORT') || 1883,
+		};
+	}
+
+	get android() {
+		const appsJson = this.config.get<string>('ANDROID_APPS');
+		if (appsJson) {
+			try {
+				const parsed = JSON.parse(appsJson);
+				if (Array.isArray(parsed)) {
+					return parsed as {
+						packageName: string;
+						sha256Fingerprints: string[];
+					}[];
+				}
+				this.logger.warn('ANDROID_APPS is not an array.');
+			} catch (e) {
+				this.logger.error('Failed to parse ANDROID_APPS as JSON.');
+			}
+		}
+
+		return [
+			{
+				packageName:
+					this.config.get<string>('ANDROID_PACKAGE_NAME') ||
+					'com.gatuno.app',
+				sha256Fingerprints: this.parseCsv(
+					this.config.get<string>('ANDROID_SHA256_FINGERPRINTS'),
+				),
+			},
+		];
+	}
+
+	get enableSwagger(): boolean {
+		return this.config.get<boolean>('ENABLE_SWAGGER') ?? false;
 	}
 }

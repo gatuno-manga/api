@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Browser, BrowserContext, Page } from 'playwright';
 import { chromium as playwrightChromium } from 'playwright-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-import { PooledBrowser } from '../pool';
+import { PooledBrowser } from '@scraping/infrastructure/pool';
 import {
 	BrowserConfig,
 	DEFAULT_BROWSER_CONFIG,
@@ -133,7 +133,10 @@ export class PlaywrightBrowserFactory implements IBrowserFactory {
 		});
 	}
 
-	async createContext(browser: Browser): Promise<BrowserContext> {
+	async createContext(
+		browser: Browser,
+		options?: import('./browser.factory.interface').ContextOptions,
+	): Promise<BrowserContext> {
 		this.logger.debug('Creating browser context...');
 
 		// Increment context count if this is a pooled browser
@@ -143,7 +146,7 @@ export class PlaywrightBrowserFactory implements IBrowserFactory {
 		}
 
 		const context = await browser.newContext({
-			userAgent: this.config.userAgent,
+			userAgent: options?.userAgent || this.config.userAgent,
 			viewport: this.config.viewport,
 			locale: this.config.locale,
 			timezoneId: this.config.timezoneId,
@@ -152,6 +155,7 @@ export class PlaywrightBrowserFactory implements IBrowserFactory {
 			javaScriptEnabled: true,
 			bypassCSP: true,
 			permissions: ['geolocation'],
+			proxy: options?.proxy,
 		});
 
 		// Set default timeouts

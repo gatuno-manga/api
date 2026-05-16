@@ -11,11 +11,11 @@ import {
 	WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { WsJwtGuard } from '../../../auth/infrastructure/framework/ws-jwt.guard';
-import { RolesEnum } from '../../../users/domain/enums/roles.enum';
-import { BookEvents } from '../../domain/constants/events.constant';
-import { Book } from '../../infrastructure/database/entities/book.entity';
-import { Chapter } from '../../infrastructure/database/entities/chapter.entity';
+import { WsJwtGuard } from '@auth/infrastructure/framework/ws-jwt.guard';
+import { RolesEnum } from '@users/domain/enums/roles.enum';
+import { BookEvents } from '@books/domain/constants/events.constant';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 
 interface WsUser {
 	id: string;

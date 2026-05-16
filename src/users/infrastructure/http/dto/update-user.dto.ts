@@ -1,5 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+	IsInt,
+	IsOptional,
+	IsString,
+	Max,
+	MaxLength,
+	Min,
+	MinLength,
+} from 'class-validator';
 
 export class UpdateUserDto {
 	@ApiPropertyOptional({
@@ -23,4 +31,14 @@ export class UpdateUserDto {
 	@MaxLength(100)
 	@IsOptional()
 	name: string;
+
+	@ApiPropertyOptional({
+		description: 'Maximum weight for sensitive content filtering',
+		example: 4,
+	})
+	@IsOptional()
+	@IsInt()
+	@Min(0)
+	@Max(99)
+	maxWeightSensitiveContent?: number;
 }

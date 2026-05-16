@@ -37,6 +37,45 @@ export default tseslint.config(
 			'@typescript-eslint/no-explicit-any': 'off',
 			'@typescript-eslint/no-floating-promises': 'warn',
 			'@typescript-eslint/no-unsafe-argument': 'warn',
+			'no-restricted-imports': [
+				'error',
+				{
+					patterns: [
+						{
+							group: ['../*'],
+							message:
+								'Usage of relative parent imports is not allowed. Please use path aliases (e.g., @api/*, @users/*) instead.',
+						},
+					],
+				},
+			],
+		},
+	},
+	{
+		files: ['src/**/*.controller.ts'],
+		rules: {
+			'no-restricted-imports': [
+				'error',
+				{
+					paths: [
+						{
+							name: '@nestjs/swagger',
+							importNames: [
+								'ApiOperation',
+								'ApiResponse',
+								'ApiBody',
+								'ApiParam',
+								'ApiQuery',
+								'ApiConsumes',
+								'ApiHeader',
+								'ApiProperty',
+							],
+							message:
+								'Please extract Swagger documentation decorators to a custom decorator in a .swagger.ts file to keep the controller clean.',
+						},
+					],
+				},
+			],
 		},
 	},
 );

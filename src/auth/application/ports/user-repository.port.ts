@@ -1,11 +1,12 @@
-import { EmailVO } from '../../domain/value-objects/email.vo';
+import { EmailVO } from '@auth/domain/value-objects/email.vo';
 
 export interface UserAuthData {
 	id: string;
 	email: string;
 	password?: string;
 	userName: string;
-	roles?: { name: string }[];
+	maxWeightSensitiveContent: number;
+	roles?: { name: string; maxWeightSensitiveContent: number }[];
 }
 
 export interface UserSaveInput {

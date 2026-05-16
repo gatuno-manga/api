@@ -6,7 +6,6 @@ export class DatabaseConfig {
 		public readonly port: number,
 		public readonly username: string,
 		public readonly password: string,
-		public readonly slaveHosts: string[],
 	) {}
 }
 
@@ -46,5 +45,12 @@ export class AdminConfig {
 	constructor(
 		public readonly email: string,
 		public readonly password: string,
+	) {}
+}
+
+export class MeiliConfig {
+	constructor(
+		public readonly host: string,
+		public readonly masterKey: string,
 	) {}
 }

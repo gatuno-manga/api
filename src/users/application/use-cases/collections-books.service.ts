@@ -6,10 +6,10 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Book } from 'src/books/infrastructure/database/entities/book.entity';
 import { Repository } from 'typeorm';
-import { User } from '../../infrastructure/database/entities/user.entity';
-import { AddBookCollectionDto } from '../../infrastructure/http/dto/add-book-collection.dto';
-import { CreateCollectionBookDto } from '../../infrastructure/http/dto/create-collection-book.dto';
-import { CollectionBook } from '../../infrastructure/database/entities/collection-book.entity';
+import { User } from '@users/infrastructure/database/entities/user.entity';
+import { AddBookCollectionDto } from '@users/infrastructure/http/dto/add-book-collection.dto';
+import { CreateCollectionBookDto } from '@users/infrastructure/http/dto/create-collection-book.dto';
+import { CollectionBook } from '@users/infrastructure/database/entities/collection-book.entity';
 
 @Injectable()
 export class CollectionsBooksService {

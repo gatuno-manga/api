@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository, FindOptionsWhere } from 'typeorm';
+import { In, Repository, FindOptionsWhere, EntityManager } from 'typeorm';
 import { IAuthorRepository } from '@books/application/ports/author-repository.interface';
 import { Author as DomainAuthor } from '@books/domain/entities/author';
 import { Author as InfrastructureAuthor } from '@books/infrastructure/database/entities/author.entity';
@@ -10,12 +10,23 @@ import { AuthorCriteria } from '@books/domain/types/criteria.types';
 
 @Injectable()
 export class TypeOrmAuthorRepositoryAdapter implements IAuthorRepository {
+	private readonly repository: Repository<InfrastructureAuthor>;
+	private readonly bookRepository: Repository<InfrastructureBook>;
+
 	constructor(
 		@InjectRepository(InfrastructureAuthor)
-		private readonly repository: Repository<InfrastructureAuthor>,
+		repository: Repository<InfrastructureAuthor>,
 		@InjectRepository(InfrastructureBook)
-		private readonly bookRepository: Repository<InfrastructureBook>,
-	) {}
+		bookRepository: Repository<InfrastructureBook>,
+		entityManager?: EntityManager,
+	) {
+		this.repository = entityManager
+			? entityManager.getRepository(InfrastructureAuthor)
+			: repository;
+		this.bookRepository = entityManager
+			? entityManager.getRepository(InfrastructureBook)
+			: bookRepository;
+	}
 
 	async findById(
 		id: string,
@@ -95,5 +106,22 @@ export class TypeOrmAuthorRepositoryAdapter implements IAuthorRepository {
 			order: { name: 'ASC' },
 		});
 		return authors as unknown as DomainAuthor[];
+	}
+
+	async findByBookIds(
+		bookIds: string[],
+	): Promise<(DomainAuthor & { bookId: string })[]> {
+		const results = await this.repository
+			.createQueryBuilder('author')
+			.innerJoin('author.books', 'book')
+			.select(['author.id', 'author.name', 'book.id'])
+			.where('book.id IN (:...bookIds)', { bookIds })
+			.getRawMany();
+
+		return results.map((r) => ({
+			id: r.author_id,
+			name: r.author_name,
+			bookId: r.book_id,
+		})) as unknown as (DomainAuthor & { bookId: string })[];
 	}
 }

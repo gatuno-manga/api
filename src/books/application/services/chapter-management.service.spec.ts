@@ -1,23 +1,27 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { getQueueToken } from '@nestjs/bullmq';
 import { DataSource } from 'typeorm';
 import { ChapterManagementService } from './chapter-management.service';
-import { Book } from '../../infrastructure/database/entities/book.entity';
-import { Chapter } from '../../infrastructure/database/entities/chapter.entity';
-import { ContentFormat } from '../../domain/enums/content-format.enum';
-import { ExportFormat } from '../../domain/enums/export-format.enum';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
+import { ContentFormat } from '@books/domain/enums/content-format.enum';
+import { ExportFormat } from '@books/domain/enums/export-format.enum';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
-import { I_CHAPTER_REPOSITORY } from '../ports/chapter-repository.interface';
-import { I_BOOK_REPOSITORY } from '../ports/book-repository.interface';
+import { I_CHAPTER_REPOSITORY } from '@books/application/ports/chapter-repository.interface';
+import { I_BOOK_REPOSITORY } from '@books/application/ports/book-repository.interface';
+import { I_UNIT_OF_WORK } from 'src/common/application/ports/unit-of-work.interface';
 
 describe('ChapterManagementService', () => {
 	let service: ChapterManagementService;
 	let bookRepository: any;
 	let chapterRepository: any;
+	let textProcessingQueue: any;
 	let dataSource: any;
 	let eventEmitter: any;
+	let unitOfWork: any;
 
 	const mockBookId = 'book-1';
 	const mockChapterId = 'chapter-1';
@@ -25,6 +29,7 @@ describe('ChapterManagementService', () => {
 	beforeEach(async () => {
 		bookRepository = {
 			findOne: jest.fn(),
+			findById: jest.fn(),
 			save: jest.fn(),
 		};
 		chapterRepository = {
@@ -33,9 +38,21 @@ describe('ChapterManagementService', () => {
 			findOne: jest.fn(),
 			merge: jest.fn(),
 			saveAll: jest.fn(),
+			findByBookId: jest.fn(),
+		};
+		unitOfWork = {
+			runInTransaction: jest.fn((cb) =>
+				cb({
+					getBookRepository: () => bookRepository,
+					getChapterRepository: () => chapterRepository,
+				}),
+			),
 		};
 		eventEmitter = {
 			emit: jest.fn(),
+		};
+		textProcessingQueue = {
+			add: jest.fn(),
 		};
 		dataSource = {
 			transaction: jest.fn((cb) =>
@@ -69,6 +86,14 @@ describe('ChapterManagementService', () => {
 					useValue: bookRepository,
 				},
 				{
+					provide: I_UNIT_OF_WORK,
+					useValue: unitOfWork,
+				},
+				{
+					provide: getQueueToken('text-processing-queue'),
+					useValue: textProcessingQueue,
+				},
+				{
 					provide: EventEmitter2,
 					useValue: eventEmitter,
 				},
@@ -98,7 +123,7 @@ describe('ChapterManagementService', () => {
 				book: mockBook,
 			};
 
-			bookRepository.findOne.mockResolvedValue(mockBook);
+			bookRepository.findById.mockResolvedValue(mockBook);
 			chapterRepository.findOne.mockResolvedValue(null);
 			chapterRepository.create.mockReturnValue(mockChapter);
 			chapterRepository.save.mockResolvedValue(mockChapter);
@@ -124,7 +149,7 @@ describe('ChapterManagementService', () => {
 		});
 
 		it('should throw NotFoundException if book not found', async () => {
-			bookRepository.findOne.mockResolvedValue(null);
+			bookRepository.findById.mockResolvedValue(null);
 
 			await expect(
 				service.createManualChapterWithContent(mockBookId, {
@@ -138,7 +163,7 @@ describe('ChapterManagementService', () => {
 
 		it('should throw BadRequestException if index already exists', async () => {
 			const mockBook = { id: mockBookId, availableFormats: [] };
-			bookRepository.findOne.mockResolvedValue(mockBook);
+			bookRepository.findById.mockResolvedValue(mockBook);
 			chapterRepository.findOne.mockResolvedValue({ id: 'existing' });
 
 			await expect(
@@ -158,7 +183,7 @@ describe('ChapterManagementService', () => {
 				id: mockBookId,
 				availableFormats: [ExportFormat.MARKDOWN],
 			};
-			bookRepository.findOne.mockResolvedValue(mockBook);
+			bookRepository.findById.mockResolvedValue(mockBook);
 			chapterRepository.findOne.mockResolvedValue(null);
 			chapterRepository.create.mockImplementation((dto: any) => ({
 				id: `ch-${dto.index}`,

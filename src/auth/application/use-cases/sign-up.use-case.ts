@@ -5,8 +5,8 @@ import {
 	Logger,
 } from '@nestjs/common';
 import { PasswordEncryption } from 'src/infrastructure/encryption/password-encryption.provider';
-import { EmailVO } from '../../domain/value-objects/email.vo';
-import { UserRepositoryPort } from '../ports/user-repository.port';
+import { EmailVO } from '@auth/domain/value-objects/email.vo';
+import { UserRepositoryPort } from '@auth/application/ports/user-repository.port';
 
 @Injectable()
 export class SignUpUseCase {

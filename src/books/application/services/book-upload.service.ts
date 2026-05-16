@@ -1,4 +1,5 @@
 import * as path from 'node:path';
+import { BookEvents } from '@books/domain/constants/events.constant';
 import {
 	BadRequestException,
 	Inject,
@@ -9,37 +10,38 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectMetric } from '@willsoto/nestjs-prometheus';
 import pLimit from 'p-limit';
 import { Counter, Histogram } from 'prom-client';
+import { getImageDimensions } from 'src/common/utils/image.utils';
 import { CustomLogger } from 'src/custom.logger';
 import { FilesService } from 'src/files/application/services/files.service';
 import {
 	FORMAT_TO_EXTENSION,
 	MIMETYPE_TO_FORMAT,
-} from '../../domain/constants/content-types.constants';
-import { UploadTextContentDto } from '../dto/upload-text-content.dto';
-import { Book } from '../../domain/entities/book';
-import { Chapter } from '../../domain/entities/chapter';
-import { Cover } from '../../domain/entities/cover';
-import { Page } from '../../domain/entities/page';
-import { ContentFormat } from '../../domain/enums/content-format.enum';
-import { ContentType } from '../../domain/enums/content-type.enum';
-import { DocumentFormat } from '../../domain/enums/document-format.enum';
-import { ExportFormat } from '../../domain/enums/export-format.enum';
+} from '@books/domain/constants/content-types.constants';
+import { UploadTextContentDto } from '@books/application/dto/upload-text-content.dto';
+import { Book } from '@books/domain/entities/book';
+import { Chapter } from '@books/domain/entities/chapter';
+import { Cover } from '@books/domain/entities/cover';
+import { Page } from '@books/domain/entities/page';
+import { ContentFormat } from '@books/domain/enums/content-format.enum';
+import { ContentType } from '@books/domain/enums/content-type.enum';
+import { DocumentFormat } from '@books/domain/enums/document-format.enum';
+import { ExportFormat } from '@books/domain/enums/export-format.enum';
 import {
 	I_BOOK_REPOSITORY,
 	IBookRepository,
-} from '../ports/book-repository.interface';
+} from '@books/application/ports/book-repository.interface';
 import {
 	I_CHAPTER_REPOSITORY,
 	IChapterRepository,
-} from '../ports/chapter-repository.interface';
+} from '@books/application/ports/chapter-repository.interface';
 import {
 	I_COVER_REPOSITORY,
 	ICoverRepository,
-} from '../ports/cover-repository.interface';
+} from '@books/application/ports/cover-repository.interface';
 import {
 	I_PAGE_REPOSITORY,
 	IPageRepository,
-} from '../ports/page-repository.interface';
+} from '@books/application/ports/page-repository.interface';
 import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
 
 /**
@@ -122,6 +124,8 @@ export class BookUploadService {
 		try {
 			const extension = path.extname(file.originalname) || '.jpg';
 
+			const dimensions = await getImageDimensions(file.buffer);
+
 			const savedPath = await this.filesService.saveBufferFile(
 				file.buffer,
 				extension,
@@ -131,6 +135,14 @@ export class BookUploadService {
 			const cover = this.coverRepository.create({
 				title: title || file.originalname,
 				url: savedPath,
+				metadata: dimensions
+					? {
+							width: dimensions.width,
+							height: dimensions.height,
+							sizeBytes: file.size,
+							mimeType: file.mimetype,
+						}
+					: null,
 				book: book,
 				index: book.covers.length,
 				selected: book.covers.length === 0,
@@ -163,7 +175,7 @@ export class BookUploadService {
 				},
 			});
 
-			this.eventEmitter.emit('cover.uploaded', {
+			this.eventEmitter.emit(BookEvents.COVER_UPLOADED, {
 				bookId: book.id,
 				coverId: savedCover.id,
 				url: savedPath,
@@ -247,6 +259,9 @@ export class BookUploadService {
 			}
 
 			const extension = path.extname(file.originalname) || '.jpg';
+
+			const dimensions = await getImageDimensions(file.buffer);
+
 			const savedPath = await this.filesService.saveBufferFile(
 				file.buffer,
 				extension,
@@ -254,6 +269,14 @@ export class BookUploadService {
 			);
 
 			cover.url = savedPath;
+			cover.metadata = dimensions
+				? {
+						width: dimensions.width,
+						height: dimensions.height,
+						sizeBytes: file.size,
+						mimeType: file.mimetype,
+					}
+				: null;
 			if (title !== undefined) {
 				cover.title = title;
 			}
@@ -281,7 +304,7 @@ export class BookUploadService {
 				},
 			});
 
-			this.eventEmitter.emit('cover.updated', {
+			this.eventEmitter.emit(BookEvents.COVER_UPDATED, {
 				bookId,
 				coverId,
 				url: savedPath,
@@ -358,6 +381,11 @@ export class BookUploadService {
 
 						const extension =
 							path.extname(file.originalname) || '.jpg';
+
+						const dimensions = await getImageDimensions(
+							file.buffer,
+						);
+
 						const savedPath =
 							await this.filesService.saveBufferFile(
 								file.buffer,
@@ -369,6 +397,14 @@ export class BookUploadService {
 						return this.coverRepository.create({
 							title: file.originalname,
 							url: savedPath,
+							metadata: dimensions
+								? {
+										width: dimensions.width,
+										height: dimensions.height,
+										sizeBytes: file.size,
+										mimeType: file.mimetype,
+									}
+								: null,
 							book: book,
 							index: book.covers.length + index,
 							selected: book.covers.length === 0 && index === 0,
@@ -396,7 +432,7 @@ export class BookUploadService {
 				'BookUploadService',
 			);
 
-			this.eventEmitter.emit('covers.uploaded', {
+			this.eventEmitter.emit(BookEvents.COVERS_UPLOADED, {
 				bookId: book.id,
 				count: savedCovers.length,
 				coverIds: savedCovers.map((c) => c.id),
@@ -506,6 +542,9 @@ export class BookUploadService {
 					}
 
 					const extension = path.extname(file.originalname) || '.jpg';
+
+					const dimensions = await getImageDimensions(file.buffer);
+
 					const savedPath = await this.filesService.saveBufferFile(
 						file.buffer,
 						extension,
@@ -515,6 +554,14 @@ export class BookUploadService {
 					return this.pageRepository.create({
 						index: indices[i],
 						path: savedPath,
+						metadata: dimensions
+							? {
+									width: dimensions.width,
+									height: dimensions.height,
+									sizeBytes: file.size,
+									mimeType: file.mimetype,
+								}
+							: null,
 						chapter: chapter,
 					});
 				}),
@@ -544,7 +591,7 @@ export class BookUploadService {
 				},
 			});
 
-			this.eventEmitter.emit('chapter.pages.uploaded', {
+			this.eventEmitter.emit(BookEvents.PAGES_UPLOADED, {
 				chapterId: chapter.id,
 				bookId: chapter.book?.id,
 				count: savedPages.length,
@@ -676,7 +723,7 @@ export class BookUploadService {
 				},
 			});
 
-			this.eventEmitter.emit('chapter.document.uploaded', {
+			this.eventEmitter.emit(BookEvents.DOCUMENT_UPLOADED, {
 				chapterId: chapter.id,
 				bookId: chapter.book?.id,
 				format: documentFormat,
@@ -784,7 +831,7 @@ export class BookUploadService {
 				},
 			});
 
-			this.eventEmitter.emit('chapter.content.uploaded', {
+			this.eventEmitter.emit(BookEvents.CONTENT_UPLOADED, {
 				chapterId: chapter.id,
 				bookId: chapter.book?.id,
 				format: dto.format,

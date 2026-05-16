@@ -2,15 +2,17 @@ import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AppConfigModule } from '../infrastructure/app-config/app-config.module';
-import { AuthModule } from '../auth/auth.module';
-import { FilesModule } from '../files/files.module';
-import { LoggingModule } from '../infrastructure/logging/logging.module';
-import { MetricsModule } from '../metrics/metrics.module';
-import { ScrapingModule } from '../scraping/scraping.module';
-import { UsersModule } from '../users/users.module';
-import { User } from '../users/infrastructure/database/entities/user.entity';
+import { AppConfigModule } from '@app-config/app-config.module';
+import { AuthModule } from '@auth/auth.module';
+import { FilesModule } from '@files/files.module';
+import { LoggingModule } from '@logging/logging.module';
+import { MetricsModule } from '@metrics/metrics.module';
+import { RedisModule } from '@/infrastructure/redis/redis.module';
+import { ScrapingModule } from '@scraping/scraping.module';
+import { UsersModule } from '@users/users.module';
+import { User } from '@users/infrastructure/database/entities/user.entity';
 import { AdminBooksDashboardController } from './infrastructure/http/controllers/admin-books-dashboard.controller';
+import { AdminSystemManagementController } from './infrastructure/http/controllers/admin-system-management.controller';
 import { AdminBookRelationshipsController } from './infrastructure/http/controllers/admin-book-relationships.controller';
 import { AdminBooksUploadController } from './infrastructure/http/controllers/admin-books-upload.controller';
 import { AdminBooksController } from './infrastructure/http/controllers/admin-books.controller';
@@ -41,10 +43,13 @@ import { BookUpdateJobService } from './infrastructure/jobs/book-update.service'
 import { ChapterScrapingJob } from './infrastructure/jobs/chapter-scraping.job';
 import { ChapterScrapingService } from './infrastructure/jobs/chapter-scraping.service';
 import { ChapterScrapingSharedService } from './infrastructure/jobs/chapter-scraping.shared';
+import { ScrapingRecoveryScheduler } from './infrastructure/jobs/scraping-recovery.scheduler';
 import { CoverImageProcessor } from './infrastructure/jobs/cover-image.processor';
 import { CoverImageService } from './infrastructure/jobs/cover-image.service';
+import { QueueAutoPauseListener } from './infrastructure/jobs/queue-auto-pause.listener';
 import { FixChapterProcessor } from './infrastructure/jobs/fix-chapter.processor';
 import { FixChapterService } from './infrastructure/jobs/fix-chapter.service';
+import { TextProcessingProcessor } from './infrastructure/jobs/text-processing.processor';
 import { SensitiveContentController } from './infrastructure/http/controllers/sensitive-content.controller';
 import { SensitiveContentService } from './application/services/sensitive-content.service';
 import { BookContentUpdateService } from './application/services/book-content-update.service';
@@ -58,6 +63,10 @@ import { BookUploadService } from './application/services/book-upload.service';
 import { ChapterManagementService } from './application/services/chapter-management.service';
 import { TagsController } from './infrastructure/http/controllers/tags.controller';
 import { TagsService } from './application/services/tags.service';
+import { AuthorsService } from './application/services/authors.service';
+import { BooksNotifier } from './infrastructure/notifiers/books.notifier';
+import { AdminSystemManagementService } from './application/services/admin-system-management.service';
+import { BookDataLoaderService } from './application/services/book-dataloader.service';
 
 import { I_BOOK_REPOSITORY } from './application/ports/book-repository.interface';
 import { TypeOrmBookRepositoryAdapter } from './infrastructure/database/adapters/typeorm-book-repository.adapter';
@@ -79,6 +88,14 @@ import { I_CHAPTER_READ_REPOSITORY } from './application/ports/chapter-read-repo
 import { TypeOrmChapterReadRepositoryAdapter } from './infrastructure/database/adapters/typeorm-chapter-read-repository.adapter';
 import { I_CHAPTER_COMMENT_REPOSITORY } from './application/ports/chapter-comment-repository.interface';
 import { TypeOrmChapterCommentRepositoryAdapter } from './infrastructure/database/adapters/typeorm-chapter-comment-repository.adapter';
+import { I_UNIT_OF_WORK } from 'src/common/application/ports/unit-of-work.interface';
+import { TypeOrmUnitOfWorkAdapter } from './infrastructure/database/adapters/typeorm-unit-of-work.adapter';
+
+import { BookResolver } from './infrastructure/graphql/resolvers/book.resolver';
+import {
+	CoverResolver,
+	PageResolver,
+} from './infrastructure/graphql/resolvers/media.resolver';
 
 @Module({
 	imports: [
@@ -87,6 +104,7 @@ import { TypeOrmChapterCommentRepositoryAdapter } from './infrastructure/databas
 		FilesModule,
 		LoggingModule,
 		MetricsModule,
+		RedisModule,
 		ScheduleModule.forRoot(),
 		DownloadModule,
 		UsersModule,
@@ -153,6 +171,18 @@ import { TypeOrmChapterCommentRepositoryAdapter } from './infrastructure/databas
 					},
 				},
 			},
+			{
+				name: 'text-processing-queue',
+				defaultJobOptions: {
+					attempts: 3,
+					removeOnFail: 20,
+					delay: 5000,
+					backoff: {
+						type: 'exponential',
+						delay: 5000,
+					},
+				},
+			},
 		),
 	],
 	controllers: [
@@ -165,6 +195,7 @@ import { TypeOrmChapterCommentRepositoryAdapter } from './infrastructure/databas
 		AdminBookRelationshipsController,
 		AdminBooksUploadController,
 		AdminBooksDashboardController,
+		AdminSystemManagementController,
 	],
 	providers: [
 		{ provide: I_BOOK_REPOSITORY, useClass: TypeOrmBookRepositoryAdapter },
@@ -198,6 +229,10 @@ import { TypeOrmChapterCommentRepositoryAdapter } from './infrastructure/databas
 			provide: I_CHAPTER_COMMENT_REPOSITORY,
 			useClass: TypeOrmChapterCommentRepositoryAdapter,
 		},
+		{
+			provide: I_UNIT_OF_WORK,
+			useClass: TypeOrmUnitOfWorkAdapter,
+		},
 		BooksService,
 		BookScrapingEvents,
 		BookInitEvents,
@@ -205,13 +240,17 @@ import { TypeOrmChapterCommentRepositoryAdapter } from './infrastructure/databas
 		ChapterCommentsService,
 		SensitiveContentService,
 		TagsService,
+		AuthorsService,
 		ChapterScrapingJob,
 		ChapterScrapingService,
 		ChapterScrapingSharedService,
+		ScrapingRecoveryScheduler,
 		CoverImageService,
 		CoverImageProcessor,
+		QueueAutoPauseListener,
 		FixChapterService,
 		FixChapterProcessor,
+		TextProcessingProcessor,
 		// Book Update Jobs
 		BookUpdateJobService,
 		BookUpdateProcessor,
@@ -228,8 +267,14 @@ import { TypeOrmChapterCommentRepositoryAdapter } from './infrastructure/databas
 		BookDeletionService,
 		// Listeners
 		FileDeletionEvents,
+		BooksNotifier,
 		// WebSocket Gateway
 		BooksGateway,
+		BookResolver,
+		CoverResolver,
+		PageResolver,
+		BookDataLoaderService,
+		AdminSystemManagementService,
 	],
 	exports: [
 		I_BOOK_REPOSITORY,
@@ -242,6 +287,11 @@ import { TypeOrmChapterCommentRepositoryAdapter } from './infrastructure/databas
 		I_BOOK_RELATIONSHIP_REPOSITORY,
 		I_CHAPTER_READ_REPOSITORY,
 		I_CHAPTER_COMMENT_REPOSITORY,
+		I_UNIT_OF_WORK,
+		ChapterCommentsService,
+		ChapterService,
+		AuthorsService,
+		TagsService,
 	],
 })
 export class BooksModule {}

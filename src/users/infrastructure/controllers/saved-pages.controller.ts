@@ -10,21 +10,28 @@ import {
 	UseGuards,
 	UseInterceptors,
 } from '@nestjs/common';
-import {
-	ApiBearerAuth,
-	ApiOperation,
-	ApiParam,
-	ApiResponse,
-	ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { DataEnvelopeInterceptor } from 'src/common/interceptors/data-envelope.interceptor';
-import { CreateSavedPageDto } from '../http/dto/create-saved-page.dto';
-import { UpdateSavedPageDto } from '../http/dto/update-saved-page.dto';
-import { SavedPagesService } from '../../application/use-cases/saved-pages.service';
+import { CreateSavedPageDto } from '@users/infrastructure/http/dto/create-saved-page.dto';
+import { UpdateSavedPageDto } from '@users/infrastructure/http/dto/update-saved-page.dto';
+import { SavedPagesService } from '@users/application/use-cases/saved-pages.service';
+import {
+	ApiDocsSavePage,
+	ApiDocsGetSavedPages,
+	ApiDocsGetSavedPagesByBook,
+	ApiDocsGetSavedPagesByChapter,
+	ApiDocsIsPageSaved,
+	ApiDocsCountSavedPagesByBook,
+	ApiDocsGetSavedPage,
+	ApiDocsUpdateComment,
+	ApiDocsUnsavePage,
+	ApiDocsUnsavePageByPageId,
+	ApiDocsUpdateVisibility,
+} from './swagger/saved-pages.swagger';
 
 @ApiTags('Saved Pages')
 @Controller('users/me/saved-pages')
@@ -35,17 +42,7 @@ export class SavedPagesController {
 	constructor(private readonly savedPagesService: SavedPagesService) {}
 
 	@Post()
-	@ApiOperation({
-		summary: 'Save a page',
-		description: 'Save a page to your favorites with an optional comment',
-	})
-	@ApiResponse({ status: 201, description: 'Page saved successfully' })
-	@ApiResponse({
-		status: 400,
-		description: 'Page already saved or invalid data',
-	})
-	@ApiResponse({ status: 404, description: 'Page not found' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiDocsSavePage()
 	async savePage(
 		@Body() dto: CreateSavedPageDto,
 		@CurrentUser() user: CurrentUserDto,
@@ -54,34 +51,13 @@ export class SavedPagesController {
 	}
 
 	@Get()
-	@ApiOperation({
-		summary: 'Get all saved pages',
-		description: 'Retrieve all saved pages for the current user',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Saved pages retrieved successfully',
-	})
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiDocsGetSavedPages()
 	async getSavedPages(@CurrentUser() user: CurrentUserDto) {
 		return this.savedPagesService.getSavedPages(user.userId);
 	}
 
 	@Get('book/:bookId')
-	@ApiOperation({
-		summary: 'Get saved pages by book',
-		description: 'Retrieve all saved pages for a specific book',
-	})
-	@ApiParam({
-		name: 'bookId',
-		description: 'Book unique identifier',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Saved pages retrieved successfully',
-	})
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiDocsGetSavedPagesByBook()
 	async getSavedPagesByBook(
 		@Param('bookId') bookId: string,
 		@CurrentUser() user: CurrentUserDto,
@@ -90,20 +66,7 @@ export class SavedPagesController {
 	}
 
 	@Get('chapter/:chapterId')
-	@ApiOperation({
-		summary: 'Get saved pages by chapter',
-		description: 'Retrieve all saved pages for a specific chapter',
-	})
-	@ApiParam({
-		name: 'chapterId',
-		description: 'Chapter unique identifier',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Saved pages retrieved successfully',
-	})
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiDocsGetSavedPagesByChapter()
 	async getSavedPagesByChapter(
 		@Param('chapterId') chapterId: string,
 		@CurrentUser() user: CurrentUserDto,
@@ -115,20 +78,7 @@ export class SavedPagesController {
 	}
 
 	@Get('check/:pageId')
-	@ApiOperation({
-		summary: 'Check if page is saved',
-		description: 'Check if a specific page is saved by the user',
-	})
-	@ApiParam({
-		name: 'pageId',
-		description: 'Page ID',
-		example: 1,
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Returns whether the page is saved',
-	})
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiDocsIsPageSaved()
 	async isPageSaved(
 		@Param('pageId', ParseIntPipe) pageId: number,
 		@CurrentUser() user: CurrentUserDto,
@@ -141,17 +91,7 @@ export class SavedPagesController {
 	}
 
 	@Get('count/book/:bookId')
-	@ApiOperation({
-		summary: 'Count saved pages by book',
-		description: 'Get the count of saved pages for a specific book',
-	})
-	@ApiParam({
-		name: 'bookId',
-		description: 'Book unique identifier',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@ApiResponse({ status: 200, description: 'Count retrieved successfully' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiDocsCountSavedPagesByBook()
 	async countSavedPagesByBook(
 		@Param('bookId') bookId: string,
 		@CurrentUser() user: CurrentUserDto,
@@ -164,18 +104,7 @@ export class SavedPagesController {
 	}
 
 	@Get(':id')
-	@ApiOperation({
-		summary: 'Get saved page by ID',
-		description: 'Retrieve a specific saved page with all details',
-	})
-	@ApiParam({
-		name: 'id',
-		description: 'Saved page unique identifier',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@ApiResponse({ status: 200, description: 'Saved page found' })
-	@ApiResponse({ status: 404, description: 'Saved page not found' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiDocsGetSavedPage()
 	async getSavedPage(
 		@Param('id') id: string,
 		@CurrentUser() user: CurrentUserDto,
@@ -184,18 +113,7 @@ export class SavedPagesController {
 	}
 
 	@Patch(':id')
-	@ApiOperation({
-		summary: 'Update saved page comment',
-		description: 'Update the comment on a saved page',
-	})
-	@ApiParam({
-		name: 'id',
-		description: 'Saved page unique identifier',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@ApiResponse({ status: 200, description: 'Comment updated successfully' })
-	@ApiResponse({ status: 404, description: 'Saved page not found' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiDocsUpdateComment()
 	async updateComment(
 		@Param('id') id: string,
 		@Body() dto: UpdateSavedPageDto,
@@ -205,18 +123,7 @@ export class SavedPagesController {
 	}
 
 	@Delete(':id')
-	@ApiOperation({
-		summary: 'Unsave a page',
-		description: 'Remove a page from saved pages by saved page ID',
-	})
-	@ApiParam({
-		name: 'id',
-		description: 'Saved page unique identifier',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@ApiResponse({ status: 200, description: 'Page unsaved successfully' })
-	@ApiResponse({ status: 404, description: 'Saved page not found' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiDocsUnsavePage()
 	async unsavePage(
 		@Param('id') id: string,
 		@CurrentUser() user: CurrentUserDto,
@@ -226,19 +133,7 @@ export class SavedPagesController {
 	}
 
 	@Delete('page/:pageId')
-	@ApiOperation({
-		summary: 'Unsave a page by page ID',
-		description:
-			'Remove a page from saved pages using the original page ID',
-	})
-	@ApiParam({
-		name: 'pageId',
-		description: 'Original page ID',
-		example: 1,
-	})
-	@ApiResponse({ status: 200, description: 'Page unsaved successfully' })
-	@ApiResponse({ status: 404, description: 'Saved page not found' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiDocsUnsavePageByPageId()
 	async unsavePageByPageId(
 		@Param('pageId', ParseIntPipe) pageId: number,
 		@CurrentUser() user: CurrentUserDto,
@@ -248,21 +143,7 @@ export class SavedPagesController {
 	}
 
 	@Patch(':id/visibility')
-	@ApiOperation({
-		summary: 'Update saved page visibility',
-		description: 'Update whether a saved page is public or private',
-	})
-	@ApiParam({
-		name: 'id',
-		description: 'Saved page unique identifier',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Visibility updated successfully',
-	})
-	@ApiResponse({ status: 404, description: 'Saved page not found' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
+	@ApiDocsUpdateVisibility()
 	async updateVisibility(
 		@Param('id') id: string,
 		@Body() dto: UpdateSavedPageDto,

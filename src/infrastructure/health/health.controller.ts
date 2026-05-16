@@ -1,15 +1,24 @@
 import { Controller, Get, Inject } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import {
 	DiskHealthIndicator,
 	HealthCheck,
 	HealthCheckService,
+	HttpHealthIndicator,
 	MemoryHealthIndicator,
+	MicroserviceHealthIndicator,
 	TypeOrmHealthIndicator,
 } from '@nestjs/terminus';
 import { Redis } from 'ioredis';
-import { REDIS_CLIENT } from '../redis/redis.constants';
-import { AppConfigService } from '../app-config/app-config.service';
+import { Transport } from '@nestjs/microservices';
+import { REDIS_CLIENT } from '@/infrastructure/redis/redis.constants';
+import { AppConfigService } from '@app-config/app-config.service';
+import {
+	ApiDocsCheck,
+	ApiDocsLiveness,
+	ApiDocsReadiness,
+	ApiDocsStartup,
+} from './swagger/health.swagger';
 
 @ApiTags('Health')
 @Controller('health')
@@ -19,21 +28,15 @@ export class HealthController {
 		private db: TypeOrmHealthIndicator,
 		private memory: MemoryHealthIndicator,
 		private disk: DiskHealthIndicator,
+		private http: HttpHealthIndicator,
+		private microservice: MicroserviceHealthIndicator,
 		private appConfig: AppConfigService,
 		@Inject(REDIS_CLIENT) private readonly redis: Redis,
 	) {}
 
 	@Get()
 	@HealthCheck()
-	@ApiOperation({
-		summary: 'Health check completo',
-		description:
-			'Verifica status do banco, Redis, memória detalhada e disco',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Aplicação saudável',
-	})
+	@ApiDocsCheck()
 	check() {
 		return this.health.check([
 			() => this.db.pingCheck('database'),
@@ -48,6 +51,39 @@ export class HealthController {
 					return { redis: { status: 'down', message: e.message } };
 				}
 			},
+			// Kafka Check
+			() =>
+				this.microservice.pingCheck('kafka', {
+					transport: Transport.KAFKA,
+					options: {
+						client: {
+							brokers: [this.appConfig.kafkaBroker],
+						},
+					},
+				}),
+			// Meilisearch Check
+			() =>
+				this.http.pingCheck(
+					'meilisearch',
+					`${this.appConfig.meili.host}/health`,
+				),
+			// RustFS Check
+			() => this.http.pingCheck('rustfs', this.appConfig.rustfs.endpoint),
+			// FlareSolverr Check
+			() =>
+				this.http.pingCheck(
+					'flaresolverr',
+					`${this.appConfig.flareSolverrUrl}/health`,
+				),
+			// Browserless Check (HTTP fallback as WS is harder to ping simply with HttpIndicator)
+			() =>
+				this.http.pingCheck(
+					'browserless',
+					this.appConfig.playwright.wsEndpoint.replace(
+						'ws://',
+						'http://',
+					),
+				),
 			// Memória Detalhada para diagnóstico
 			() => {
 				const mem = process.memoryUsage();
@@ -80,14 +116,7 @@ export class HealthController {
 
 	@Get('liveness')
 	@HealthCheck()
-	@ApiOperation({
-		summary: 'Liveness probe',
-		description: 'Verifica se a aplicação está rodando (para Kubernetes)',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Aplicação está viva',
-	})
+	@ApiDocsLiveness()
 	liveness() {
 		return this.health.check([
 			() => Promise.resolve({ liveness: { status: 'up' } }),
@@ -96,19 +125,7 @@ export class HealthController {
 
 	@Get('readiness')
 	@HealthCheck()
-	@ApiOperation({
-		summary: 'Readiness probe',
-		description:
-			'Verifica se a aplicação está pronta para receber tráfego (para Kubernetes)',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Aplicação está pronta',
-	})
-	@ApiResponse({
-		status: 503,
-		description: 'Aplicação não está pronta',
-	})
+	@ApiDocsReadiness()
 	readiness() {
 		return this.health.check([
 			() => this.db.pingCheck('database'),
@@ -122,15 +139,7 @@ export class HealthController {
 
 	@Get('startup')
 	@HealthCheck()
-	@ApiOperation({
-		summary: 'Startup probe',
-		description:
-			'Verifica se a aplicação terminou de inicializar (para Kubernetes)',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Aplicação inicializada',
-	})
+	@ApiDocsStartup()
 	startup() {
 		return this.health.check([() => this.db.pingCheck('database')]);
 	}

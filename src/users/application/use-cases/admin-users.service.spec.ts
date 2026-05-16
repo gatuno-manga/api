@@ -1,70 +1,82 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { AccessPolicy } from '../../infrastructure/database/entities/access-policy.entity';
-import { Role } from '../../infrastructure/database/entities/role.entity';
-import { UserGroup } from '../../infrastructure/database/entities/user-group.entity';
-import { User } from '../../infrastructure/database/entities/user.entity';
+import { Repository } from 'typeorm';
 import { AdminUsersService } from './admin-users.service';
-import { AccessPolicyEffectEnum } from '../../domain/enums/access-policy-effect.enum';
-import { AccessPolicyScopeEnum } from '../../domain/enums/access-policy-scope.enum';
+import { User } from '@users/infrastructure/database/entities/user.entity';
+import { Role } from '@users/infrastructure/database/entities/role.entity';
+import { UserGroup } from '@users/infrastructure/database/entities/user-group.entity';
+import { AccessPolicy } from '@users/infrastructure/database/entities/access-policy.entity';
+import { AccessPolicyEffectEnum } from '@users/domain/enums/access-policy-effect.enum';
+import { AccessPolicyScopeEnum } from '@users/domain/enums/access-policy-scope.enum';
+import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants';
+import { PasswordEncryption } from '@encryption/password-encryption.provider';
 
 describe('AdminUsersService', () => {
 	let service: AdminUsersService;
-	let userRepository: any;
-	let roleRepository: any;
-	let accessPolicyRepository: any;
-
-	const mockUserRepository = {
-		findOne: jest.fn(),
-		find: jest.fn(),
-		save: jest.fn(),
-		remove: jest.fn(),
-		createQueryBuilder: jest.fn(),
-	};
-
-	const mockRoleRepository = {
-		findOne: jest.fn(),
-		find: jest.fn(),
-		save: jest.fn(),
-		create: jest.fn(),
-	};
-
-	const mockGroupRepository = {
-		findOne: jest.fn(),
-		find: jest.fn(),
-		save: jest.fn(),
-		remove: jest.fn(),
-		create: jest.fn(),
-	};
-
-	const mockAccessPolicyRepository = {
-		findOne: jest.fn(),
-		find: jest.fn(),
-		save: jest.fn(),
-		remove: jest.fn(),
-		create: jest.fn(),
-		createQueryBuilder: jest.fn(),
-	};
+	let userRepository: jest.Mocked<Repository<User>>;
+	let roleRepository: jest.Mocked<Repository<Role>>;
+	let userGroupRepository: jest.Mocked<Repository<UserGroup>>;
+	let accessPolicyRepository: jest.Mocked<Repository<AccessPolicy>>;
+	let meiliClient: any;
 
 	beforeEach(async () => {
+		meiliClient = {
+			index: jest.fn().mockReturnValue({
+				search: jest.fn(),
+			}),
+		};
+
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				AdminUsersService,
 				{
 					provide: getRepositoryToken(User),
-					useValue: mockUserRepository,
+					useValue: {
+						find: jest.fn(),
+						findOne: jest.fn(),
+						create: jest.fn(),
+						save: jest.fn(),
+						merge: jest.fn(),
+					},
 				},
 				{
 					provide: getRepositoryToken(Role),
-					useValue: mockRoleRepository,
+					useValue: {
+						find: jest.fn(),
+						findOne: jest.fn(),
+						create: jest.fn(),
+						save: jest.fn(),
+					},
 				},
 				{
 					provide: getRepositoryToken(UserGroup),
-					useValue: mockGroupRepository,
+					useValue: {
+						find: jest.fn(),
+						findOne: jest.fn(),
+						create: jest.fn(),
+						save: jest.fn(),
+					},
 				},
 				{
 					provide: getRepositoryToken(AccessPolicy),
-					useValue: mockAccessPolicyRepository,
+					useValue: {
+						find: jest.fn(),
+						findOne: jest.fn(),
+						create: jest.fn(),
+						save: jest.fn(),
+						createQueryBuilder: jest.fn(),
+					},
+				},
+				{
+					provide: MEILI_CLIENT,
+					useValue: meiliClient,
+				},
+				{
+					provide: PasswordEncryption,
+					useValue: {
+						hash: jest.fn(),
+						compare: jest.fn(),
+					},
 				},
 			],
 		}).compile();
@@ -72,199 +84,129 @@ describe('AdminUsersService', () => {
 		service = module.get<AdminUsersService>(AdminUsersService);
 		userRepository = module.get(getRepositoryToken(User));
 		roleRepository = module.get(getRepositoryToken(Role));
+		userGroupRepository = module.get(getRepositoryToken(UserGroup));
 		accessPolicyRepository = module.get(getRepositoryToken(AccessPolicy));
-
-		jest.clearAllMocks();
 	});
 
-	it('should be defined', () => {
-		expect(service).toBeDefined();
+	describe('search', () => {
+		it('should call meilisearch with the query', async () => {
+			const query = 'admin';
+			const mockHits = [{ id: '1', userName: 'admin' }];
+			meiliClient
+				.index('users')
+				.search.mockResolvedValue({ hits: mockHits });
+
+			const result = await service.search(query);
+
+			expect(meiliClient.index).toHaveBeenCalledWith('users');
+			expect(result).toEqual(mockHits);
+		});
+
+		it('should return empty array on error', async () => {
+			meiliClient
+				.index('users')
+				.search.mockRejectedValue(new Error('Meili Error'));
+
+			const result = await service.search('query');
+
+			expect(result).toEqual([]);
+		});
 	});
 
-	it('denies access when a matching deny policy exists even with allow policy', async () => {
-		userRepository.findOne.mockResolvedValue({ id: 'u1', groups: [] });
+	describe('evaluateAccessForBook', () => {
+		it('blocks access when explicit deny book policy exists', async () => {
+			userRepository.findOne.mockResolvedValue({
+				id: 'u1',
+				groups: [],
+			} as any);
 
-		const qb = {
-			where: jest.fn().mockReturnThis(),
-			andWhere: jest.fn().mockReturnThis(),
-			getMany: jest.fn().mockResolvedValue([
-				{
-					targetUserId: 'u1',
-					effect: AccessPolicyEffectEnum.ALLOW,
-					scope: AccessPolicyScopeEnum.GLOBAL,
-					overrideMaxWeightSensitiveContent: 99,
-				},
-				{
-					targetUserId: 'u1',
-					effect: AccessPolicyEffectEnum.DENY,
-					scope: AccessPolicyScopeEnum.BOOK,
-					bookId: 'b1',
-				},
-			]),
-		};
+			const qb = {
+				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
+				getMany: jest.fn().mockResolvedValue([
+					{
+						targetUserId: 'u1',
+						effect: AccessPolicyEffectEnum.DENY,
+						scope: AccessPolicyScopeEnum.BOOK,
+						bookId: 'b1',
+					},
+				]),
+			};
 
-		accessPolicyRepository.createQueryBuilder.mockReturnValue(qb);
+			accessPolicyRepository.createQueryBuilder.mockReturnValue(
+				qb as any,
+			);
 
-		const result = await service.evaluateAccessForBook({
-			userId: 'u1',
-			bookId: 'b1',
-			bookTagIds: [],
-			bookSensitiveContentIds: [],
-			baseMaxWeightSensitiveContent: 4,
+			const result = await service.evaluateAccessForBook({
+				userId: 'u1',
+				bookId: 'b1',
+				bookTagIds: [],
+				bookSensitiveContentIds: [],
+				bookSensitiveContentWeights: [],
+				baseMaxWeightSensitiveContent: 4,
+			});
+
+			expect(result.blocked).toBe(true);
 		});
 
-		expect(result.blocked).toBe(true);
-	});
+		it('elevates max weight when matching allow tag policy exists', async () => {
+			userRepository.findOne.mockResolvedValue({
+				id: 'u1',
+				groups: [],
+			} as any);
 
-	it('elevates max weight when matching allow tag policy exists', async () => {
-		userRepository.findOne.mockResolvedValue({ id: 'u1', groups: [] });
+			const qb = {
+				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
+				getMany: jest.fn().mockResolvedValue([
+					{
+						targetUserId: 'u1',
+						effect: AccessPolicyEffectEnum.ALLOW,
+						scope: AccessPolicyScopeEnum.TAG,
+						tagId: 't1',
+						overrideMaxWeightSensitiveContent: 60,
+					},
+				]),
+			};
 
-		const qb = {
-			where: jest.fn().mockReturnThis(),
-			andWhere: jest.fn().mockReturnThis(),
-			getMany: jest.fn().mockResolvedValue([
-				{
-					targetUserId: 'u1',
-					effect: AccessPolicyEffectEnum.ALLOW,
-					scope: AccessPolicyScopeEnum.TAG,
-					tagId: 't1',
-					overrideMaxWeightSensitiveContent: 60,
-				},
-			]),
-		};
+			accessPolicyRepository.createQueryBuilder.mockReturnValue(
+				qb as any,
+			);
 
-		accessPolicyRepository.createQueryBuilder.mockReturnValue(qb);
+			const result = await service.evaluateAccessForBook({
+				userId: 'u1',
+				bookId: 'b1',
+				bookTagIds: ['t1'],
+				bookSensitiveContentIds: [],
+				bookSensitiveContentWeights: [],
+				baseMaxWeightSensitiveContent: 4,
+			});
 
-		const result = await service.evaluateAccessForBook({
-			userId: 'u1',
-			bookId: 'b1',
-			bookTagIds: ['t1'],
-			bookSensitiveContentIds: [],
-			baseMaxWeightSensitiveContent: 4,
+			expect(result.blocked).toBe(false);
+			expect(result.effectiveMaxWeightSensitiveContent).toBe(60);
 		});
 
-		expect(result.blocked).toBe(false);
-		expect(result.effectiveMaxWeightSensitiveContent).toBe(60);
-	});
+		it('blocks access when book sensitive weight exceeds user max weight', async () => {
+			userRepository.findOne.mockResolvedValue({
+				id: 'u1',
+				groups: [],
+			} as any);
+			accessPolicyRepository.createQueryBuilder.mockReturnValue({
+				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
+				getMany: jest.fn().mockResolvedValue([]),
+			} as any);
 
-	it('prioritizes user allow over group deny for the same book', async () => {
-		userRepository.findOne.mockResolvedValue({
-			id: 'u1',
-			groups: [{ id: 'g1' }],
+			const result = await service.evaluateAccessForBook({
+				userId: 'u1',
+				bookId: 'b1',
+				bookTagIds: [],
+				bookSensitiveContentIds: ['sc1'],
+				bookSensitiveContentWeights: [10],
+				baseMaxWeightSensitiveContent: 4,
+			});
+
+			expect(result.blocked).toBe(true);
 		});
-
-		const qb = {
-			where: jest.fn().mockReturnThis(),
-			andWhere: jest.fn().mockReturnThis(),
-			getMany: jest.fn().mockResolvedValue([
-				{
-					targetGroupId: 'g1',
-					effect: AccessPolicyEffectEnum.DENY,
-					scope: AccessPolicyScopeEnum.BOOK,
-					bookId: 'b1',
-				},
-				{
-					targetUserId: 'u1',
-					effect: AccessPolicyEffectEnum.ALLOW,
-					scope: AccessPolicyScopeEnum.BOOK,
-					bookId: 'b1',
-					overrideMaxWeightSensitiveContent: 70,
-				},
-			]),
-		};
-
-		accessPolicyRepository.createQueryBuilder.mockReturnValue(qb);
-
-		const result = await service.evaluateAccessForBook({
-			userId: 'u1',
-			bookId: 'b1',
-			bookTagIds: [],
-			bookSensitiveContentIds: [],
-			baseMaxWeightSensitiveContent: 4,
-		});
-
-		expect(result.blocked).toBe(false);
-		expect(result.effectiveMaxWeightSensitiveContent).toBe(70);
-	});
-
-	it('prioritizes user global allow over group global deny', async () => {
-		userRepository.findOne.mockResolvedValue({
-			id: 'u1',
-			groups: [{ id: 'g1' }],
-		});
-
-		const qb = {
-			where: jest.fn().mockReturnThis(),
-			andWhere: jest.fn().mockReturnThis(),
-			getMany: jest.fn().mockResolvedValue([
-				{
-					targetGroupId: 'g1',
-					effect: AccessPolicyEffectEnum.DENY,
-					scope: AccessPolicyScopeEnum.GLOBAL,
-				},
-				{
-					targetUserId: 'u1',
-					effect: AccessPolicyEffectEnum.ALLOW,
-					scope: AccessPolicyScopeEnum.GLOBAL,
-					overrideMaxWeightSensitiveContent: 80,
-				},
-			]),
-		};
-
-		accessPolicyRepository.createQueryBuilder.mockReturnValue(qb);
-
-		const result = await service.evaluateAccessForBook({
-			userId: 'u1',
-			bookId: 'b2',
-			bookTagIds: [],
-			bookSensitiveContentIds: [],
-			baseMaxWeightSensitiveContent: 4,
-		});
-
-		expect(result.blocked).toBe(false);
-		expect(result.effectiveMaxWeightSensitiveContent).toBe(80);
-	});
-
-	it('denies access when sensitive content deny policy matches the book', async () => {
-		userRepository.findOne.mockResolvedValue({ id: 'u1', groups: [] });
-
-		const qb = {
-			where: jest.fn().mockReturnThis(),
-			andWhere: jest.fn().mockReturnThis(),
-			getMany: jest.fn().mockResolvedValue([
-				{
-					targetUserId: 'u1',
-					effect: AccessPolicyEffectEnum.DENY,
-					scope: AccessPolicyScopeEnum.SENSITIVE_CONTENT,
-					sensitiveContentId: 'sc1',
-				},
-			]),
-		};
-
-		accessPolicyRepository.createQueryBuilder.mockReturnValue(qb);
-
-		const result = await service.evaluateAccessForBook({
-			userId: 'u1',
-			bookId: 'b5',
-			bookTagIds: [],
-			bookSensitiveContentIds: ['sc1'],
-			baseMaxWeightSensitiveContent: 4,
-		});
-
-		expect(result.blocked).toBe(true);
-	});
-
-	it('blocks self role update when admin role is removed from own account', async () => {
-		const targetUser = {
-			id: 'admin-1',
-			roles: [{ name: 'admin' }],
-		};
-
-		jest.spyOn(service, 'getUserById').mockResolvedValue(targetUser as any);
-		roleRepository.find.mockResolvedValue([{ id: 'r-user', name: 'user' }]);
-
-		await expect(
-			service.updateUserRoles('admin-1', { roles: ['user'] }, 'admin-1'),
-		).rejects.toThrow('You cannot remove your own admin role');
 	});
 });

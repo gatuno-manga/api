@@ -13,8 +13,8 @@ import { PageOptionsDto } from 'src/common/pagination/page-options.dto';
 import { FilterLogic } from 'src/common/enum/filter-logic.enum';
 import { FilterOperator } from 'src/common/enum/filter-operator.enum';
 import { OrderDirection } from 'src/common/enum/order-direction.enum';
-import { BookOrderField } from '../../domain/enums/book-order-field.enum';
-import { BookType } from '../../domain/enums/book-type.enum';
+import { BookOrderField } from '@books/domain/enums/book-order-field.enum';
+import { BookType } from '@books/domain/enums/book-type.enum';
 
 export class BookPageOptionsDto extends PageOptionsDto {
 	@ApiPropertyOptional({
@@ -24,6 +24,17 @@ export class BookPageOptionsDto extends PageOptionsDto {
 	@IsOptional()
 	@IsString()
 	cursor?: string;
+
+	@ApiPropertyOptional({
+		description: 'Filter by specific book IDs',
+		example: ['550e8400-e29b-41d4-a716-446655440000'],
+		type: [String],
+		isArray: true,
+	})
+	@IsOptional()
+	@ToArray()
+	@IsUUID('all', { each: true })
+	ids?: string[] = [];
 
 	@ApiPropertyOptional({
 		description: 'Filter by book types',
@@ -62,7 +73,7 @@ export class BookPageOptionsDto extends PageOptionsDto {
 	})
 	@IsOptional()
 	@ToArray()
-	@IsUUID('4', { each: true })
+	@IsUUID('all', { each: true })
 	tags?: string[] = [];
 
 	@ApiPropertyOptional({
@@ -83,7 +94,7 @@ export class BookPageOptionsDto extends PageOptionsDto {
 	})
 	@IsOptional()
 	@ToArray()
-	@IsUUID('4', { each: true })
+	@IsUUID('all', { each: true })
 	excludeTags?: string[] = [];
 
 	@ApiPropertyOptional({
@@ -125,7 +136,7 @@ export class BookPageOptionsDto extends PageOptionsDto {
 	})
 	@IsOptional()
 	@ToArray()
-	@IsUUID('4', { each: true })
+	@IsUUID('all', { each: true })
 	authors?: string[] = [];
 
 	@ApiPropertyOptional({
@@ -137,6 +148,16 @@ export class BookPageOptionsDto extends PageOptionsDto {
 	@IsOptional()
 	@IsEnum(FilterLogic)
 	authorsLogic?: FilterLogic = FilterLogic.AND;
+
+	@ApiPropertyOptional({
+		description: 'Filter by source sites',
+		example: ['manganato.com', 'hiper.cool'],
+		type: [String],
+		isArray: true,
+	})
+	@IsOptional()
+	@ToArray()
+	sites?: string[] = [];
 
 	@ApiPropertyOptional({
 		description: 'Field to order results by',

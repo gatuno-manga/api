@@ -2,11 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { FileCleanupService } from './file-cleanup.service';
-import { Page } from '../../../books/infrastructure/database/entities/page.entity';
-import { Cover } from '../../../books/infrastructure/database/entities/cover.entity';
-import { Book } from '../../../books/infrastructure/database/entities/book.entity';
-import { Chapter } from '../../../books/infrastructure/database/entities/chapter.entity';
-import { StoragePort } from '../ports/storage.port';
+import { Page } from '@books/infrastructure/database/entities/page.entity';
+import { Cover } from '@books/infrastructure/database/entities/cover.entity';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
+import { StoragePort } from '@files/application/ports/storage.port';
 
 describe('FileCleanupService (S3)', () => {
 	let service: FileCleanupService;

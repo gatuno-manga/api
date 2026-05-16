@@ -1,5 +1,6 @@
 import {
 	Column,
+	CreateDateColumn,
 	DeleteDateColumn,
 	Entity,
 	JoinColumn,
@@ -8,11 +9,12 @@ import {
 	PrimaryGeneratedColumn,
 	Relation,
 	Unique,
+	UpdateDateColumn,
 } from 'typeorm';
-import { ContentFormat } from '../../../domain/enums/content-format.enum';
-import { ContentType } from '../../../domain/enums/content-type.enum';
-import { DocumentFormat } from '../../../domain/enums/document-format.enum';
-import { ScrapingStatus } from '../../../domain/enums/scrapingStatus.enum';
+import { ContentFormat } from '@books/domain/enums/content-format.enum';
+import { ContentType } from '@books/domain/enums/content-type.enum';
+import { DocumentFormat } from '@books/domain/enums/document-format.enum';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { Book } from './book.entity';
 import { ChapterComment } from './chapter-comment.entity';
 import { Page } from './page.entity';
@@ -125,6 +127,12 @@ export class Chapter {
 		default: false,
 	})
 	isFinal: boolean;
+
+	@CreateDateColumn()
+	createdAt: Date;
+
+	@UpdateDateColumn()
+	updatedAt: Date;
 
 	@DeleteDateColumn()
 	deletedAt: Date;

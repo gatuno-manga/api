@@ -1,12 +1,12 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { UnauthorizedException } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { AppConfigService } from '../../../infrastructure/app-config/app-config.service';
+import { AppConfigService } from '@app-config/app-config.service';
 import { AuthController } from './auth.controller';
-import { AuthService } from '../../auth.service';
-import { JwtAuthGuard } from '../framework/jwt-auth.guard';
-import { RefreshTokenGuard } from '../framework/jwt-refresh.guard';
-import { WebauthnService } from '../adapters/webauthn.service';
+import { AuthService } from '@auth/auth.service';
+import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
+import { RefreshTokenGuard } from '@auth/infrastructure/framework/jwt-refresh.guard';
+import { WebauthnService } from '@auth/infrastructure/adapters/webauthn.service';
 
 describe('AuthController', () => {
 	let controller: AuthController;
@@ -101,6 +101,7 @@ describe('AuthController', () => {
 		return {
 			header: (name: string) =>
 				normalizedHeaders[name.toLowerCase()] ?? undefined,
+			headers: normalizedHeaders, // Add this to support req.headers.origin
 			ip: '127.0.0.1',
 			socket: {
 				remoteAddress: '127.0.0.1',
@@ -153,6 +154,7 @@ describe('AuthController', () => {
 			expect(result).toEqual({
 				accessToken: 'access-token',
 				sessionId: 'session-1',
+				csrfToken: expect.any(String),
 			});
 			expect(res.cookie).toHaveBeenCalledWith(
 				'refreshToken',
@@ -164,6 +166,7 @@ describe('AuthController', () => {
 				expect.any(String),
 				expect.objectContaining({ httpOnly: false, path: '/' }),
 			);
+			expect(result).toHaveProperty('csrfToken');
 		});
 
 		it('returns mobile payload with refreshToken in response body', async () => {
@@ -330,6 +333,7 @@ describe('AuthController', () => {
 			expect(result).toEqual({
 				accessToken: 'access-token',
 				sessionId: 'session-1',
+				csrfToken: expect.any(String),
 			});
 			expect(res.cookie).toHaveBeenCalledWith(
 				'refreshToken',
@@ -473,6 +477,7 @@ describe('AuthController', () => {
 			expect(result).toEqual({
 				accessToken: 'access-token',
 				sessionId: 'session-1',
+				csrfToken: expect.any(String),
 			});
 			expect(res.cookie).toHaveBeenCalledWith(
 				'refreshToken',

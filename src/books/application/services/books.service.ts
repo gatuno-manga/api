@@ -1,18 +1,21 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 import { PageDto } from 'src/common/pagination/page.dto';
-import { BookRelationshipsQueryDto } from '../dto/book-relationships-query.dto';
-import { BookChaptersCursorPageDto } from '../dto/book-chapters-cursor-page.dto';
-import { BookChaptersCursorOptionsDto } from '../dto/book-chapters-cursor-options.dto';
-import { BookPageOptionsDto } from '../dto/book-page-options.dto';
-import { CreateBookRelationshipDto } from '../dto/create-book-relationship.dto';
-import { UpdateBookRelationshipDto } from '../dto/update-book-relationship.dto';
-import { Book } from '../../domain/entities/book';
-import { CreateBookDto } from '../dto/create-book.dto';
-import { OrderChaptersDto } from '../dto/order-chapters.dto';
-import { OrderCoversDto } from '../dto/order-covers.dto';
-import { UpdateBookDto } from '../dto/update-book.dto';
-import { UpdateChapterDto } from '../dto/update-chapter.dto';
+import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
+import { BookRelationshipsQueryDto } from '@books/application/dto/book-relationships-query.dto';
+import { BookChaptersCursorPageDto } from '@books/application/dto/book-chapters-cursor-page.dto';
+import { BookChaptersCursorOptionsDto } from '@books/application/dto/book-chapters-cursor-options.dto';
+import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
+import { CreateBookRelationshipDto } from '@books/application/dto/create-book-relationship.dto';
+import { UpdateBookRelationshipDto } from '@books/application/dto/update-book-relationship.dto';
+import { Book } from '@books/domain/entities/book';
+import { CreateBookDto } from '@books/application/dto/create-book.dto';
+import { OrderChaptersDto } from '@books/application/dto/order-chapters.dto';
+import { OrderCoversDto } from '@books/application/dto/order-covers.dto';
+import { UpdateBookDto } from '@books/application/dto/update-book.dto';
+import { UpdateChapterDto } from '@books/application/dto/update-chapter.dto';
+import { UploadCoverDto } from '@books/application/dto/upload-cover.dto';
+import { ScrapeCoverDto } from '@books/application/dto/scrape-cover.dto';
 import { BookCreationService } from './book-creation.service';
 import { BookBookRelationshipService } from './book-book-relationship.service';
 import { BookQueryService } from './book-query.service';
@@ -27,7 +30,11 @@ import {
 	SearchFilterStrategy,
 	TagsFilterStrategy,
 	TypeFilterStrategy,
-} from '../strategies';
+	IdFilterStrategy,
+	SensitiveContentFilterStrategy,
+} from '@books/application/strategies';
+import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants';
+import { Meilisearch } from 'meilisearch';
 
 /**
  * BooksService refatorado - agora atua como orquestrador (Facade)
@@ -45,14 +52,17 @@ export class BooksService {
 		private readonly chapterManagementService: ChapterManagementService,
 		private readonly bookRelationshipService: BookRelationshipService,
 		private readonly bookBookRelationshipService: BookBookRelationshipService,
+		@Inject(MEILI_CLIENT) private readonly meiliClient: Meilisearch,
 	) {
 		this.filterStrategies = [
+			new IdFilterStrategy(),
 			new TypeFilterStrategy(),
-			new SearchFilterStrategy(),
+			new SearchFilterStrategy(this.meiliClient),
 			new TagsFilterStrategy(),
 			new ExcludeTagsFilterStrategy(),
 			new PublicationFilterStrategy(),
 			new AuthorsFilterStrategy(),
+			new SensitiveContentFilterStrategy(),
 		];
 	}
 
@@ -90,8 +100,28 @@ export class BooksService {
 		return this.bookUpdateService.updateCover(idBook, idCover, dto);
 	}
 
-	async orderCovers(idBook: string, covers: OrderCoversDto[]) {
-		return this.bookUpdateService.orderCovers(idBook, covers);
+	async manualUploadCover(
+		idBook: string,
+		file: Express.Multer.File,
+		dto: UploadCoverDto,
+	) {
+		return this.bookUpdateService.manualUploadCover(idBook, file, dto);
+	}
+
+	async scrapeCover(idBook: string, dto: ScrapeCoverDto) {
+		return this.bookUpdateService.scrapeCover(idBook, dto);
+	}
+
+	async orderCovers(idBook: string, dto: OrderCoversDto[]) {
+		return this.bookUpdateService.orderCovers(idBook, dto);
+	}
+
+	async fixCover(idBook: string, idCover: string) {
+		return this.bookUpdateService.fixCover(idBook, idCover);
+	}
+
+	async fixBookCovers(idBook: string) {
+		return this.bookUpdateService.fixBookCovers(idBook);
 	}
 
 	async toggleAutoUpdate(idBook: string, enabled: boolean) {
@@ -105,8 +135,18 @@ export class BooksService {
 		maxWeightSensitiveContent = 0,
 		userId?: string,
 	): Promise<
-		| PageDto<Omit<Book, 'covers'> & { cover: string | null }>
-		| CursorPageDto<Omit<Book, 'covers'> & { cover: string | null }>
+		| PageDto<
+				Omit<Book, 'covers'> & {
+					cover: string | null;
+					coverMetadata: ImageMetadata | null;
+				}
+		  >
+		| CursorPageDto<
+				Omit<Book, 'covers'> & {
+					cover: string | null;
+					coverMetadata: ImageMetadata | null;
+				}
+		  >
 	> {
 		return this.bookQueryService.getAllBooks(
 			options,
@@ -198,6 +238,7 @@ export class BooksService {
 	}
 
 	async fixBook(idBook: string) {
+		await this.bookUpdateService.fixBookCovers(idBook);
 		return this.chapterManagementService.fixBookChapters(idBook);
 	}
 

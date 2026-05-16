@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
 import { MediaUrlService } from 'src/common/services/media-url.service';
-import { ReadingProgress } from '../../infrastructure/database/entities/reading-progress.entity';
-import { SavedPage } from '../../infrastructure/database/entities/saved-page.entity';
-import { User } from '../../infrastructure/database/entities/user.entity';
-import { ReadingProgressResponseDto } from '../../infrastructure/http/dto/reading-progress.dto';
+import { ReadingProgress } from '@users/infrastructure/database/entities/reading-progress.entity';
+import { SavedPage } from '@users/infrastructure/database/entities/saved-page.entity';
+import { User } from '@users/infrastructure/database/entities/user.entity';
+import { ReadingProgressResponseDto } from '@users/infrastructure/http/dto/reading-progress.dto';
 
 @Injectable()
 export class UserResourcesMapper {
@@ -21,6 +21,7 @@ export class UserResourcesMapper {
 			totalPages: progress.totalPages,
 			completed: progress.completed,
 			updatedAt: progress.updatedAt,
+			deleted: !!progress.deletedAt,
 		};
 	}
 
@@ -54,14 +55,16 @@ export class UserResourcesMapper {
 			email: user.email,
 			roles: user.roles,
 			maxWeightSensitiveContent: user.maxWeightSensitiveContent,
-			profileImagePath: user.profileImagePath,
+			profileImagePath: user.profilePicture?.path || null,
+			profileImageMetadata: user.profilePicture?.metadata || null,
 			profileImageUrl: this.mediaUrlService.resolveUrl(
-				user.profileImagePath,
+				user.profilePicture?.path || null,
 				StorageBucket.USERS,
 			),
-			profileBannerPath: user.profileBannerPath,
+			profileBannerPath: user.profileBanner?.path || null,
+			profileBannerMetadata: user.profileBanner?.metadata || null,
 			profileBannerUrl: this.mediaUrlService.resolveUrl(
-				user.profileBannerPath,
+				user.profileBanner?.path || null,
 				StorageBucket.USERS,
 			),
 			createdAt: user.createdAt,
@@ -75,11 +78,11 @@ export class UserResourcesMapper {
 			userName: user.userName,
 			name: user.name,
 			profileImageUrl: this.mediaUrlService.resolveUrl(
-				user.profileImagePath,
+				user.profilePicture?.path || null,
 				StorageBucket.USERS,
 			),
 			profileBannerUrl: this.mediaUrlService.resolveUrl(
-				user.profileBannerPath,
+				user.profileBanner?.path || null,
 				StorageBucket.USERS,
 			),
 			createdAt: user.createdAt,

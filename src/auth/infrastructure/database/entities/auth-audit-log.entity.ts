@@ -8,7 +8,7 @@ import {
 	PrimaryGeneratedColumn,
 } from 'typeorm';
 import { User } from 'src/users/infrastructure/database/entities/user.entity';
-import { AuthMethod, AuthRiskLevel } from '../../../types/auth-security.types';
+import { AuthMethod, AuthRiskLevel } from '@auth/types/auth-security.types';
 
 @Entity('auth_audit_logs')
 @Index(['userId', 'createdAt'])

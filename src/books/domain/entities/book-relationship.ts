@@ -1,4 +1,4 @@
-import { BookRelationType } from '../enums/book-relation-type.enum';
+import { BookRelationType } from '@books/domain/enums/book-relation-type.enum';
 import { Book } from './book';
 
 export type BookRelationshipMetadata = {

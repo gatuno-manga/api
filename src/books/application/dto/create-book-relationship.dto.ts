@@ -12,14 +12,14 @@ import {
 	MaxLength,
 	Min,
 } from 'class-validator';
-import { BookRelationType } from '../../domain/enums/book-relation-type.enum';
+import { BookRelationType } from '@books/domain/enums/book-relation-type.enum';
 
 export class CreateBookRelationshipDto {
 	@ApiProperty({
 		description: 'ID do livro relacionado',
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
-	@IsUUID('4')
+	@IsUUID('all')
 	targetBookId!: string;
 
 	@ApiProperty({

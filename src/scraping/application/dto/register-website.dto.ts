@@ -10,7 +10,7 @@ import {
 	IsUrl,
 	ValidateNested,
 } from 'class-validator';
-import { NormalizeUrl } from '../../../common/decorators/normalize-url.decorator';
+import { NormalizeUrl } from '@common/decorators/normalize-url.decorator';
 
 export class CookieConfigDto {
 	@ApiProperty({ description: 'Cookie name', example: 'lang' })
@@ -282,4 +282,22 @@ Example output:
 	@IsOptional()
 	@IsObject()
 	timeoutMultipliers?: Record<string, number>;
+
+	@ApiPropertyOptional({
+		description: 'Enable FlareSolverr to bypass Cloudflare protection',
+		example: false,
+		default: false,
+	})
+	@IsOptional()
+	@IsBoolean()
+	useFlareSolverr?: boolean;
+
+	@ApiPropertyOptional({
+		description:
+			'Proxy URL for this website (e.g. http://user:pass@ip:port)',
+		example: 'http://proxy.example.com:8080',
+	})
+	@IsOptional()
+	@IsString()
+	proxyUrl?: string;
 }

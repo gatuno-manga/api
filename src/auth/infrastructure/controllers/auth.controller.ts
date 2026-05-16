@@ -14,40 +14,62 @@ import {
 	UseGuards,
 } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
-import {
-	ApiBearerAuth,
-	ApiOperation,
-	ApiResponse,
-	ApiTags,
-} from '@nestjs/swagger';
-import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
+import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { RolesEnum } from 'src/users/domain/enums/roles.enum';
-import { AuthService } from '../../auth.service';
-import { CurrentUser } from '../framework/current-user.decorator';
-import { Roles } from '../framework/roles.decorator';
-import { BeginPasskeyAuthDto } from '../http/dto/begin-passkey-auth.dto';
-import { CreateLoginApiKeyDto } from '../http/dto/create-login-api-key.dto';
-import { CurrentUserDto } from '../../application/dto/current-user.dto';
-import { ListAuthAuditQueryDto } from '../http/dto/list-auth-audit-query.dto';
-import { RevokeSessionDto } from '../http/dto/revoke-session.dto';
-import { SignInApiKeyAuthDto } from '../http/dto/signin-api-key-auth.dto';
-import { SignInAuthDto } from '../http/dto/signin-auth.dto';
-import { SignUpAuthDto } from '../http/dto/signup-auth.dto';
-import { VerifyMfaLoginDto } from '../http/dto/verify-mfa-login.dto';
-import { VerifyPasskeyAuthDto } from '../http/dto/verify-passkey-auth.dto';
-import { VerifyPasskeyRegistrationDto } from '../http/dto/verify-passkey-registration.dto';
-import { VerifyTotpCodeDto } from '../http/dto/verify-totp-code.dto';
-import { JwtAuthGuard } from '../framework/jwt-auth.guard';
-import { RefreshTokenGuard } from '../framework/jwt-refresh.guard';
-import { WebauthnService } from '../adapters/webauthn.service';
+import { AuthService } from '@auth/auth.service';
+import { CurrentUser } from '@auth/infrastructure/framework/current-user.decorator';
+import { Roles } from '@auth/infrastructure/framework/roles.decorator';
+import { BeginPasskeyAuthDto } from '@auth/infrastructure/http/dto/begin-passkey-auth.dto';
+import { CreateLoginApiKeyDto } from '@auth/infrastructure/http/dto/create-login-api-key.dto';
+import { CurrentUserDto } from '@auth/application/dto/current-user.dto';
+import { ListAuthAuditQueryDto } from '@auth/infrastructure/http/dto/list-auth-audit-query.dto';
+import { RevokeSessionDto } from '@auth/infrastructure/http/dto/revoke-session.dto';
+import { SignInApiKeyAuthDto } from '@auth/infrastructure/http/dto/signin-api-key-auth.dto';
+import { SignInAuthDto } from '@auth/infrastructure/http/dto/signin-auth.dto';
+import { SignUpAuthDto } from '@auth/infrastructure/http/dto/signup-auth.dto';
+import { VerifyMfaLoginDto } from '@auth/infrastructure/http/dto/verify-mfa-login.dto';
+import { VerifyPasskeyAuthDto } from '@auth/infrastructure/http/dto/verify-passkey-auth.dto';
+import { VerifyPasskeyRegistrationDto } from '@auth/infrastructure/http/dto/verify-passkey-registration.dto';
+import { VerifyTotpCodeDto } from '@auth/infrastructure/http/dto/verify-totp-code.dto';
+import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
+import { RefreshTokenGuard } from '@auth/infrastructure/framework/jwt-refresh.guard';
+import { WebauthnService } from '@auth/infrastructure/adapters/webauthn.service';
 import {
 	AuthRequestContext,
 	isPendingMfaResult,
 	SuccessfulAuthResult,
-} from '../../types/auth-security.types';
+} from '@auth/types/auth-security.types';
+import {
+	ApiDocsBeginPasskeyRegistration,
+	ApiDocsBeginTotpSetup,
+	ApiDocsCreateLoginApiKey,
+	ApiDocsDeletePasskey,
+	ApiDocsDisableTotp,
+	ApiDocsGetAuditHistory,
+	ApiDocsGetMfaStatus,
+	ApiDocsListPasskeys,
+	ApiDocsListSessions,
+	ApiDocsLogout,
+	ApiDocsLogoutAll,
+	ApiDocsRefreshTokens,
+	ApiDocsRevokeOtherSessions,
+	ApiDocsRevokeSession,
+	ApiDocsSignIn,
+	ApiDocsSignInWithApiKey,
+	ApiDocsSignUp,
+	ApiDocsVerifyPasskeyRegistration,
+	ApiDocsVerifyTotpSetup,
+} from './swagger/auth.swagger';
+
+interface AuthResponse {
+	accessToken: string;
+	refreshToken?: string;
+	sessionId: string;
+	csrfToken?: string;
+}
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -67,23 +89,29 @@ export class AuthController {
 	 * This ensures the cookie is set on the API domain, so the browser
 	 * sends it automatically on cross-origin requests with withCredentials.
 	 */
-	private setRefreshTokenCookie(res: Response, refreshToken: string): void {
+	private setRefreshTokenCookie(
+		req: Request,
+		res: Response,
+		refreshToken: string,
+	): void {
 		const isSecure = this.configService.apiUrl.startsWith('https');
+
 		res.cookie('refreshToken', refreshToken, {
 			httpOnly: true,
 			secure: isSecure,
-			sameSite: 'lax',
+			sameSite: isSecure ? 'none' : 'lax',
 			path: '/api/auth',
 			maxAge: this.configService.refreshTokenTtl,
 		});
 	}
 
-	private clearRefreshTokenCookie(res: Response): void {
+	private clearRefreshTokenCookie(req: Request, res: Response): void {
 		const isSecure = this.configService.apiUrl.startsWith('https');
+
 		res.clearCookie('refreshToken', {
 			httpOnly: true,
 			secure: isSecure,
-			sameSite: 'lax',
+			sameSite: isSecure ? 'none' : 'lax',
 			path: '/api/auth',
 		});
 	}
@@ -92,23 +120,29 @@ export class AuthController {
 		return randomBytes(32).toString('hex');
 	}
 
-	private setCsrfCookie(res: Response, csrfToken: string): void {
+	private setCsrfCookie(
+		req: Request,
+		res: Response,
+		csrfToken: string,
+	): void {
 		const isSecure = this.configService.apiUrl.startsWith('https');
+
 		res.cookie(this.csrfCookieName, csrfToken, {
 			httpOnly: false,
 			secure: isSecure,
-			sameSite: 'lax',
+			sameSite: isSecure ? 'none' : 'lax',
 			path: '/',
 			maxAge: this.configService.refreshTokenTtl,
 		});
 	}
 
-	private clearCsrfCookie(res: Response): void {
+	private clearCsrfCookie(req: Request, res: Response): void {
 		const isSecure = this.configService.apiUrl.startsWith('https');
+
 		res.clearCookie(this.csrfCookieName, {
 			httpOnly: false,
 			secure: isSecure,
-			sameSite: 'lax',
+			sameSite: isSecure ? 'none' : 'lax',
 			path: '/',
 		});
 	}
@@ -161,7 +195,8 @@ export class AuthController {
 	private buildAuthResponse(
 		req: Request,
 		tokens: SuccessfulAuthResult,
-	): { accessToken: string; refreshToken?: string; sessionId: string } {
+		csrfToken?: string,
+	): AuthResponse | SuccessfulAuthResult {
 		if (this.isMobileClient(req)) {
 			return tokens;
 		}
@@ -169,19 +204,13 @@ export class AuthController {
 		return {
 			accessToken: tokens.accessToken,
 			sessionId: tokens.sessionId,
+			csrfToken: csrfToken,
 		};
 	}
 
 	@Post('signup')
 	@Throttle({ short: { limit: 3, ttl: 60000 } })
-	@ApiOperation({
-		summary: 'Create a new user account',
-		description: 'Register a new user with email and password',
-	})
-	@ApiResponse({ status: 201, description: 'User successfully created' })
-	@ApiResponse({ status: 400, description: 'Invalid input data' })
-	@ApiResponse({ status: 409, description: 'Email already exists' })
-	@ApiResponse({ status: 429, description: 'Too many requests' })
+	@ApiDocsSignUp()
 	async signUp(
 		@Body() body: SignUpAuthDto,
 		@Req() req: Request,
@@ -202,21 +231,16 @@ export class AuthController {
 			auditEvent: 'signup_success',
 		});
 
-		this.setRefreshTokenCookie(res, tokens.refreshToken);
-		this.setCsrfCookie(res, this.generateCsrfToken());
+		const csrfToken = this.generateCsrfToken();
+		this.setRefreshTokenCookie(req, res, tokens.refreshToken);
+		this.setCsrfCookie(req, res, csrfToken);
 
-		return this.buildAuthResponse(req, tokens);
+		return this.buildAuthResponse(req, tokens, csrfToken);
 	}
 
 	@Post('signin')
 	@Throttle({ short: { limit: 5, ttl: 60000 } })
-	@ApiOperation({
-		summary: 'Sign in to user account',
-		description: 'Authenticate user and receive access tokens',
-	})
-	@ApiResponse({ status: 200, description: 'Successfully authenticated' })
-	@ApiResponse({ status: 401, description: 'Invalid credentials' })
-	@ApiResponse({ status: 429, description: 'Too many requests' })
+	@ApiDocsSignIn()
 	async signIn(
 		@Body() body: SignInAuthDto,
 		@Req() req: Request,
@@ -230,36 +254,20 @@ export class AuthController {
 		);
 
 		if (isPendingMfaResult(result)) {
-			this.clearRefreshTokenCookie(res);
-			this.clearCsrfCookie(res);
+			this.clearRefreshTokenCookie(req, res);
+			this.clearCsrfCookie(req, res);
 			return result;
 		}
 
-		this.setRefreshTokenCookie(res, result.refreshToken);
-		this.setCsrfCookie(res, this.generateCsrfToken());
-		return this.buildAuthResponse(req, result);
+		const csrfToken = this.generateCsrfToken();
+		this.setRefreshTokenCookie(req, res, result.refreshToken);
+		this.setCsrfCookie(req, res, csrfToken);
+		return this.buildAuthResponse(req, result, csrfToken);
 	}
 
 	@Post('api-keys')
 	@Throttle({ short: { limit: 5, ttl: 60000 } })
-	@ApiOperation({
-		summary: 'Create temporary login API key',
-		description:
-			'Create a temporary API key for admin self-login replacement',
-	})
-	@ApiResponse({
-		status: 201,
-		description: 'Login API key created successfully',
-	})
-	@ApiResponse({
-		status: 401,
-		description: 'Unauthorized',
-	})
-	@ApiResponse({
-		status: 403,
-		description: 'Forbidden',
-	})
-	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
+	@ApiDocsCreateLoginApiKey()
 	@UseGuards(JwtAuthGuard)
 	@Roles(RolesEnum.ADMIN)
 	async createLoginApiKey(
@@ -276,13 +284,7 @@ export class AuthController {
 
 	@Post('signin/api-key')
 	@Throttle({ short: { limit: 10, ttl: 60000 } })
-	@ApiOperation({
-		summary: 'Sign in using a temporary API key',
-		description: 'Authenticate user with API key and return tokens',
-	})
-	@ApiResponse({ status: 200, description: 'Successfully authenticated' })
-	@ApiResponse({ status: 401, description: 'Invalid API key' })
-	@ApiResponse({ status: 429, description: 'Too many requests' })
+	@ApiDocsSignInWithApiKey()
 	async signInWithApiKey(
 		@Body() body: SignInApiKeyAuthDto,
 		@Req() req: Request,
@@ -292,24 +294,15 @@ export class AuthController {
 			body.apiKey,
 			this.buildRequestContext(req),
 		);
-		this.setRefreshTokenCookie(res, result.refreshToken);
-		this.setCsrfCookie(res, this.generateCsrfToken());
-		return this.buildAuthResponse(req, result);
+		const csrfToken = this.generateCsrfToken();
+		this.setRefreshTokenCookie(req, res, result.refreshToken);
+		this.setCsrfCookie(req, res, csrfToken);
+		return this.buildAuthResponse(req, result, csrfToken);
 	}
 
 	@Post('refresh')
 	@Throttle({ medium: { limit: 20, ttl: 60000 } })
-	@ApiOperation({
-		summary: 'Refresh access token',
-		description: 'Get a new access token using refresh token',
-	})
-	@ApiResponse({ status: 200, description: 'Token refreshed successfully' })
-	@ApiResponse({
-		status: 401,
-		description: 'Invalid or expired refresh token',
-	})
-	@ApiResponse({ status: 429, description: 'Too many requests' })
-	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
+	@ApiDocsRefreshTokens()
 	@UseGuards(RefreshTokenGuard)
 	async refreshTokens(
 		@CurrentUser() user: CurrentUserDto,
@@ -332,21 +325,15 @@ export class AuthController {
 			refreshToken,
 			this.buildRequestContext(req),
 		);
-		this.setRefreshTokenCookie(res, tokens.refreshToken);
-		this.setCsrfCookie(res, this.generateCsrfToken());
-		return this.buildAuthResponse(req, tokens);
+		const csrfToken = this.generateCsrfToken();
+		this.setRefreshTokenCookie(req, res, tokens.refreshToken);
+		this.setCsrfCookie(req, res, csrfToken);
+		return this.buildAuthResponse(req, tokens, csrfToken);
 	}
 
 	@Get('logout')
 	@Throttle({ medium: { limit: 10, ttl: 60000 } })
-	@ApiOperation({
-		summary: 'Logout from current session',
-		description: 'Invalidate the current refresh token',
-	})
-	@ApiResponse({ status: 200, description: 'Successfully logged out' })
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiResponse({ status: 429, description: 'Too many requests' })
-	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
+	@ApiDocsLogout()
 	@UseGuards(RefreshTokenGuard)
 	@UseGuards(JwtAuthGuard)
 	async logout(
@@ -371,24 +358,14 @@ export class AuthController {
 			refreshToken,
 			this.buildRequestContext(req),
 		);
-		this.clearRefreshTokenCookie(res);
-		this.clearCsrfCookie(res);
+		this.clearRefreshTokenCookie(req, res);
+		this.clearCsrfCookie(req, res);
 		return { message: 'Logged out successfully' };
 	}
 
 	@Get('logout-all')
 	@Throttle({ medium: { limit: 5, ttl: 60000 } })
-	@ApiOperation({
-		summary: 'Logout from all sessions',
-		description: 'Invalidate all refresh tokens for the user',
-	})
-	@ApiResponse({
-		status: 200,
-		description: 'Successfully logged out from all sessions',
-	})
-	@ApiResponse({ status: 401, description: 'Unauthorized' })
-	@ApiResponse({ status: 429, description: 'Too many requests' })
-	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
+	@ApiDocsLogoutAll()
 	@UseGuards(JwtAuthGuard)
 	async logoutAll(
 		@CurrentUser() user: CurrentUserDto,
@@ -399,20 +376,21 @@ export class AuthController {
 			user.userId,
 			this.buildRequestContext(req),
 		);
-		this.clearRefreshTokenCookie(res);
-		this.clearCsrfCookie(res);
+		this.clearRefreshTokenCookie(req, res);
+		this.clearCsrfCookie(req, res);
 		return result;
 	}
 
 	@Get('mfa/status')
-	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
+	@ApiDocsGetMfaStatus()
 	@UseGuards(JwtAuthGuard)
 	async getMfaStatus(@CurrentUser() user: CurrentUserDto) {
 		return this.authService.getMfaStatus(user.userId);
 	}
 
 	@Post('mfa/totp/setup')
-	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
+	@Throttle({ short: { limit: 5, ttl: 60000 } })
+	@ApiDocsBeginTotpSetup()
 	@UseGuards(JwtAuthGuard)
 	async beginTotpSetup(
 		@CurrentUser() user: CurrentUserDto,
@@ -425,7 +403,8 @@ export class AuthController {
 	}
 
 	@Post('mfa/totp/verify-setup')
-	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
+	@Throttle({ short: { limit: 5, ttl: 60000 } })
+	@ApiDocsVerifyTotpSetup()
 	@UseGuards(JwtAuthGuard)
 	async verifyTotpSetup(
 		@CurrentUser() user: CurrentUserDto,
@@ -440,7 +419,8 @@ export class AuthController {
 	}
 
 	@Post('mfa/totp/disable')
-	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
+	@Throttle({ short: { limit: 5, ttl: 60000 } })
+	@ApiDocsDisableTotp()
 	@UseGuards(JwtAuthGuard)
 	async disableTotp(
 		@CurrentUser() user: CurrentUserDto,
@@ -465,9 +445,10 @@ export class AuthController {
 			body.mfaToken,
 			body.code,
 		);
-		this.setRefreshTokenCookie(res, result.refreshToken);
-		this.setCsrfCookie(res, this.generateCsrfToken());
-		return this.buildAuthResponse(req, result);
+		const csrfToken = this.generateCsrfToken();
+		this.setRefreshTokenCookie(req, res, result.refreshToken);
+		this.setCsrfCookie(req, res, csrfToken);
+		return this.buildAuthResponse(req, result, csrfToken);
 	}
 
 	@Post('passkeys/authenticate/options')
@@ -497,27 +478,28 @@ export class AuthController {
 			return result;
 		}
 
-		this.setRefreshTokenCookie(res, result.refreshToken);
-		this.setCsrfCookie(res, this.generateCsrfToken());
-		return this.buildAuthResponse(req, result);
+		const csrfToken = this.generateCsrfToken();
+		this.setRefreshTokenCookie(req, res, result.refreshToken);
+		this.setCsrfCookie(req, res, csrfToken);
+		return this.buildAuthResponse(req, result, csrfToken);
 	}
 
 	@Get('passkeys')
-	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
+	@ApiDocsListPasskeys()
 	@UseGuards(JwtAuthGuard)
 	async listPasskeys(@CurrentUser() user: CurrentUserDto) {
 		return this.webauthnService.listUserPasskeys(user.userId);
 	}
 
 	@Post('passkeys/register/options')
-	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
+	@ApiDocsBeginPasskeyRegistration()
 	@UseGuards(JwtAuthGuard)
 	async beginPasskeyRegistration(@CurrentUser() user: CurrentUserDto) {
 		return this.webauthnService.beginRegistration(user.userId);
 	}
 
 	@Post('passkeys/register/verify')
-	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
+	@ApiDocsVerifyPasskeyRegistration()
 	@UseGuards(JwtAuthGuard)
 	async verifyPasskeyRegistration(
 		@CurrentUser() user: CurrentUserDto,
@@ -531,7 +513,7 @@ export class AuthController {
 	}
 
 	@Delete('passkeys/:passkeyId')
-	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
+	@ApiDocsDeletePasskey()
 	@UseGuards(JwtAuthGuard)
 	async deletePasskey(
 		@CurrentUser() user: CurrentUserDto,
@@ -548,14 +530,14 @@ export class AuthController {
 	}
 
 	@Get('sessions')
-	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
+	@ApiDocsListSessions()
 	@UseGuards(JwtAuthGuard)
 	async listSessions(@CurrentUser() user: CurrentUserDto) {
 		return this.authService.listActiveSessions(user.userId, user.sessionId);
 	}
 
 	@Delete('sessions/others')
-	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
+	@ApiDocsRevokeOtherSessions()
 	@UseGuards(JwtAuthGuard)
 	async revokeOtherSessions(
 		@CurrentUser() user: CurrentUserDto,
@@ -569,7 +551,7 @@ export class AuthController {
 	}
 
 	@Delete('sessions/:sessionId')
-	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
+	@ApiDocsRevokeSession()
 	@UseGuards(JwtAuthGuard)
 	async revokeSession(
 		@CurrentUser() user: CurrentUserDto,
@@ -586,7 +568,7 @@ export class AuthController {
 	}
 
 	@Get('audit-history')
-	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
+	@ApiDocsGetAuditHistory()
 	@UseGuards(JwtAuthGuard)
 	async getAuditHistory(
 		@CurrentUser() user: CurrentUserDto,

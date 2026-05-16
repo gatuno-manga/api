@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { PasswordHasher } from '../interfaces/password-hasher.interface';
+import { PasswordHasher } from '@encryption/interfaces/password-hasher.interface';
 import { Argon2Strategy } from './argon2.strategy';
 import { BcryptStrategy } from './bcrypt.strategy';
 import { ScryptStrategy } from './scrypt.strategy';

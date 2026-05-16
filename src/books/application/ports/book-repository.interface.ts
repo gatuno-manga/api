@@ -1,6 +1,6 @@
-import { BookPageOptionsDto } from '../dto/book-page-options.dto';
-import { Book } from '../../domain/entities/book';
-import { FilterStrategy } from '../strategies';
+import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
+import { Book } from '@books/domain/entities/book';
+import { FilterStrategy } from '@books/application/strategies';
 import {
 	BookCriteria,
 	AccessContext,

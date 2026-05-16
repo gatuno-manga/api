@@ -1,6 +1,6 @@
 import { validate } from 'class-validator';
-import { BookPageOptionsDto } from '../dto/book-page-options.dto';
-import { BookOrderField } from '../../domain/enums/book-order-field.enum';
+import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
+import { BookOrderField } from '@books/domain/enums/book-order-field.enum';
 import { OrderDirection } from 'src/common/enum/order-direction.enum';
 import { FilterLogic } from 'src/common/enum/filter-logic.enum';
 import { FilterOperator } from 'src/common/enum/filter-operator.enum';
@@ -51,5 +51,22 @@ describe('BookPageOptionsDto', () => {
 		const errors = await validate(dto);
 		expect(errors.length).toBeGreaterThan(0);
 		expect(errors[0].property).toBe('publicationOperator');
+	});
+
+	it('should fail validation with invalid ids', async () => {
+		const dto = new BookPageOptionsDto();
+		dto.ids = ['invalid-uuid'];
+
+		const errors = await validate(dto);
+		expect(errors.length).toBeGreaterThan(0);
+		expect(errors[0].property).toBe('ids');
+	});
+
+	it('should pass validation with valid ids', async () => {
+		const dto = new BookPageOptionsDto();
+		dto.ids = ['550e8400-e29b-41d4-a716-446655440000'];
+
+		const errors = await validate(dto);
+		expect(errors.length).toBe(0);
 	});
 });

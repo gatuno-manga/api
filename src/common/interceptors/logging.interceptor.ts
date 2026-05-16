@@ -7,7 +7,7 @@ import {
 import { Request, Response } from 'express';
 import { Observable, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
-import { CustomLogger } from '../../custom.logger';
+import { CustomLogger } from '@/custom.logger';
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
@@ -19,6 +19,10 @@ export class LoggingInterceptor implements NestInterceptor {
 		context: ExecutionContext,
 		next: CallHandler,
 	): Observable<unknown> {
+		if (context.getType().toString() === 'graphql') {
+			return next.handle();
+		}
+
 		const httpContext = context.switchToHttp();
 		const request = httpContext.getRequest<Request>();
 		const response = httpContext.getResponse<Response>();

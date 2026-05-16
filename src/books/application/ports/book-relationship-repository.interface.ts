@@ -1,4 +1,4 @@
-import { BookRelationship } from '../../domain/entities/book-relationship';
+import { BookRelationship } from '@books/domain/entities/book-relationship';
 import { BookRelationshipCriteria } from '@books/domain/types/criteria.types';
 
 export interface IBookRelationshipRepository {

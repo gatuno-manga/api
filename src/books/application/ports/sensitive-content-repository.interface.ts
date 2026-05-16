@@ -1,4 +1,4 @@
-import { SensitiveContent } from '../../domain/entities/sensitive-content';
+import { SensitiveContent } from '@books/domain/entities/sensitive-content';
 import { SensitiveContentCriteria } from '@books/domain/types/criteria.types';
 
 export interface ISensitiveContentRepository {

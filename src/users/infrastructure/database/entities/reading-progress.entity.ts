@@ -7,6 +7,7 @@ import {
 	ManyToOne,
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
+	DeleteDateColumn,
 } from 'typeorm';
 import { User } from './user.entity';
 
@@ -43,4 +44,7 @@ export class ReadingProgress {
 
 	@UpdateDateColumn()
 	updatedAt: Date;
+
+	@DeleteDateColumn()
+	deletedAt?: Date;
 }

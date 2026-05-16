@@ -14,15 +14,21 @@ services:
       - ALLOWED_URL=${ALLOWED_URL:-http://localhost:4200}
       - APP_URL=${APP_SCHEME:-http}://${APP_HOST:-localhost:4200}
       - API_URL=${API_SCHEME:-http}://localhost:${API_PORT}
-      - PLAYWRIGHT_WS_ENDPOINT=${PLAYWRIGHT_WS_ENDPOINT:-ws://playwright-debug:3000}
+      - PLAYWRIGHT_WS_ENDPOINT=${PLAYWRIGHT_WS_ENDPOINT:-ws://browserless:3000}
       - PLAYWRIGHT_DEBUG=${PLAYWRIGHT_DEBUG:-true}
       - PLAYWRIGHT_SLOW_MO=${PLAYWRIGHT_SLOW_MO}
+      - KAFKA_HOST=${KAFKA_HOST:-kafka}
+      - KAFKA_PORT=${KAFKA_PORT:-9092}
+      - NANOMQ_HOST=${NANOMQ_HOST:-nanomq}
+      - NANOMQ_PORT=${NANOMQ_PORT:-1883}
       # Session / JWT Settings (defaults in Joi schema: ACCESS=15m, REFRESH=7d, MAX_SESSIONS=0=unlimited)
       # - JWT_ACCESS_EXPIRATION=15m
       # - JWT_REFRESH_EXPIRATION=7d
       # - MAX_SESSIONS_PER_USER=0
     depends_on:
-      - playwright-debug
+      - browserless
+      - kafka
+      - nanomq
     develop:
       watch:
         - action: sync
@@ -35,8 +41,9 @@ services:
 
     volumes:
       - ./.env:/usr/src/app/.env
+      - ./tsconfig.json:/usr/src/app/tsconfig.json
 
-  playwright-debug:
+  browserless:
     image: browserless/chrome:latest
     ports:
       - "${PLAYWRIGHT_NOVNC_PORT}:3000"
@@ -66,3 +73,18 @@ services:
     ports:
       - "9000:9000"
       - "9001:9001"
+
+  meilisearch:
+    ports:
+      - "7700:7700"
+
+  meilisync:
+    volumes:
+      - ./search/meilisync.yml:/meilisync/config.yml
+      - ./search/progress.json:/meilisync/progress.json
+      - ./search/patch.py:/meilisync/patch.py
+
+  nanomq:
+    ports:
+      - "${NANOMQ_PORT:-1883}:1883"
+      - "${NANOMQ_WS_PORT:-8083}:8083"

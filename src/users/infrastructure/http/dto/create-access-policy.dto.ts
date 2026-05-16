@@ -11,8 +11,8 @@ import {
 	MaxLength,
 	Min,
 } from 'class-validator';
-import { AccessPolicyEffectEnum } from '../../../domain/enums/access-policy-effect.enum';
-import { AccessPolicyScopeEnum } from '../../../domain/enums/access-policy-scope.enum';
+import { AccessPolicyEffectEnum } from '@users/domain/enums/access-policy-effect.enum';
+import { AccessPolicyScopeEnum } from '@users/domain/enums/access-policy-scope.enum';
 
 export class CreateAccessPolicyDto {
 	@IsEnum(AccessPolicyEffectEnum)
@@ -24,27 +24,27 @@ export class CreateAccessPolicyDto {
 	scope: AccessPolicyScopeEnum;
 
 	@IsOptional()
-	@IsUUID('4')
+	@IsUUID('all')
 	@ApiPropertyOptional()
 	targetUserId?: string;
 
 	@IsOptional()
-	@IsUUID('4')
+	@IsUUID('all')
 	@ApiPropertyOptional()
 	targetGroupId?: string;
 
 	@IsOptional()
-	@IsUUID('4')
+	@IsUUID('all')
 	@ApiPropertyOptional()
 	bookId?: string;
 
 	@IsOptional()
-	@IsUUID('4')
+	@IsUUID('all')
 	@ApiPropertyOptional()
 	tagId?: string;
 
 	@IsOptional()
-	@IsUUID('4')
+	@IsUUID('all')
 	@ApiPropertyOptional()
 	sensitiveContentId?: string;
 

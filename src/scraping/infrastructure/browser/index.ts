@@ -1,4 +1,4 @@
-export { IBrowserFactory } from './browser.factory.interface';
+export { IBrowserFactory, ContextOptions } from './browser.factory.interface';
 export {
 	BrowserConfig,
 	DEFAULT_BROWSER_CONFIG,

@@ -10,21 +10,24 @@ services:
       - APP_URL=${APP_SCHEME:-https}://${APP_HOST}
       - ALLOWED_URL=${ALLOWED_URL}
       - DB_TYPE=mysql
-      - DB_PORT=3306
-      - DB_MASTER_HOST=database-master
-      - DB_SLAVE_HOSTS=database-slave-1,database-slave-2
+      - DB_PORT=6033
+      - DB_HOST=${DB_HOST:-proxysql}
       - DB_USER=${DB_USER}
       - DB_PASS=${DB_PASS}
       - DB_NAME=${DB_NAME}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
       - RUSTFS_ENDPOINT=${RUSTFS_ENDPOINT:-http://rustfs:9000}
       - RUSTFS_ACCESS_KEY=${RUSTFS_ACCESS_KEY:-rustfsadmin}
       - RUSTFS_SECRET_KEY=${RUSTFS_SECRET_KEY:-rustfsadmin}
       - RUSTFS_BUCKET=${RUSTFS_BUCKET:-gatuno-files}
       - RUSTFS_REGION=${RUSTFS_REGION:-us-east-1}
+      - KAFKA_HOST=${KAFKA_HOST:-kafka}
+      - KAFKA_PORT=${KAFKA_PORT:-9092}
+      - PLAYWRIGHT_WS_ENDPOINT=${PLAYWRIGHT_WS_ENDPOINT:-ws://browserless:3000}
+      - NANOMQ_HOST=${NANOMQ_HOST:-nanomq}
+      - NANOMQ_PORT=${NANOMQ_PORT:-1883}
     healthcheck:
       test:
         [
@@ -45,14 +48,46 @@ services:
     volumes:
       - api-data:/usr/src/app/data
     depends_on:
-      database-master:
-        condition: service_healthy
-      database-slave-1:
-        condition: service_healthy
-      database-slave-2:
+      proxysql:
         condition: service_healthy
       redis:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
+      browserless:
+        condition: service_started
+      nanomq:
+        condition: service_started
+    networks:
+      - gatuno-net
+
+  nanomq:
+    image: emqx/nanomq:latest
+    container_name: gatuno-nanomq
+    environment:
+      - NANOMQ_BROKER_MQTT_CONNACK_ACK_TIMEOUT=5s
+    healthcheck:
+      test: ["CMD", "nanomq_cli", "broker", "stats"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gatuno-net
+
+  browserless:
+    image: browserless/chrome:latest
+    container_name: gatuno-browserless
+    shm_size: 2g
+    environment:
+      - MAX_CONCURRENT_SESSIONS=${PLAYWRIGHT_MAX_SESSIONS:-10}
+      - CONNECTION_TIMEOUT=600000
+      - PREBOOT_CHROME=true
+      - KEEP_ALIVE=true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - gatuno-net
 
@@ -147,6 +182,33 @@ services:
       - ./database/slave/healthcheck-replica.sh:/usr/local/bin/healthcheck-replica.sh:ro
     command: ['mysqld', '--server-id=3']
 
+  proxysql:
+    image: proxysql/proxysql:2.6.4
+    container_name: gatuno-proxysql
+    volumes:
+      - ./database/proxy/docker-entrypoint.sh:/docker-entrypoint.sh
+    entrypoint: ["/bin/bash", "/docker-entrypoint.sh"]
+    environment:
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+    ports:
+      - "6032:6032"
+      - "6033:6033"
+    depends_on:
+      database-master:
+        condition: service_healthy
+      database-slave-1:
+        condition: service_healthy
+      database-slave-2:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "mysql", "-uadmin", "-padmin", "-h127.0.0.1", "-P6032", "-e", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gatuno-net
+
   rustfs:
     image: rustfs/rustfs:latest
     container_name: gatuno-rustfs
@@ -157,7 +219,7 @@ services:
       - RUSTFS_ADDRESS=0.0.0.0:9000
       - RUSTFS_CONSOLE_ADDRESS=0.0.0.0:9001
       - RUSTFS_CONSOLE_ENABLE=true
-      - RUSTFS_CORS_ALLOWED_ORIGINS=${APP_URL},${API_URL},${ALLOWED_URL}
+      - RUSTFS_CORS_ALLOWED_ORIGINS=${APP_SCHEME:-https}://${APP_HOST},${API_SCHEME:-https}://${API_HOST},${ALLOWED_URL}
       - RUSTFS_ACCESS_KEY=${RUSTFS_ACCESS_KEY:-rustfsadmin}
       - RUSTFS_SECRET_KEY=${RUSTFS_SECRET_KEY:-rustfsadmin}
     volumes:
@@ -173,15 +235,109 @@ services:
       - RUSTFS_ACCESS_KEY=${RUSTFS_ACCESS_KEY:-rustfsadmin}
       - RUSTFS_SECRET_KEY=${RUSTFS_SECRET_KEY:-rustfsadmin}
       - RUSTFS_BUCKET=${RUSTFS_BUCKET:-gatuno-files}
-      - RUSTFS_BUCKETS_LIST=books users processing system ${RUSTFS_BUCKET:-gatuno-files}
-      - APP_URL=${APP_SCHEME:-https}://${APP_HOST}
-      - API_URL=${API_SCHEME:-https}://${API_HOST}
-      - ALLOWED_URL=${ALLOWED_URL}
+      - RUSTFS_BUCKETS_LIST=books users processing system
+      - APP_SCHEME=${APP_SCHEME:-https}
+      - APP_HOST=${APP_HOST}
+      - API_SCHEME=${API_SCHEME:-https}
+      - API_HOST=${API_HOST}
+      - RUSTFS_EXTRA_REFERERS=${ALLOWED_URL}
+      - RUSTFS_PUBLIC_BUCKETS=${RUSTFS_PUBLIC_BUCKETS:-books users processing system}
     volumes:
       - ./scripts/init-rustfs.sh:/usr/local/bin/init-rustfs.sh:ro
     entrypoint: /usr/local/bin/init-rustfs.sh
     networks:
       - gatuno-net
+
+  kafka:
+    image: apache/kafka:4.0.2
+    container_name: gatuno-kafka
+    ports:
+      - "${KAFKA_PORT_EXTERNAL:-9092}:9094"
+    environment:
+      - KAFKA_NODE_ID=1
+      - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_LISTENERS=INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094,CONTROLLER://0.0.0.0:9093
+      - KAFKA_ADVERTISED_LISTENERS=INTERNAL://kafka:9092,EXTERNAL://localhost:${KAFKA_PORT_EXTERNAL:-9092}
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      - KAFKA_INTER_BROKER_LISTENER_NAME=INTERNAL
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
+      - KAFKA_NUM_PARTITIONS=1
+      - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks:
+      - gatuno-net
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: gatuno-flaresolverr
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_HTML=${LOG_HTML:-false}
+      - CAPTCHA_SOLVER=${CAPTCHA_SOLVER:-none}
+      - TZ=America/Sao_Paulo
+    ports:
+      - "${FLARESOLVERR_PORT:-8191}:8191"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8191/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - gatuno-net
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.12
+    container_name: gatuno-meilisearch
+    environment:
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY}
+      - MEILI_NO_ANALYTICS=true
+      - MEILI_ENV=${NODE_ENV:-development}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - meilisearch-data:/meili_data
+    networks:
+      - gatuno-net
+
+  meilisync:
+    image: long2ice/meilisync:latest
+    container_name: gatuno-meilisync
+    environment:
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY}
+      - MEILI_HOST=http://meilisearch:7700
+      - DB_HOST=database-master
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASS}
+      - DB_NAME=${DB_NAME}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_DSN=redis://:${REDIS_PASSWORD}@redis:6379/0
+    command: >
+      sh -c "python3 /meilisync/patch.py && python3 -c \"import os, sys; print(os.path.expandvars(sys.stdin.read()))\" < /meilisync/config.yml > /tmp/config.yml && meilisync -c /tmp/config.yml start"
+    depends_on:
+      database-master:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+    networks:
+      - gatuno-net
+
 
 volumes:
   database-data:
@@ -190,6 +346,8 @@ volumes:
   api-data:
   redis_data:
   rustfs_data:
+  kafka-data:
+  meilisearch-data:
 
 networks:
   gatuno-net:

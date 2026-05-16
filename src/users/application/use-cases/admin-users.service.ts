@@ -1,6 +1,7 @@
 import {
 	BadRequestException,
 	ConflictException,
+	Inject,
 	Injectable,
 	NotFoundException,
 } from '@nestjs/common';
@@ -11,21 +12,24 @@ import {
 	decodeCursorPayload,
 	encodeCursorPayload,
 } from 'src/common/pagination/cursor.utils';
-import { CreateAccessPolicyDto } from '../../infrastructure/http/dto/create-access-policy.dto';
-import { CreateGroupDto } from '../../infrastructure/http/dto/create-group.dto';
-import { CreateRoleDto } from '../../infrastructure/http/dto/create-role.dto';
-import { ListAccessPoliciesQueryDto } from '../../infrastructure/http/dto/list-access-policies-query.dto';
-import { SetUserModerationDto } from '../../infrastructure/http/dto/set-user-moderation.dto';
-import { UpdateGroupDto } from '../../infrastructure/http/dto/update-group.dto';
-import { UpdateUserRolesDto } from '../../infrastructure/http/dto/update-user-roles.dto';
-import { UpdateRoleDto } from '../../infrastructure/http/dto/update-role.dto';
-import { AccessPolicy } from '../../infrastructure/database/entities/access-policy.entity';
-import { Role } from '../../infrastructure/database/entities/role.entity';
-import { UserGroup } from '../../infrastructure/database/entities/user-group.entity';
-import { User } from '../../infrastructure/database/entities/user.entity';
-import { AccessPolicyEffectEnum } from '../../domain/enums/access-policy-effect.enum';
-import { AccessPolicyScopeEnum } from '../../domain/enums/access-policy-scope.enum';
-import { RolesEnum } from '../../domain/enums/roles.enum';
+import { CreateAccessPolicyDto } from '@users/infrastructure/http/dto/create-access-policy.dto';
+import { CreateGroupDto } from '@users/infrastructure/http/dto/create-group.dto';
+import { CreateRoleDto } from '@users/infrastructure/http/dto/create-role.dto';
+import { ListAccessPoliciesQueryDto } from '@users/infrastructure/http/dto/list-access-policies-query.dto';
+import { SetUserModerationDto } from '@users/infrastructure/http/dto/set-user-moderation.dto';
+import { UpdateGroupDto } from '@users/infrastructure/http/dto/update-group.dto';
+import { UpdateUserRolesDto } from '@users/infrastructure/http/dto/update-user-roles.dto';
+import { UpdateRoleDto } from '@users/infrastructure/http/dto/update-role.dto';
+import { AccessPolicy } from '@users/infrastructure/database/entities/access-policy.entity';
+import { Role } from '@users/infrastructure/database/entities/role.entity';
+import { UserGroup } from '@users/infrastructure/database/entities/user-group.entity';
+import { User } from '@users/infrastructure/database/entities/user.entity';
+import { AccessPolicyEffectEnum } from '@users/domain/enums/access-policy-effect.enum';
+import { AccessPolicyScopeEnum } from '@users/domain/enums/access-policy-scope.enum';
+import { RolesEnum } from '@users/domain/enums/roles.enum';
+import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants';
+import { Meilisearch } from 'meilisearch';
+import { PasswordEncryption } from '@encryption/password-encryption.provider';
 
 type AdminUsersCursorPayload = {
 	createdAt: string;
@@ -43,7 +47,20 @@ export class AdminUsersService {
 		private readonly groupRepository: Repository<UserGroup>,
 		@InjectRepository(AccessPolicy)
 		private readonly accessPolicyRepository: Repository<AccessPolicy>,
+		@Inject(MEILI_CLIENT) private readonly meiliClient: Meilisearch,
+		private readonly passwordEncryption: PasswordEncryption,
 	) {}
+
+	async search(query: string) {
+		try {
+			const result = await this.meiliClient.index('users').search(query, {
+				limit: 20,
+			});
+			return result.hits;
+		} catch (error) {
+			return [];
+		}
+	}
 
 	async listUsers(params: {
 		page: number;
@@ -279,6 +296,19 @@ export class AdminUsersService {
 
 		const user = await this.getUserById(targetUserId);
 		await this.userRepository.remove(user);
+		return { success: true };
+	}
+
+	async changeUserPassword(userId: string, newPassword: string) {
+		const user = await this.userRepository.findOne({
+			where: { id: userId },
+			select: ['id', 'password'],
+		});
+		if (!user) {
+			throw new NotFoundException(`User with id ${userId} not found`);
+		}
+		user.password = await this.passwordEncryption.encrypt(newPassword);
+		await this.userRepository.save(user);
 		return { success: true };
 	}
 
@@ -847,6 +877,7 @@ export class AdminUsersService {
 		bookId: string;
 		bookTagIds: string[];
 		bookSensitiveContentIds: string[];
+		bookSensitiveContentWeights: number[];
 		baseMaxWeightSensitiveContent: number;
 	}) {
 		const context = await this.evaluateListAccessContext({
@@ -907,6 +938,25 @@ export class AdminUsersService {
 				allowTagWeight,
 				allowSensitiveContentWeight,
 			);
+		}
+
+		// Check if any book content weight exceeds effective user weight
+		// and it's NOT explicitly allowed by a policy above
+		const maxBookContentWeight = params.bookSensitiveContentWeights.reduce(
+			(max, w) => Math.max(max, w),
+			0,
+		);
+
+		if (
+			maxBookContentWeight > effectiveMaxWeight &&
+			allowBookWeight === 0 &&
+			allowTagWeight === 0 &&
+			allowSensitiveContentWeight === 0
+		) {
+			return {
+				blocked: true,
+				effectiveMaxWeightSensitiveContent: effectiveMaxWeight,
+			};
 		}
 
 		return {

@@ -1,13 +1,17 @@
 import {
 	Column,
+	CreateDateColumn,
 	DeleteDateColumn,
 	Entity,
 	Index,
 	ManyToOne,
 	PrimaryGeneratedColumn,
 	Relation,
+	UpdateDateColumn,
 } from 'typeorm';
 import { Book } from './book.entity';
+import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 
 @Entity('covers')
 export class Cover {
@@ -23,6 +27,9 @@ export class Cover {
 	@Column({ default: 0 })
 	index: number;
 
+	@Column({ type: 'json', nullable: true })
+	metadata: ImageMetadata | null;
+
 	@Column({ nullable: true })
 	@Index()
 	imageHash: string;
@@ -33,12 +40,31 @@ export class Cover {
 	@Column({ default: false })
 	selected: boolean;
 
+	@Column({
+		type: 'enum',
+		enum: ScrapingStatus,
+		nullable: true,
+		default: null,
+	})
+	scrapingStatus: ScrapingStatus | null;
+
+	@Column({
+		default: 0,
+	})
+	retries: number;
+
 	@ManyToOne(
 		() => Book,
 		(book) => book.covers,
 		{ onDelete: 'CASCADE' },
 	)
 	book: Relation<Book>;
+
+	@CreateDateColumn()
+	createdAt: Date;
+
+	@UpdateDateColumn()
+	updatedAt: Date;
 
 	@DeleteDateColumn()
 	deletedAt: Date;

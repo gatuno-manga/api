@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, Repository } from 'typeorm';
-import { IWebsiteRepository } from '../../../application/ports/website-repository.interface';
-import { Website as DomainWebsite } from '../../../domain/entities/website';
-import { Website as InfrastructureWebsite } from '../entities/website.entity';
+import { IWebsiteRepository } from '@scraping/application/ports/website-repository.interface';
+import { Website as DomainWebsite } from '@scraping/domain/entities/website';
+import { Website as InfrastructureWebsite } from '@scraping/infrastructure/database/entities/website.entity';
 
 @Injectable()
 export class TypeOrmWebsiteRepositoryAdapter implements IWebsiteRepository {

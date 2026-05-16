@@ -1,7 +1,7 @@
-import { ContentFormat } from '../enums/content-format.enum';
-import { ContentType } from '../enums/content-type.enum';
-import { DocumentFormat } from '../enums/document-format.enum';
-import { ScrapingStatus } from '../enums/scrapingStatus.enum';
+import { ContentFormat } from '@books/domain/enums/content-format.enum';
+import { ContentType } from '@books/domain/enums/content-type.enum';
+import { DocumentFormat } from '@books/domain/enums/document-format.enum';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { Book } from './book';
 import { ChapterComment } from './chapter-comment';
 import { Page } from './page';
@@ -22,5 +22,7 @@ export class Chapter {
 	pages: Page[];
 	comments: ChapterComment[];
 	isFinal: boolean;
+	createdAt: Date;
+	updatedAt: Date;
 	deletedAt: Date | null;
 }
