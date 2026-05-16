@@ -1,21 +1,4 @@
 import {
-	ConflictException,
-	Inject,
-	Injectable,
-	Logger,
-	OnModuleInit,
-} from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { normalizeUrl } from 'src/common/utils/url.utils';
-import { ClientKafka } from '@nestjs/microservices';
-import { RedisService } from '@/infrastructure/redis/redis.service';
-import { WebsiteService } from '@websites/application/services/website.service';
-import { Book } from '@books/domain/entities/book';
-import { Chapter } from '@books/domain/entities/chapter';
-import { Cover } from '@books/domain/entities/cover';
-import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
-import { CoverImageService } from '@books/infrastructure/jobs/cover-image.service';
-import {
 	I_BOOK_REPOSITORY,
 	IBookRepository,
 } from '@books/application/ports/book-repository.interface';
@@ -27,6 +10,17 @@ import {
 	I_COVER_REPOSITORY,
 	ICoverRepository,
 } from '@books/application/ports/cover-repository.interface';
+import { Book } from '@books/domain/entities/book';
+import { Chapter } from '@books/domain/entities/chapter';
+import { Cover } from '@books/domain/entities/cover';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
+import { CoverImageService } from '@books/infrastructure/jobs/cover-image.service';
+import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { normalizeUrl } from 'src/common/utils/url.utils';
+import { RedisService } from '@/infrastructure/redis/redis.service';
+import { ClientKafka } from '@nestjs/microservices';
+import { WebsiteService } from '@websites/application/services/website.service';
 import { v7 as uuidv7 } from 'uuid';
 
 interface ScrapedChapter {
@@ -42,10 +36,14 @@ interface ScrapedCover {
 }
 
 interface BookContentUpdateResult {
-	dispatched: boolean;
-	urlsProcessed: number;
+	newChapters: number;
+	newCovers: number;
 }
 
+/**
+ * Service responsável pela lógica de negócio de atualização de conteúdo de livros
+ * (novos capítulos e capas detectados via scraping)
+ */
 @Injectable()
 export class BookContentUpdateService implements OnModuleInit {
 	private readonly logger = new Logger(BookContentUpdateService.name);
@@ -59,32 +57,22 @@ export class BookContentUpdateService implements OnModuleInit {
 		private readonly coverRepository: ICoverRepository,
 		@Inject('SCRAPER_SERVICE')
 		private readonly scraperClient: ClientKafka,
-		private readonly redisService: RedisService,
 		private readonly websiteService: WebsiteService,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly coverImageService: CoverImageService,
+		private readonly redisService: RedisService,
 	) {}
 
 	async onModuleInit() {
 		await this.scraperClient.connect();
 	}
 
+	/**
+	 * Executa a atualização de conteúdo de um livro via scraping direto
+	 * @deprecated Use requestUpdateViaScraper para o novo fluxo com microserviço Go
+	 */
 	async performUpdate(bookId: string): Promise<BookContentUpdateResult> {
 		this.logger.debug(`Processing book content update for: ${bookId}`);
-
-		const lockKey = `lock:scraping:book:${bookId}`;
-		const redis = this.redisService.getClient();
-
-		const acquired = await redis.set(lockKey, '1', 'EX', 300, 'NX');
-
-		if (!acquired) {
-			this.logger.warn(
-				`Book ${bookId} is already being scraped. Request ignored.`,
-			);
-			throw new ConflictException(
-				`O livro ${bookId} já está sendo atualizado por outro processo.`,
-			);
-		}
 
 		const book = await this.bookRepository.findById(bookId, [
 			'chapters',
@@ -96,29 +84,57 @@ export class BookContentUpdateService implements OnModuleInit {
 			throw new Error(`Book ${bookId} not found`);
 		}
 
+		return { newChapters: 0, newCovers: 0 };
+	}
+
+	/**
+	 * Dispara a solicitação de scraping para o microserviço em Go via Kafka
+	 */
+	async requestUpdateViaScraper(
+		bookId: string,
+	): Promise<{ dispatched: boolean; urlsProcessed: number }> {
+		this.logger.log(
+			`Requesting update via scraper microservice: ${bookId}`,
+		);
+
+		const book = await this.bookRepository.findById(bookId, []);
+		if (!book) {
+			throw new Error(`Book ${bookId} not found`);
+		}
+
 		if (!book.originalUrl || book.originalUrl.length === 0) {
 			this.logger.warn(`Book ${book.title} has no original URL`);
 			return { dispatched: false, urlsProcessed: 0 };
 		}
 
-		let urlsProcessed = 0;
+		// Adicionar lock distribuído para evitar múltiplas solicitações simultâneas
+		const redis = this.redisService.getClient();
+		const lockKey = `lock:scraping:book:${bookId}`;
+		const isLocked = await redis.set(lockKey, 'true', 'EX', 300, 'NX');
 
+		if (!isLocked) {
+			this.logger.warn(
+				`Scraping already in progress for book ${bookId} (locked)`,
+			);
+			return { dispatched: false, urlsProcessed: 0 };
+		}
+
+		let urlsProcessed = 0;
 		for (const bookUrl of book.originalUrl) {
 			try {
-				this.logger.debug(`Requesting scrape info for: ${bookUrl}`);
-
 				const host = new URL(bookUrl).hostname;
 				const websiteConfig = await this.websiteService.getByUrl(host);
 
 				if (!websiteConfig) {
 					this.logger.warn(
-						`No website config found for host: ${host}`,
+						`Não há configuração de scraping para o site: ${host}`,
 					);
 					continue;
 				}
 
+				const jobId = uuidv7();
 				const payload = {
-					jobId: uuidv7(),
+					jobId,
 					bookId: book.id,
 					targetUrl: bookUrl,
 					websiteConfig: {
@@ -145,6 +161,8 @@ export class BookContentUpdateService implements OnModuleInit {
 								websiteConfig.chapterListSelector,
 							bookInfoExtractScript:
 								websiteConfig.bookInfoExtractScript,
+							newBookExtractScript:
+								websiteConfig.newBookExtractScript,
 						},
 						headers: {
 							Referer: host,
@@ -152,30 +170,14 @@ export class BookContentUpdateService implements OnModuleInit {
 					},
 					uploadTarget: {
 						bucket: 'processing',
-						pathPrefix: `${book.id.slice(-2)}/${book.id}`,
+						pathPrefix: `${jobId.slice(-2)}/${jobId}`,
 					},
 				};
 
-				this.scraperClient
-					.emit('scraping.update-book.requested', payload)
-					.subscribe({
-						next: () => {
-							this.logger.log(
-								`Update request successfully emitted to Kafka for book: ${book.id}`,
-							);
-						},
-						error: (err) => {
-							this.logger.error(
-								`Failed to emit update request to Kafka for book ${book.id}: ${err.message}`,
-							);
-							// Remove lock on failure so it can be retried
-							redis.del(lockKey).catch((delErr) => {
-								this.logger.error(
-									`Failed to remove lock after Kafka emit error: ${delErr.message}`,
-								);
-							});
-						},
-					});
+				this.scraperClient.emit(
+					'scraping.update-book.requested',
+					payload,
+				);
 				urlsProcessed++;
 			} catch (error) {
 				this.logger.warn(
@@ -191,12 +193,17 @@ export class BookContentUpdateService implements OnModuleInit {
 		return { dispatched: urlsProcessed > 0, urlsProcessed };
 	}
 
+	/**
+	 * Sincroniza capítulos: identifica novos capítulos e os cria no banco
+	 */
 	public async syncChapters(
 		book: Book,
 		scrapedChapters: ScrapedChapter[],
+		alreadyCreatedChapters: Chapter[] = [],
 	): Promise<Chapter[]> {
 		const existingUrls = new Set([
 			...book.chapters.map((ch) => normalizeUrl(ch.originalUrl)),
+			...alreadyCreatedChapters.map((ch) => normalizeUrl(ch.originalUrl)),
 		]);
 
 		const newChapters = scrapedChapters.filter(
@@ -212,7 +219,7 @@ export class BookContentUpdateService implements OnModuleInit {
 
 		const existingIndexes = await this.getExistingChapterIndexes(
 			book.id,
-			[],
+			alreadyCreatedChapters,
 		);
 
 		const createdChapters: Chapter[] = [];
@@ -273,6 +280,9 @@ export class BookContentUpdateService implements OnModuleInit {
 		return index;
 	}
 
+	/**
+	 * Sincroniza capas: identifica novas capas por hash e as cria
+	 */
 	public async syncCovers(
 		book: Book,
 		scrapedCovers: ScrapedCover[],

@@ -80,9 +80,8 @@ export class BookCreationService implements OnModuleInit {
 				whitelistTerms: websiteConfig.whitelistTerms,
 				selectors: {
 					chapterListSelector: websiteConfig.chapterListSelector,
-					newBookExtractScript:
-						websiteConfig.newBookExtractScript ||
-						websiteConfig.bookInfoExtractScript,
+					bookInfoExtractScript: websiteConfig.bookInfoExtractScript,
+					newBookExtractScript: websiteConfig.newBookExtractScript,
 				},
 				headers: {
 					Referer: host,

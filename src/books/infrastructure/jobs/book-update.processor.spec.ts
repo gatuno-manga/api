@@ -30,6 +30,7 @@ describe('BookUpdateProcessor', () => {
 
 	const mockBookContentUpdateService = {
 		performUpdate: jest.fn(),
+		requestUpdateViaScraper: jest.fn(),
 	};
 
 	beforeEach(async () => {
@@ -82,18 +83,21 @@ describe('BookUpdateProcessor', () => {
 	});
 
 	it('delegates process execution to BookContentUpdateService', async () => {
-		mockBookContentUpdateService.performUpdate.mockResolvedValue({
-			newChapters: 2,
-			newCovers: 1,
-		});
+		const mockResult = {
+			dispatched: true,
+			urlsProcessed: 2,
+		};
+		mockBookContentUpdateService.requestUpdateViaScraper.mockResolvedValue(
+			mockResult,
+		);
 
 		const result = await processor.process({
 			data: { bookId: 'book-1' },
 		} as any);
 
-		expect(mockBookContentUpdateService.performUpdate).toHaveBeenCalledWith(
-			'book-1',
-		);
-		expect(result).toEqual({ newChapters: 2, newCovers: 1 });
+		expect(
+			mockBookContentUpdateService.requestUpdateViaScraper,
+		).toHaveBeenCalledWith('book-1');
+		expect(result).toEqual(mockResult);
 	});
 });

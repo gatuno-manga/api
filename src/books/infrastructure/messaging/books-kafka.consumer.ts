@@ -16,11 +16,16 @@ import {
 	I_CHAPTER_COMMENT_REPOSITORY,
 	IChapterCommentRepository,
 } from '@books/application/ports/chapter-comment-repository.interface';
+import {
+	I_COVER_REPOSITORY,
+	ICoverRepository,
+} from '@books/application/ports/cover-repository.interface';
 import { MediaUrlService } from '@common/services/media-url.service';
 import { StorageBucket } from '@common/enum/storage-bucket.enum';
 import { RedisService } from '@/infrastructure/redis/redis.service';
 import { CreateBookDto } from '@books/application/dto/create-book.dto';
 import { ContentFormat } from '@books/domain/enums/content-format.enum';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import * as cheerio from 'cheerio';
 import { Chapter as InfraChapter } from '../database/entities/chapter.entity';
 import { ChapterComment as InfraComment } from '../database/entities/chapter-comment.entity';
@@ -60,6 +65,14 @@ interface ChapterCompletedPayload {
 	images: string[];
 }
 
+interface CoversCompletedPayload {
+	jobId?: string;
+	job_id?: string;
+	bookId?: string;
+	book_id?: string;
+	results: string[];
+}
+
 interface ImagesCompletedPayload {
 	jobId?: string;
 	job_id?: string;
@@ -85,6 +98,8 @@ export class BooksKafkaConsumer {
 		private readonly chapterRepository: IChapterRepository,
 		@Inject(I_CHAPTER_COMMENT_REPOSITORY)
 		private readonly chapterCommentRepository: IChapterCommentRepository,
+		@Inject(I_COVER_REPOSITORY)
+		private readonly coverRepository: ICoverRepository,
 		private readonly mediaUrlService: MediaUrlService,
 		private readonly redisService: RedisService,
 	) {
@@ -121,117 +136,134 @@ export class BooksKafkaConsumer {
 	}
 
 	@EventPattern('scraping.new-book.completed')
-	@EventPattern('scraping.update-book.completed')
-	async handleBookScrapingCompleted(
+	async handleNewBookScrapingCompleted(
 		@Payload() messages: KafkaMessage[] | ScrapingBookCompletedPayload,
 	) {
 		const messageArray = Array.isArray(messages) ? messages : [messages];
 
 		this.logger.log(
-			`BooksKafkaConsumer: handleBookScrapingCompleted recebeu lote com ${messageArray.length} mensagens`,
+			`BooksKafkaConsumer: handleNewBookScrapingCompleted recebeu lote com ${messageArray.length} mensagens`,
 		);
 
 		for (const message of messageArray) {
-			this.logger.debug(
-				'BooksKafkaConsumer: Processando mensagem individual do lote...',
-			);
 			const data =
 				this.parseMessage<ScrapingBookCompletedPayload>(message);
 
 			if (!data) {
-				this.logger.warn(
-					'Falha ao dar parse na mensagem Kafka ou dados vazios.',
+				continue;
+			}
+
+			const jobId = data.jobId || data.job_id;
+			const targetUrl = data.targetUrl || data.target_url;
+
+			if (!data.title || !targetUrl) {
+				this.logger.error(
+					`Payload inválido em scraping.new-book.completed para job: ${jobId}`,
 				);
 				continue;
 			}
 
-			const bookId = data.bookId || data.book_id;
-			const jobId = data.jobId || data.job_id;
-			const targetUrl = data.targetUrl || data.target_url;
-
-			this.logger.debug(
-				`Dados extraídos: bookId=${bookId}, jobId=${jobId}, targetUrl=${targetUrl}`,
+			this.logger.log(
+				`Recebido conclusão de scraping (NEW) para job: ${jobId}`,
 			);
 
-			if (bookId) {
-				this.logger.log(
-					`Recebido conclusão de scraping (UPDATE) para livro: ${bookId}`,
-				);
-
-				const book = await this.bookRepository.findById(
-					bookId,
-					['chapters', 'covers'],
-					'force_master',
-				);
-
-				if (!book) {
-					this.logger.error(
-						`Livro ${bookId} não encontrado ao processar conclusão de scraping`,
-					);
-					continue;
-				}
-
-				await this.bookContentUpdateService.syncChapters(
-					book,
-					data.chapters || [],
-				);
-				await this.bookContentUpdateService.syncCovers(
-					book,
-					data.covers || [],
-					targetUrl || '',
-				);
-
-				this.logger.log(
-					`Processamento de capítulos e capas finalizado para livro: ${book.title}`,
-				);
-				await this.redisService
-					.getClient()
-					.del(`lock:scraping:book:${bookId}`);
-			} else if (data.title && targetUrl) {
-				this.logger.log(
-					`Recebido conclusão de scraping (NEW) para job: ${jobId}`,
-				);
-
-				try {
-					const createBookDto: CreateBookDto = {
-						title: data.title,
-						description: data.description || '',
-						originalUrl: [targetUrl],
-						authors: (data.authors || []).map((name) => ({ name })),
-						tags: data.tags || [],
-						chapters: (data.chapters || []).map((ch) => ({
-							title: ch.title,
-							originalUrl: ch.url,
-							index: ch.index,
-							isFinal: ch.isFinal,
+			try {
+				const createBookDto: CreateBookDto = {
+					title: data.title,
+					description: data.description || '',
+					originalUrl: [targetUrl],
+					authors: (data.authors || []).map((name) => ({ name })),
+					tags: data.tags || [],
+					chapters: (data.chapters || []).map((ch) => ({
+						title: ch.title,
+						originalUrl: ch.url,
+						index: ch.index,
+						isFinal: ch.isFinal,
+					})),
+					cover: {
+						urlOrigin: targetUrl,
+						urlImgs: (data.covers || []).map((c) => ({
+							url: c.url,
+							title: c.title || 'Cover Image',
 						})),
-						cover: {
-							urlOrigin: targetUrl,
-							urlImgs: (data.covers || []).map((c) => ({
-								url: c.url,
-								title: c.title || 'Cover Image',
-							})),
-						},
-						ignoreConflict: true,
-					};
+					},
+					ignoreConflict: true,
+				};
 
-					const book =
-						await this.bookCreationService.createBook(
-							createBookDto,
-						);
-					this.logger.log(
-						`Livro criado automaticamente com sucesso: ${book.title} (ID: ${book.id})`,
-					);
-				} catch (error) {
-					this.logger.error(
-						`Erro ao criar livro automaticamente para o job ${jobId}: ${error.message}`,
-					);
-				}
-			} else {
+				const book =
+					await this.bookCreationService.createBook(createBookDto);
+				this.logger.log(
+					`Livro criado automaticamente com sucesso: ${book.title} (ID: ${book.id})`,
+				);
+			} catch (error) {
 				this.logger.error(
-					'Payload inválido em scraping.book.completed: sem bookId e sem metadados de criação',
+					`Erro ao criar livro automaticamente para o job ${jobId}: ${error.message}`,
 				);
 			}
+		}
+	}
+
+	@EventPattern('scraping.update-book.completed')
+	async handleUpdateBookScrapingCompleted(
+		@Payload() messages: KafkaMessage[] | ScrapingBookCompletedPayload,
+	) {
+		const messageArray = Array.isArray(messages) ? messages : [messages];
+
+		this.logger.log(
+			`BooksKafkaConsumer: handleUpdateBookScrapingCompleted recebeu lote com ${messageArray.length} mensagens`,
+		);
+
+		for (const message of messageArray) {
+			const data =
+				this.parseMessage<ScrapingBookCompletedPayload>(message);
+
+			if (!data) {
+				continue;
+			}
+
+			const bookId = data.bookId || data.book_id;
+			const targetUrl = data.targetUrl || data.target_url;
+
+			if (!bookId) {
+				this.logger.error(
+					'Payload inválido em scraping.update-book.completed: sem bookId',
+				);
+				continue;
+			}
+
+			this.logger.log(
+				`Recebido conclusão de scraping (UPDATE) para livro: ${bookId}`,
+			);
+
+			const book = await this.bookRepository.findById(bookId, [
+				'chapters',
+				'covers',
+			]);
+
+			if (!book) {
+				this.logger.error(
+					`Livro ${bookId} não encontrado ao processar conclusão de scraping`,
+				);
+				continue;
+			}
+
+			await this.bookContentUpdateService.syncChapters(
+				book,
+				data.chapters || [],
+				[],
+			);
+			await this.bookContentUpdateService.syncCovers(
+				book,
+				data.covers || [],
+				targetUrl || '',
+			);
+
+			this.logger.log(
+				`Processamento de capítulos e capas finalizado para livro: ${book.title}`,
+			);
+			await this.redisService
+				.getClient()
+				.del(`lock:scraping:book:${bookId}`);
 		}
 	}
 
@@ -330,6 +362,101 @@ export class BooksKafkaConsumer {
 		}
 	}
 
+	@EventPattern('scraping.covers.completed')
+	async handleCoversScrapingCompleted(
+		@Payload() messages: KafkaMessage[] | CoversCompletedPayload,
+	) {
+		const messageArray = Array.isArray(messages) ? messages : [messages];
+
+		for (const message of messageArray) {
+			const data = this.parseMessage<CoversCompletedPayload>(message);
+			if (!data) continue;
+
+			const bookId = data.bookId || data.book_id;
+			if (!bookId) continue;
+
+			this.logger.log(
+				`Recebido scraping.covers.completed para livro: ${bookId}`,
+			);
+
+			try {
+				const covers = await this.coverRepository.findByBookId(bookId);
+				const processingCovers = covers.filter(
+					(c) => c.scrapingStatus === ScrapingStatus.PROCESS,
+				);
+
+				const results = data.results || [];
+
+				for (let i = 0; i < processingCovers.length; i++) {
+					const cover = processingCovers[i];
+					// Se tivermos um caminho correspondente no results, usamos
+					// Caso contrário (mismatch de quantidade), mantemos o status READY mas sem trocar a URL se não houver path
+					if (results[i]) {
+						cover.url = results[i];
+					}
+					cover.scrapingStatus = ScrapingStatus.READY;
+					await this.coverRepository.save(cover);
+				}
+
+				this.logger.log(
+					`Finalizado processamento de ${processingCovers.length} capas para o livro: ${bookId}`,
+				);
+			} catch (error) {
+				this.logger.error(
+					`Erro ao finalizar scraping de capas para o livro ${bookId}: ${error.message}`,
+				);
+			} finally {
+				await this.redisService
+					.getClient()
+					.del(`lock:scraping:book:${bookId}`);
+			}
+		}
+	}
+
+	@EventPattern('scraping.covers.failed')
+	async handleCoversScrapingFailed(
+		@Payload() messages:
+			| KafkaMessage[]
+			| { bookId?: string; book_id?: string; error: string },
+	) {
+		const messageArray = Array.isArray(messages) ? messages : [messages];
+
+		for (const message of messageArray) {
+			const data = this.parseMessage<{
+				bookId?: string;
+				book_id?: string;
+				error: string;
+			}>(message);
+			if (!data) continue;
+
+			const bookId = data.bookId || data.book_id;
+			if (!bookId) continue;
+
+			this.logger.warn(
+				`Recebido scraping.covers.failed para livro: ${bookId}. Erro: ${data.error}`,
+			);
+
+			try {
+				const covers = await this.coverRepository.findByBookId(bookId);
+				const processCovers = covers.filter(
+					(c) => c.scrapingStatus === ScrapingStatus.PROCESS,
+				);
+
+				for (const cover of processCovers) {
+					cover.scrapingStatus = ScrapingStatus.ERROR;
+					await this.coverRepository.save(cover);
+				}
+			} catch (error) {
+				this.logger.error(
+					`Erro ao marcar falha de capas para o livro ${bookId}: ${error.message}`,
+				);
+			} finally {
+				await this.redisService
+					.getClient()
+					.del(`lock:scraping:book:${bookId}`);
+			}
+		}
+	}
 	@EventPattern('scraping.images.completed')
 	async handleImagesScrapingCompleted(
 		@Payload() messages: KafkaMessage[] | ImagesCompletedPayload,

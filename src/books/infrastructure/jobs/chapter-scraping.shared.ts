@@ -1,21 +1,19 @@
-import {
-	ConflictException,
-	Inject,
-	Injectable,
-	Logger,
-	OnModuleInit,
-} from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { InjectRepository } from '@nestjs/typeorm';
-import { ClientKafka } from '@nestjs/microservices';
-import { RedisService } from '@/infrastructure/redis/redis.service';
-import { WebsiteService } from '@websites/application/services/website.service';
-import { Repository } from 'typeorm';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { Page } from '@books/infrastructure/database/entities/page.entity';
-import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
+import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { RedisService } from '@/infrastructure/redis/redis.service';
+import { ClientKafka } from '@nestjs/microservices';
+import { WebsiteService } from '@websites/application/services/website.service';
 import { v7 as uuidv7 } from 'uuid';
 
+/**
+ * Serviço compartilhado para processamento de scraping de capítulos.
+ * Elimina duplicação de código entre ChapterScrapingJob e FixChapterProcessor.
+ */
 @Injectable()
 export class ChapterScrapingSharedService implements OnModuleInit {
 	private readonly logger = new Logger(ChapterScrapingSharedService.name);
@@ -27,51 +25,71 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 		private readonly chapterRepository: Repository<Chapter>,
 		@Inject('SCRAPER_SERVICE')
 		private readonly scraperClient: ClientKafka,
-		private readonly redisService: RedisService,
 		private readonly websiteService: WebsiteService,
 		private readonly eventEmitter: EventEmitter2,
+		private readonly redisService: RedisService,
 	) {}
 
 	async onModuleInit() {
 		await this.scraperClient.connect();
 	}
 
-	async processChapterPages(chapter: Chapter): Promise<boolean> {
-		const chapterInfo = `${chapter.book?.title || 'Unknown'} (${chapter.index})`;
+	/**
+	 * Processa o scraping de páginas de um capítulo (direto).
+	 * @deprecated Use requestScrapingViaGo para o novo fluxo com microserviço Go
+	 */
+	async processChapterPages(
+		chapter: Chapter,
+		minPages?: number,
+	): Promise<boolean> {
+		this.logger.warn(
+			`Processamento direto de capítulos está desativado. Use o microserviço Go. Capítulo: ${chapter.id}`,
+		);
+		return false;
+	}
 
-		this.logger.debug(`Solicitando scraping para capítulo: ${chapterInfo}`);
-
-		const lockKey = `lock:scraping:chapter:${chapter.id}`;
-		const redis = this.redisService.getClient();
-
-		const acquired = await redis.set(lockKey, '1', 'EX', 180, 'NX');
-
-		if (!acquired) {
-			this.logger.warn(
-				`Chapter ${chapter.id} is already being scraped. Request ignored.`,
-			);
-			throw new ConflictException(
-				`O capítulo ${chapter.id} já está sendo processado.`,
-			);
-		}
+	/**
+	 * Dispara a solicitação de scraping para o microserviço em Go via Kafka.
+	 */
+	async requestScrapingViaGo(chapter: Chapter): Promise<boolean> {
+		this.logger.log(
+			`Disparando scraping via Go para capítulo: ${chapter.id}`,
+		);
 
 		try {
+			// Adicionar um lock para evitar disparos duplicados
+			const redis = this.redisService.getClient();
+			const lockKey = `lock:scraping:chapter:${chapter.id}`;
+			const isLocked = await redis.set(lockKey, 'true', 'EX', 600, 'NX');
+
+			if (!isLocked) {
+				this.logger.warn(
+					`Scraping já está em andamento para o capítulo ${chapter.id}`,
+				);
+				return true;
+			}
+
+			const book = chapter.book;
+			if (!book) {
+				throw new Error(
+					`Capítulo ${chapter.id} não possui livro associado`,
+				);
+			}
+
 			const host = new URL(chapter.originalUrl).hostname;
 			const websiteConfig = await this.websiteService.getByUrl(host);
 
 			if (!websiteConfig) {
-				this.logger.warn(`No website config found for host: ${host}`);
-				this.emitFailedEvent(
-					chapter,
-					'Configuração do site não encontrada',
+				throw new Error(
+					`Não há configuração de scraping para o site: ${host}`,
 				);
-				return false;
 			}
 
+			const jobId = uuidv7();
 			const payload = {
-				jobId: uuidv7(),
+				jobId,
 				chapterId: chapter.id,
-				bookId: chapter.book?.id,
+				bookId: book.id,
 				targetUrl: chapter.originalUrl,
 				websiteConfig: {
 					name: host,
@@ -93,7 +111,7 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 					blacklistTerms: websiteConfig.blacklistTerms,
 					whitelistTerms: websiteConfig.whitelistTerms,
 					selectors: {
-						chapterTitle: websiteConfig.selector,
+						chapterTitle: 'h1', // Default, não temos no DB ainda
 						chapterImages: websiteConfig.selector,
 					},
 					headers: {
@@ -102,51 +120,14 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 				},
 				uploadTarget: {
 					bucket: 'processing',
-					pathPrefix: `${chapter.id.slice(-2)}/${chapter.id}`,
+					pathPrefix: `chapters/${book.id}/${chapter.id}`,
 				},
 			};
 
-			await this.pageRepository.delete({ chapter: { id: chapter.id } });
-			chapter.scrapingStatus = ScrapingStatus.PROCESS;
-			await this.chapterRepository.save(chapter);
+			this.scraperClient.emit('scraping.chapter.requested', payload);
 
-			this.scraperClient
-				.emit('scraping.chapter.requested', payload)
-				.subscribe({
-					next: () => {
-						this.logger.log(
-							`Chapter scraping request successfully emitted to Kafka: ${chapter.id}`,
-						);
-					},
-					error: (err) => {
-						this.logger.error(
-							`Failed to emit chapter scraping request to Kafka for chapter ${chapter.id}: ${err.message}`,
-						);
-						// Revert status and remove lock
-						this.chapterRepository
-							.update(chapter.id, {
-								scrapingStatus: ScrapingStatus.ERROR,
-							})
-							.catch((updateErr) => {
-								this.logger.error(
-									`Failed to revert status after Kafka emit error: ${updateErr.message}`,
-								);
-							});
-						this.redisService
-							.getClient()
-							.del(lockKey)
-							.catch((delErr) => {
-								this.logger.error(
-									`Failed to remove lock after Kafka emit error: ${delErr.message}`,
-								);
-							});
-					},
-				});
-
-			this.emitStartedEvent(chapter);
-
-			this.logger.log(
-				`Requisição enviada para o microserviço: ${chapterInfo}`,
+			this.logger.debug(
+				`Solicitação de scraping enviada com sucesso para o capítulo ${chapter.id}`,
 			);
 			return true;
 		} catch (error) {
@@ -165,6 +146,9 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 		}
 	}
 
+	/**
+	 * Emite evento de início do scraping
+	 */
 	emitStartedEvent(chapter: Chapter): void {
 		this.eventEmitter.emit('chapter.scraping.started', {
 			chapterId: chapter.id,
@@ -172,6 +156,9 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 		});
 	}
 
+	/**
+	 * Salva páginas extraídas de um capítulo (URLs externas temporárias).
+	 */
 	async saveExtractedPages(
 		chapter: Chapter,
 		externalUrls: string[],
@@ -210,6 +197,9 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 		);
 	}
 
+	/**
+	 * Finaliza o scraping de um capítulo, convertendo caminhos externos em internos.
+	 */
 	async finalizeChapterScraping(
 		chapter: Chapter,
 		pagesPaths: string[],
@@ -297,6 +287,9 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 		);
 	}
 
+	/**
+	 * Emite evento de falha no scraping
+	 */
 	emitFailedEvent(chapter: Chapter, error: string): void {
 		this.eventEmitter.emit('chapter.scraping.failed', {
 			chapterId: chapter.id,

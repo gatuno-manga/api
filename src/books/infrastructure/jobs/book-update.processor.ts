@@ -112,7 +112,7 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
 	async process(job: Job<BookUpdateJobData>): Promise<BookUpdateResult> {
 		const { bookId } = job.data;
 		const result =
-			await this.bookContentUpdateService.performUpdate(bookId);
+			await this.bookContentUpdateService.requestUpdateViaScraper(bookId);
 		return result;
 	}
 }
