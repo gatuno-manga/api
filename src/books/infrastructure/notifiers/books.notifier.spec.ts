@@ -288,4 +288,34 @@ describe('BooksNotifier', () => {
 			);
 		});
 	});
+
+	describe('Error Handling', () => {
+		it('should not throw if mqttClient.emit returns undefined', () => {
+			mqttClient.emit.mockReturnValue(undefined as any);
+
+			const book = {
+				id: 'book-1',
+				title: 'Test Book',
+				type: 'MANGA',
+				createdAt: new Date(),
+			} as unknown as Book;
+
+			expect(() => notifier.handleBookCreated(book)).not.toThrow();
+		});
+
+		it('should not throw if mqttClient.emit throws an error', () => {
+			mqttClient.emit.mockImplementation(() => {
+				throw new Error('Connection failed');
+			});
+
+			const book = {
+				id: 'book-1',
+				title: 'Test Book',
+				type: 'MANGA',
+				createdAt: new Date(),
+			} as unknown as Book;
+
+			expect(() => notifier.handleBookCreated(book)).not.toThrow();
+		});
+	});
 });

@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { Logger } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import { AppConfigService } from './infrastructure/app-config/app-config.service';
@@ -11,6 +12,7 @@ import { configureValidationPipe } from './infrastructure/http/config/validation
 import { configureKafka } from './infrastructure/http/config/kafka.config';
 
 async function bootstrap() {
+	const logger = new Logger('Bootstrap');
 	const app = await NestFactory.create<NestExpressApplication>(AppModule);
 	const configService = app.get(AppConfigService);
 
@@ -24,9 +26,12 @@ async function bootstrap() {
 	app.use(cookieParser());
 	app.setGlobalPrefix('api');
 
+	logger.log('Iniciando configuração do Kafka...');
 	configureKafka(app, configService);
 
+	logger.log('Disparando inicialização de todos os microserviços...');
 	await app.startAllMicroservices();
+	logger.log('Microserviços inicializados.');
 
 	if (
 		configService.nodeEnv === 'development' ||
@@ -36,6 +41,7 @@ async function bootstrap() {
 	}
 
 	await app.listen(configService.port);
+	logger.log(`API rodando na porta: ${configService.port}`);
 }
 
 bootstrap();

@@ -5,7 +5,11 @@ import {
 } from '@books/domain/types/criteria.types';
 
 export interface IChapterCommentRepository {
-	findById(id: string, relations?: string[]): Promise<ChapterComment | null>;
+	findById(
+		id: string,
+		relations?: string[],
+		comment?: string,
+	): Promise<ChapterComment | null>;
 	save(comment: ChapterComment): Promise<ChapterComment>;
 	softRemove(comment: ChapterComment): Promise<void>;
 	countRoots(chapterId: string, viewer?: ViewerContext): Promise<number>;

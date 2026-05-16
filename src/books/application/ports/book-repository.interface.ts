@@ -7,7 +7,11 @@ import {
 } from '@books/domain/types/criteria.types';
 
 export interface IBookRepository {
-	findById(id: string, relations?: string[]): Promise<Book | null>;
+	findById(
+		id: string,
+		relations?: string[],
+		comment?: string,
+	): Promise<Book | null>;
 	findByIdWithDetails(id: string): Promise<Book | null>;
 	save(book: Book): Promise<Book>;
 	update(id: string, data: Partial<Book>): Promise<void>;

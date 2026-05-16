@@ -1,5 +1,5 @@
 import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
-import { Inject, Logger } from '@nestjs/common';
+import { Inject, Logger, OnModuleInit } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ClientKafka } from '@nestjs/microservices';
@@ -15,7 +15,10 @@ import * as cheerio from 'cheerio';
 const QUEUE_NAME = 'text-processing-queue';
 
 @Processor(QUEUE_NAME, { lockDuration: 120000 })
-export class TextProcessingProcessor extends WorkerHost {
+export class TextProcessingProcessor
+	extends WorkerHost
+	implements OnModuleInit
+{
 	private readonly logger = new Logger(TextProcessingProcessor.name);
 
 	constructor(
@@ -29,6 +32,10 @@ export class TextProcessingProcessor extends WorkerHost {
 		private readonly mediaUrlService: MediaUrlService,
 	) {
 		super();
+	}
+
+	async onModuleInit() {
+		await this.scraperClient.connect();
 	}
 
 	async process(job: Job<QueueTextProcessingDto>): Promise<void> {
@@ -88,7 +95,20 @@ export class TextProcessingProcessor extends WorkerHost {
 			};
 
 			// Emite para o microserviço Go
-			this.scraperClient.emit('scraping.images.requested', payload);
+			this.scraperClient
+				.emit('scraping.images.requested', payload)
+				.subscribe({
+					next: () => {
+						this.logger.log(
+							`Image mirroring request successfully emitted to Kafka for ${source}: ${entityId}`,
+						);
+					},
+					error: (err) => {
+						this.logger.error(
+							`Failed to emit image mirroring request to Kafka for ${source} ${entityId}: ${err.message}`,
+						);
+					},
+				});
 
 			this.logger.log(
 				`Requisição de espelhamento enviada para o microserviço: ${source} ${entityId}`,

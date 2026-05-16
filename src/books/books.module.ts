@@ -242,6 +242,8 @@ import {
 		ChapterService,
 		ChapterCommentsService,
 		AuthorsService,
+		TagsService,
+		SensitiveContentService,
 		ChapterScrapingJob,
 		ChapterScrapingService,
 		ChapterScrapingSharedService,
@@ -294,6 +296,7 @@ import {
 		ChapterService,
 		AuthorsService,
 		TagsService,
+		SensitiveContentService,
 	],
 })
 export class BooksModule {}

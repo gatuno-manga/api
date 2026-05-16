@@ -28,15 +28,17 @@ export class TypeOrmChapterCommentRepositoryAdapter
 	async findById(
 		id: string,
 		relations?: string[],
+		comment?: string,
 	): Promise<DomainChapterComment | null> {
-		const comment = await this.repository.findOne({
+		const result = await this.repository.findOne({
 			where: {
 				id,
 			} as unknown as FindOptionsWhere<InfrastructureChapterComment>,
 			relations,
 			withDeleted: true,
+			comment,
 		});
-		return comment as unknown as DomainChapterComment;
+		return result as unknown as DomainChapterComment;
 	}
 
 	async save(comment: DomainChapterComment): Promise<DomainChapterComment> {

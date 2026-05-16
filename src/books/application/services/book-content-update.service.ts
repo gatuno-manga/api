@@ -1,4 +1,10 @@
-import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
+import {
+	ConflictException,
+	Inject,
+	Injectable,
+	Logger,
+	OnModuleInit,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { normalizeUrl } from 'src/common/utils/url.utils';
 import { ClientKafka } from '@nestjs/microservices';
@@ -21,6 +27,7 @@ import {
 	I_COVER_REPOSITORY,
 	ICoverRepository,
 } from '@books/application/ports/cover-repository.interface';
+import { v7 as uuidv7 } from 'uuid';
 
 interface ScrapedChapter {
 	title: string;
@@ -39,12 +46,8 @@ interface BookContentUpdateResult {
 	urlsProcessed: number;
 }
 
-/**
- * Service responsável pela lógica de negócio de atualização de conteúdo de livros
- * (novos capítulos e capas detectados via scraping)
- */
 @Injectable()
-export class BookContentUpdateService {
+export class BookContentUpdateService implements OnModuleInit {
 	private readonly logger = new Logger(BookContentUpdateService.name);
 
 	constructor(
@@ -62,17 +65,16 @@ export class BookContentUpdateService {
 		private readonly coverImageService: CoverImageService,
 	) {}
 
-	/**
-	 * Executa a atualização de conteúdo de um livro enviando requisição para o microserviço
-	 */
+	async onModuleInit() {
+		await this.scraperClient.connect();
+	}
+
 	async performUpdate(bookId: string): Promise<BookContentUpdateResult> {
 		this.logger.debug(`Processing book content update for: ${bookId}`);
 
-		// Implementação de Distributed Lock via Redis
 		const lockKey = `lock:scraping:book:${bookId}`;
 		const redis = this.redisService.getClient();
 
-		// Tenta adquirir o lock (NX = apenas se não existir, EX = expiração em segundos)
 		const acquired = await redis.set(lockKey, '1', 'EX', 300, 'NX');
 
 		if (!acquired) {
@@ -116,22 +118,64 @@ export class BookContentUpdateService {
 				}
 
 				const payload = {
-					jobId: crypto.randomUUID(),
+					jobId: uuidv7(),
 					bookId: book.id,
 					targetUrl: bookUrl,
 					websiteConfig: {
 						name: host,
 						cloudflareBypass: websiteConfig.useFlareSolverr,
+						preScript: websiteConfig.preScript,
+						posScript: websiteConfig.posScript,
+						useNetworkInterception:
+							websiteConfig.useNetworkInterception,
+						useScreenshotMode: websiteConfig.useScreenshotMode,
+						cookies: websiteConfig.cookies,
+						localStorage: websiteConfig.localStorage,
+						sessionStorage: websiteConfig.sessionStorage,
+						reloadAfterStorageInjection:
+							websiteConfig.reloadAfterStorageInjection,
+						enableAdaptiveTimeouts:
+							websiteConfig.enableAdaptiveTimeouts,
+						timeoutMultipliers: websiteConfig.timeoutMultipliers,
+						proxyUrl: websiteConfig.proxyUrl,
+						blacklistTerms: websiteConfig.blacklistTerms,
+						whitelistTerms: websiteConfig.whitelistTerms,
 						selectors: {
 							chapterListSelector:
 								websiteConfig.chapterListSelector,
 							bookInfoExtractScript:
 								websiteConfig.bookInfoExtractScript,
 						},
+						headers: {
+							Referer: host,
+						},
+					},
+					uploadTarget: {
+						bucket: 'processing',
+						pathPrefix: `${book.id.slice(-2)}/${book.id}`,
 					},
 				};
 
-				this.scraperClient.emit('scraping.book.requested', payload);
+				this.scraperClient
+					.emit('scraping.update-book.requested', payload)
+					.subscribe({
+						next: () => {
+							this.logger.log(
+								`Update request successfully emitted to Kafka for book: ${book.id}`,
+							);
+						},
+						error: (err) => {
+							this.logger.error(
+								`Failed to emit update request to Kafka for book ${book.id}: ${err.message}`,
+							);
+							// Remove lock on failure so it can be retried
+							redis.del(lockKey).catch((delErr) => {
+								this.logger.error(
+									`Failed to remove lock after Kafka emit error: ${delErr.message}`,
+								);
+							});
+						},
+					});
 				urlsProcessed++;
 			} catch (error) {
 				this.logger.warn(
@@ -147,9 +191,6 @@ export class BookContentUpdateService {
 		return { dispatched: urlsProcessed > 0, urlsProcessed };
 	}
 
-	/**
-	 * Sincroniza capítulos: identifica novos capítulos e os cria no banco
-	 */
 	public async syncChapters(
 		book: Book,
 		scrapedChapters: ScrapedChapter[],
@@ -202,9 +243,6 @@ export class BookContentUpdateService {
 		return createdChapters;
 	}
 
-	/**
-	 * Busca todos os índices de capítulos existentes
-	 */
 	private async getExistingChapterIndexes(
 		bookId: string,
 		additionalChapters: Chapter[],
@@ -217,9 +255,6 @@ export class BookContentUpdateService {
 		]);
 	}
 
-	/**
-	 * Determina o próximo índice disponível para um capítulo
-	 */
 	private determineNextChapterIndex(
 		scrapedChapter: ScrapedChapter,
 		existingIndexes: Set<number>,
@@ -238,9 +273,6 @@ export class BookContentUpdateService {
 		return index;
 	}
 
-	/**
-	 * Sincroniza capas: identifica novas capas por URL e as cria
-	 */
 	public async syncCovers(
 		book: Book,
 		scrapedCovers: ScrapedCover[],
@@ -311,9 +343,6 @@ export class BookContentUpdateService {
 		return newCoversCount;
 	}
 
-	/**
-	 * Emite eventos de atualização
-	 */
 	private emitUpdateEvents(
 		book: Book,
 		newChapters: Chapter[],

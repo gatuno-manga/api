@@ -1,21 +1,49 @@
 import { CustomTransportStrategy, ServerKafka } from '@nestjs/microservices';
-import { Consumer, KafkaMessage } from 'kafkajs';
+import { Consumer, Kafka, KafkaMessage } from 'kafkajs';
+import { Logger } from '@nestjs/common';
 
 export class KafkaBatchStrategy
 	extends ServerKafka
 	implements CustomTransportStrategy
 {
+	protected readonly logger = new Logger(KafkaBatchStrategy.name);
+
 	async bindEvents(consumer: Consumer) {
 		const registeredPatterns = [...this.messageHandlers.keys()];
 		const consumerSubscribeOptions = this.options?.subscribe || {};
 
+		this.logger.log(
+			`[KafkaBatchStrategy] Iniciando bindEvents Kafka. Padrões registrados no NestJS: ${registeredPatterns.length}`,
+		);
+
+		if (registeredPatterns.length === 0) {
+			this.logger.warn(
+				'[KafkaBatchStrategy] NENHUM pattern (@EventPattern/@MessagePattern) foi registrado! Verifique se os controllers estão no módulo correto.',
+			);
+			return;
+		}
+
+		this.logger.log(
+			`[KafkaBatchStrategy] Padrões detectados: ${registeredPatterns.join(', ')}`,
+		);
+
+		// Garantir que os tópicos existam antes de assinar
+		await this.ensureTopicsExist(registeredPatterns);
+
 		for (const pattern of registeredPatterns) {
+			this.logger.log(
+				`[KafkaBatchStrategy] Subscrevendo ao tópico: ${pattern}`,
+			);
 			await consumer.subscribe({
 				...consumerSubscribeOptions,
 				topic: pattern,
+				fromBeginning: true,
 			});
 		}
 
+		this.logger.log(
+			'[KafkaBatchStrategy] Kafka Consumer iniciando loop (run)...',
+		);
 		await consumer.run({
 			...this.options?.run,
 			eachBatch: async ({
@@ -24,31 +52,86 @@ export class KafkaBatchStrategy
 				heartbeat,
 				commitOffsetsIfNecessary,
 			}) => {
-				const pattern = batch.topic;
-				const handler = this.getHandlerByPattern(pattern);
+				const topic = batch.topic;
+
+				// Tenta buscar o handler pelo nome do tópico
+				let handler = this.getHandlerByPattern(topic);
 
 				if (!handler) {
+					// Fallback: tenta buscar por pattern stringificado (padrão NestJS para alguns transports)
+					const stringifiedPattern = JSON.stringify({
+						pattern: topic,
+					});
+					handler = this.getHandlerByPattern(stringifiedPattern);
+				}
+
+				this.logger.debug(
+					`[KafkaBatchStrategy] Recebido lote de ${batch.messages.length} mensagens para o tópico: ${topic}`,
+				);
+
+				if (!handler) {
+					this.logger.warn(
+						`[KafkaBatchStrategy] Nenhum handler encontrado para o tópico: ${topic}`,
+					);
 					return;
 				}
 
 				try {
-					// Passamos as mensagens originais (KafkaMessage[]) para o controller
+					// Chamada do handler com as mensagens e contexto adicional
 					await handler(batch.messages, {
 						batch,
 						resolveOffset,
 						heartbeat,
 						commitOffsetsIfNecessary,
+						topic,
+						partition: batch.partition,
 					});
 				} catch (error) {
 					this.logger.error(
-						`Error processing batch for topic ${pattern}: ${error.message}`,
+						`[KafkaBatchStrategy] Erro ao processar lote no tópico ${topic}: ${error.message}`,
 						error.stack,
 					);
-					// Em caso de erro no lote, o KafkaJS lida com a retentativa
-					// se não resolvermos os offsets aqui.
 					throw error;
 				}
 			},
 		});
+	}
+
+	private async ensureTopicsExist(topics: string[]) {
+		const client = (this as unknown as { client: Kafka }).client;
+		if (!client) {
+			this.logger.warn(
+				'[KafkaBatchStrategy] Cliente Kafka não inicializado na base ServerKafka.',
+			);
+			return;
+		}
+
+		const admin = client.admin();
+		try {
+			await admin.connect();
+			const existingTopics = await admin.listTopics();
+			const topicsToCreate = topics.filter(
+				(topic) => !existingTopics.includes(topic),
+			);
+
+			if (topicsToCreate.length > 0) {
+				this.logger.log(
+					`[KafkaBatchStrategy] Criando tópicos faltantes: ${topicsToCreate.join(', ')}`,
+				);
+				await admin.createTopics({
+					topics: topicsToCreate.map((topic) => ({
+						topic,
+						numPartitions: 1,
+						replicationFactor: 1,
+					})),
+				});
+			}
+		} catch (error) {
+			this.logger.error(
+				`[KafkaBatchStrategy] Erro ao verificar/criar tópicos: ${error.message}`,
+			);
+		} finally {
+			await admin.disconnect();
+		}
 	}
 }

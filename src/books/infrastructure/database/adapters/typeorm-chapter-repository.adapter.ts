@@ -39,10 +39,12 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 	async findById(
 		id: string,
 		relations?: string[],
+		comment?: string,
 	): Promise<DomainChapter | null> {
 		const chapter = await this.repository.findOne({
 			where: { id } as unknown as FindOptionsWhere<InfrastructureChapter>,
 			relations,
+			comment,
 		});
 		return chapter as unknown as DomainChapter;
 	}

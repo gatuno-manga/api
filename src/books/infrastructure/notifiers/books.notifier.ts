@@ -16,13 +16,26 @@ export class BooksNotifier {
 	) {}
 
 	private publish(topic: string, event: string, payload: unknown) {
-		this.mqttClient.emit(topic, { event, payload }).subscribe({
-			error: (err) => {
-				this.logger.error(
-					`Failed to publish to ${topic}: ${err.message}`,
+		try {
+			const result = this.mqttClient.emit(topic, { event, payload });
+			if (result && typeof result.subscribe === 'function') {
+				result.subscribe({
+					error: (err) => {
+						this.logger.error(
+							`Failed to publish to ${topic}: ${err?.message || err}`,
+						);
+					},
+				});
+			} else if (result === undefined) {
+				this.logger.warn(
+					`MQTT Client returned undefined when publishing to ${topic}. Not connected?`,
 				);
-			},
-		});
+			}
+		} catch (error) {
+			this.logger.error(
+				`Exception when publishing to ${topic}: ${error.message}`,
+			);
+		}
 	}
 
 	// ==================== EVENTOS DE LIVROS ====================

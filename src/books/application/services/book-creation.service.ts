@@ -1,8 +1,10 @@
+import { v7 as uuidv7 } from 'uuid';
 import {
 	BadRequestException,
 	Inject,
 	Injectable,
 	Logger,
+	OnModuleInit,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ClientKafka } from '@nestjs/microservices';
@@ -22,11 +24,8 @@ import {
 	IUnitOfWork,
 } from 'src/common/application/ports/unit-of-work.interface';
 
-/**
- * Service responsável pela criação de livros
- */
 @Injectable()
-export class BookCreationService {
+export class BookCreationService implements OnModuleInit {
 	private readonly logger = new Logger(BookCreationService.name);
 
 	constructor(
@@ -43,9 +42,10 @@ export class BookCreationService {
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
-	/**
-	 * Solicita a criação automática de um livro via scraping de uma URL
-	 */
+	async onModuleInit() {
+		await this.scraperClient.connect();
+	}
+
 	async autoCreateBook(url: string): Promise<{ jobId: string }> {
 		const host = new URL(url).hostname;
 		const websiteConfig = await this.websiteService.getByUrl(host);
@@ -56,7 +56,7 @@ export class BookCreationService {
 			);
 		}
 
-		const jobId = crypto.randomUUID();
+		const jobId = uuidv7();
 
 		const payload = {
 			jobId,
@@ -64,9 +64,23 @@ export class BookCreationService {
 			websiteConfig: {
 				name: host,
 				cloudflareBypass: websiteConfig.useFlareSolverr,
+				preScript: websiteConfig.preScript,
+				posScript: websiteConfig.posScript,
+				useNetworkInterception: websiteConfig.useNetworkInterception,
+				useScreenshotMode: websiteConfig.useScreenshotMode,
+				cookies: websiteConfig.cookies,
+				localStorage: websiteConfig.localStorage,
+				sessionStorage: websiteConfig.sessionStorage,
+				reloadAfterStorageInjection:
+					websiteConfig.reloadAfterStorageInjection,
+				enableAdaptiveTimeouts: websiteConfig.enableAdaptiveTimeouts,
+				timeoutMultipliers: websiteConfig.timeoutMultipliers,
+				proxyUrl: websiteConfig.proxyUrl,
+				blacklistTerms: websiteConfig.blacklistTerms,
+				whitelistTerms: websiteConfig.whitelistTerms,
 				selectors: {
 					chapterListSelector: websiteConfig.chapterListSelector,
-					bookInfoExtractScript:
+					newBookExtractScript:
 						websiteConfig.newBookExtractScript ||
 						websiteConfig.bookInfoExtractScript,
 				},
@@ -74,16 +88,30 @@ export class BookCreationService {
 					Referer: host,
 				},
 			},
+			uploadTarget: {
+				bucket: 'processing',
+				pathPrefix: `${jobId.slice(-2)}/${jobId}`,
+			},
 		};
 
-		this.scraperClient.emit('scraping.new-book.requested', payload);
+		this.scraperClient
+			.emit('scraping.new-book.requested', payload)
+			.subscribe({
+				next: () => {
+					this.logger.log(
+						`New book request successfully emitted to Kafka: ${jobId}`,
+					);
+				},
+				error: (err) => {
+					this.logger.error(
+						`Failed to emit new book request to Kafka: ${err.message}`,
+					);
+				},
+			});
 
 		return { jobId };
 	}
 
-	/**
-	 * Cria um novo livro com todas as suas relações de forma atômica
-	 */
 	async createBook(dto: CreateBookDto): Promise<Book> {
 		const conflictCheck = await this.bookRepository.checkBookTitleConflict(
 			dto.title,
@@ -155,8 +183,6 @@ export class BookCreationService {
 			}
 
 			if (dto.cover?.urlImgs && dto.cover.urlImgs.length > 0) {
-				// Queue job should only be added after commit, but for now we keep it here
-				// or move it outside the transaction block
 				await this.coverImageService.addCoverToQueue(
 					savedBook.id,
 					dto.cover.urlOrigin,
@@ -170,9 +196,6 @@ export class BookCreationService {
 		});
 	}
 
-	/**
-	 * Verifica conflitos de título de livro
-	 */
 	async checkBookTitleConflict(
 		title: string,
 		alternativeTitles: string[] = [],

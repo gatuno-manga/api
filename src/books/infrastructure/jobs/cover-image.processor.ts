@@ -5,11 +5,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ClientKafka } from '@nestjs/microservices';
 import { Job } from 'bullmq';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
+import { WebsiteService } from '@websites/application/services/website.service';
 import { DataSource, In, Repository } from 'typeorm';
 import { QueueCoverProcessorDto } from '@books/application/dto/queue-cover-processor.dto';
 import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { Cover } from '@books/infrastructure/database/entities/cover.entity';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
+import { StorageBucket } from '@common/enum/storage-bucket.enum';
 
 const QUEUE_NAME = 'cover-image-queue';
 
@@ -24,6 +26,7 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 		private readonly coverRepository: Repository<Cover>,
 		@Inject('SCRAPER_SERVICE')
 		private readonly scraperClient: ClientKafka,
+		private readonly websiteService: WebsiteService,
 		private readonly dataSource: DataSource,
 		private readonly configService: AppConfigService,
 		private readonly eventEmitter: EventEmitter2,
@@ -31,9 +34,10 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 		super();
 	}
 
-	onModuleInit() {
+	async onModuleInit() {
 		this.worker.concurrency =
 			this.configService.queueConcurrency.coverImage;
+		await this.scraperClient.connect();
 	}
 
 	@OnWorkerEvent('active')
@@ -79,22 +83,53 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 		);
 
 		try {
+			const host = urlOrigin ? new URL(urlOrigin).hostname : null;
+			const websiteConfig = host
+				? await this.websiteService.getByUrl(host)
+				: null;
+
 			const payload = {
 				jobId: job.id,
 				bookId: bookId,
 				urlOrigin: urlOrigin,
+				websiteConfig: websiteConfig
+					? {
+							name: host,
+							cloudflareBypass: websiteConfig.useFlareSolverr,
+							preScript: websiteConfig.preScript,
+							posScript: websiteConfig.posScript,
+							cookies: websiteConfig.cookies,
+							localStorage: websiteConfig.localStorage,
+							sessionStorage: websiteConfig.sessionStorage,
+							proxyUrl: websiteConfig.proxyUrl,
+						}
+					: undefined,
 				images: covers.map((c) => ({
 					url: c.url,
 					title: c.title,
 				})),
 				uploadTarget: {
 					bucket: 'processing',
-					pathPrefix: `covers/${bookId}`,
+					pathPrefix: `${bookId.slice(-2)}/${bookId}`,
 				},
 			};
 
-			// Emite para o microserviço
-			this.scraperClient.emit('scraping.covers.requested', payload);
+			this.scraperClient
+				.emit('scraping.covers.requested', payload)
+				.subscribe({
+					next: () => {
+						this.logger.log(
+							`Cover scraping request successfully emitted to Kafka for book: ${bookId}`,
+						);
+					},
+					error: (err) => {
+						this.logger.error(
+							`Failed to emit cover scraping request to Kafka for book ${bookId}: ${err.message}`,
+						);
+						// We don't throw here to avoid job failure if it's just an emit error,
+						// but in a production app we might want to mark the covers as FAILED.
+					},
+				});
 
 			this.logger.log(
 				`Requisição de capas enviada ao microserviço para livro: ${bookId}`,

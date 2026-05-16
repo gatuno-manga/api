@@ -4,7 +4,7 @@ import { Queue } from 'bullmq';
 import { InjectQueue } from '@nestjs/bullmq';
 import { FilesService } from '@files/application/services/files.service';
 import { StorageBucket } from '@common/enum/storage-bucket.enum';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { QueueCoverProcessorDto } from '@books/application/dto/queue-cover-processor.dto';
 import { UrlImageDto } from '@books/application/dto/url-image.dto';
 import { Cover } from '@books/infrastructure/database/entities/cover.entity';
@@ -117,6 +117,34 @@ export class CoverImageService {
 				error,
 			);
 			throw error;
+		}
+	}
+
+	/**
+	 * Recalcula hashes de capas que não possuem imageHash.
+	 */
+	async recalculateMissingCoverHashes(): Promise<void> {
+		const covers = await this.coverRepository.find({
+			where: { imageHash: IsNull() },
+		});
+
+		if (covers.length === 0) return;
+
+		this.logger.debug(
+			`Iniciando recalculo de hash para ${covers.length} capas.`,
+		);
+
+		for (const cover of covers) {
+			if (cover.url && !cover.url.startsWith('http')) {
+				try {
+					const hash = await this.calculateLocalImageHash(cover.url);
+					await this.coverRepository.update(cover.id, {
+						imageHash: hash,
+					});
+				} catch (error) {
+					// Ignora erros individuais
+				}
+			}
 		}
 	}
 }

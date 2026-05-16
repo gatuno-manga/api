@@ -10,6 +10,7 @@ import { I_CHAPTER_REPOSITORY } from '@books/application/ports/chapter-repositor
 import { I_UNIT_OF_WORK } from 'src/common/application/ports/unit-of-work.interface';
 import { BookEvents } from '@books/domain/constants/events.constant';
 import { Book } from '@books/domain/entities/book';
+import { WebsiteService } from '@websites/application/services/website.service';
 
 describe('BookCreationService', () => {
 	let service: BookCreationService;
@@ -57,6 +58,14 @@ describe('BookCreationService', () => {
 		emit: jest.fn(),
 	};
 
+	const mockScraperClient = {
+		emit: jest.fn(),
+	};
+
+	const mockWebsiteService = {
+		getByUrl: jest.fn(),
+	};
+
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -88,6 +97,14 @@ describe('BookCreationService', () => {
 				{
 					provide: EventEmitter2,
 					useValue: mockEventEmitter,
+				},
+				{
+					provide: 'SCRAPER_SERVICE',
+					useValue: mockScraperClient,
+				},
+				{
+					provide: WebsiteService,
+					useValue: mockWebsiteService,
 				},
 			],
 		}).compile();

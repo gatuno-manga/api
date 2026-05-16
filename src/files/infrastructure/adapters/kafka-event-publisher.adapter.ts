@@ -4,10 +4,9 @@ import {
 	OnModuleInit,
 	OnModuleDestroy,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { ClientKafka } from '@nestjs/microservices';
 import { Partitioners } from 'kafkajs';
-import { lastValueFrom } from 'rxjs';
+import { AppConfigService } from '@app-config/app-config.service';
 import {
 	EventPublisherPort,
 	ImageProcessingRequestEvent,
@@ -20,16 +19,11 @@ export class KafkaEventPublisherAdapter
 	private readonly logger = new Logger(KafkaEventPublisherAdapter.name);
 	private readonly client: ClientKafka;
 
-	constructor(private readonly configService: ConfigService) {
+	constructor(private readonly configService: AppConfigService) {
 		this.client = new ClientKafka({
 			client: {
 				clientId: 'gatuno-api-publisher',
-				brokers: [
-					this.configService.get<string>(
-						'KAFKA_BROKER',
-						'kafka:9092',
-					),
-				],
+				brokers: [this.configService.kafkaBroker],
 				retry: {
 					initialRetryTime: 1000,
 					retries: 10,
@@ -61,21 +55,18 @@ export class KafkaEventPublisherAdapter
 	async publishImageProcessingRequest(
 		event: ImageProcessingRequestEvent,
 	): Promise<void> {
-		try {
-			// Usamos lastValueFrom para aguardar a emissão e garantir backpressure
-			await lastValueFrom(
-				this.client.emit(
-					'image.processing.requested',
-					JSON.stringify(event),
-				),
-			);
-
-			this.logger.log(
-				`Evento de processamento de imagem publicado: ${event.rawPath}`,
-			);
-		} catch (error) {
-			this.logger.error('Erro ao publicar evento no Kafka', error);
-			throw error;
-		}
+		this.client.emit('image.processing.requested', event).subscribe({
+			next: () => {
+				this.logger.log(
+					`Evento de processamento de imagem publicado: ${event.rawPath}`,
+				);
+			},
+			error: (error) => {
+				this.logger.error(
+					`Erro ao publicar evento no Kafka para ${event.rawPath}: ${error.message}`,
+					error.stack,
+				);
+			},
+		});
 	}
 }

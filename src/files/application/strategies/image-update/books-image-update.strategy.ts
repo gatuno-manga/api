@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { StorageBucket } from '@common/enum/storage-bucket.enum';
+import { RedisService } from '@/infrastructure/redis/redis.service';
 import {
 	I_PAGE_REPOSITORY,
 	IPageRepository,
@@ -20,6 +21,7 @@ export class BooksImageUpdateStrategy implements ImageUpdateStrategy {
 		private readonly pageRepository: IPageRepository,
 		@Inject(I_COVER_REPOSITORY)
 		private readonly coverRepository: ICoverRepository,
+		private readonly redisService: RedisService,
 	) {}
 
 	supports(bucket: StorageBucket): boolean {
@@ -35,10 +37,27 @@ export class BooksImageUpdateStrategy implements ImageUpdateStrategy {
 				metadata: event.results[0].metadata,
 			}));
 
-		// Atualiza Páginas e Capas em lote
+		if (updates.length === 0) return;
+
 		await Promise.all([
 			this.pageRepository.updateBatch(updates),
 			this.coverRepository.updateBatch(updates),
 		]);
+
+		const redis = this.redisService.getClient();
+		const cachePromises = updates.map((update) => {
+			const cacheKey = `pending_optimization:${update.oldPath}`;
+			return redis.set(
+				cacheKey,
+				JSON.stringify({
+					path: update.newPath,
+					metadata: update.metadata,
+				}),
+				'EX',
+				3600,
+			);
+		});
+
+		await Promise.all(cachePromises);
 	}
 }

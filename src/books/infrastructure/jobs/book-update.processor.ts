@@ -38,6 +38,13 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
 	async onModuleInit() {
 		this.worker.concurrency =
 			this.configService.queueConcurrency?.bookUpdate ?? 2;
+
+		// Recalcula hashes de capas que por acaso não tenham sido calculados
+		this.coverImageService.recalculateMissingCoverHashes().catch((err) => {
+			this.logger.error(
+				`Erro ao recalcular hashes de capas: ${err.message}`,
+			);
+		});
 	}
 
 	@OnWorkerEvent('active')
