@@ -168,6 +168,7 @@
 			"^@metrics/(.*)$": "<rootDir>/metrics/$1",
 			"^@pages/(.*)$": "<rootDir>/pages/$1",
 			"^@scraping/(.*)$": "<rootDir>/scraping/$1",
+			"^@websites/(.*)$": "<rootDir>/websites/$1",
 			"^@users/(.*)$": "<rootDir>/users/$1"
 		}
 	}

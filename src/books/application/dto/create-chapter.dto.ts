@@ -41,4 +41,11 @@ export class CreateChapterDto {
 	@IsPositive()
 	@IsOptional()
 	index?: number;
+
+	@ApiPropertyOptional({
+		description: 'Indicates if this is the final chapter of the book',
+		example: false,
+	})
+	@IsOptional()
+	isFinal?: boolean;
 }

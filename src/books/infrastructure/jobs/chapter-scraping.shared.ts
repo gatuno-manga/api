@@ -10,6 +10,10 @@ import { ClientKafka } from '@nestjs/microservices';
 import { WebsiteService } from '@websites/application/services/website.service';
 import { v7 as uuidv7 } from 'uuid';
 
+type ChapterPageInput =
+	| string
+	| { originalUrl?: string; original_url?: string; path: string };
+
 /**
  * Serviço compartilhado para processamento de scraping de capítulos.
  * Elimina duplicação de código entre ChapterScrapingJob e FixChapterProcessor.
@@ -161,7 +165,7 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 	 */
 	async saveExtractedPages(
 		chapter: Chapter,
-		externalUrls: string[],
+		externalUrls: ChapterPageInput[],
 	): Promise<void> {
 		if (!externalUrls || !Array.isArray(externalUrls)) {
 			this.logger.error(
@@ -178,13 +182,19 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 		await this.pageRepository.delete({ chapter: { id: chapter.id } });
 
 		let index = 1;
-		const newPages = externalUrls.map((url) =>
-			this.pageRepository.create({
-				path: url,
+		const newPages = externalUrls.map((item) => {
+			// Se for objeto { originalUrl, path }, prefere originalUrl para o fast-track (exibição imediata)
+			const path =
+				typeof item === 'string'
+					? item
+					: item.originalUrl || item.original_url || item.path;
+
+			return this.pageRepository.create({
+				path: path,
 				index: index++,
 				chapter: chapter,
-			}),
-		);
+			});
+		});
 
 		await this.pageRepository.save(newPages);
 
@@ -202,7 +212,7 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 	 */
 	async finalizeChapterScraping(
 		chapter: Chapter,
-		pagesPaths: string[],
+		pagesPaths: ChapterPageInput[],
 	): Promise<void> {
 		if (!pagesPaths || !Array.isArray(pagesPaths)) {
 			this.logger.error(
@@ -221,7 +231,8 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 		});
 
 		const optimizedData = await Promise.all(
-			pagesPaths.map(async (path) => {
+			pagesPaths.map(async (item) => {
+				const path = typeof item === 'string' ? item : item.path;
 				const cacheKey = `pending_optimization:${path}`;
 				const cached = await redis.get(cacheKey);
 				if (cached) {

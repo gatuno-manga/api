@@ -53,6 +53,12 @@ interface ScrapingBookCompletedPayload {
 	}>;
 }
 
+interface ChapterPagePayload {
+	originalUrl?: string;
+	original_url?: string;
+	path: string;
+}
+
 interface ChapterCompletedPayload {
 	chapterId?: string;
 	chapter_id?: string;
@@ -62,7 +68,7 @@ interface ChapterCompletedPayload {
 	scraped_title?: string;
 	totalImages?: number;
 	total_images?: number;
-	images: string[];
+	images: string[] | ChapterPagePayload[];
 }
 
 interface CoversCompletedPayload {
@@ -176,7 +182,7 @@ export class BooksKafkaConsumer {
 					tags: data.tags || [],
 					chapters: (data.chapters || []).map((ch) => ({
 						title: ch.title,
-						originalUrl: ch.url,
+						url: ch.url,
 						index: ch.index,
 						isFinal: ch.isFinal,
 					})),

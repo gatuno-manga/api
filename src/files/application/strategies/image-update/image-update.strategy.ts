@@ -8,6 +8,7 @@ export interface ImageProcessingResult {
 
 export interface ImageProcessingCompletedEvent {
 	rawPath: string;
+	originalUrl?: string;
 	targetBucket: string;
 	results: ImageProcessingResult[];
 }
