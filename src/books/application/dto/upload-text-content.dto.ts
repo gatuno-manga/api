@@ -1,6 +1,6 @@
+import { ContentFormat } from '@books/domain/enums/content-format.enum';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsNotEmpty, IsString, MaxLength } from 'class-validator';
-import { ContentFormat } from '@books/domain/enums/content-format.enum';
 
 /**
  * DTO para upload de conteúdo textual de um capítulo

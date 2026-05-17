@@ -1,6 +1,6 @@
-import { COMMON_RESPONSES } from 'src/common/swagger/common-responses';
 import { applyDecorators } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
+import { COMMON_RESPONSES } from 'src/common/swagger/common-responses';
 
 export function ApiDocsListChapterComments() {
 	return applyDecorators(

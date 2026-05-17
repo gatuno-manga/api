@@ -1,6 +1,5 @@
 import { Injectable, LoggerService, Scope } from '@nestjs/common';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
-import { AppConfigService } from './infrastructure/app-config/app-config.service';
 import {
 	BookScrapingLog,
 	ChapterProcessingLog,
@@ -14,6 +13,7 @@ import {
 	UserActionLog,
 	ValidationErrorLog,
 } from './common/types/logging.types';
+import { AppConfigService } from './infrastructure/app-config/app-config.service';
 import { LoggerRuleEngine } from './infrastructure/logging/logger-rule-engine';
 
 @Injectable({ scope: Scope.TRANSIENT })
@@ -21,7 +21,7 @@ export class CustomLogger implements LoggerService {
 	private context?: string;
 
 	constructor(
-		private readonly configService: AppConfigService,
+		readonly _configService: AppConfigService,
 		@InjectPinoLogger()
 		private readonly logger: PinoLogger,
 		private readonly engine: LoggerRuleEngine,

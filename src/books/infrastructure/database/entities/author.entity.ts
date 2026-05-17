@@ -28,9 +28,6 @@ export class Author {
 	@UpdateDateColumn()
 	updatedAt: Date;
 
-	@ManyToMany(
-		() => Book,
-		(book) => book.authors,
-	)
+	@ManyToMany(() => Book, (book) => book.authors)
 	books: Relation<Book[]>;
 }

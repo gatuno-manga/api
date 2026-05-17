@@ -1,15 +1,14 @@
-import { INestApplication } from '@nestjs/common';
-import request from 'supertest';
-import { DataSource } from 'typeorm';
+import * as fs from 'node:fs';
+import { DownloadCacheService } from '@books/application/services/download-cache.service';
+import { BookType } from '@books/domain/enums/book-type.enum';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { Page } from '@books/infrastructure/database/entities/page.entity';
-import { BookType } from '@books/domain/enums/book-type.enum';
-import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
-import { createE2EApp, createAdminAccessToken } from './helpers/e2e-app.helper';
-import { DownloadCacheService } from '@books/application/services/download-cache.service';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
+import { INestApplication } from '@nestjs/common';
+import request from 'supertest';
+import { DataSource } from 'typeorm';
+import { createAdminAccessToken, createE2EApp } from './helpers/e2e-app.helper';
 
 jest.setTimeout(60000);
 

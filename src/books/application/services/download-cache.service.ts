@@ -2,13 +2,13 @@ import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
+import { REDIS_CLIENT } from '@api/infrastructure/redis/redis.constants';
+import { BookEvents } from '@books/domain/constants/events.constant';
+import { ChapterUpdatedEvent } from '@books/infrastructure/events/chapter-updated.event';
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { Redis } from 'ioredis';
-import { ChapterUpdatedEvent } from '@books/infrastructure/events/chapter-updated.event';
-import { BookEvents } from '@books/domain/constants/events.constant';
-import { REDIS_CLIENT } from '@api/infrastructure/redis/redis.constants';
 
 @Injectable()
 export class DownloadCacheService implements OnModuleInit {
@@ -239,7 +239,7 @@ export class DownloadCacheService implements OnModuleInit {
 		let entries: import('node:fs').Dirent[];
 		try {
 			entries = await fs.readdir(dir, { withFileTypes: true });
-		} catch (error) {
+		} catch (_error) {
 			return;
 		}
 

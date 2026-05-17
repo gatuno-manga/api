@@ -1,6 +1,6 @@
-import { COMMON_RESPONSES } from 'src/common/swagger/common-responses';
 import { applyDecorators } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import { COMMON_RESPONSES } from 'src/common/swagger/common-responses';
 
 export function ApiDocsSearch() {
 	return applyDecorators(

@@ -1,8 +1,8 @@
-import { Test, type TestingModule } from '@nestjs/testing';
-import { FileCompressorFactory } from '@files/infrastructure/adapters/file-compressor.factory';
-import { StoragePort } from '@files/application/ports/storage.port';
-import { FilesService } from './files.service';
 import { StorageBucket } from '@common/enum/storage-bucket.enum';
+import { StoragePort } from '@files/application/ports/storage.port';
+import { FileCompressorFactory } from '@files/infrastructure/adapters/file-compressor.factory';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { FilesService } from './files.service';
 
 describe('FilesService', () => {
 	let service: FilesService;
@@ -55,10 +55,10 @@ describe('FilesService', () => {
 
 		mockStoragePort.save.mockImplementation(
 			async (
-				buffer: Buffer,
+				_buffer: Buffer,
 				fileKey: string,
-				mimeType: string,
-				bucket?: string,
+				_mimeType: string,
+				_bucket?: string,
 			) => fileKey,
 		);
 	});

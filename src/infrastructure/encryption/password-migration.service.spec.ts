@@ -1,5 +1,5 @@
-import { Repository } from 'typeorm';
 import { User } from 'src/users/infrastructure/database/entities/user.entity';
+import { Repository } from 'typeorm';
 import { PasswordEncryption } from './password-encryption.provider';
 import { PasswordMigrationService } from './password-migration.service';
 

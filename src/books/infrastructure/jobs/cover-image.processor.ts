@@ -1,17 +1,16 @@
+import { QueueCoverProcessorDto } from '@books/application/dto/queue-cover-processor.dto';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
+import { Cover } from '@books/infrastructure/database/entities/cover.entity';
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject, Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { InjectRepository } from '@nestjs/typeorm';
 import { ClientKafka } from '@nestjs/microservices';
+import { InjectRepository } from '@nestjs/typeorm';
+import { WebsiteService } from '@websites/application/services/website.service';
 import { Job } from 'bullmq';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
-import { WebsiteService } from '@websites/application/services/website.service';
 import { DataSource, In, Repository } from 'typeorm';
-import { QueueCoverProcessorDto } from '@books/application/dto/queue-cover-processor.dto';
-import { Book } from '@books/infrastructure/database/entities/book.entity';
-import { Cover } from '@books/infrastructure/database/entities/cover.entity';
-import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
-import { StorageBucket } from '@common/enum/storage-bucket.enum';
 
 const QUEUE_NAME = 'cover-image-queue';
 
@@ -60,7 +59,7 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 				.execute();
 		} catch (error) {
 			this.logger.error(
-				`Erro ao atualizar status de processamento das capas: ${error.message}`,
+				`Erro ao atualizar status de processamento das capas: ${error instanceof Error ? error.message : String(error)}`,
 			);
 		}
 	}
@@ -124,7 +123,7 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 					},
 					error: (err) => {
 						this.logger.error(
-							`Failed to emit cover scraping request to Kafka for book ${bookId}: ${err.message}`,
+							`Failed to emit cover scraping request to Kafka for book ${bookId}: ${err instanceof Error ? err.message : String(err)}`,
 						);
 						// We don't throw here to avoid job failure if it's just an emit error,
 						// but in a production app we might want to mark the covers as FAILED.
@@ -136,7 +135,7 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 			);
 		} catch (err) {
 			this.logger.error(
-				`Erro ao enviar requisição de capas para o microserviço: ${err.message}`,
+				`Erro ao enviar requisição de capas para o microserviço: ${err instanceof Error ? err.message : String(err)}`,
 			);
 			throw err;
 		}
@@ -164,7 +163,7 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 			);
 		} catch (error) {
 			this.logger.error(
-				`Erro ao atualizar status de erro das capas: ${error.message}`,
+				`Erro ao atualizar status de erro das capas: ${error instanceof Error ? error.message : String(error)}`,
 			);
 		}
 	}

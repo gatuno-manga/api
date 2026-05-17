@@ -1,3 +1,20 @@
+import { BookRelationshipsQueryDto } from '@books/application/dto/book-relationships-query.dto';
+import { CreateBookRelationshipDto } from '@books/application/dto/create-book-relationship.dto';
+import { UpdateBookRelationshipDto } from '@books/application/dto/update-book-relationship.dto';
+import {
+	IBookRelationshipRepository,
+	I_BOOK_RELATIONSHIP_REPOSITORY,
+} from '@books/application/ports/book-relationship-repository.interface';
+import {
+	IBookRepository,
+	I_BOOK_REPOSITORY,
+} from '@books/application/ports/book-repository.interface';
+import { Book } from '@books/domain/entities/book';
+import {
+	BookRelationship,
+	BookRelationshipMetadata,
+} from '@books/domain/entities/book-relationship';
+import { BookRelationType } from '@books/domain/enums/book-relation-type.enum';
 import {
 	BadRequestException,
 	ConflictException,
@@ -5,30 +22,12 @@ import {
 	Injectable,
 	NotFoundException,
 } from '@nestjs/common';
-import { In } from 'typeorm';
-import { AdminUsersService } from 'src/users/application/use-cases/admin-users.service';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 import {
 	decodeCursorPayload,
 	encodeCursorPayload,
 } from 'src/common/pagination/cursor.utils';
-import { BookRelationshipsQueryDto } from '@books/application/dto/book-relationships-query.dto';
-import { CreateBookRelationshipDto } from '@books/application/dto/create-book-relationship.dto';
-import { UpdateBookRelationshipDto } from '@books/application/dto/update-book-relationship.dto';
-import {
-	BookRelationship,
-	BookRelationshipMetadata,
-} from '@books/domain/entities/book-relationship';
-import { Book } from '@books/domain/entities/book';
-import { BookRelationType } from '@books/domain/enums/book-relation-type.enum';
-import {
-	I_BOOK_RELATIONSHIP_REPOSITORY,
-	IBookRelationshipRepository,
-} from '@books/application/ports/book-relationship-repository.interface';
-import {
-	I_BOOK_REPOSITORY,
-	IBookRepository,
-} from '@books/application/ports/book-repository.interface';
+import { AdminUsersService } from 'src/users/application/use-cases/admin-users.service';
 
 export type RelatedBookItem = {
 	relationId: string;
@@ -45,11 +44,6 @@ type BookRelationshipsCursorPayload = {
 	order: number | null;
 	createdAt: string;
 	id: string;
-};
-
-type RelatedBookCursorItem = {
-	item: RelatedBookItem;
-	cursor: BookRelationshipsCursorPayload;
 };
 
 @Injectable()

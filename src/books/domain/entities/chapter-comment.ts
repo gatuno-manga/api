@@ -1,5 +1,5 @@
-import { Chapter } from './chapter';
 import { User } from 'src/users/domain/entities/user'; // Wait, I need to check where user domain entity is
+import { Chapter } from './chapter';
 
 export class ChapterComment {
 	id: string;

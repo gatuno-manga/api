@@ -1,17 +1,17 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import {
-	S3Client,
-	PutObjectCommand,
 	DeleteObjectCommand,
+	GetObjectCommand,
 	HeadObjectCommand,
 	ListObjectsV2Command,
-	GetObjectCommand,
+	PutObjectCommand,
+	S3Client,
 } from '@aws-sdk/client-s3';
 import {
-	StoragePort,
 	FileMetadata,
+	StoragePort,
 } from '@files/application/ports/storage.port';
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class S3StorageAdapter implements StoragePort {
@@ -153,7 +153,7 @@ export class S3StorageAdapter implements StoragePort {
 
 	async *listAllFiles(bucket?: string): AsyncGenerator<FileMetadata> {
 		let isTruncated = true;
-		let continuationToken: string | undefined = undefined;
+		let continuationToken: string | undefined;
 
 		try {
 			while (isTruncated) {

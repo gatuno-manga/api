@@ -1,3 +1,19 @@
+import { ChapterCommentsPageOptionsDto } from '@books/application/dto/chapter-comments-page-options.dto';
+import { CreateChapterCommentDto } from '@books/application/dto/create-chapter-comment.dto';
+import { QueueTextProcessingDto } from '@books/application/dto/queue-text-processing.dto';
+import { UpdateChapterCommentDto } from '@books/application/dto/update-chapter-comment.dto';
+import {
+	IChapterCommentRepository,
+	I_CHAPTER_COMMENT_REPOSITORY,
+} from '@books/application/ports/chapter-comment-repository.interface';
+import {
+	IChapterRepository,
+	I_CHAPTER_REPOSITORY,
+} from '@books/application/ports/chapter-repository.interface';
+import { Chapter } from '@books/domain/entities/chapter';
+import { ChapterComment } from '@books/domain/entities/chapter-comment';
+import { ContentFormat } from '@books/domain/enums/content-format.enum';
+import { InjectQueue } from '@nestjs/bullmq';
 import {
 	BadRequestException,
 	ForbiddenException,
@@ -5,36 +21,20 @@ import {
 	Injectable,
 	NotFoundException,
 } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
-import { v7 as uuidv7 } from 'uuid';
-import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
-import { MediaUrlService } from 'src/common/services/media-url.service';
-import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
-import { RolesEnum } from '@users/domain/enums/roles.enum';
+import {
+	IUserRepository,
+	I_USER_REPOSITORY,
+} from '@users/application/ports/user-repository.interface';
 import { User } from '@users/domain/entities/user';
+import { RolesEnum } from '@users/domain/enums/roles.enum';
+import { Queue } from 'bullmq';
+import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
+import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 import { MetadataPageDto } from 'src/common/pagination/metadata-page.dto';
 import { PageDto } from 'src/common/pagination/page.dto';
-import { ChapterComment } from '@books/domain/entities/chapter-comment';
-import { Chapter } from '@books/domain/entities/chapter';
-import { ContentFormat } from '@books/domain/enums/content-format.enum';
-import { CreateChapterCommentDto } from '@books/application/dto/create-chapter-comment.dto';
-import { ChapterCommentsPageOptionsDto } from '@books/application/dto/chapter-comments-page-options.dto';
-import { UpdateChapterCommentDto } from '@books/application/dto/update-chapter-comment.dto';
-import { QueueTextProcessingDto } from '@books/application/dto/queue-text-processing.dto';
-import {
-	I_CHAPTER_COMMENT_REPOSITORY,
-	IChapterCommentRepository,
-} from '@books/application/ports/chapter-comment-repository.interface';
-import {
-	I_CHAPTER_REPOSITORY,
-	IChapterRepository,
-} from '@books/application/ports/chapter-repository.interface';
-import {
-	I_USER_REPOSITORY,
-	IUserRepository,
-} from '@users/application/ports/user-repository.interface';
+import { MediaUrlService } from 'src/common/services/media-url.service';
+import { v7 as uuidv7 } from 'uuid';
 
 export type ChapterCommentNode = {
 	id: string;
@@ -161,7 +161,7 @@ export class ChapterCommentsService {
 
 		const saved = await this.chapterCommentRepository.save(comment);
 
-		this.textProcessingQueue.add('process-text', {
+		await this.textProcessingQueue.add('process-text', {
 			entityId: saved.id,
 			source: 'COMMENT',
 			format: ContentFormat.MARKDOWN,
@@ -218,7 +218,7 @@ export class ChapterCommentsService {
 
 		const saved = await this.chapterCommentRepository.save(reply);
 
-		this.textProcessingQueue.add('process-text', {
+		await this.textProcessingQueue.add('process-text', {
 			entityId: saved.id,
 			source: 'COMMENT',
 			format: ContentFormat.MARKDOWN,
@@ -241,7 +241,7 @@ export class ChapterCommentsService {
 	}
 
 	async updateComment(
-		chapterId: string,
+		_chapterId: string,
 		commentId: string,
 		dto: UpdateChapterCommentDto,
 		user: CurrentUserDto,
@@ -267,7 +267,7 @@ export class ChapterCommentsService {
 
 		await this.chapterCommentRepository.save(comment);
 
-		this.textProcessingQueue.add('process-text', {
+		await this.textProcessingQueue.add('process-text', {
 			entityId: comment.id,
 			source: 'COMMENT',
 			format: ContentFormat.MARKDOWN,
@@ -277,7 +277,7 @@ export class ChapterCommentsService {
 	}
 
 	async deleteComment(
-		chapterId: string,
+		_chapterId: string,
 		commentId: string,
 		user: CurrentUserDto,
 	): Promise<{ message: string }> {

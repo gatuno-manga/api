@@ -1,5 +1,5 @@
-import { IsString, IsUrl } from 'class-validator';
 import { NormalizeUrl } from '@common/decorators/normalize-url.decorator';
+import { IsString, IsUrl } from 'class-validator';
 
 export class UrlImageDto {
 	@NormalizeUrl()

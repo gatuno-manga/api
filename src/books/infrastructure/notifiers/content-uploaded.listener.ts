@@ -1,10 +1,10 @@
+import { QueueTextProcessingDto } from '@books/application/dto/queue-text-processing.dto';
+import { BookEvents } from '@books/domain/constants/events.constant';
+import { ContentFormat } from '@books/domain/enums/content-format.enum';
+import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { BookEvents } from '@books/domain/constants/events.constant';
-import { QueueTextProcessingDto } from '@books/application/dto/queue-text-processing.dto';
-import { ContentFormat } from '@books/domain/enums/content-format.enum';
 
 @Injectable()
 export class ContentUploadedListener {
@@ -34,9 +34,9 @@ export class ContentUploadedListener {
 			this.logger.log(
 				`Job adicionado à fila text-processing-queue para o capítulo ${payload.chapterId}`,
 			);
-		} catch (error) {
+		} catch (error: unknown) {
 			this.logger.error(
-				`Erro ao adicionar job na fila para o capítulo ${payload.chapterId}: ${error.message}`,
+				`Erro ao adicionar job na fila para o capítulo ${payload.chapterId}: ${error instanceof Error ? error.message : String(error)}`,
 			);
 		}
 	}

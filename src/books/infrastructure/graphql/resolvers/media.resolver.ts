@@ -1,8 +1,8 @@
-import { Parent, ResolveField, Resolver } from '@nestjs/graphql';
+import { CoverModel } from '@books/infrastructure/graphql/models/book.model';
+import { PageModel } from '@books/infrastructure/graphql/models/page.model';
 import { StorageBucket } from '@common/enum/storage-bucket.enum';
+import { Parent, ResolveField, Resolver } from '@nestjs/graphql';
 import { MediaUrlService } from 'src/common/services/media-url.service';
-import { CoverModel } from '../models/book.model';
-import { PageModel } from '../models/page.model';
 
 @Resolver(() => CoverModel)
 export class CoverResolver {

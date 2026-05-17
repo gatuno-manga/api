@@ -1,17 +1,14 @@
-import { Logger } from '@nestjs/common';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Book } from '@books/infrastructure/database/entities/book.entity';
-import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 
 export class BookInitEvents {
-	private logger = new Logger(BookInitEvents.name);
-
 	constructor(
 		@InjectRepository(Book)
 		private readonly bookRepository: Repository<Book>,
-		private readonly eventEmitter: EventEmitter2,
+		readonly _eventEmitter: EventEmitter2,
 	) {}
 
 	async findBooksWithChaptersInProcess(): Promise<Book[]> {

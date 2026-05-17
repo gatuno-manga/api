@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
-import { v7 as uuidv7 } from 'uuid';
 import request from 'supertest';
+import { v7 as uuidv7 } from 'uuid';
 import { createAdminAccessToken, createE2EApp } from './helpers/e2e-app.helper';
 
 jest.setTimeout(120000);

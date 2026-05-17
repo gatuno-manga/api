@@ -1,10 +1,31 @@
-import { Module } from '@nestjs/common';
-import { v7 as uuidv7 } from 'uuid';
-import { LoggerModule } from 'nestjs-pino';
+import { CustomLogger } from '@/custom.logger';
 import { AppConfigModule } from '@app-config/app-config.module';
 import { AppConfigService } from '@app-config/app-config.service';
-import { CustomLogger } from '@/custom.logger';
+import { Module } from '@nestjs/common';
+import { IncomingMessage, ServerResponse } from 'node:http';
+import { LoggerModule } from 'nestjs-pino';
+import { v7 as uuidv7 } from 'uuid';
 import { LoggerRuleEngine } from './logger-rule-engine';
+
+interface PinoRequest extends IncomingMessage {
+	id: string;
+	method: string;
+	url: string;
+	query: Record<string, unknown>;
+	params: Record<string, unknown>;
+	headers: Record<string, unknown>;
+	raw?: { body?: unknown };
+	body?: unknown;
+	remoteAddress: string;
+	remotePort: number;
+}
+
+interface PinoError extends Error {
+	type: string;
+	stack: string;
+	code: string;
+	statusCode: number;
+}
 
 @Module({
 	imports: [
@@ -17,10 +38,14 @@ import { LoggerRuleEngine } from './logger-rule-engine';
 				return {
 					pinoHttp: {
 						level: 'trace',
-						genReqId: (req) =>
-							req.headers['x-correlation-id'] ||
-							req.headers['x-request-id'] ||
-							uuidv7(),
+						genReqId: (req: IncomingMessage) => {
+							const headers = req.headers;
+							return (
+								(headers['x-correlation-id'] as string) ||
+								(headers['x-request-id'] as string) ||
+								uuidv7()
+							);
+						},
 
 						transport: isProduction
 							? undefined
@@ -36,21 +61,23 @@ import { LoggerRuleEngine } from './logger-rule-engine';
 								},
 
 						serializers: {
-							req: (req) => ({
-								id: req.id,
-								method: req.method,
-								url: req.url,
-								query: req.query,
-								params: req.params,
-								headers: req.headers,
-								body: req.raw?.body || req.body,
-								remoteAddress: req.remoteAddress,
-								remotePort: req.remotePort,
-							}),
-							res: (res) => ({
+							req: (req: PinoRequest) => {
+								return {
+									id: req.id,
+									method: req.method,
+									url: req.url,
+									query: req.query,
+									params: req.params,
+									headers: req.headers,
+									body: req.raw?.body || req.body,
+									remoteAddress: req.remoteAddress,
+									remotePort: req.remotePort,
+								};
+							},
+							res: (res: ServerResponse) => ({
 								statusCode: res.statusCode,
 							}),
-							err: (err) => ({
+							err: (err: PinoError) => ({
 								type: err.type,
 								message: err.message,
 								stack: err.stack,
@@ -59,14 +86,21 @@ import { LoggerRuleEngine } from './logger-rule-engine';
 							}),
 						},
 
-						customLogLevel: (req, res, err) => {
+						customLogLevel: (
+							_req: IncomingMessage,
+							res: ServerResponse,
+							err: Error | null,
+						) => {
 							if (res.statusCode >= 400 && res.statusCode < 500) {
 								return 'warn';
 							}
 							if (res.statusCode >= 500 || err) {
 								return 'error';
 							}
-							if (res.statusCode >= 300 && res.statusCode < 400) {
+							if (
+								res.statusCode >= 300 &&
+								res.statusCode < 400
+							) {
 								return 'silent';
 							}
 							return 'info';
@@ -87,7 +121,7 @@ import { LoggerRuleEngine } from './logger-rule-engine';
 						},
 
 						autoLogging: {
-							ignore: (req) => {
+							ignore: (req: IncomingMessage) => {
 								const url = req.url || '';
 								const isHealthOrMetrics =
 									url === '/health' ||

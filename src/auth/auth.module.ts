@@ -9,28 +9,27 @@ import { EncryptionModule } from 'src/infrastructure/encryption/encryption.modul
 import { LoggingModule } from 'src/infrastructure/logging/logging.module';
 import { Role } from 'src/users/infrastructure/database/entities/role.entity';
 import { User } from 'src/users/infrastructure/database/entities/user.entity';
-import { AuthController } from './infrastructure/controllers/auth.controller';
+import { SignInUseCase } from './application/use-cases/sign-in.use-case';
+import { SignUpUseCase } from './application/use-cases/sign-up.use-case';
 import { AuthService } from './auth.service';
 import { CreateAdminEvent } from './events/create-admin.event';
+import { MfaService } from './infrastructure/adapters/mfa.service';
+import { SessionAuditService } from './infrastructure/adapters/session-audit.service';
+import { SessionManagementService } from './infrastructure/adapters/session-management.service';
+import { TokenStoreService } from './infrastructure/adapters/token-store.service';
+import { TypeOrmUserRepositoryAdapter } from './infrastructure/adapters/typeorm-user-repository.adapter';
+import { WebauthnService } from './infrastructure/adapters/webauthn.service';
+import { AuthController } from './infrastructure/controllers/auth.controller';
+import { PasswordMigrationController } from './infrastructure/controllers/password-migration.controller';
 import { AuthAuditLog } from './infrastructure/database/entities/auth-audit-log.entity';
 import { AuthSession } from './infrastructure/database/entities/auth-session.entity';
 import { LoginApiKey } from './infrastructure/database/entities/login-api-key.entity';
 import { UserMfa } from './infrastructure/database/entities/user-mfa.entity';
 import { WebAuthnCredential } from './infrastructure/database/entities/webauthn-credential.entity';
 import { JwtAuthGuard } from './infrastructure/framework/jwt-auth.guard';
-import { WsJwtGuard } from './infrastructure/framework/ws-jwt.guard';
-import { PasswordMigrationController } from './infrastructure/controllers/password-migration.controller';
-import { MfaService } from './infrastructure/adapters/mfa.service';
-import { SessionAuditService } from './infrastructure/adapters/session-audit.service';
-import { SessionManagementService } from './infrastructure/adapters/session-management.service';
-import { TokenStoreService } from './infrastructure/adapters/token-store.service';
-import { WebauthnService } from './infrastructure/adapters/webauthn.service';
 import { JwtRefreshStrategy } from './infrastructure/framework/jwt-refresh.strategy';
 import { JwtStrategy } from './infrastructure/framework/jwt.strategy';
-
-import { SignUpUseCase } from './application/use-cases/sign-up.use-case';
-import { SignInUseCase } from './application/use-cases/sign-in.use-case';
-import { TypeOrmUserRepositoryAdapter } from './infrastructure/adapters/typeorm-user-repository.adapter';
+import { WsJwtGuard } from './infrastructure/framework/ws-jwt.guard';
 
 @Module({
 	imports: [

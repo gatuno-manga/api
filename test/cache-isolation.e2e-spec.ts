@@ -1,7 +1,6 @@
+import { AppModule } from '@/app.module';
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import request from 'supertest';
-import { AppModule } from '@/app.module';
 
 /**
  * E2E Tests for Cache Isolation by Sensitivity Level
@@ -16,8 +15,8 @@ import { AppModule } from '@/app.module';
  */
 describe('Cache Isolation by Sensitivity Level (e2e)', () => {
 	let app: INestApplication;
-	let adultToken: string;
-	let minorToken: string;
+	let _adultToken: string;
+	let _minorToken: string;
 
 	beforeAll(async () => {
 		const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -124,7 +123,7 @@ describe('Cache Isolation by Sensitivity Level (e2e)', () => {
 	 * Helper function to verify response filtering
 	 * Ensures that content with weight > maxWeightSensitiveContent is not present
 	 */
-	function verifyContentFiltering(
+	function _verifyContentFiltering(
 		response: any,
 		maxAllowedWeight: number,
 	): void {

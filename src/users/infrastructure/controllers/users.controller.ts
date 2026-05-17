@@ -6,14 +6,14 @@ import {
 	UploadedFile,
 	UseInterceptors,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
+import { ApiTags } from '@nestjs/swagger';
+import { UsersService } from '@users/application/use-cases/users.service';
+import { UpdateUserDto } from '@users/infrastructure/http/dto/update-user.dto';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
+import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
 import { DataEnvelopeInterceptor } from 'src/common/interceptors/data-envelope.interceptor';
 import { AuthenticatedApi } from 'src/common/swagger/auth-api.decorators';
-import { UpdateUserDto } from '@users/infrastructure/http/dto/update-user.dto';
-import { UsersService } from '@users/application/use-cases/users.service';
 import {
 	ApiDocsGetCurrentUser,
 	ApiDocsUpdateUser,

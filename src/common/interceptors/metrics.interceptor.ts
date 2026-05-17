@@ -4,8 +4,8 @@ import {
 	Injectable,
 	NestInterceptor,
 } from '@nestjs/common';
-import { Request, Response } from 'express';
 import { InjectMetric } from '@willsoto/nestjs-prometheus';
+import { Request, Response } from 'express';
 import { Counter, Histogram } from 'prom-client';
 import { Observable, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';

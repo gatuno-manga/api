@@ -1,3 +1,10 @@
+import { UploadCoverDto } from '@books/application/dto/upload-cover.dto';
+import { UploadTextContentDto } from '@books/application/dto/upload-text-content.dto';
+import { BookUploadService } from '@books/application/services/book-upload.service';
+import {
+	ALLOWED_DOCUMENT_MIMETYPES,
+	MAX_DOCUMENT_SIZE,
+} from '@books/domain/constants/content-types.constants';
 import {
 	BadRequestException,
 	Body,
@@ -15,23 +22,16 @@ import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { AdminApi } from 'src/common/swagger/auth-api.decorators';
 import {
-	ALLOWED_DOCUMENT_MIMETYPES,
-	MAX_DOCUMENT_SIZE,
-} from '@books/domain/constants/content-types.constants';
-import { UploadCoverDto } from '@books/application/dto/upload-cover.dto';
-import { UploadTextContentDto } from '@books/application/dto/upload-text-content.dto';
-import { BookUploadService } from '@books/application/services/book-upload.service';
-import {
 	ApiDocsReplaceCoverImage,
+	ApiDocsUploadChapterDocument,
+	ApiDocsUploadChapterPages,
+	ApiDocsUploadChapterTextContent,
 	ApiDocsUploadCover,
 	ApiDocsUploadMultipleCovers,
-	ApiDocsUploadChapterPages,
-	ApiDocsUploadChapterDocument,
-	ApiDocsUploadChapterTextContent,
 } from './swagger/admin-books-upload.swagger';
 
 const IMAGE_FILE_FILTER = (
-	req: Request,
+	_req: Request,
 	file: Express.Multer.File,
 	callback: (error: Error | null, acceptFile: boolean) => void,
 ) => {
@@ -178,7 +178,7 @@ export class AdminBooksUploadController {
 	@UseInterceptors(
 		FileInterceptor('file', {
 			limits: { fileSize: MAX_DOCUMENT_SIZE },
-			fileFilter: (req, file, callback) => {
+			fileFilter: (_req, file, callback) => {
 				if (!ALLOWED_DOCUMENT_MIMETYPES.includes(file.mimetype)) {
 					return callback(
 						new BadRequestException(

@@ -1,8 +1,8 @@
-import { Field, ID, Int, ObjectType, registerEnumType } from '@nestjs/graphql';
-import { ContentType } from '@books/domain/enums/content-type.enum';
 import { ContentFormat } from '@books/domain/enums/content-format.enum';
+import { ContentType } from '@books/domain/enums/content-type.enum';
 import { DocumentFormat } from '@books/domain/enums/document-format.enum';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
+import { Field, ID, Int, ObjectType, registerEnumType } from '@nestjs/graphql';
 import { PageModel } from './page.model';
 
 registerEnumType(ContentType, { name: 'ContentType' });

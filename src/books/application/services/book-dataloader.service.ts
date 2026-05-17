@@ -1,25 +1,25 @@
-import { Inject, Injectable, Scope } from '@nestjs/common';
-import DataLoader from 'dataloader';
 import {
-	I_CHAPTER_REPOSITORY,
-	IChapterRepository,
-} from '@books/application/ports/chapter-repository.interface';
-import {
-	I_COVER_REPOSITORY,
-	ICoverRepository,
-} from '@books/application/ports/cover-repository.interface';
-import {
-	I_AUTHOR_REPOSITORY,
 	IAuthorRepository,
+	I_AUTHOR_REPOSITORY,
 } from '@books/application/ports/author-repository.interface';
 import {
-	I_TAG_REPOSITORY,
+	IChapterRepository,
+	I_CHAPTER_REPOSITORY,
+} from '@books/application/ports/chapter-repository.interface';
+import {
+	ICoverRepository,
+	I_COVER_REPOSITORY,
+} from '@books/application/ports/cover-repository.interface';
+import {
 	ITagRepository,
+	I_TAG_REPOSITORY,
 } from '@books/application/ports/tag-repository.interface';
+import { Author } from '@books/domain/entities/author';
 import { Chapter } from '@books/domain/entities/chapter';
 import { Cover } from '@books/domain/entities/cover';
-import { Author } from '@books/domain/entities/author';
 import { Tag } from '@books/domain/entities/tag';
+import { Inject, Injectable, Scope } from '@nestjs/common';
+import DataLoader from 'dataloader';
 
 @Injectable({ scope: Scope.REQUEST })
 export class BookDataLoaderService {

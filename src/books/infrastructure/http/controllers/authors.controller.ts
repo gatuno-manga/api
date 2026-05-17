@@ -1,3 +1,5 @@
+import { AuthorsOptions } from '@books/application/dto/authors-options.dto';
+import { AuthorsService } from '@books/application/services/authors.service';
 import { CacheTTL } from '@nestjs/cache-manager';
 import {
 	Controller,
@@ -9,17 +11,15 @@ import {
 	UseInterceptors,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Throttle } from '@nestjs/throttler';
-import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
-import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
+import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { OptionalAuthGuard } from 'src/auth/infrastructure/framework/optional-auth.guard';
+import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
 import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-cache.interceptor';
+import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { RolesEnum } from 'src/users/domain/enums/roles.enum';
-import { AuthorsService } from '@books/application/services/authors.service';
-import { AuthorsOptions } from '@books/application/dto/authors-options.dto';
 import { ApiDocsGetAll, ApiDocsMergeAuthors } from './swagger/authors.swagger';
 
 @ApiTags('Authors')

@@ -1,12 +1,16 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository, FindOptionsWhere, EntityManager } from 'typeorm';
 import { IAuthorRepository } from '@books/application/ports/author-repository.interface';
 import { Author as DomainAuthor } from '@books/domain/entities/author';
 import { Author as InfrastructureAuthor } from '@books/infrastructure/database/entities/author.entity';
-import { AuthorsOptions } from '@books/application/dto/authors-options.dto';
 import { Book as InfrastructureBook } from '@books/infrastructure/database/entities/book.entity';
-import { AuthorCriteria } from '@books/domain/types/criteria.types';
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { FindOptionsWhere, In, Repository } from 'typeorm';
+
+interface RawAuthorResult {
+	author_id: string;
+	author_name: string;
+	book_id: string;
+}
 
 @Injectable()
 export class TypeOrmAuthorRepositoryAdapter implements IAuthorRepository {
@@ -18,85 +22,125 @@ export class TypeOrmAuthorRepositoryAdapter implements IAuthorRepository {
 		repository: Repository<InfrastructureAuthor>,
 		@InjectRepository(InfrastructureBook)
 		bookRepository: Repository<InfrastructureBook>,
-		entityManager?: EntityManager,
 	) {
-		this.repository = entityManager
-			? entityManager.getRepository(InfrastructureAuthor)
-			: repository;
-		this.bookRepository = entityManager
-			? entityManager.getRepository(InfrastructureBook)
-			: bookRepository;
+		this.repository = repository;
+		this.bookRepository = bookRepository;
 	}
 
-	async findById(
-		id: string,
-		relations?: string[],
-	): Promise<DomainAuthor | null> {
-		const author = await this.repository.findOne({
-			where: { id } as unknown as FindOptionsWhere<InfrastructureAuthor>,
-			relations,
-		});
-		return author as unknown as DomainAuthor;
+	async findById(id: string): Promise<DomainAuthor | null> {
+		const author = await this.repository.findOne({ where: { id } });
+		if (!author) return null;
+		const domainAuthor = new DomainAuthor();
+		Object.assign(domainAuthor, author);
+		return domainAuthor;
 	}
 
 	async save(author: DomainAuthor): Promise<DomainAuthor> {
-		const saved = await this.repository.save(
-			author as unknown as InfrastructureAuthor,
-		);
-		return saved as unknown as DomainAuthor;
+		const entity = this.repository.create();
+		Object.assign(entity, author);
+		const saved = await this.repository.save(entity);
+		const result = new DomainAuthor();
+		Object.assign(result, saved);
+		return result;
 	}
 
-	async remove(authors: DomainAuthor[]): Promise<void> {
-		await this.repository.remove(
-			authors as unknown as InfrastructureAuthor[],
-		);
-	}
-
-	async deleteByIds(ids: string[]): Promise<void> {
-		await this.repository.delete(ids);
-	}
-
-	async findByName(name: string): Promise<DomainAuthor | null> {
-		const author = await this.repository.findOne({
-			where: {
-				name,
-			} as unknown as FindOptionsWhere<InfrastructureAuthor>,
+	async saveAll(authors: DomainAuthor[]): Promise<DomainAuthor[]> {
+		const entities = authors.map((a) => {
+			const entity = this.repository.create();
+			Object.assign(entity, a);
+			return entity;
 		});
-		return author as unknown as DomainAuthor;
-	}
-
-	async count(criteria?: AuthorCriteria): Promise<number> {
-		return this.repository.count({
-			where: criteria as unknown as FindOptionsWhere<InfrastructureAuthor>,
+		const saved = await this.repository.save(entities);
+		return saved.map((s) => {
+			const result = new DomainAuthor();
+			Object.assign(result, s);
+			return result;
 		});
 	}
 
-	async findWithFilters(
-		options: AuthorsOptions,
-		maxWeight = 99,
+	async update(id: string, data: Partial<DomainAuthor>): Promise<void> {
+		const updateData = data as QueryDeepPartialEntity<InfrastructureAuthor>;
+		await this.repository.update(id, updateData);
+	}
+
+	async delete(id: string): Promise<void> {
+		await this.repository.delete(id);
+	}
+
+	async findByIds(ids: string[]): Promise<DomainAuthor[]> {
+		const authors = await this.repository.find({
+			where: { id: In(ids) },
+			order: { name: 'ASC' },
+		});
+		return authors.map((a) => {
+			const result = new DomainAuthor();
+			Object.assign(result, a);
+			return result;
+		});
+	}
+
+	async findOne(
+		criteria: FindOptionsWhere<InfrastructureAuthor>,
+	): Promise<DomainAuthor | null> {
+		const author = await this.repository.findOne({ where: criteria });
+		if (!author) return null;
+		const result = new DomainAuthor();
+		Object.assign(result, author);
+		return result;
+	}
+
+	async find(
+		criteria: FindOptionsWhere<InfrastructureAuthor>,
 	): Promise<DomainAuthor[]> {
-		const queryBuilder = this.bookRepository
-			.createQueryBuilder('book')
-			.leftJoinAndSelect('book.authors', 'author')
-			.leftJoin('book.sensitiveContent', 'sensitiveContent');
+		const authors = await this.repository.find({ where: criteria });
+		return authors.map((a) => {
+			const result = new DomainAuthor();
+			Object.assign(result, a);
+			return result;
+		});
+	}
 
-		if (options.sensitiveContent && options.sensitiveContent.length > 0) {
-			queryBuilder.andWhere('sensitiveContent.name IN (:...names)', {
-				names: options.sensitiveContent,
-			});
+	async findOrCreateByName(name: string): Promise<DomainAuthor> {
+		let author = await this.repository.findOne({ where: { name } });
+		if (!author) {
+			author = this.repository.create({ name });
+			author = await this.repository.save(author);
 		}
-		queryBuilder.andWhere(
-			'sensitiveContent.weight <= :maxWeight OR sensitiveContent.id IS NULL',
-			{ maxWeight },
-		);
+		const result = new DomainAuthor();
+		Object.assign(result, author);
+		return result;
+	}
 
-		const books = await queryBuilder.getMany();
-		const authorIds = Array.from(
-			new Set(
-				books.flatMap((book) =>
-					book.authors.map((author) => author.id),
-				),
-			),
+	async findByBookId(bookId: string): Promise<DomainAuthor[]> {
+		const book = await this.bookRepository.findOne({
+			where: { id: bookId },
+			relations: ['authors'],
+		});
+		return (book?.authors || []).map((a) => {
+			const result = new DomainAuthor();
+			Object.assign(result, a);
+			return result;
+		});
+	}
+
+	async findByNames(names: string[]): Promise<DomainAuthor[]> {
+		if (names.length === 0) return [];
+		const authors = await this.repository.find({
+			where: { name: In(names) },
+		});
+		return authors.map((a) => {
+			const result = new DomainAuthor();
+			Object.assign(result, a);
+			return result;
+		});
+	}
+
+	async searchByNames(names: string[]): Promise<DomainAuthor[]> {
+		const authorIds = await Promise.all(
+			names.map(async (name) => {
+				const author = await this.findOrCreateByName(name);
+				return author.id;
+			}),
 		);
 
 		if (authorIds.length === 0) return [];
@@ -105,7 +149,11 @@ export class TypeOrmAuthorRepositoryAdapter implements IAuthorRepository {
 			where: { id: In(authorIds) },
 			order: { name: 'ASC' },
 		});
-		return authors as unknown as DomainAuthor[];
+		return authors.map((a) => {
+			const result = new DomainAuthor();
+			Object.assign(result, a);
+			return result;
+		});
 	}
 
 	async findByBookIds(
@@ -116,12 +164,15 @@ export class TypeOrmAuthorRepositoryAdapter implements IAuthorRepository {
 			.innerJoin('author.books', 'book')
 			.select(['author.id', 'author.name', 'book.id'])
 			.where('book.id IN (:...bookIds)', { bookIds })
-			.getRawMany();
+			.getRawMany<RawAuthorResult>();
 
-		return results.map((r) => ({
-			id: r.author_id,
-			name: r.author_name,
-			bookId: r.book_id,
-		})) as unknown as (DomainAuthor & { bookId: string })[];
+		return results.map((r) => {
+			const domainAuthor = new DomainAuthor();
+			domainAuthor.id = r.author_id;
+			domainAuthor.name = r.author_name;
+			return Object.assign(domainAuthor, {
+				bookId: r.book_id,
+			}) as DomainAuthor & { bookId: string };
+		});
 	}
 }

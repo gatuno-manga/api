@@ -1,5 +1,5 @@
+import { ConfigModule } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConfigService, ConfigModule } from '@nestjs/config';
 import { MqttModule } from './mqtt.module';
 
 describe('MqttModule', () => {

@@ -1,8 +1,8 @@
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
-import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
+import { DataSource } from 'typeorm';
 import { ChapterScrapingJob } from './chapter-scraping.job';
 import { ChapterScrapingSharedService } from './chapter-scraping.shared';
 

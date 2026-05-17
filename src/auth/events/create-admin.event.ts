@@ -1,10 +1,10 @@
+import { AuthService } from '@auth/auth.service';
 import { Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import { DataSource, Repository } from 'typeorm';
-import { AuthService } from '@auth/auth.service';
 
 export class CreateAdminEvent {
 	private readonly logger = new Logger(CreateAdminEvent.name);
@@ -13,7 +13,7 @@ export class CreateAdminEvent {
 		private readonly appConfigService: AppConfigService,
 		@InjectRepository(User)
 		private readonly userRepository: Repository<User>,
-		private readonly dataSource: DataSource,
+		readonly _dataSource: DataSource,
 	) {}
 
 	@OnEvent('app.ready')
@@ -43,10 +43,13 @@ export class CreateAdminEvent {
 				true,
 			);
 			this.logger.log(`Admin user created: ${newUser?.email}`);
-		} catch (error) {
+		} catch (error: unknown) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+			const errorStack = error instanceof Error ? error.stack : undefined;
 			this.logger.error(
-				`Error creating admin user: ${error.message}`,
-				error.stack,
+				`Error creating admin user: ${errorMessage}`,
+				errorStack,
 			);
 		}
 	}

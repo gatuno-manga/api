@@ -1,3 +1,27 @@
+import { randomBytes } from 'node:crypto';
+import { CurrentUserDto } from '@auth/application/dto/current-user.dto';
+import { AuthService } from '@auth/auth.service';
+import { WebauthnService } from '@auth/infrastructure/adapters/webauthn.service';
+import { CurrentUser } from '@auth/infrastructure/framework/current-user.decorator';
+import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
+import { RefreshTokenGuard } from '@auth/infrastructure/framework/jwt-refresh.guard';
+import { Roles } from '@auth/infrastructure/framework/roles.decorator';
+import { BeginPasskeyAuthDto } from '@auth/infrastructure/http/dto/begin-passkey-auth.dto';
+import { CreateLoginApiKeyDto } from '@auth/infrastructure/http/dto/create-login-api-key.dto';
+import { ListAuthAuditQueryDto } from '@auth/infrastructure/http/dto/list-auth-audit-query.dto';
+import { RevokeSessionDto } from '@auth/infrastructure/http/dto/revoke-session.dto';
+import { SignInApiKeyAuthDto } from '@auth/infrastructure/http/dto/signin-api-key-auth.dto';
+import { SignInAuthDto } from '@auth/infrastructure/http/dto/signin-auth.dto';
+import { SignUpAuthDto } from '@auth/infrastructure/http/dto/signup-auth.dto';
+import { VerifyMfaLoginDto } from '@auth/infrastructure/http/dto/verify-mfa-login.dto';
+import { VerifyPasskeyAuthDto } from '@auth/infrastructure/http/dto/verify-passkey-auth.dto';
+import { VerifyPasskeyRegistrationDto } from '@auth/infrastructure/http/dto/verify-passkey-registration.dto';
+import { VerifyTotpCodeDto } from '@auth/infrastructure/http/dto/verify-totp-code.dto';
+import {
+	AuthRequestContext,
+	SuccessfulAuthResult,
+	isPendingMfaResult,
+} from '@auth/types/auth-security.types';
 import {
 	Body,
 	Controller,
@@ -13,35 +37,11 @@ import {
 	UnauthorizedException,
 	UseGuards,
 } from '@nestjs/common';
-import { randomBytes } from 'node:crypto';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { RolesEnum } from 'src/users/domain/enums/roles.enum';
-import { AuthService } from '@auth/auth.service';
-import { CurrentUser } from '@auth/infrastructure/framework/current-user.decorator';
-import { Roles } from '@auth/infrastructure/framework/roles.decorator';
-import { BeginPasskeyAuthDto } from '@auth/infrastructure/http/dto/begin-passkey-auth.dto';
-import { CreateLoginApiKeyDto } from '@auth/infrastructure/http/dto/create-login-api-key.dto';
-import { CurrentUserDto } from '@auth/application/dto/current-user.dto';
-import { ListAuthAuditQueryDto } from '@auth/infrastructure/http/dto/list-auth-audit-query.dto';
-import { RevokeSessionDto } from '@auth/infrastructure/http/dto/revoke-session.dto';
-import { SignInApiKeyAuthDto } from '@auth/infrastructure/http/dto/signin-api-key-auth.dto';
-import { SignInAuthDto } from '@auth/infrastructure/http/dto/signin-auth.dto';
-import { SignUpAuthDto } from '@auth/infrastructure/http/dto/signup-auth.dto';
-import { VerifyMfaLoginDto } from '@auth/infrastructure/http/dto/verify-mfa-login.dto';
-import { VerifyPasskeyAuthDto } from '@auth/infrastructure/http/dto/verify-passkey-auth.dto';
-import { VerifyPasskeyRegistrationDto } from '@auth/infrastructure/http/dto/verify-passkey-registration.dto';
-import { VerifyTotpCodeDto } from '@auth/infrastructure/http/dto/verify-totp-code.dto';
-import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
-import { RefreshTokenGuard } from '@auth/infrastructure/framework/jwt-refresh.guard';
-import { WebauthnService } from '@auth/infrastructure/adapters/webauthn.service';
-import {
-	AuthRequestContext,
-	isPendingMfaResult,
-	SuccessfulAuthResult,
-} from '@auth/types/auth-security.types';
 import {
 	ApiDocsBeginPasskeyRegistration,
 	ApiDocsBeginTotpSetup,
@@ -90,7 +90,7 @@ export class AuthController {
 	 * sends it automatically on cross-origin requests with withCredentials.
 	 */
 	private setRefreshTokenCookie(
-		req: Request,
+		_req: Request,
 		res: Response,
 		refreshToken: string,
 	): void {
@@ -105,7 +105,7 @@ export class AuthController {
 		});
 	}
 
-	private clearRefreshTokenCookie(req: Request, res: Response): void {
+	private clearRefreshTokenCookie(_req: Request, res: Response): void {
 		const isSecure = this.configService.apiUrl.startsWith('https');
 
 		res.clearCookie('refreshToken', {
@@ -121,7 +121,7 @@ export class AuthController {
 	}
 
 	private setCsrfCookie(
-		req: Request,
+		_req: Request,
 		res: Response,
 		csrfToken: string,
 	): void {
@@ -136,7 +136,7 @@ export class AuthController {
 		});
 	}
 
-	private clearCsrfCookie(req: Request, res: Response): void {
+	private clearCsrfCookie(_req: Request, res: Response): void {
 		const isSecure = this.configService.apiUrl.startsWith('https');
 
 		res.clearCookie(this.csrfCookieName, {

@@ -22,6 +22,7 @@
 			"@common/*": ["src/common/*"],
 			"@database/*": ["src/infrastructure/database/*"],
 			"@encryption/*": ["src/infrastructure/encryption/*"],
+			"@infrastructure/*": ["src/infrastructure/*"],
 			"@files/*": ["src/files/*"],
 			"@health/*": ["src/infrastructure/health/*"],
 			"@logging/*": ["src/infrastructure/logging/*"],

@@ -1,13 +1,13 @@
+import { Chapter as DomainChapter } from '@books/domain/entities/chapter';
+import { Chapter as InfrastructureChapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TypeOrmChapterRepositoryAdapter } from './typeorm-chapter-repository.adapter';
-import { Chapter as InfrastructureChapter } from '@books/infrastructure/database/entities/chapter.entity';
-import { Chapter as DomainChapter } from '@books/domain/entities/chapter';
 
 describe('TypeOrmChapterRepositoryAdapter', () => {
 	let adapter: TypeOrmChapterRepositoryAdapter;
-	let repository: jest.Mocked<Repository<InfrastructureChapter>>;
+	let _repository: jest.Mocked<Repository<InfrastructureChapter>>;
 
 	const mockQueryBuilder = {
 		where: jest.fn().mockReturnThis(),
@@ -51,7 +51,7 @@ describe('TypeOrmChapterRepositoryAdapter', () => {
 		adapter = module.get<TypeOrmChapterRepositoryAdapter>(
 			TypeOrmChapterRepositoryAdapter,
 		);
-		repository = module.get(getRepositoryToken(InfrastructureChapter));
+		_repository = module.get(getRepositoryToken(InfrastructureChapter));
 	});
 
 	afterEach(() => {

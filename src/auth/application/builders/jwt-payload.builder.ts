@@ -1,6 +1,6 @@
-import { User } from 'src/users/infrastructure/database/entities/user.entity';
-import { UserAuthData } from '@auth/application/ports/user-repository.port';
 import { JwtPayloadDto } from '@auth/application/dto/jwt-payload.dto';
+import { UserAuthData } from '@auth/application/ports/user-repository.port';
+import { User } from 'src/users/infrastructure/database/entities/user.entity';
 
 export class JwtPayloadBuilder {
 	private payload: Partial<JwtPayloadDto> = {};
@@ -116,7 +116,9 @@ export class JwtPayloadBuilder {
 
 		return this.setSubject(user.id)
 			.setEmail(user.email)
-			.setRoles(user.roles.map((role) => role.name))
+			.setRoles(
+				(user.roles || []).map((role: { name: string }) => role.name),
+			)
 			.setMaxWeightSensitiveContent(maxWeightSensitiveContent);
 	}
 

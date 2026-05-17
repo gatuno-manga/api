@@ -1,13 +1,13 @@
-import { Meilisearch } from 'meilisearch';
-import { SelectQueryBuilder } from 'typeorm';
-import { Logger } from '@nestjs/common';
+import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
 import {
 	FULLTEXT_COLUMNS,
 	FULLTEXT_SPECIAL_CHARS_REGEX,
 	LIKE_FALLBACK_COLUMNS,
 } from '@books/domain/constants/search.constants';
-import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
 import { Book } from '@books/infrastructure/database/entities/book.entity';
+import { Logger } from '@nestjs/common';
+import { Meilisearch } from 'meilisearch';
+import { SelectQueryBuilder } from 'typeorm';
 import { FilterStrategy } from './filter-strategy.interface';
 
 export class SearchFilterStrategy implements FilterStrategy {
@@ -62,7 +62,9 @@ export class SearchFilterStrategy implements FilterStrategy {
 				queryBuilder.andWhere('1 = 0');
 				return;
 			} catch (error) {
-				this.logger.error(`Meilisearch search error: ${error.message}`);
+				this.logger.error(
+					`Meilisearch search error: ${error instanceof Error ? error.message : String(error)}`,
+				);
 			}
 		}
 

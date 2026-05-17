@@ -1,8 +1,8 @@
 import { PassThrough } from 'node:stream';
-import { Injectable, Logger, StreamableFile } from '@nestjs/common';
-import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { ContentFormat } from '@books/domain/enums/content-format.enum';
 import { ContentType } from '@books/domain/enums/content-type.enum';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
+import { Injectable, Logger, StreamableFile } from '@nestjs/common';
 import { DownloadStrategy } from './download.strategy';
 
 /**
@@ -53,7 +53,7 @@ export class MarkdownDownloadStrategy implements DownloadStrategy {
 			`Markdown generated with ${textChapters.length} chapters`,
 		);
 
-		return new StreamableFile(outputStream);
+		return Promise.resolve(new StreamableFile(outputStream));
 	}
 
 	/**

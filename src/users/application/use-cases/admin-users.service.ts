@@ -1,3 +1,5 @@
+import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants';
+import { PasswordEncryption } from '@encryption/password-encryption.provider';
 import {
 	BadRequestException,
 	ConflictException,
@@ -6,30 +8,28 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, In, Repository } from 'typeorm';
-import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
-import {
-	decodeCursorPayload,
-	encodeCursorPayload,
-} from 'src/common/pagination/cursor.utils';
+import { AccessPolicyEffectEnum } from '@users/domain/enums/access-policy-effect.enum';
+import { AccessPolicyScopeEnum } from '@users/domain/enums/access-policy-scope.enum';
+import { RolesEnum } from '@users/domain/enums/roles.enum';
+import { AccessPolicy } from '@users/infrastructure/database/entities/access-policy.entity';
+import { Role } from '@users/infrastructure/database/entities/role.entity';
+import { UserGroup } from '@users/infrastructure/database/entities/user-group.entity';
+import { User } from '@users/infrastructure/database/entities/user.entity';
 import { CreateAccessPolicyDto } from '@users/infrastructure/http/dto/create-access-policy.dto';
 import { CreateGroupDto } from '@users/infrastructure/http/dto/create-group.dto';
 import { CreateRoleDto } from '@users/infrastructure/http/dto/create-role.dto';
 import { ListAccessPoliciesQueryDto } from '@users/infrastructure/http/dto/list-access-policies-query.dto';
 import { SetUserModerationDto } from '@users/infrastructure/http/dto/set-user-moderation.dto';
 import { UpdateGroupDto } from '@users/infrastructure/http/dto/update-group.dto';
-import { UpdateUserRolesDto } from '@users/infrastructure/http/dto/update-user-roles.dto';
 import { UpdateRoleDto } from '@users/infrastructure/http/dto/update-role.dto';
-import { AccessPolicy } from '@users/infrastructure/database/entities/access-policy.entity';
-import { Role } from '@users/infrastructure/database/entities/role.entity';
-import { UserGroup } from '@users/infrastructure/database/entities/user-group.entity';
-import { User } from '@users/infrastructure/database/entities/user.entity';
-import { AccessPolicyEffectEnum } from '@users/domain/enums/access-policy-effect.enum';
-import { AccessPolicyScopeEnum } from '@users/domain/enums/access-policy-scope.enum';
-import { RolesEnum } from '@users/domain/enums/roles.enum';
-import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants';
+import { UpdateUserRolesDto } from '@users/infrastructure/http/dto/update-user-roles.dto';
 import { Meilisearch } from 'meilisearch';
-import { PasswordEncryption } from '@encryption/password-encryption.provider';
+import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
+import {
+	decodeCursorPayload,
+	encodeCursorPayload,
+} from 'src/common/pagination/cursor.utils';
+import { Brackets, In, Repository } from 'typeorm';
 
 type AdminUsersCursorPayload = {
 	createdAt: string;
@@ -57,7 +57,7 @@ export class AdminUsersService {
 				limit: 20,
 			});
 			return result.hits;
-		} catch (error) {
+		} catch (_error) {
 			return [];
 		}
 	}

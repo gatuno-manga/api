@@ -1,12 +1,12 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
-import { Role } from '@users/infrastructure/database/entities/role.entity';
-import { User } from '@users/infrastructure/database/entities/user.entity';
-import { UserImage } from '@users/infrastructure/database/entities/user-image.entity';
-import { UsersService } from './users.service';
-import { FilesService } from 'src/files/application/services/files.service';
 import { UserResourcesMapper } from '@users/application/mappers/user-resources.mapper';
+import { Role } from '@users/infrastructure/database/entities/role.entity';
+import { UserImage } from '@users/infrastructure/database/entities/user-image.entity';
+import { User } from '@users/infrastructure/database/entities/user.entity';
+import { FilesService } from 'src/files/application/services/files.service';
+import { DataSource } from 'typeorm';
+import { UsersService } from './users.service';
 
 describe('UsersService', () => {
 	let service: UsersService;

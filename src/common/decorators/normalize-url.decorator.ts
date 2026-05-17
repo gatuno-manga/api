@@ -1,5 +1,5 @@
-import { Transform } from 'class-transformer';
 import { normalizeUrl as normalizeUrlUtil } from '@common/utils/url.utils';
+import { Transform } from 'class-transformer';
 
 /**
  * Decorator that normalizes URLs by removing 'www.' subdomain
@@ -15,15 +15,21 @@ import { normalizeUrl as normalizeUrlUtil } from '@common/utils/url.utils';
  * }
  */
 export function NormalizeUrl() {
-	return Transform(({ value }) => {
+	return Transform(({ value }: { value: unknown }) => {
 		if (!value) return value;
 
 		// Handle array of URLs
 		if (Array.isArray(value)) {
-			return value.map((url) => normalizeUrlUtil(url));
+			return value.map((url: unknown) =>
+				typeof url === 'string' ? normalizeUrlUtil(url) : url,
+			);
 		}
 
 		// Handle single URL
-		return normalizeUrlUtil(value);
+		if (typeof value === 'string') {
+			return normalizeUrlUtil(value);
+		}
+
+		return value;
 	});
 }

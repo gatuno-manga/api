@@ -1,29 +1,29 @@
+import { AddBookToCollectionUseCase } from '@/collections/application/use-cases/add-book-to-collection.use-case';
+import { CreateCollectionUseCase } from '@/collections/application/use-cases/create-collection.use-case';
+import { GetUserCollectionsUseCase } from '@/collections/application/use-cases/get-user-collections.use-case';
+import { ShareCollectionUseCase } from '@/collections/application/use-cases/share-collection.use-case';
+import { AddBookDto } from '@/collections/infrastructure/http/dto/add-book.dto';
+import { CreateCollectionDto } from '@/collections/infrastructure/http/dto/create-collection.dto';
+import { ShareCollectionDto } from '@/collections/infrastructure/http/dto/share-collection.dto';
+import { CurrentUserDto } from '@auth/application/dto/current-user.dto';
+import { CurrentUser } from '@auth/infrastructure/framework/current-user.decorator';
+import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
+import { DataEnvelopeInterceptor } from '@common/interceptors/data-envelope.interceptor';
+import { SWAGGER_AUTH_SCHEME } from '@common/swagger/swagger-auth.constants';
 import {
 	Body,
 	Controller,
 	Get,
+	Param,
 	Post,
 	UseGuards,
 	UseInterceptors,
-	Param,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
-import { CurrentUser } from '@auth/infrastructure/framework/current-user.decorator';
-import { CurrentUserDto } from '@auth/application/dto/current-user.dto';
-import { DataEnvelopeInterceptor } from '@common/interceptors/data-envelope.interceptor';
-import { CreateCollectionUseCase } from '@/collections/application/use-cases/create-collection.use-case';
-import { AddBookToCollectionUseCase } from '@/collections/application/use-cases/add-book-to-collection.use-case';
-import { ShareCollectionUseCase } from '@/collections/application/use-cases/share-collection.use-case';
-import { GetUserCollectionsUseCase } from '@/collections/application/use-cases/get-user-collections.use-case';
-import { CreateCollectionDto } from '@/collections/infrastructure/http/dto/create-collection.dto';
-import { AddBookDto } from '@/collections/infrastructure/http/dto/add-book.dto';
-import { ShareCollectionDto } from '@/collections/infrastructure/http/dto/share-collection.dto';
-import { SWAGGER_AUTH_SCHEME } from '@common/swagger/swagger-auth.constants';
 import {
-	ApiDocsGetMyCollections,
-	ApiDocsCreate,
 	ApiDocsAddBook,
+	ApiDocsCreate,
+	ApiDocsGetMyCollections,
 	ApiDocsShare,
 } from './swagger/collections.swagger';
 

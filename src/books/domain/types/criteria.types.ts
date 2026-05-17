@@ -1,16 +1,16 @@
-import { Book } from '@books/domain/entities/book';
-import { Chapter } from '@books/domain/entities/chapter';
-import { Page } from '@books/domain/entities/page';
 import { Author } from '@books/domain/entities/author';
-import { Tag } from '@books/domain/entities/tag';
-import { SensitiveContent } from '@books/domain/entities/sensitive-content';
+import { Book } from '@books/domain/entities/book';
 import { BookRelationship } from '@books/domain/entities/book-relationship';
-import { ChapterRead } from '@books/domain/entities/chapter-read';
+import { Chapter } from '@books/domain/entities/chapter';
 import { ChapterComment } from '@books/domain/entities/chapter-comment';
+import { ChapterRead } from '@books/domain/entities/chapter-read';
+import { Page } from '@books/domain/entities/page';
+import { SensitiveContent } from '@books/domain/entities/sensitive-content';
+import { Tag } from '@books/domain/entities/tag';
 
 // Basic criteria based on entity fields
 export type Criteria<T> = {
-	[P in keyof T]?: T[P] | unknown;
+	[P in keyof T]?: T[P];
 };
 
 export type BookCriteria = Criteria<Book>;
@@ -60,5 +60,5 @@ export type DeepPartial<T> = T extends (...args: unknown[]) => unknown
 		: T extends object
 			? _DeepPartialObject<T>
 			: T | undefined;
-export interface _DeepPartialArray<T> extends Array<DeepPartial<T>> {}
+export type _DeepPartialArray<T> = Array<DeepPartial<T>>;
 export type _DeepPartialObject<T> = { [P in keyof T]?: DeepPartial<T[P]> };

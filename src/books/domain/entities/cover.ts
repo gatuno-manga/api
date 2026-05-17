@@ -1,6 +1,6 @@
-import { ScrapingStatus } from '../enums/scrapingStatus.enum';
-import { Book } from './book';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
+import { Book } from './book';
 
 export class Cover {
 	id: string;

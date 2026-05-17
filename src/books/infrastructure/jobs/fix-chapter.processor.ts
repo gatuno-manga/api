@@ -1,10 +1,10 @@
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Job } from 'bullmq';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { Repository } from 'typeorm';
-import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { ChapterScrapingSharedService } from './chapter-scraping.shared';
 
 const QUEUE_NAME = 'fix-chapter-queue';
@@ -45,7 +45,7 @@ export class FixChapterProcessor extends WorkerHost implements OnModuleInit {
 		this.chapterScrapingShared.emitStartedEvent(chapter);
 
 		// Processa usando o serviço compartilhado com minPages
-		const minPages = chapter.pages?.length || undefined;
+		const _minPages = chapter.pages?.length || undefined;
 		// Dispara o scraping via microserviço
 		await this.chapterScrapingShared.processChapterPages(chapter);
 		this.logger.log(`Capítulo ${chapterId} processado para conserto.`);
@@ -72,7 +72,7 @@ export class FixChapterProcessor extends WorkerHost implements OnModuleInit {
 			}
 		} catch (error) {
 			this.logger.error(
-				`Erro ao emitir evento de falha para o capítulo ${chapterId}: ${error.message}`,
+				`Erro ao emitir evento de falha para o capítulo ${chapterId}: ${error instanceof Error ? error.message : String(error)}`,
 			);
 		}
 	}

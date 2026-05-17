@@ -1,3 +1,6 @@
+import { CreateBookRelationshipDto } from '@books/application/dto/create-book-relationship.dto';
+import { UpdateBookRelationshipDto } from '@books/application/dto/update-book-relationship.dto';
+import { BookBookRelationshipService } from '@books/application/services/book-book-relationship.service';
 import {
 	Body,
 	Controller,
@@ -8,17 +11,14 @@ import {
 	UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
-import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
+import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
+import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { RolesEnum } from 'src/users/domain/enums/roles.enum';
-import { CreateBookRelationshipDto } from '@books/application/dto/create-book-relationship.dto';
-import { UpdateBookRelationshipDto } from '@books/application/dto/update-book-relationship.dto';
-import { BookBookRelationshipService } from '@books/application/services/book-book-relationship.service';
 import {
 	ApiDocsCreateRelationship,
-	ApiDocsUpdateRelationship,
 	ApiDocsDeleteRelationship,
+	ApiDocsUpdateRelationship,
 } from './swagger/admin-book-relationships.swagger';
 
 @ApiTags('Books Admin')

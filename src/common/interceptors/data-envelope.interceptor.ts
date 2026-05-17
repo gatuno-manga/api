@@ -14,7 +14,7 @@ export class DataEnvelopeInterceptor implements NestInterceptor {
 		next: CallHandler,
 	): Observable<unknown> {
 		return next.handle().pipe(
-			map((payload) => {
+			map((payload: unknown) => {
 				if (
 					payload &&
 					typeof payload === 'object' &&

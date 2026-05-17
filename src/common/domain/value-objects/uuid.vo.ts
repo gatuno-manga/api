@@ -1,4 +1,4 @@
-import { validate as validateUuid, v7 as uuidv7 } from 'uuid';
+import { v7 as uuidv7, validate as validateUuid } from 'uuid';
 
 export abstract class Uuid {
 	protected constructor(protected readonly value: string) {

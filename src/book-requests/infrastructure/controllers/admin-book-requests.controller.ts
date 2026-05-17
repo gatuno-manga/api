@@ -1,17 +1,17 @@
+import { RejectBookRequestDto } from '@/book-requests/application/dto/reject-book-request.dto';
+import { BookRequestsService } from '@/book-requests/application/use-cases/book-requests.service';
 import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
+import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
-import { RolesEnum } from 'src/users/domain/enums/roles.enum';
-import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
-import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
-import { BookRequestsService } from '@/book-requests/application/use-cases/book-requests.service';
-import { RejectBookRequestDto } from '@/book-requests/application/dto/reject-book-request.dto';
+import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 import { mapBookRequestToResponseDtoList } from './book-request-http.mapper';
 import {
-	ApiDocsListAll,
 	ApiDocsApprove,
+	ApiDocsListAll,
 	ApiDocsReject,
 } from './swagger/admin-book-requests.swagger';
 

@@ -1,10 +1,10 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
-import { OnEvent } from '@nestjs/event-emitter';
-import { ClientProxy } from '@nestjs/microservices';
 import { BookEvents } from '@books/domain/constants/events.constant';
 import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { MqttTopics } from '@common/domain/constants/mqtt-topics.constant';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
+import { ClientProxy } from '@nestjs/microservices';
 
 @Injectable()
 export class BooksNotifier {
@@ -20,9 +20,9 @@ export class BooksNotifier {
 			const result = this.mqttClient.emit(topic, { event, payload });
 			if (result && typeof result.subscribe === 'function') {
 				result.subscribe({
-					error: (err) => {
+					error: (err: unknown) => {
 						this.logger.error(
-							`Failed to publish to ${topic}: ${err?.message || err}`,
+							`Failed to publish to ${topic}: ${err instanceof Error ? err.message : String(err)}`,
 						);
 					},
 				});
@@ -31,9 +31,9 @@ export class BooksNotifier {
 					`MQTT Client returned undefined when publishing to ${topic}. Not connected?`,
 				);
 			}
-		} catch (error) {
+		} catch (error: unknown) {
 			this.logger.error(
-				`Exception when publishing to ${topic}: ${error.message}`,
+				`Exception when publishing to ${topic}: ${error instanceof Error ? error.message : String(error)}`,
 			);
 		}
 	}

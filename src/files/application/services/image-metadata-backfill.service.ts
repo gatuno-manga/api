@@ -1,7 +1,12 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
-import { DataSource } from 'typeorm';
 import { StorageBucket } from '@common/enum/storage-bucket.enum';
 import type { EventPublisherPort } from '@files/application/ports/event-publisher.port';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { DataSource } from 'typeorm';
+
+export interface MetadataRecord {
+	id: string | number;
+	path: string;
+}
 
 @Injectable()
 export class ImageMetadataBackfillService {
@@ -46,9 +51,10 @@ export class ImageMetadataBackfillService {
 			let hasMore = true;
 
 			while (hasMore) {
-				const records = await this.dataSource.query(table.query, [
-					lastId,
-				]);
+				const records: MetadataRecord[] = await this.dataSource.query(
+					table.query,
+					[lastId],
+				);
 
 				if (records.length === 0) {
 					if (lastId === '') {
@@ -90,7 +96,7 @@ export class ImageMetadataBackfillService {
 						}
 					} catch (err) {
 						this.logger.error(
-							`   ❌ Erro ao publicar ${fullPath}: ${err.message}`,
+							`   ❌ Erro ao publicar ${fullPath}: ${err instanceof Error ? err.message : String(err)}`,
 						);
 					}
 					lastId = record.id;

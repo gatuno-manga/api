@@ -1,8 +1,8 @@
+import { ImageProcessingCompletedEvent } from '@files/application/strategies/image-update/image-update.strategy';
+import { HandleImageProcessingCompletedUseCase } from '@files/application/use-cases/handle-image-processing-completed.use-case';
 import { Controller, Logger } from '@nestjs/common';
 import { EventPattern, Payload } from '@nestjs/microservices';
 import { KafkaMessage } from 'kafkajs';
-import { HandleImageProcessingCompletedUseCase } from '@files/application/use-cases/handle-image-processing-completed.use-case';
-import { ImageProcessingCompletedEvent } from '@files/application/strategies/image-update/image-update.strategy';
 
 @Controller()
 export class ImageProcessingController {
@@ -25,9 +25,9 @@ export class ImageProcessingController {
 					return JSON.parse(
 						message.value.toString(),
 					) as ImageProcessingCompletedEvent;
-				} catch (error) {
+				} catch (error: unknown) {
 					this.logger.error(
-						`Erro ao desserializar mensagem Kafka: ${error.message}`,
+						`Erro ao desserializar mensagem Kafka: ${error instanceof Error ? error.message : String(error)}`,
 					);
 					return null;
 				}
@@ -46,10 +46,10 @@ export class ImageProcessingController {
 			this.logger.log(
 				`Sucesso ao processar lote de ${events.length} imagens.`,
 			);
-		} catch (error) {
+		} catch (error: unknown) {
 			this.logger.error(
-				`Erro ao processar lote de imagens: ${error.message}`,
-				error.stack,
+				`Erro ao processar lote de imagens: ${error instanceof Error ? error.message : String(error)}`,
+				error instanceof Error ? error.stack : undefined,
 			);
 			// Lançamos o erro para que a estratégia customizada (KafkaBatchStrategy)
 			// possa lidar com a falha do lote (retentativa nativa do Kafka).

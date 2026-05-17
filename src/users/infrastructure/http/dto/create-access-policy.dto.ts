@@ -1,4 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { AccessPolicyEffectEnum } from '@users/domain/enums/access-policy-effect.enum';
+import { AccessPolicyScopeEnum } from '@users/domain/enums/access-policy-scope.enum';
 import {
 	IsBoolean,
 	IsDateString,
@@ -11,8 +13,6 @@ import {
 	MaxLength,
 	Min,
 } from 'class-validator';
-import { AccessPolicyEffectEnum } from '@users/domain/enums/access-policy-effect.enum';
-import { AccessPolicyScopeEnum } from '@users/domain/enums/access-policy-scope.enum';
 
 export class CreateAccessPolicyDto {
 	@IsEnum(AccessPolicyEffectEnum)

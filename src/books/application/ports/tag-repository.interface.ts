@@ -1,5 +1,5 @@
-import { Tag } from '@books/domain/entities/tag';
 import { TagsOptions } from '@books/application/dto/tags-options.dto';
+import { Tag } from '@books/domain/entities/tag';
 import { TagCriteria } from '@books/domain/types/criteria.types';
 
 export interface ITagRepository {

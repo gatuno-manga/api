@@ -1,3 +1,4 @@
+import { StoredTokenDto } from '@auth/application/dto/stored-token.dto';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
 	Inject,
@@ -7,11 +8,10 @@ import {
 	UnauthorizedException,
 } from '@nestjs/common';
 import { Cache } from 'cache-manager';
-import { v7 as uuidv7 } from 'uuid';
 import { Redis } from 'ioredis';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { REDIS_CLIENT } from 'src/infrastructure/redis/redis.constants';
-import { StoredTokenDto } from '@auth/application/dto/stored-token.dto';
+import { v7 as uuidv7 } from 'uuid';
 
 @Injectable()
 export class TokenStoreService {

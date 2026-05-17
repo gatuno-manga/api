@@ -1,40 +1,40 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
-import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
-import { PageDto } from 'src/common/pagination/page.dto';
-import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
-import { BookRelationshipsQueryDto } from '@books/application/dto/book-relationships-query.dto';
-import { BookChaptersCursorPageDto } from '@books/application/dto/book-chapters-cursor-page.dto';
+import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants';
 import { BookChaptersCursorOptionsDto } from '@books/application/dto/book-chapters-cursor-options.dto';
+import { BookChaptersCursorPageDto } from '@books/application/dto/book-chapters-cursor-page.dto';
 import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
+import { BookRelationshipsQueryDto } from '@books/application/dto/book-relationships-query.dto';
 import { CreateBookRelationshipDto } from '@books/application/dto/create-book-relationship.dto';
-import { UpdateBookRelationshipDto } from '@books/application/dto/update-book-relationship.dto';
-import { Book } from '@books/domain/entities/book';
 import { CreateBookDto } from '@books/application/dto/create-book.dto';
 import { OrderChaptersDto } from '@books/application/dto/order-chapters.dto';
 import { OrderCoversDto } from '@books/application/dto/order-covers.dto';
+import { ScrapeCoverDto } from '@books/application/dto/scrape-cover.dto';
+import { UpdateBookRelationshipDto } from '@books/application/dto/update-book-relationship.dto';
 import { UpdateBookDto } from '@books/application/dto/update-book.dto';
 import { UpdateChapterDto } from '@books/application/dto/update-chapter.dto';
 import { UploadCoverDto } from '@books/application/dto/upload-cover.dto';
-import { ScrapeCoverDto } from '@books/application/dto/scrape-cover.dto';
-import { BookCreationService } from './book-creation.service';
-import { BookBookRelationshipService } from './book-book-relationship.service';
-import { BookQueryService } from './book-query.service';
-import { BookRelationshipService } from './book-relationship.service';
-import { BookUpdateService } from './book-update.service';
-import { ChapterManagementService } from './chapter-management.service';
 import {
 	AuthorsFilterStrategy,
 	ExcludeTagsFilterStrategy,
 	FilterStrategy,
+	IdFilterStrategy,
 	PublicationFilterStrategy,
 	SearchFilterStrategy,
+	SensitiveContentFilterStrategy,
 	TagsFilterStrategy,
 	TypeFilterStrategy,
-	IdFilterStrategy,
-	SensitiveContentFilterStrategy,
 } from '@books/application/strategies';
-import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants';
+import { Book } from '@books/domain/entities/book';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Meilisearch } from 'meilisearch';
+import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
+import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
+import { PageDto } from 'src/common/pagination/page.dto';
+import { BookBookRelationshipService } from './book-book-relationship.service';
+import { BookCreationService } from './book-creation.service';
+import { BookQueryService } from './book-query.service';
+import { BookRelationshipService } from './book-relationship.service';
+import { BookUpdateService } from './book-update.service';
+import { ChapterManagementService } from './chapter-management.service';
 
 /**
  * BooksService refatorado - agora atua como orquestrador (Facade)

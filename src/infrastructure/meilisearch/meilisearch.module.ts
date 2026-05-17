@@ -1,9 +1,9 @@
-import { Global, Logger, Module } from '@nestjs/common';
-import { Meilisearch } from 'meilisearch';
 import { AppConfigModule } from '@app-config/app-config.module';
 import { AppConfigService } from '@app-config/app-config.service';
-import { MEILI_CLIENT } from './meilisearch.constants';
+import { Global, Logger, Module } from '@nestjs/common';
+import { Meilisearch } from 'meilisearch';
 import { MeilisearchIndexInitService } from './meilisearch-index-init.service';
+import { MEILI_CLIENT } from './meilisearch.constants';
 
 @Global()
 @Module({
@@ -23,8 +23,10 @@ import { MeilisearchIndexInitService } from './meilisearch-index-init.service';
 						apiKey: masterKey,
 					});
 					return client;
-				} catch (error) {
-					logger.error(`❌ Meilisearch error: ${error.message}`);
+				} catch (error: unknown) {
+					logger.error(
+						`❌ Meilisearch error: ${error instanceof Error ? error.message : String(error)}`,
+					);
 					throw error;
 				}
 			},

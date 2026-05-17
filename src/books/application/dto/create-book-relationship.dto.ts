@@ -1,3 +1,4 @@
+import { BookRelationType } from '@books/domain/enums/book-relation-type.enum';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -12,7 +13,6 @@ import {
 	MaxLength,
 	Min,
 } from 'class-validator';
-import { BookRelationType } from '@books/domain/enums/book-relation-type.enum';
 
 export class CreateBookRelationshipDto {
 	@ApiProperty({

@@ -1,4 +1,5 @@
 import { Field, ID, InputType } from '@nestjs/graphql';
+import { Type } from 'class-transformer';
 import {
 	IsArray,
 	IsBoolean,
@@ -10,7 +11,6 @@ import {
 	IsUUID,
 	ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
 
 @InputType('ReadingProgressInput')
 export class ReadingProgressInput {

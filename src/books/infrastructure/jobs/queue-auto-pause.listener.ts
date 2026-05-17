@@ -5,10 +5,10 @@ import {
 	getQueueToken,
 } from '@nestjs/bullmq';
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { Job, Queue } from 'bullmq';
 import { ModuleRef } from '@nestjs/core';
-import { REDIS_CLIENT } from 'src/infrastructure/redis/redis.constants';
+import { Job, Queue } from 'bullmq';
 import { Redis } from 'ioredis';
+import { REDIS_CLIENT } from 'src/infrastructure/redis/redis.constants';
 
 /**
  * Global listener to implement Auto-Pause (Circuit Breaker) logic for queues.
@@ -80,9 +80,9 @@ export class QueueAutoPauseListener extends WorkerHost {
 				this.logger.log(
 					`Queue ${queueName} successfully auto-paused for protection.`,
 				);
-			} catch (pauseError) {
+			} catch (pauseError: unknown) {
 				this.logger.error(
-					`Failed to auto-pause queue ${queueName}: ${pauseError.message}`,
+					`Failed to auto-pause queue ${queueName}: ${pauseError instanceof Error ? pauseError.message : String(pauseError)}`,
 				);
 			}
 		}

@@ -1,6 +1,6 @@
+import { DocumentFormat } from '@books/domain/enums/document-format.enum';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
-import { DocumentFormat } from '@books/domain/enums/document-format.enum';
 
 /**
  * DTO para upload de documento (PDF/EPUB)

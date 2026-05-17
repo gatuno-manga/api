@@ -1,3 +1,4 @@
+import { WsJwtGuard } from '@auth/infrastructure/framework/ws-jwt.guard';
 import { Logger, UseGuards } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import {
@@ -10,14 +11,13 @@ import {
 	WebSocketGateway,
 	WebSocketServer,
 } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
-import { WsJwtGuard } from '@auth/infrastructure/framework/ws-jwt.guard';
+import { ReadingProgressService } from '@users/application/use-cases/reading-progress.service';
 import { ReadingEvents } from '@users/domain/constants/events.constant';
 import {
 	ReadingProgressResponseDto,
 	SaveReadingProgressDto,
 } from '@users/infrastructure/http/dto/reading-progress.dto';
-import { ReadingProgressService } from '@users/application/use-cases/reading-progress.service';
+import { Server, Socket } from 'socket.io';
 
 interface ProgressUpdatePayload {
 	userId: string;

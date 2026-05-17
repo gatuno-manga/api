@@ -1,6 +1,6 @@
-import { Module, forwardRef } from '@nestjs/common';
 import { AuthModule } from '@auth/auth.module';
 import { BooksModule } from '@books/books.module';
+import { Module, forwardRef } from '@nestjs/common';
 import { UsersModule } from '@users/users.module';
 import { ProcessSyncUseCase } from './application/use-cases/process-sync.use-case';
 import { SyncResolver } from './infrastructure/graphql/resolvers/sync.resolver';

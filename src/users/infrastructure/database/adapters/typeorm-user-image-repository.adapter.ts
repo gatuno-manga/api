@@ -1,10 +1,10 @@
+import { ImageMetadata } from '@common/domain/value-objects/image-metadata.vo';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, In } from 'typeorm';
 import { IUserImageRepository } from '@users/application/ports/user-image-repository.interface';
 import { UserImage as DomainUserImage } from '@users/domain/entities/user-image';
 import { UserImage as InfrastructureUserImage } from '@users/infrastructure/database/entities/user-image.entity';
-import { ImageMetadata } from '@common/domain/value-objects/image-metadata.vo';
+import { FindOptionsWhere, In, Repository } from 'typeorm';
 
 @Injectable()
 export class TypeOrmUserImageRepositoryAdapter implements IUserImageRepository {

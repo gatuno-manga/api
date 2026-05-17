@@ -48,7 +48,7 @@ export class BookUpdateJobService {
 			this.logger.debug(`Book ${bookId} added to update queue`);
 		} catch (error) {
 			this.logger.error(
-				`Error adding book ${bookId} to queue: ${error.message}`,
+				`Error adding book ${bookId} to queue: ${error instanceof Error ? error.message : String(error)}`,
 			);
 			throw error;
 		}

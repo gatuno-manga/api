@@ -1,11 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ClientProxy } from '@nestjs/microservices';
-import { of } from 'rxjs';
-import { BooksNotifier } from './books.notifier';
 import { BookEvents } from '@books/domain/constants/events.constant';
-import { MqttTopics } from '@common/domain/constants/mqtt-topics.constant';
 import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
+import { MqttTopics } from '@common/domain/constants/mqtt-topics.constant';
+import { ClientProxy } from '@nestjs/microservices';
+import { Test, TestingModule } from '@nestjs/testing';
+import { of } from 'rxjs';
+import { BooksNotifier } from './books.notifier';
 
 describe('BooksNotifier', () => {
 	let notifier: BooksNotifier;

@@ -1,14 +1,15 @@
+import { RedisService } from '@/infrastructure/redis/redis.service';
 import {
-	I_BOOK_REPOSITORY,
 	IBookRepository,
+	I_BOOK_REPOSITORY,
 } from '@books/application/ports/book-repository.interface';
 import {
-	I_CHAPTER_REPOSITORY,
 	IChapterRepository,
+	I_CHAPTER_REPOSITORY,
 } from '@books/application/ports/chapter-repository.interface';
 import {
-	I_COVER_REPOSITORY,
 	ICoverRepository,
+	I_COVER_REPOSITORY,
 } from '@books/application/ports/cover-repository.interface';
 import { Book } from '@books/domain/entities/book';
 import { Chapter } from '@books/domain/entities/chapter';
@@ -17,10 +18,9 @@ import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { CoverImageService } from '@books/infrastructure/jobs/cover-image.service';
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { normalizeUrl } from 'src/common/utils/url.utils';
-import { RedisService } from '@/infrastructure/redis/redis.service';
 import { ClientKafka } from '@nestjs/microservices';
 import { WebsiteService } from '@websites/application/services/website.service';
+import { normalizeUrl } from 'src/common/utils/url.utils';
 import { v7 as uuidv7 } from 'uuid';
 
 interface ScrapedChapter {
@@ -181,7 +181,7 @@ export class BookContentUpdateService implements OnModuleInit {
 				urlsProcessed++;
 			} catch (error) {
 				this.logger.warn(
-					`Error requesting scrape from URL ${bookUrl}: ${error.message}`,
+					`Error requesting scrape from URL ${bookUrl}: ${error instanceof Error ? error.message : String(error)}`,
 				);
 			}
 		}
@@ -336,9 +336,9 @@ export class BookContentUpdateService implements OnModuleInit {
 				this.logger.debug(
 					`Added new cover for book ${book.title}: ${scrapedCover.title || scrapedCover.url}`,
 				);
-			} catch (error) {
+			} catch (error: unknown) {
 				this.logger.warn(
-					`Failed to process cover ${scrapedCover.url}: ${error.message}`,
+					`Failed to process cover ${scrapedCover.url}: ${error instanceof Error ? error.message : String(error)}`,
 				);
 			}
 		}

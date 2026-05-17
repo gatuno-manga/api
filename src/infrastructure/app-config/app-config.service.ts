@@ -317,7 +317,7 @@ export class AppConfigService {
 		const appsJson = this.config.get<string>('ANDROID_APPS');
 		if (appsJson) {
 			try {
-				const parsed = JSON.parse(appsJson);
+				const parsed = JSON.parse(appsJson) as Record<string, unknown>[];
 				if (Array.isArray(parsed)) {
 					return parsed as {
 						packageName: string;
@@ -325,7 +325,7 @@ export class AppConfigService {
 					}[];
 				}
 				this.logger.warn('ANDROID_APPS is not an array.');
-			} catch (e) {
+			} catch (_e) {
 				this.logger.error('Failed to parse ANDROID_APPS as JSON.');
 			}
 		}

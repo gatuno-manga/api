@@ -1,13 +1,13 @@
+import { createHash } from 'node:crypto';
+import { UserMfa } from '@auth/infrastructure/database/entities/user-mfa.entity';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { UnauthorizedException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { MfaService } from './mfa.service';
-import { UserMfa } from '@auth/infrastructure/database/entities/user-mfa.entity';
-import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { PasswordEncryption } from 'src/infrastructure/encryption/password-encryption.provider';
-import { UnauthorizedException } from '@nestjs/common';
-import { createHash } from 'node:crypto';
+import { User } from 'src/users/infrastructure/database/entities/user.entity';
+import { MfaService } from './mfa.service';
 
 describe('MfaService', () => {
 	let service: MfaService;

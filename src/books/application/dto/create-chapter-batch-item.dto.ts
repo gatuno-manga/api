@@ -1,3 +1,4 @@
+import { ContentFormat } from '@books/domain/enums/content-format.enum';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -7,12 +8,11 @@ import {
 	IsOptional,
 	IsPositive,
 	IsString,
-	IsUrl,
 	IsUUID,
+	IsUrl,
 	MaxLength,
 	ValidateIf,
 } from 'class-validator';
-import { ContentFormat } from '@books/domain/enums/content-format.enum';
 
 export class CreateChapterBatchItemDto {
 	@ApiProperty({

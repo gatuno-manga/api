@@ -1,11 +1,11 @@
+import { ReviewRepository } from '@/interactions/application/ports/review-repository.port';
+import { InteractionEvents } from '@/interactions/domain/constants/events.constant';
+import { Review } from '@/interactions/domain/entities/review';
+import { RatingScore } from '@/interactions/domain/value-objects/rating-score.vo';
+import { BookId } from '@common/domain/value-objects/book-id.vo';
+import { UserId } from '@common/domain/value-objects/user-id.vo';
 import { Inject, Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ReviewRepository } from '@/interactions/application/ports/review-repository.port';
-import { Review } from '@/interactions/domain/entities/review';
-import { UserId } from '@common/domain/value-objects/user-id.vo';
-import { BookId } from '@common/domain/value-objects/book-id.vo';
-import { RatingScore } from '@/interactions/domain/value-objects/rating-score.vo';
-import { InteractionEvents } from '@/interactions/domain/constants/events.constant';
 
 @Injectable()
 export class ReviewBookUseCase {

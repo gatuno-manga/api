@@ -1,3 +1,18 @@
+import { CreateBookDto } from '@books/application/dto/create-book.dto';
+import { CreateChapterBatchItemDto } from '@books/application/dto/create-chapter-batch-item.dto';
+import { CreateChapterManualDto } from '@books/application/dto/create-chapter-manual.dto';
+import { OrderChaptersDto } from '@books/application/dto/order-chapters.dto';
+import { OrderCoversDto } from '@books/application/dto/order-covers.dto';
+import { ScrapeCoverDto } from '@books/application/dto/scrape-cover.dto';
+import { ToggleAutoUpdateDto } from '@books/application/dto/toggle-auto-update.dto';
+import { UpdateBookDto } from '@books/application/dto/update-book.dto';
+import { UpdateChapterDto } from '@books/application/dto/update-chapter.dto';
+import { UpdateCoverDto } from '@books/application/dto/update-cover.dto';
+import { UploadCoverDto } from '@books/application/dto/upload-cover.dto';
+import { BookDeletionService } from '@books/application/services/book-deletion.service';
+import { BooksService } from '@books/application/services/books.service';
+import { ChapterManagementService } from '@books/application/services/chapter-management.service';
+import { BookUpdateScheduler } from '@books/infrastructure/jobs/book-update.scheduler';
 import {
 	BadRequestException,
 	Body,
@@ -12,28 +27,13 @@ import {
 	UseGuards,
 	UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
-import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
+import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
+import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { RolesEnum } from 'src/users/domain/enums/roles.enum';
-import { BooksService } from '@books/application/services/books.service';
-import { CreateBookDto } from '@books/application/dto/create-book.dto';
-import { CreateChapterBatchItemDto } from '@books/application/dto/create-chapter-batch-item.dto';
-import { CreateChapterManualDto } from '@books/application/dto/create-chapter-manual.dto';
-import { OrderChaptersDto } from '@books/application/dto/order-chapters.dto';
-import { OrderCoversDto } from '@books/application/dto/order-covers.dto';
-import { ToggleAutoUpdateDto } from '@books/application/dto/toggle-auto-update.dto';
-import { UpdateBookDto } from '@books/application/dto/update-book.dto';
-import { UpdateChapterDto } from '@books/application/dto/update-chapter.dto';
-import { UpdateCoverDto } from '@books/application/dto/update-cover.dto';
-import { UploadCoverDto } from '@books/application/dto/upload-cover.dto';
-import { ScrapeCoverDto } from '@books/application/dto/scrape-cover.dto';
-import { BookUpdateScheduler } from '@books/infrastructure/jobs/book-update.scheduler';
-import { BookDeletionService } from '@books/application/services/book-deletion.service';
-import { ChapterManagementService } from '@books/application/services/chapter-management.service';
 import {
 	ApiDocsCheckAllBooksUpdates,
 	ApiDocsCheckBookUpdates,
@@ -57,6 +57,7 @@ import {
 	ApiDocsListDeletedPages,
 	ApiDocsOrderChapters,
 	ApiDocsOrderCovers,
+	ApiDocsResetBook,
 	ApiDocsScrapeCover,
 	ApiDocsSelectCover,
 	ApiDocsToggleAutoUpdate,
@@ -65,7 +66,6 @@ import {
 	ApiDocsUpdateCover,
 	ApiDocsUploadCoverManual,
 	ApiDocsVerifyBook,
-	ApiDocsResetBook,
 } from './swagger/admin-books.swagger';
 
 @ApiTags('Books Admin')
@@ -306,7 +306,7 @@ export class AdminBooksController {
 	@Throttle({ medium: { limit: 20, ttl: 60000 } }) // 20 req/min
 	@ApiDocsDeleteCover()
 	deleteCover(
-		@Param('idBook') idBook: string,
+		@Param('idBook') _idBook: string,
 		@Param('idCover') idCover: string,
 	) {
 		return this.bookDeletionService.deleteCover(idCover);

@@ -1,5 +1,5 @@
-import { Test, type TestingModule } from '@nestjs/testing';
 import type { IFileCompressor } from '@files/application/ports/file-compressor.interface';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { FileCompressorFactory } from './file-compressor.factory';
 
 describe('FileCompressorFactory', () => {

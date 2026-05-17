@@ -1,7 +1,7 @@
 import { CreateBookRelationshipDto } from '@books/application/dto/create-book-relationship.dto';
 import { UpdateBookRelationshipDto } from '@books/application/dto/update-book-relationship.dto';
 import { applyDecorators } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiBody, ApiResponse } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
 
 export function ApiDocsCreateRelationship() {
 	return applyDecorators(

@@ -1,54 +1,53 @@
+import { BookChaptersCursorOptionsDto } from '@books/application/dto/book-chapters-cursor-options.dto';
 import {
+	BookChapterCursorItemDto,
+	BookChaptersCursorPageDto,
+} from '@books/application/dto/book-chapters-cursor-page.dto';
+import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
+import { QueueCoverProcessorDto } from '@books/application/dto/queue-cover-processor.dto';
+import {
+	IAuthorRepository,
+	I_AUTHOR_REPOSITORY,
+} from '@books/application/ports/author-repository.interface';
+import {
+	IBookRepository,
+	I_BOOK_REPOSITORY,
+} from '@books/application/ports/book-repository.interface';
+import {
+	IChapterRepository,
+	I_CHAPTER_REPOSITORY,
+} from '@books/application/ports/chapter-repository.interface';
+import {
+	IPageRepository,
+	I_PAGE_REPOSITORY,
+} from '@books/application/ports/page-repository.interface';
+import {
+	ISensitiveContentRepository,
+	I_SENSITIVE_CONTENT_REPOSITORY,
+} from '@books/application/ports/sensitive-content-repository.interface';
+import {
+	ITagRepository,
+	I_TAG_REPOSITORY,
+} from '@books/application/ports/tag-repository.interface';
+import { FilterStrategy } from '@books/application/strategies';
+import { Book } from '@books/domain/entities/book';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
+import { InjectQueue } from '@nestjs/bullmq';
+import {
+	ForbiddenException,
 	Inject,
 	Injectable,
-	Logger,
 	NotFoundException,
-	ForbiddenException,
 } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
 import { Job, Queue } from 'bullmq';
+import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
 import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
-import { MediaUrlService } from 'src/common/services/media-url.service';
-import {
-	BookChaptersCursorPageDto,
-	BookChapterCursorItemDto,
-} from '@books/application/dto/book-chapters-cursor-page.dto';
-import { BookChaptersCursorOptionsDto } from '@books/application/dto/book-chapters-cursor-options.dto';
-import { QueueCoverProcessorDto } from '@books/application/dto/queue-cover-processor.dto';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 import { MetadataPageDto } from 'src/common/pagination/metadata-page.dto';
 import { PageDto } from 'src/common/pagination/page.dto';
-import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
-import { Book } from '@books/domain/entities/book';
-import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
-import { SensitiveContentService } from './sensitive-content.service';
-import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
-import { FilterStrategy } from '@books/application/strategies';
+import { MediaUrlService } from 'src/common/services/media-url.service';
 import { AdminUsersService } from 'src/users/application/use-cases/admin-users.service';
-import {
-	I_BOOK_REPOSITORY,
-	IBookRepository,
-} from '@books/application/ports/book-repository.interface';
-import {
-	I_CHAPTER_REPOSITORY,
-	IChapterRepository,
-} from '@books/application/ports/chapter-repository.interface';
-import {
-	I_PAGE_REPOSITORY,
-	IPageRepository,
-} from '@books/application/ports/page-repository.interface';
-import {
-	I_TAG_REPOSITORY,
-	ITagRepository,
-} from '@books/application/ports/tag-repository.interface';
-import {
-	I_AUTHOR_REPOSITORY,
-	IAuthorRepository,
-} from '@books/application/ports/author-repository.interface';
-import {
-	I_SENSITIVE_CONTENT_REPOSITORY,
-	ISensitiveContentRepository,
-} from '@books/application/ports/sensitive-content-repository.interface';
+import { SensitiveContentService } from './sensitive-content.service';
 
 interface RawChapterItem {
 	// Campos da entidade
@@ -72,8 +71,6 @@ type BookListItem = Omit<Book, 'covers'> & {
 
 @Injectable()
 export class BookQueryService {
-	private readonly logger = new Logger(BookQueryService.name);
-
 	constructor(
 		@Inject(I_BOOK_REPOSITORY)
 		private readonly bookRepository: IBookRepository,
@@ -87,7 +84,7 @@ export class BookQueryService {
 		private readonly authorRepository: IAuthorRepository,
 		@Inject(I_SENSITIVE_CONTENT_REPOSITORY)
 		private readonly sensitiveContentRepository: ISensitiveContentRepository,
-		private readonly sensitiveContentService: SensitiveContentService,
+		readonly _sensitiveContentService: SensitiveContentService,
 		private readonly mediaUrlService: MediaUrlService,
 		@InjectQueue('book-update-queue')
 		private readonly bookUpdateQueue: Queue<{ bookId: string }>,
@@ -240,7 +237,7 @@ export class BookQueryService {
 				);
 				cursorIndex = Number(decoded);
 				if (Number.isNaN(cursorIndex)) cursorIndex = null;
-			} catch (e) {
+			} catch (_e) {
 				cursorIndex = null;
 			}
 		}
@@ -363,7 +360,7 @@ export class BookQueryService {
 	}
 
 	async getDashboardOverview() {
-		const [books, chapters, pages, tags, authors, sensitiveContent] =
+		const [books, chapters, pages, tags, _authors, _sensitiveContent] =
 			await Promise.all([
 				this.bookRepository.count(),
 				this.chapterRepository.count(),
@@ -395,13 +392,17 @@ export class BookQueryService {
 			]);
 
 			const jobsWithState = await Promise.all(
-				jobs.map(async (job) => ({
-					job,
-					state: await job.getState(),
-				})),
+				(jobs as Job<{ bookId?: string; chapterId?: string }>[]).map(
+					async (job) => ({
+						job,
+						state: await job.getState(),
+					}),
+				),
 			);
 
-			const mapJob = (j: { job: Job }) => ({
+			const mapJob = (j: {
+				job: Job<{ bookId?: string; chapterId?: string }>;
+			}) => ({
 				id: j.job.id,
 				bookId: j.job.data?.bookId || null,
 				chapterId: j.job.data?.chapterId || null,

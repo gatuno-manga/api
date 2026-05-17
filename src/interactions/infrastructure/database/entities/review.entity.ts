@@ -1,14 +1,14 @@
+import { Book } from '@books/infrastructure/database/entities/book.entity';
+import { User } from '@users/infrastructure/database/entities/user.entity';
 import {
-	Entity,
-	PrimaryColumn,
 	Column,
 	CreateDateColumn,
-	UpdateDateColumn,
-	ManyToOne,
+	Entity,
 	JoinColumn,
+	ManyToOne,
+	PrimaryColumn,
+	UpdateDateColumn,
 } from 'typeorm';
-import { User } from '@users/infrastructure/database/entities/user.entity';
-import { Book } from '@books/infrastructure/database/entities/book.entity';
 
 @Entity('reviews')
 export class ReviewEntity {

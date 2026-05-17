@@ -1,4 +1,13 @@
-import { v7 as uuidv7 } from 'uuid';
+import { CreateBookDto } from '@books/application/dto/create-book.dto';
+import {
+	IBookRepository,
+	I_BOOK_REPOSITORY,
+} from '@books/application/ports/book-repository.interface';
+import { BookEvents } from '@books/domain/constants/events.constant';
+import { Book } from '@books/domain/entities/book';
+import { Cover } from '@books/domain/entities/cover';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
+import { CoverImageService } from '@books/infrastructure/jobs/cover-image.service';
 import {
 	BadRequestException,
 	Inject,
@@ -9,22 +18,13 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ClientKafka } from '@nestjs/microservices';
 import { WebsiteService } from '@websites/application/services/website.service';
-import { BookEvents } from '@books/domain/constants/events.constant';
-import { CreateBookDto } from '@books/application/dto/create-book.dto';
-import { Book } from '@books/domain/entities/book';
-import { Cover } from '@books/domain/entities/cover';
-import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
-import { CoverImageService } from '@books/infrastructure/jobs/cover-image.service';
+import {
+	IUnitOfWork,
+	I_UNIT_OF_WORK,
+} from 'src/common/application/ports/unit-of-work.interface';
+import { v7 as uuidv7 } from 'uuid';
 import { BookRelationshipService } from './book-relationship.service';
 import { ChapterManagementService } from './chapter-management.service';
-import {
-	I_BOOK_REPOSITORY,
-	IBookRepository,
-} from '@books/application/ports/book-repository.interface';
-import {
-	I_UNIT_OF_WORK,
-	IUnitOfWork,
-} from 'src/common/application/ports/unit-of-work.interface';
 
 @Injectable()
 export class BookCreationService implements OnModuleInit {
@@ -105,7 +105,7 @@ export class BookCreationService implements OnModuleInit {
 				},
 				error: (err) => {
 					this.logger.error(
-						`Failed to emit new book request to Kafka: ${err.message}`,
+						`Failed to emit new book request to Kafka: ${err instanceof Error ? err.message : String(err)}`,
 					);
 				},
 			});
@@ -202,7 +202,7 @@ export class BookCreationService implements OnModuleInit {
 				const savedCovers = await coverRepo.saveAll(covers);
 				// Remove referência circular para evitar erros de serialização (JSON.stringify)
 				savedBook.covers = savedCovers.map((c) => {
-					const { book, ...coverData } = c;
+					const { book: _, ...coverData } = c;
 					return coverData as Cover;
 				});
 

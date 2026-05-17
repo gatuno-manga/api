@@ -1,3 +1,4 @@
+import { ChapterService } from '@books/application/services/chapter.service';
 import { CacheTTL } from '@nestjs/cache-manager';
 import {
 	Body,
@@ -12,12 +13,11 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
+import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
 import { OptionalAuthGuard } from 'src/auth/infrastructure/framework/optional-auth.guard';
 import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-cache.interceptor';
 import { AuthenticatedApi } from 'src/common/swagger/auth-api.decorators';
-import { ChapterService } from '@books/application/services/chapter.service';
 import {
 	ApiDocsGetChapter,
 	ApiDocsGetChaptersBatch,

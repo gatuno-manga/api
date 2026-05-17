@@ -1,3 +1,4 @@
+import { BookRelationType } from '@books/domain/enums/book-relation-type.enum';
 import {
 	Check,
 	Column,
@@ -11,7 +12,6 @@ import {
 	Relation,
 	UpdateDateColumn,
 } from 'typeorm';
-import { BookRelationType } from '@books/domain/enums/book-relation-type.enum';
 import { Book } from './book.entity';
 
 export type BookRelationshipMetadata = {

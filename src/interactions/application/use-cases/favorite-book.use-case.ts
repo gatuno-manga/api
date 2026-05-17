@@ -1,8 +1,8 @@
-import { Inject, Injectable } from '@nestjs/common';
 import { FavoriteRepository } from '@/interactions/application/ports/favorite-repository.port';
 import { Favorite } from '@/interactions/domain/entities/favorite';
-import { UserId } from '@common/domain/value-objects/user-id.vo';
 import { BookId } from '@common/domain/value-objects/book-id.vo';
+import { UserId } from '@common/domain/value-objects/user-id.vo';
+import { Inject, Injectable } from '@nestjs/common';
 
 @Injectable()
 export class FavoriteBookUseCase {

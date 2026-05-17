@@ -303,7 +303,7 @@ describe('UserBuilder', () => {
 				name: 'ADMIN',
 				maxWeightSensitiveContent: 10,
 			};
-			const userRole: Role = {
+			const _userRole: Role = {
 				id: '2',
 				name: 'USER',
 				maxWeightSensitiveContent: 0,

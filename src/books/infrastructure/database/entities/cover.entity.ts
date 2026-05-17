@@ -1,3 +1,5 @@
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
+import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
 import {
 	Column,
 	CreateDateColumn,
@@ -10,8 +12,6 @@ import {
 	UpdateDateColumn,
 } from 'typeorm';
 import { Book } from './book.entity';
-import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
-import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 
 @Entity('covers')
 export class Cover {
@@ -53,11 +53,7 @@ export class Cover {
 	})
 	retries: number;
 
-	@ManyToOne(
-		() => Book,
-		(book) => book.covers,
-		{ onDelete: 'CASCADE' },
-	)
+	@ManyToOne(() => Book, (book) => book.covers, { onDelete: 'CASCADE' })
 	book: Relation<Book>;
 
 	@CreateDateColumn()

@@ -13,7 +13,10 @@ export function minifyScrapingScript(
 
 	try {
 		// 1. Remove todos os comentários (single-line, multi-line, JSDoc)
-		const withoutComments = stripComments(script);
+		// Usamos cast aqui porque strip-comments pode não ter tipos definidos
+		const withoutComments = (stripComments as (s: string) => string)(
+			script,
+		);
 
 		// 2. Processamento de espaços e quebras
 		const minified = withoutComments
@@ -24,7 +27,7 @@ export function minifyScrapingScript(
 
 		// 3. Limpeza de espaços duplos
 		return minified.replace(/\s+/g, ' ').trim();
-	} catch (error) {
+	} catch (_error) {
 		// Fallback: se algo falhar, retorna o original
 		return script;
 	}

@@ -1,11 +1,11 @@
+import { ContentType } from '@books/domain/enums/content-type.enum';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Queue } from 'bullmq';
 import { Not, Repository } from 'typeorm';
-import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
-import { ContentType } from '@books/domain/enums/content-type.enum';
-import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 
 const QUEUE_NAME = 'chapter-scraping';
 const JOB_NAME = 'process-chapter';
@@ -53,14 +53,16 @@ export class ChapterScrapingService {
 			await this.chapterScrapingQueue.add(JOB_NAME, chapterId, { jobId });
 			this.logger.debug(`Adicionando job para o capítulo: ${chapterId}`);
 		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
 			// Job com mesmo ID já existe na fila
-			if (error.message?.includes('Job with this id already exists')) {
+			if (errorMessage.includes('Job with this id already exists')) {
 				this.logger.debug(
 					`Job para o capítulo ${chapterId} já está na fila.`,
 				);
 			} else {
 				this.logger.error(
-					`Erro ao adicionar job para capítulo ${chapterId}: ${error.message}`,
+					`Erro ao adicionar job para capítulo ${chapterId}: ${errorMessage}`,
 				);
 				throw error;
 			}

@@ -27,8 +27,10 @@ export class FixChapterService {
 				`Adicionando job de conserto para o capítulo: ${chapterId}`,
 			);
 		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
 			// Job com mesmo ID já existe na fila
-			if (error.message?.includes('Job with this id already exists')) {
+			if (errorMessage.includes('Job with this id already exists')) {
 				this.logger.debug(
 					`Job de conserto para o capítulo ${chapterId} já está na fila.`,
 				);

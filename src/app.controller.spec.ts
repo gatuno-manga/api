@@ -5,7 +5,7 @@ import { AppConfigService } from './infrastructure/app-config/app-config.service
 
 describe('AppController', () => {
 	let appController: AppController;
-	let configService: AppConfigService;
+	let _configService: AppConfigService;
 
 	beforeEach(async () => {
 		const app: TestingModule = await Test.createTestingModule({
@@ -27,7 +27,7 @@ describe('AppController', () => {
 		}).compile();
 
 		appController = app.get<AppController>(AppController);
-		configService = app.get<AppConfigService>(AppConfigService);
+		_configService = app.get<AppConfigService>(AppConfigService);
 	});
 
 	describe('root', () => {

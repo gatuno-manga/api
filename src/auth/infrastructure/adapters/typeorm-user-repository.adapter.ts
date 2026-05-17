@@ -1,14 +1,14 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from 'src/users/infrastructure/database/entities/user.entity';
-import { Role } from 'src/users/infrastructure/database/entities/role.entity';
 import {
-	UserRepositoryPort,
 	UserAuthData,
+	UserRepositoryPort,
 	UserSaveInput,
 } from '@auth/application/ports/user-repository.port';
 import { EmailVO } from '@auth/domain/value-objects/email.vo';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Role } from 'src/users/infrastructure/database/entities/role.entity';
+import { User } from 'src/users/infrastructure/database/entities/user.entity';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class TypeOrmUserRepositoryAdapter implements UserRepositoryPort {

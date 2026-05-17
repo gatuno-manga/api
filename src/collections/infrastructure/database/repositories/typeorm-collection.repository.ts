@@ -1,14 +1,14 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
 import { CollectionRepository } from '@/collections/application/ports/collection-repository.port';
 import { Collection } from '@/collections/domain/entities/collection';
 import { CollectionId } from '@/collections/domain/value-objects/collection-id.vo';
-import { UserId } from '@common/domain/value-objects/user-id.vo';
 import { CollectionEntity } from '@/collections/infrastructure/database/entities/collection.entity';
 import { CollectionMapper } from '@/collections/infrastructure/mappers/collection.mapper';
-import { User } from '@users/infrastructure/database/entities/user.entity';
 import { Book } from '@books/infrastructure/database/entities/book.entity';
+import { UserId } from '@common/domain/value-objects/user-id.vo';
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { User } from '@users/infrastructure/database/entities/user.entity';
+import { In, Repository } from 'typeorm';
 
 @Injectable()
 export class TypeOrmCollectionRepository implements CollectionRepository {
@@ -72,7 +72,7 @@ export class TypeOrmCollectionRepository implements CollectionRepository {
 			where: { ownerId: ownerId.toString() },
 			relations: ['collaborators', 'books'],
 		});
-		return entities.map(CollectionMapper.toDomain);
+		return entities.map((entity) => CollectionMapper.toDomain(entity));
 	}
 
 	async findSharedWith(userId: UserId): Promise<Collection[]> {
@@ -82,7 +82,7 @@ export class TypeOrmCollectionRepository implements CollectionRepository {
 			.leftJoinAndSelect('collection.books', 'book')
 			.where('collaborator.id = :userId', { userId: userId.toString() })
 			.getMany();
-		return entities.map(CollectionMapper.toDomain);
+		return entities.map((entity) => CollectionMapper.toDomain(entity));
 	}
 
 	async delete(id: CollectionId): Promise<void> {

@@ -1,8 +1,8 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from '@/app.module';
-import { DataSource } from 'typeorm';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { AppModule } from '@/app.module';
+import { NestFactory } from '@nestjs/core';
+import { DataSource } from 'typeorm';
 
 async function migrate() {
 	const app = await NestFactory.createApplicationContext(AppModule);
@@ -95,7 +95,7 @@ async function migrate() {
 						fs.rmdirSync(shardPath);
 						console.log(`   - Removida pasta vazia: ${entry}`);
 					}
-				} catch (e) {}
+				} catch (_e) {}
 			}
 		}
 	}

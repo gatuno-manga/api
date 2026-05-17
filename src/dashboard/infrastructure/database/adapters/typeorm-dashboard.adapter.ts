@@ -1,21 +1,21 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
+import {
+	DashboardFilterDto,
+	SensitiveContentFilter,
+} from '@/dashboard/application/dto/dashboard-filter.dto';
+import {
+	DashboardRepositoryPort,
+	DashboardStats,
+} from '@/dashboard/application/ports/dashboard-repository.port';
 import { Author } from '@books/infrastructure/database/entities/author.entity';
 import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { Page } from '@books/infrastructure/database/entities/page.entity';
 import { SensitiveContent } from '@books/infrastructure/database/entities/sensitive-content.entity';
 import { Tag } from '@books/infrastructure/database/entities/tags.entity';
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '@users/infrastructure/database/entities/user.entity';
-import {
-	DashboardRepositoryPort,
-	DashboardStats,
-} from '@/dashboard/application/ports/dashboard-repository.port';
-import {
-	DashboardFilterDto,
-	SensitiveContentFilter,
-} from '@/dashboard/application/dto/dashboard-filter.dto';
+import { ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
 
 interface RawStatusCount {
 	status: string | null;
@@ -170,20 +170,20 @@ export class TypeOrmDashboardAdapter implements DashboardRepositoryPort {
 			status: {
 				books: booksByStatus.map((item) => ({
 					status: item.status || 'UNKNOWN',
-					count: Number.parseInt(item.count),
+					count: Number.parseInt(item.count, 10),
 				})),
 				chapters: chaptersByStatus.map((item) => ({
 					status: item.status || 'UNKNOWN',
-					count: Number.parseInt(item.count),
+					count: Number.parseInt(item.count, 10),
 				})),
 			},
 			sensitiveContent: sensitiveContentDistribution.map((item) => ({
 				name: item.name,
-				count: Number.parseInt(item.count),
+				count: Number.parseInt(item.count, 10),
 			})),
 			tags: tagsDistribution.map((item) => ({
 				name: item.name,
-				count: Number.parseInt(item.count),
+				count: Number.parseInt(item.count, 10),
 			})),
 		};
 	}

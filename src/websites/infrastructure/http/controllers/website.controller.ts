@@ -10,20 +10,20 @@ import {
 	UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Throttle } from '@nestjs/throttler';
-import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
-import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
-import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 import { RegisterWebSiteDto } from '@websites/application/dto/register-website.dto';
 import { UpdateWebsiteDto } from '@websites/application/dto/update-website.dto';
 import { WebsiteService } from '@websites/application/services/website.service';
+import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
+import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
+import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
+import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 import {
-	ApiDocsRegisterWebsite,
 	ApiDocsFindAll,
 	ApiDocsFindOne,
-	ApiDocsUpdate,
+	ApiDocsRegisterWebsite,
 	ApiDocsRemove,
+	ApiDocsUpdate,
 } from './swagger/website.swagger';
 
 @ApiTags('Website Scraping')

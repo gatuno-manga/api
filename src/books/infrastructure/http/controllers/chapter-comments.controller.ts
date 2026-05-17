@@ -1,3 +1,7 @@
+import { ChapterCommentsPageOptionsDto } from '@books/application/dto/chapter-comments-page-options.dto';
+import { CreateChapterCommentDto } from '@books/application/dto/create-chapter-comment.dto';
+import { UpdateChapterCommentDto } from '@books/application/dto/update-chapter-comment.dto';
+import { ChapterCommentsService } from '@books/application/services/chapter-comments.service';
 import {
 	Body,
 	Controller,
@@ -12,20 +16,16 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
+import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
 import { OptionalAuthGuard } from 'src/auth/infrastructure/framework/optional-auth.guard';
 import { AuthenticatedApi } from 'src/common/swagger/auth-api.decorators';
-import { ChapterCommentsService } from '@books/application/services/chapter-comments.service';
-import { CreateChapterCommentDto } from '@books/application/dto/create-chapter-comment.dto';
-import { ChapterCommentsPageOptionsDto } from '@books/application/dto/chapter-comments-page-options.dto';
-import { UpdateChapterCommentDto } from '@books/application/dto/update-chapter-comment.dto';
 import {
-	ApiDocsListChapterComments,
 	ApiDocsCreateComment,
 	ApiDocsCreateReply,
-	ApiDocsUpdateComment,
 	ApiDocsDeleteComment,
+	ApiDocsListChapterComments,
+	ApiDocsUpdateComment,
 } from './swagger/chapter-comments.swagger';
 
 @ApiTags('Chapter Comments')

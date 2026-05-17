@@ -1,3 +1,4 @@
+import { NormalizeUrl } from '@common/decorators/normalize-url.decorator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -8,7 +9,6 @@ import {
 	IsUrl,
 	MaxLength,
 } from 'class-validator';
-import { NormalizeUrl } from '@common/decorators/normalize-url.decorator';
 
 export class CreateChapterDto {
 	@ApiPropertyOptional({

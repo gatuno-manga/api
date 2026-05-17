@@ -40,6 +40,6 @@ export class Visibility {
 	}
 
 	public equals(other: Visibility): boolean {
-		return this.value === other.toString();
+		return this.value === other.value;
 	}
 }

@@ -1,14 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Queue } from 'bullmq';
-import { InjectQueue } from '@nestjs/bullmq';
-import { FilesService } from '@files/application/services/files.service';
-import { StorageBucket } from '@common/enum/storage-bucket.enum';
-import { IsNull, Repository } from 'typeorm';
+import { createHash } from 'node:crypto';
 import { QueueCoverProcessorDto } from '@books/application/dto/queue-cover-processor.dto';
 import { UrlImageDto } from '@books/application/dto/url-image.dto';
 import { Cover } from '@books/infrastructure/database/entities/cover.entity';
-import { createHash } from 'node:crypto';
+import { StorageBucket } from '@common/enum/storage-bucket.enum';
+import { FilesService } from '@files/application/services/files.service';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Injectable, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Queue } from 'bullmq';
+import { IsNull, Repository } from 'typeorm';
 
 const QUEUE_NAME = 'cover-image-queue';
 const JOB_NAME = 'process-cover';
@@ -46,7 +46,9 @@ export class CoverImageService {
 				`Adicionando job de capa (batch) para o livro: ${bookId}`,
 			);
 		} catch (error) {
-			if (error.message?.includes('Job with this id already exists')) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+			if (errorMessage.includes('Job with this id already exists')) {
 				this.logger.debug(
 					`Job de capa para o livro ${bookId} já está na fila.`,
 				);
@@ -94,7 +96,7 @@ export class CoverImageService {
 			);
 		} catch (error) {
 			this.logger.error(
-				`Erro ao adicionar job para capa ${coverId}: ${error.message}`,
+				`Erro ao adicionar job para capa ${coverId}: ${error instanceof Error ? error.message : String(error)}`,
 			);
 			throw error;
 		}
@@ -141,7 +143,7 @@ export class CoverImageService {
 					await this.coverRepository.update(cover.id, {
 						imageHash: hash,
 					});
-				} catch (error) {
+				} catch (_error) {
 					// Ignora erros individuais
 				}
 			}

@@ -1,17 +1,17 @@
-import { Injectable, Optional } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import {
-	Repository,
-	FindOptionsWhere,
-	DeepPartial,
-	In,
-	FindOptionsOrder,
-	EntityManager,
-} from 'typeorm';
 import { ICoverRepository } from '@books/application/ports/cover-repository.interface';
 import { Cover as DomainCover } from '@books/domain/entities/cover';
 import { Cover as InfrastructureCover } from '@books/infrastructure/database/entities/cover.entity';
+import { Injectable, Optional } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { ImageMetadata } from '@src/common/domain/value-objects/image-metadata.vo';
+import {
+	DeepPartial,
+	EntityManager,
+	FindOptionsOrder,
+	FindOptionsWhere,
+	In,
+	Repository,
+} from 'typeorm';
 
 @Injectable()
 export class TypeOrmCoverRepositoryAdapter implements ICoverRepository {

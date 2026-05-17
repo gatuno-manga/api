@@ -1,13 +1,13 @@
+import { Book as DomainBook } from '@books/domain/entities/book';
+import { Book as InfrastructureBook } from '@books/infrastructure/database/entities/book.entity';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TypeOrmBookRepositoryAdapter } from './typeorm-book-repository.adapter';
-import { Book as InfrastructureBook } from '@books/infrastructure/database/entities/book.entity';
-import { Book as DomainBook } from '@books/domain/entities/book';
 
 describe('TypeOrmBookRepositoryAdapter', () => {
 	let adapter: TypeOrmBookRepositoryAdapter;
-	let repository: jest.Mocked<Repository<InfrastructureBook>>;
+	let _repository: jest.Mocked<Repository<InfrastructureBook>>;
 
 	const mockQueryBuilder = {
 		leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -54,7 +54,7 @@ describe('TypeOrmBookRepositoryAdapter', () => {
 		adapter = module.get<TypeOrmBookRepositoryAdapter>(
 			TypeOrmBookRepositoryAdapter,
 		);
-		repository = module.get(getRepositoryToken(InfrastructureBook));
+		_repository = module.get(getRepositoryToken(InfrastructureBook));
 	});
 
 	afterEach(() => {

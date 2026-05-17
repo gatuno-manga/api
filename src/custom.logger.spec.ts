@@ -53,8 +53,10 @@ describe('CustomLogger', () => {
 	});
 
 	it('should respect context-specific rules', () => {
-		(customLogger as any).engine = new LoggerRuleEngine('context=Auth;level=debug/context=*;level=info');
-		
+		(customLogger as any).engine = new LoggerRuleEngine(
+			'context=Auth;level=debug/context=*;level=info',
+		);
+
 		customLogger.setContext('Auth');
 		customLogger.debug('auth debug');
 		expect(pinoLogger.debug).toHaveBeenCalled();

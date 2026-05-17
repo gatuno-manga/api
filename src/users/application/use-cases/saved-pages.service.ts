@@ -4,14 +4,14 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Book } from 'src/books/infrastructure/database/entities/book.entity';
 import { UserResourcesMapper } from '@users/application/mappers/user-resources.mapper';
+import { SavedPage } from '@users/infrastructure/database/entities/saved-page.entity';
+import { CreateSavedPageDto } from '@users/infrastructure/http/dto/create-saved-page.dto';
+import { UpdateSavedPageDto } from '@users/infrastructure/http/dto/update-saved-page.dto';
+import { Book } from 'src/books/infrastructure/database/entities/book.entity';
 import { Chapter } from 'src/books/infrastructure/database/entities/chapter.entity';
 import { Page } from 'src/books/infrastructure/database/entities/page.entity';
 import { Repository } from 'typeorm';
-import { CreateSavedPageDto } from '@users/infrastructure/http/dto/create-saved-page.dto';
-import { UpdateSavedPageDto } from '@users/infrastructure/http/dto/update-saved-page.dto';
-import { SavedPage } from '@users/infrastructure/database/entities/saved-page.entity';
 
 @Injectable()
 export class SavedPagesService {
@@ -21,9 +21,8 @@ export class SavedPagesService {
 		@InjectRepository(Page)
 		private readonly pageRepository: Repository<Page>,
 		@InjectRepository(Chapter)
-		private readonly chapterRepository: Repository<Chapter>,
-		@InjectRepository(Book)
-		private readonly bookRepository: Repository<Book>,
+		readonly _chapterRepository: Repository<Chapter>,
+		@InjectRepository(Book) readonly _bookRepository: Repository<Book>,
 		private readonly userResourcesMapper: UserResourcesMapper,
 	) {}
 

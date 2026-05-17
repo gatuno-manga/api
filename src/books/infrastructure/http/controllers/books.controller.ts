@@ -1,3 +1,8 @@
+import { BookChaptersCursorOptionsDto } from '@books/application/dto/book-chapters-cursor-options.dto';
+import { BookChaptersCursorPageDto } from '@books/application/dto/book-chapters-cursor-page.dto';
+import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
+import { BookRelationshipsQueryDto } from '@books/application/dto/book-relationships-query.dto';
+import { BooksService } from '@books/application/services/books.service';
 import { CacheTTL } from '@nestjs/cache-manager';
 import {
 	Controller,
@@ -9,15 +14,10 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
+import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
 import { OptionalAuthGuard } from 'src/auth/infrastructure/framework/optional-auth.guard';
 import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-cache.interceptor';
-import { BooksService } from '@books/application/services/books.service';
-import { BookChaptersCursorPageDto } from '@books/application/dto/book-chapters-cursor-page.dto';
-import { BookChaptersCursorOptionsDto } from '@books/application/dto/book-chapters-cursor-options.dto';
-import { BookRelationshipsQueryDto } from '@books/application/dto/book-relationships-query.dto';
-import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
 import {
 	ApiDocsCheckBookTitle,
 	ApiDocsGetAllBooks,

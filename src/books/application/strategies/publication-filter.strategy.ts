@@ -1,6 +1,7 @@
-import { SelectQueryBuilder } from 'typeorm';
 import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
 import { Book } from '@books/infrastructure/database/entities/book.entity';
+import { FilterOperator } from 'src/common/enum/filter-operator.enum';
+import { SelectQueryBuilder } from 'typeorm';
 import { FilterStrategy } from './filter-strategy.interface';
 
 export class PublicationFilterStrategy implements FilterStrategy {
@@ -12,31 +13,31 @@ export class PublicationFilterStrategy implements FilterStrategy {
 		queryBuilder: SelectQueryBuilder<Book>,
 		options: BookPageOptionsDto,
 	): void {
-		const operator = options.publicationOperator || 'eq';
+		const operator = options.publicationOperator || FilterOperator.EQ;
 		const publication = options.publication ?? 0;
 
 		switch (operator) {
-			case 'eq':
+			case FilterOperator.EQ:
 				queryBuilder.andWhere('book.publication = :publication', {
 					publication,
 				});
 				break;
-			case 'gt':
+			case FilterOperator.GT:
 				queryBuilder.andWhere('book.publication > :publication', {
 					publication,
 				});
 				break;
-			case 'lt':
+			case FilterOperator.LT:
 				queryBuilder.andWhere('book.publication < :publication', {
 					publication,
 				});
 				break;
-			case 'gte':
+			case FilterOperator.GTE:
 				queryBuilder.andWhere('book.publication >= :publication', {
 					publication,
 				});
 				break;
-			case 'lte':
+			case FilterOperator.LTE:
 				queryBuilder.andWhere('book.publication <= :publication', {
 					publication,
 				});

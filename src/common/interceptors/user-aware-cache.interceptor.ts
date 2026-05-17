@@ -1,6 +1,7 @@
 import { CACHE_KEY_METADATA, CacheInterceptor } from '@nestjs/cache-manager';
 import { ExecutionContext, Injectable } from '@nestjs/common';
 import { GqlExecutionContext } from '@nestjs/graphql';
+import { GraphQLResolveInfo } from 'graphql';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 
 interface RequestWithUser {
@@ -18,7 +19,7 @@ export class UserAwareCacheInterceptor extends CacheInterceptor {
 	 * @returns Chave de cache única por recurso e contexto do usuário, ou undefined se cache estiver desabilitado
 	 */
 	trackBy(context: ExecutionContext): string | undefined {
-		const contextType = context.getType() as string;
+		const contextType = context.getType().toString();
 
 		if (contextType === 'graphql') {
 			return this.trackGraphQL(context);
@@ -40,11 +41,10 @@ export class UserAwareCacheInterceptor extends CacheInterceptor {
 
 	private trackGraphQL(context: ExecutionContext): string | undefined {
 		const gqlContext = GqlExecutionContext.create(context);
-		const info = gqlContext.getInfo();
-		const args = gqlContext.getArgs();
-		const user = gqlContext.getContext().req?.user as
-			| CurrentUserDto
-			| undefined;
+		const info = gqlContext.getInfo<GraphQLResolveInfo>();
+		const args = gqlContext.getArgs<Record<string, unknown>>();
+		const ctx = gqlContext.getContext<{ req?: RequestWithUser }>();
+		const user = ctx?.req?.user as CurrentUserDto | undefined;
 
 		const operationName = info.fieldName;
 		const argsKey = JSON.stringify(args);

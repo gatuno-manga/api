@@ -1,10 +1,10 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere } from 'typeorm';
 import { IBookRelationshipRepository } from '@books/application/ports/book-relationship-repository.interface';
 import { BookRelationship as DomainBookRelationship } from '@books/domain/entities/book-relationship';
-import { BookRelationship as InfrastructureBookRelationship } from '@books/infrastructure/database/entities/book-relationship.entity';
 import { BookRelationshipCriteria } from '@books/domain/types/criteria.types';
+import { BookRelationship as InfrastructureBookRelationship } from '@books/infrastructure/database/entities/book-relationship.entity';
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { FindOptionsWhere, Repository } from 'typeorm';
 
 @Injectable()
 export class TypeOrmBookRelationshipRepositoryAdapter

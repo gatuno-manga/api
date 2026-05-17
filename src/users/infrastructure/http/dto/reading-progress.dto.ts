@@ -1,13 +1,13 @@
 import { Type } from 'class-transformer';
 import {
+	ArrayMaxSize,
+	ArrayMinSize,
 	IsArray,
 	IsBoolean,
 	IsDate,
 	IsInt,
 	IsOptional,
 	IsUUID,
-	ArrayMaxSize,
-	ArrayMinSize,
 	Min,
 	ValidateNested,
 } from 'class-validator';

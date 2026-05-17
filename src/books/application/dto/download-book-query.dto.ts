@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { Transform } from 'class-transformer';
+import { IsArray, IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { BookDownloadFormat } from './download-book-body.dto';
 
 export class DownloadBookQueryDto {
@@ -12,11 +12,11 @@ export class DownloadBookQueryDto {
 	@IsOptional()
 	@IsArray()
 	@IsUUID('all', { each: true })
-	@Transform(({ value }) => {
+	@Transform(({ value }: { value: unknown }) => {
 		if (typeof value === 'string') {
 			return value.split(',');
 		}
-		return value;
+		return value as string[];
 	})
 	chapterIds?: string[];
 

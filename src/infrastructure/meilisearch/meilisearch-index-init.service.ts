@@ -26,9 +26,9 @@ export class MeilisearchIndexInitService implements OnApplicationBootstrap {
 				this.setupUsersIndex(),
 			]);
 			this.logger.log('✅ Meilisearch indexes initialized successfully');
-		} catch (error) {
+		} catch (error: unknown) {
 			this.logger.error(
-				`❌ Error initializing Meilisearch indexes: ${error.message}`,
+				`❌ Error initializing Meilisearch indexes: ${error instanceof Error ? error.message : String(error)}`,
 			);
 		}
 	}

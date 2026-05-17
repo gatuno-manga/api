@@ -1,8 +1,8 @@
 import { scrypt as _scrypt, randomBytes } from 'node:crypto';
 import { promisify } from 'node:util';
+import { PasswordHasher } from '@encryption/interfaces/password-hasher.interface';
 import { Injectable } from '@nestjs/common';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
-import { PasswordHasher } from '@encryption/interfaces/password-hasher.interface';
 
 const scrypt = promisify(_scrypt);
 
@@ -38,7 +38,7 @@ export class ScryptStrategy implements PasswordHasher {
 			)) as Buffer;
 
 			return hashBuffer.toString('hex') === storedHash;
-		} catch (error) {
+		} catch (_error) {
 			return false;
 		}
 	}

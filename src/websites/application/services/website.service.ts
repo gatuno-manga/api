@@ -1,14 +1,14 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
-import { lastValueFrom } from 'rxjs';
 import { RegisterWebSiteDto } from '@websites/application/dto/register-website.dto';
 import { UpdateWebsiteDto } from '@websites/application/dto/update-website.dto';
-import { Website } from '@websites/domain/entities/website';
-import { minifyScrapingScript } from '@websites/application/utils/script-minifier.util';
 import {
-	I_WEBSITE_REPOSITORY,
 	IWebsiteRepository,
+	I_WEBSITE_REPOSITORY,
 } from '@websites/application/ports/website-repository.interface';
+import { minifyScrapingScript } from '@websites/application/utils/script-minifier.util';
+import { Website } from '@websites/domain/entities/website';
+import { lastValueFrom } from 'rxjs';
 
 @Injectable()
 export class WebsiteService {
@@ -31,7 +31,7 @@ export class WebsiteService {
 			useFlareSolverr,
 		};
 
-		const result = await lastValueFrom(
+		const result = await lastValueFrom<Record<string, unknown>>(
 			this.scraperClient.send('scraping.test', payload),
 		);
 
@@ -43,7 +43,7 @@ export class WebsiteService {
 	}
 
 	private validateScriptResult(
-		result: unknown,
+		result: Record<string, unknown> | unknown[],
 		context: 'NEW_BOOK' | 'UPDATE_BOOK' | 'PAGES',
 	) {
 		const errors: string[] = [];
@@ -56,9 +56,8 @@ export class WebsiteService {
 			};
 		}
 
-		const data = result as Record<string, unknown>;
-
 		if (context === 'NEW_BOOK') {
+			const data = result as Record<string, unknown>;
 			if (!data.title || typeof data.title !== 'string')
 				errors.push('Título (string) é obrigatório');
 			if (!Array.isArray(data.chapters))
@@ -66,6 +65,7 @@ export class WebsiteService {
 			if (!Array.isArray(data.covers))
 				errors.push('Lista de capas (array) é obrigatória');
 		} else if (context === 'UPDATE_BOOK') {
+			const data = result as Record<string, unknown>;
 			if (!Array.isArray(data.chapters))
 				errors.push('Lista de capítulos (array) é obrigatória');
 		} else if (context === 'PAGES') {

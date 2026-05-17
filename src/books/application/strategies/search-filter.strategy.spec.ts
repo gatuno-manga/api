@@ -1,8 +1,8 @@
-import { SelectQueryBuilder } from 'typeorm';
-import { SearchFilterStrategy } from './search-filter.strategy';
 import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
 import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { Meilisearch } from 'meilisearch';
+import { SelectQueryBuilder } from 'typeorm';
+import { SearchFilterStrategy } from './search-filter.strategy';
 
 describe('SearchFilterStrategy', () => {
 	let strategy: SearchFilterStrategy;

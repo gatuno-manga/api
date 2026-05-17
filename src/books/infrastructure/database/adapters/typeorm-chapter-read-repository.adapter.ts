@@ -1,10 +1,10 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, DeepPartial } from 'typeorm';
 import { IChapterReadRepository } from '@books/application/ports/chapter-read-repository.interface';
 import { ChapterRead as DomainChapterRead } from '@books/domain/entities/chapter-read';
-import { ChapterRead as InfrastructureChapterRead } from '@books/infrastructure/database/entities/chapter-read.entity';
 import { ChapterReadCriteria } from '@books/domain/types/criteria.types';
+import { ChapterRead as InfrastructureChapterRead } from '@books/infrastructure/database/entities/chapter-read.entity';
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DeepPartial, FindOptionsWhere, Repository } from 'typeorm';
 
 @Injectable()
 export class TypeOrmChapterReadRepositoryAdapter

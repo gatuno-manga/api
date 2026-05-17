@@ -1,4 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { CreateSavedPageDto } from '@users/infrastructure/http/dto/create-saved-page.dto';
+import { SaveReadingProgressDto } from '@users/infrastructure/http/dto/reading-progress.dto';
 import { Type } from 'class-transformer';
 import {
 	IsArray,
@@ -9,8 +11,6 @@ import {
 	IsString,
 	ValidateNested,
 } from 'class-validator';
-import { CreateSavedPageDto } from '@users/infrastructure/http/dto/create-saved-page.dto';
-import { SaveReadingProgressDto } from '@users/infrastructure/http/dto/reading-progress.dto';
 
 export class SyncCommentDto {
 	@ApiProperty({ description: 'ID do capítulo' })

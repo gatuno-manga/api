@@ -1,4 +1,7 @@
+import { REDIS_CLIENT } from '@/infrastructure/redis/redis.constants';
+import { AppConfigService } from '@app-config/app-config.service';
 import { Controller, Get, Inject } from '@nestjs/common';
+import { Transport } from '@nestjs/microservices';
 import { ApiTags } from '@nestjs/swagger';
 import {
 	DiskHealthIndicator,
@@ -10,9 +13,6 @@ import {
 	TypeOrmHealthIndicator,
 } from '@nestjs/terminus';
 import { Redis } from 'ioredis';
-import { Transport } from '@nestjs/microservices';
-import { REDIS_CLIENT } from '@/infrastructure/redis/redis.constants';
-import { AppConfigService } from '@app-config/app-config.service';
 import {
 	ApiDocsCheck,
 	ApiDocsLiveness,
@@ -47,8 +47,13 @@ export class HealthController {
 					return {
 						redis: { status: status === 'PONG' ? 'up' : 'down' },
 					};
-				} catch (e) {
-					return { redis: { status: 'down', message: e.message } };
+				} catch (e: unknown) {
+					return {
+						redis: {
+							status: 'down',
+							message: e instanceof Error ? e.message : String(e),
+						},
+					};
 				}
 			},
 			// Kafka Check

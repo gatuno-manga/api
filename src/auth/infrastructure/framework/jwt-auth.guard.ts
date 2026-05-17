@@ -10,10 +10,6 @@ import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
 import { ROLES_KEY } from './roles.decorator';
 
-interface JwtPayload {
-	roles?: string[];
-}
-
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
 	private readonly logger = new Logger(JwtAuthGuard.name);
@@ -48,7 +44,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 			throw new UnauthorizedException('No token provided');
 		}
 
-		const payload = this.jwtService.verify(token);
+		const payload = this.jwtService.verify<{ roles?: string[] }>(token);
 
 		const userRoles: string[] = payload.roles || [];
 

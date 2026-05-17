@@ -34,7 +34,7 @@ export function configureSwagger(app: INestApplication) {
 		.build();
 
 	const document = SwaggerModule.createDocument(app, config, {
-		operationIdFactory: (controllerKey: string, methodKey: string) =>
+		operationIdFactory: (_controllerKey: string, methodKey: string) =>
 			methodKey,
 	});
 

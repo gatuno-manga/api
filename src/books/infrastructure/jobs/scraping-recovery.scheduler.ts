@@ -1,18 +1,18 @@
+import { BookEvents } from '@books/domain/constants/events.constant';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
+import { Cover } from '@books/infrastructure/database/entities/cover.entity';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CronJob } from 'cron';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { LessThan, Repository } from 'typeorm';
-import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
-import { Cover } from '@books/infrastructure/database/entities/cover.entity';
-import { Book } from '@books/infrastructure/database/entities/book.entity';
-import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
+import { BookUpdateJobService } from './book-update.service';
 import { ChapterScrapingService } from './chapter-scraping.service';
 import { CoverImageService } from './cover-image.service';
-import { BookUpdateJobService } from './book-update.service';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { BookEvents } from '@books/domain/constants/events.constant';
 
 const CRON_JOB_NAME = 'scraping-recovery-cron';
 
@@ -51,7 +51,11 @@ export class ScrapingRecoveryScheduler implements OnModuleInit {
 		);
 
 		const job = new CronJob(cronExpression, () => {
-			this.handleRecovery();
+			this.handleRecovery().catch((error) => {
+				this.logger.error(
+					`Scraping recovery job failed: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			});
 		});
 
 		this.schedulerRegistry.addCronJob(CRON_JOB_NAME, job);

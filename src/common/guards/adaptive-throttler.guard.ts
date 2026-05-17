@@ -1,12 +1,13 @@
 import { ExecutionContext, Injectable, Logger } from '@nestjs/common';
 import { GqlExecutionContext } from '@nestjs/graphql';
 import { ThrottlerGuard, ThrottlerRequest } from '@nestjs/throttler';
+import { Request, Response } from 'express';
 
 @Injectable()
 export class AdaptiveThrottlerGuard extends ThrottlerGuard {
 	private readonly adaptiveLogger = new Logger(AdaptiveThrottlerGuard.name);
 
-	protected async handleRequest(
+	protected override async handleRequest(
 		requestProps: ThrottlerRequest,
 	): Promise<boolean> {
 		const { context } = requestProps;
@@ -14,8 +15,17 @@ export class AdaptiveThrottlerGuard extends ThrottlerGuard {
 
 		// Verifica se há indícios de autenticação (JWT Header ou Refresh Cookie)
 		// Isso permite uma margem maior para usuários logados
-		const hasAuthHeader = !!req.headers?.authorization;
-		const hasAuthCookie = !!req.cookies?.refreshToken;
+		const headers = (req?.headers || {}) as Record<
+			string,
+			string | undefined
+		>;
+		const cookies = (req?.cookies || {}) as Record<
+			string,
+			string | undefined
+		>;
+
+		const hasAuthHeader = !!headers.authorization;
+		const hasAuthCookie = !!cookies.refreshToken;
 		const isAuth = hasAuthHeader || hasAuthCookie;
 
 		if (isAuth) {
@@ -26,18 +36,19 @@ export class AdaptiveThrottlerGuard extends ThrottlerGuard {
 		return super.handleRequest(requestProps);
 	}
 
-	private getRequest(context: ExecutionContext) {
+	private getRequest(context: ExecutionContext): Request {
 		if (context.getType().toString() === 'graphql') {
 			const gqlCtx = GqlExecutionContext.create(context);
-			return gqlCtx.getContext().req;
+			const ctx = gqlCtx.getContext<{ req: Request }>();
+			return ctx.req;
 		}
-		return context.switchToHttp().getRequest();
+		return context.switchToHttp().getRequest<Request>();
 	}
 
-	getRequestResponse(context: ExecutionContext) {
+	override getRequestResponse(context: ExecutionContext) {
 		if (context.getType().toString() === 'graphql') {
 			const gqlCtx = GqlExecutionContext.create(context);
-			const ctx = gqlCtx.getContext();
+			const ctx = gqlCtx.getContext<{ req: Request; res: Response }>();
 			return {
 				req: ctx.req,
 				res: ctx.res,
@@ -45,12 +56,12 @@ export class AdaptiveThrottlerGuard extends ThrottlerGuard {
 		}
 
 		const http = context.switchToHttp();
-		const req = http.getRequest();
-		const res = http.getResponse();
+		const req = http.getRequest<Request>();
+		const res = http.getResponse<Response>();
 
 		return {
-			req: req || { headers: {}, ip: '127.0.0.1' },
-			res: res || { header: () => {} },
+			req: req || ({ headers: {}, ip: '127.0.0.1' } as Partial<Request>),
+			res: res || ({ header: () => {} } as Partial<Response>),
 		};
 	}
 }

@@ -1,7 +1,7 @@
 import { ChapterComment } from '@books/domain/entities/chapter-comment';
 import {
-	ViewerContext,
 	PaginationOptions,
+	ViewerContext,
 } from '@books/domain/types/criteria.types';
 
 export interface IChapterCommentRepository {

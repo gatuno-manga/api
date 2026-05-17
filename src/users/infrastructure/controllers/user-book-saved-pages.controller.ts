@@ -7,12 +7,12 @@ import {
 	UseInterceptors,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
-import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
+import { SavedPagesService } from '@users/application/use-cases/saved-pages.service';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
+import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { DataEnvelopeInterceptor } from 'src/common/interceptors/data-envelope.interceptor';
-import { SavedPagesService } from '@users/application/use-cases/saved-pages.service';
+import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { ApiDocsGetSavedPagesByBook } from './swagger/user-book-saved-pages.swagger';
 
 @ApiTags('Saved Pages')

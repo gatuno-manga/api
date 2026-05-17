@@ -1,5 +1,5 @@
-import { LoggerRuleEngine } from './logger-rule-engine';
 import { LogLevel } from '@common/types/logging.types';
+import { LoggerRuleEngine } from './logger-rule-engine';
 
 describe('LoggerRuleEngine', () => {
 	describe('Simple Rule Parsing', () => {
@@ -26,8 +26,10 @@ describe('LoggerRuleEngine', () => {
 
 	describe('Complex Rule Parsing', () => {
 		it('should support context-specific rules', () => {
-			const engine = new LoggerRuleEngine('context=AuthService;level=debug/context=*;level=info');
-			
+			const engine = new LoggerRuleEngine(
+				'context=AuthService;level=debug/context=*;level=info',
+			);
+
 			// AuthService context
 			expect(engine.shouldLog('debug', 'AuthService')).toBe(true);
 			expect(engine.shouldLog('trace', 'AuthService')).toBe(false);
@@ -38,8 +40,10 @@ describe('LoggerRuleEngine', () => {
 		});
 
 		it('should support multiple contexts in one rule', () => {
-			const engine = new LoggerRuleEngine('context=AuthService,UsersModule;level=trace/context=*;level=error');
-			
+			const engine = new LoggerRuleEngine(
+				'context=AuthService,UsersModule;level=trace/context=*;level=error',
+			);
+
 			expect(engine.shouldLog('trace', 'AuthService')).toBe(true);
 			expect(engine.shouldLog('trace', 'UsersModule')).toBe(true);
 			expect(engine.shouldLog('warn', 'Other')).toBe(false);
@@ -71,11 +75,11 @@ describe('LoggerRuleEngine', () => {
 		it('should apply sampling only to level info and below', () => {
 			// Sampling rate 0 ensures info/debug/trace are dropped
 			const engine = new LoggerRuleEngine('trace', 0);
-			
+
 			expect(engine.shouldLog('trace')).toBe(false);
 			expect(engine.shouldLog('debug')).toBe(false);
 			expect(engine.shouldLog('info')).toBe(false);
-			
+
 			// warn/error should NEVER be sampled
 			expect(engine.shouldLog('warn')).toBe(true);
 			expect(engine.shouldLog('error')).toBe(true);

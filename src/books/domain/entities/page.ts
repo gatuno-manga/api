@@ -1,5 +1,5 @@
-import { Chapter } from './chapter';
 import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
+import { Chapter } from './chapter';
 
 export class Page {
 	id: number;

@@ -1,22 +1,22 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import {
-	Repository,
-	FindOptionsWhere,
-	DeepPartial,
-	EntityManager,
-} from 'typeorm';
-import { IBookRepository } from '@books/application/ports/book-repository.interface';
-import { Book as DomainBook } from '@books/domain/entities/book';
-import { Book as InfrastructureBook } from '@books/infrastructure/database/entities/book.entity';
 import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
+import { IBookRepository } from '@books/application/ports/book-repository.interface';
 import { FilterStrategy } from '@books/application/strategies/filter-strategy.interface';
-import { OrderDirection } from 'src/common/enum/order-direction.enum';
+import { Book as DomainBook } from '@books/domain/entities/book';
 import { BookOrderField } from '@books/domain/enums/book-order-field.enum';
 import {
-	BookCriteria,
 	AccessContext,
+	BookCriteria,
 } from '@books/domain/types/criteria.types';
+import { Book as InfrastructureBook } from '@books/infrastructure/database/entities/book.entity';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { OrderDirection } from 'src/common/enum/order-direction.enum';
+import {
+	DeepPartial,
+	EntityManager,
+	FindOptionsWhere,
+	Repository,
+} from 'typeorm';
 
 @Injectable()
 export class TypeOrmBookRepositoryAdapter implements IBookRepository {
@@ -243,8 +243,8 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 			return [books as unknown as DomainBook[], total];
 		} catch (error) {
 			this.logger.error(
-				`Error in findWithFilters: ${error.message}`,
-				error.stack,
+				`Error in findWithFilters: ${error instanceof Error ? error.message : String(error)}`,
+				error instanceof Error ? error.stack : undefined,
 			);
 			return [[], 0];
 		}
@@ -352,8 +352,8 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 			return (await queryBuilder.getOne()) as unknown as DomainBook;
 		} catch (error) {
 			this.logger.error(
-				`Error in findRandom: ${error.message}`,
-				error.stack,
+				`Error in findRandom: ${error instanceof Error ? error.message : String(error)}`,
+				error instanceof Error ? error.stack : undefined,
 			);
 			return null;
 		}

@@ -22,10 +22,7 @@ export class UserGroup {
 	@Column({ default: 4 })
 	defaultMaxWeightSensitiveContent: number;
 
-	@ManyToMany(
-		() => User,
-		(user) => user.groups,
-	)
+	@ManyToMany(() => User, (user) => user.groups)
 	members: User[];
 
 	@CreateDateColumn()

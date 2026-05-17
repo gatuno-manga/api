@@ -1,17 +1,17 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { BookResolver } from './book.resolver';
-import { CoverResolver, PageResolver } from './media.resolver';
-import { BooksService } from '@books/application/services/books.service';
-import { ChapterService } from '@books/application/services/chapter.service';
-import { ChapterCommentsService } from '@books/application/services/chapter-comments.service';
 import { AuthorsService } from '@books/application/services/authors.service';
-import { TagsService } from '@books/application/services/tags.service';
 import { BookDataLoaderService } from '@books/application/services/book-dataloader.service';
-import { MediaUrlService } from 'src/common/services/media-url.service';
+import { BooksService } from '@books/application/services/books.service';
+import { ChapterCommentsService } from '@books/application/services/chapter-comments.service';
+import { ChapterService } from '@books/application/services/chapter.service';
+import { TagsService } from '@books/application/services/tags.service';
 import { StorageBucket } from '@common/enum/storage-bucket.enum';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Test, TestingModule } from '@nestjs/testing';
+import { MediaUrlService } from 'src/common/services/media-url.service';
 import { CoverModel } from '../models/book.model';
 import { PageModel } from '../models/page.model';
+import { BookResolver } from './book.resolver';
+import { CoverResolver, PageResolver } from './media.resolver';
 
 describe('Media Resolvers', () => {
 	let coverResolver: CoverResolver;

@@ -12,23 +12,23 @@ import {
 	Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
-import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
-import { AdminApi } from 'src/common/swagger/auth-api.decorators';
+import { AdminUsersService } from '@users/application/use-cases/admin-users.service';
+import { AdminChangePasswordDto } from '@users/infrastructure/http/dto/admin-change-password.dto';
 import { AdminUpdateUserDto } from '@users/infrastructure/http/dto/admin-update-user.dto';
 import { SetUserModerationDto } from '@users/infrastructure/http/dto/set-user-moderation.dto';
 import { UpdateUserRolesDto } from '@users/infrastructure/http/dto/update-user-roles.dto';
-import { AdminChangePasswordDto } from '@users/infrastructure/http/dto/admin-change-password.dto';
-import { AdminUsersService } from '@users/application/use-cases/admin-users.service';
+import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
+import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
+import { AdminApi } from 'src/common/swagger/auth-api.decorators';
 import {
-	ApiDocsSearch,
-	ApiDocsListUsers,
+	ApiDocsChangePassword,
+	ApiDocsDeleteUser,
 	ApiDocsGetUserById,
+	ApiDocsListUsers,
+	ApiDocsSearch,
+	ApiDocsSetModeration,
 	ApiDocsUpdateUser,
 	ApiDocsUpdateUserRoles,
-	ApiDocsChangePassword,
-	ApiDocsSetModeration,
-	ApiDocsDeleteUser,
 } from './swagger/admin-users.swagger';
 
 @ApiTags('Admin Users')

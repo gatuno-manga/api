@@ -4,6 +4,13 @@ import {
 	ChapterQueryOptions,
 } from '@books/domain/types/criteria.types';
 
+export interface ChapterNavigation {
+	chapter: Chapter;
+	previousId?: string;
+	nextId?: string;
+	totalChapters: number;
+}
+
 export interface IChapterRepository {
 	findById(
 		id: string,
@@ -31,9 +38,9 @@ export interface IChapterRepository {
 		bookId: string,
 		options: ChapterQueryOptions,
 		userId?: string,
-	): Promise<unknown[]>;
-	findChaptersWithError(bookId: string): Promise<unknown[]>;
-	findWithNavigation(id: string): Promise<unknown>;
+	): Promise<Record<string, unknown>[]>;
+	findChaptersWithError(bookId: string): Promise<Chapter[]>;
+	findWithNavigation(id: string): Promise<ChapterNavigation | null>;
 	create(data: Partial<Chapter>): Chapter;
 	merge(chapter: Chapter, data: Partial<Chapter>): Chapter;
 	createQueryBuilder(alias: string): unknown;

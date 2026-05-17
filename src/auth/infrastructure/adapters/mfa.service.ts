@@ -1,24 +1,24 @@
 import {
-	BadRequestException,
-	Inject,
-	Injectable,
-	UnauthorizedException,
-} from '@nestjs/common';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
-import {
 	createCipheriv,
 	createDecipheriv,
 	createHash,
 	randomBytes,
 } from 'node:crypto';
-import { authenticator } from 'otplib';
+import { UserMfa } from '@auth/infrastructure/database/entities/user-mfa.entity';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import {
+	BadRequestException,
+	Inject,
+	Injectable,
+	UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Cache } from 'cache-manager';
+import { authenticator } from 'otplib';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { PasswordEncryption } from 'src/infrastructure/encryption/password-encryption.provider';
 import { User } from 'src/users/infrastructure/database/entities/user.entity';
-import { UserMfa } from '@auth/infrastructure/database/entities/user-mfa.entity';
+import { Repository } from 'typeorm';
 
 interface MfaStatusResult {
 	totpEnabled: boolean;
@@ -159,10 +159,10 @@ export class MfaService {
 		};
 	}
 
-	private async generateBackupCodes(): Promise<{
+	private generateBackupCodes(): {
 		plainCodes: string[];
 		hashedCodes: string[];
-	}> {
+	} {
 		const plainCodes = Array.from({ length: 8 }, () => {
 			const bytes = randomBytes(10).toString('hex').toUpperCase();
 			return `${bytes.slice(0, 5)}-${bytes.slice(5, 10)}`;
@@ -208,7 +208,7 @@ export class MfaService {
 
 		await this.checkAndLockTotp(userId, code);
 
-		const { plainCodes, hashedCodes } = await this.generateBackupCodes();
+		const { plainCodes, hashedCodes } = this.generateBackupCodes();
 		config.isTotpEnabled = true;
 		config.backupCodesHash = hashedCodes;
 		config.backupCodesUsed = 0;

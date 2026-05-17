@@ -9,16 +9,16 @@ import {
 	Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
-import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
-import { AdminApi } from 'src/common/swagger/auth-api.decorators';
 import { AdminUsersService } from '@users/application/use-cases/admin-users.service';
 import { CreateAccessPolicyDto } from '@users/infrastructure/http/dto/create-access-policy.dto';
 import { ListAccessPoliciesQueryDto } from '@users/infrastructure/http/dto/list-access-policies-query.dto';
+import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
+import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
+import { AdminApi } from 'src/common/swagger/auth-api.decorators';
 import {
-	ApiDocsListPolicies,
 	ApiDocsCreatePolicy,
 	ApiDocsDeletePolicy,
+	ApiDocsListPolicies,
 } from './swagger/admin-access-policies.swagger';
 
 @ApiTags('Admin Access Policies')

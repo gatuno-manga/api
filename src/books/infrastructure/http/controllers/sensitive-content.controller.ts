@@ -1,3 +1,6 @@
+import { CreateSensitiveContentDto } from '@books/application/dto/create-sensitive-content.dto';
+import { UpdateSensitiveContentDto } from '@books/application/dto/update-sensitive-content.dto';
+import { SensitiveContentService } from '@books/application/services/sensitive-content.service';
 import { CacheTTL } from '@nestjs/cache-manager';
 import {
 	Body,
@@ -12,23 +15,20 @@ import {
 	UseInterceptors,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Throttle } from '@nestjs/throttler';
-import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
+import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { OptionalAuthGuard } from 'src/auth/infrastructure/framework/optional-auth.guard';
 import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-cache.interceptor';
-import { CreateSensitiveContentDto } from '@books/application/dto/create-sensitive-content.dto';
-import { UpdateSensitiveContentDto } from '@books/application/dto/update-sensitive-content.dto';
-import { SensitiveContentService } from '@books/application/services/sensitive-content.service';
+import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import {
+	ApiDocsCreate,
 	ApiDocsGetAll,
 	ApiDocsGetOne,
-	ApiDocsCreate,
-	ApiDocsUpdate,
-	ApiDocsRemove,
 	ApiDocsMergeSensitiveContent,
+	ApiDocsRemove,
+	ApiDocsUpdate,
 } from './swagger/sensitive-content.swagger';
 
 @ApiTags('Sensitive Content')

@@ -1,9 +1,9 @@
+import { IAuthorRepository } from 'src/books/application/ports/author-repository.interface';
 import { IBookRepository } from 'src/books/application/ports/book-repository.interface';
 import { IChapterRepository } from 'src/books/application/ports/chapter-repository.interface';
 import { ICoverRepository } from 'src/books/application/ports/cover-repository.interface';
-import { IAuthorRepository } from 'src/books/application/ports/author-repository.interface';
-import { ITagRepository } from 'src/books/application/ports/tag-repository.interface';
 import { ISensitiveContentRepository } from 'src/books/application/ports/sensitive-content-repository.interface';
+import { ITagRepository } from 'src/books/application/ports/tag-repository.interface';
 
 export interface IUnitOfWork {
 	/**

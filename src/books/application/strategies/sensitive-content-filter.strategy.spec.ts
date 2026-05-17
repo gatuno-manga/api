@@ -1,7 +1,7 @@
-import { Brackets, SelectQueryBuilder } from 'typeorm';
-import { SensitiveContentFilterStrategy } from './sensitive-content-filter.strategy';
 import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
 import { Book } from '@books/infrastructure/database/entities/book.entity';
+import { Brackets, SelectQueryBuilder } from 'typeorm';
+import { SensitiveContentFilterStrategy } from './sensitive-content-filter.strategy';
 
 describe('SensitiveContentFilterStrategy', () => {
 	let strategy: SensitiveContentFilterStrategy;

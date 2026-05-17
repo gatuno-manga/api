@@ -1,18 +1,23 @@
+import { BookEvents } from '@books/domain/constants/events.constant';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { Page } from '@books/infrastructure/database/entities/page.entity';
+import { RedisService } from '@infrastructure/redis/redis.service';
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ClientKafka } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { RedisService } from '@/infrastructure/redis/redis.service';
-import { ClientKafka } from '@nestjs/microservices';
-import { WebsiteService } from '@websites/application/services/website.service';
-import { v7 as uuidv7 } from 'uuid';
 
 type ChapterPageInput =
 	| string
 	| { originalUrl?: string; original_url?: string; path: string };
+
+interface OptimizedPageData {
+	path?: string;
+	originalPath: string;
+	metadata?: Record<string, unknown>;
+}
 
 /**
  * Serviço compartilhado para processamento de scraping de capítulos.
@@ -29,9 +34,8 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 		private readonly chapterRepository: Repository<Chapter>,
 		@Inject('SCRAPER_SERVICE')
 		private readonly scraperClient: ClientKafka,
-		private readonly websiteService: WebsiteService,
-		private readonly eventEmitter: EventEmitter2,
 		private readonly redisService: RedisService,
+		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	async onModuleInit() {
@@ -42,101 +46,50 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 	 * Processa o scraping de páginas de um capítulo (direto).
 	 * @deprecated Use requestScrapingViaGo para o novo fluxo com microserviço Go
 	 */
-	async processChapterPages(
+	processChapterPages(
 		chapter: Chapter,
-		minPages?: number,
+		_minPages?: number,
 	): Promise<boolean> {
 		this.logger.warn(
 			`Processamento direto de capítulos está desativado. Use o microserviço Go. Capítulo: ${chapter.id}`,
 		);
-		return false;
+		return Promise.resolve(false);
 	}
 
 	/**
 	 * Dispara a solicitação de scraping para o microserviço em Go via Kafka.
 	 */
-	async requestScrapingViaGo(chapter: Chapter): Promise<boolean> {
-		this.logger.log(
-			`Disparando scraping via Go para capítulo: ${chapter.id}`,
-		);
-
+	async requestScrapingViaGo(
+		chapter: Chapter,
+		useFlareSolverr = false,
+	): Promise<boolean> {
 		try {
-			// Adicionar um lock para evitar disparos duplicados
-			const redis = this.redisService.getClient();
-			const lockKey = `lock:scraping:chapter:${chapter.id}`;
-			const isLocked = await redis.set(lockKey, 'true', 'EX', 600, 'NX');
-
-			if (!isLocked) {
-				this.logger.warn(
-					`Scraping já está em andamento para o capítulo ${chapter.id}`,
-				);
-				return true;
-			}
-
 			const book = chapter.book;
-			if (!book) {
-				throw new Error(
-					`Capítulo ${chapter.id} não possui livro associado`,
-				);
-			}
 
-			const host = new URL(chapter.originalUrl).hostname;
-			const websiteConfig = await this.websiteService.getByUrl(host);
+			this.emitStartedEvent(chapter);
 
-			if (!websiteConfig) {
-				throw new Error(
-					`Não há configuração de scraping para o site: ${host}`,
-				);
-			}
-
-			const jobId = uuidv7();
 			const payload = {
-				jobId,
 				chapterId: chapter.id,
-				bookId: book.id,
+				bookId: book?.id,
 				targetUrl: chapter.originalUrl,
-				websiteConfig: {
-					name: host,
-					cloudflareBypass: websiteConfig.useFlareSolverr,
-					preScript: websiteConfig.preScript,
-					posScript: websiteConfig.posScript,
-					useNetworkInterception:
-						websiteConfig.useNetworkInterception,
-					useScreenshotMode: websiteConfig.useScreenshotMode,
-					cookies: websiteConfig.cookies,
-					localStorage: websiteConfig.localStorage,
-					sessionStorage: websiteConfig.sessionStorage,
-					reloadAfterStorageInjection:
-						websiteConfig.reloadAfterStorageInjection,
-					enableAdaptiveTimeouts:
-						websiteConfig.enableAdaptiveTimeouts,
-					timeoutMultipliers: websiteConfig.timeoutMultipliers,
-					proxyUrl: websiteConfig.proxyUrl,
-					blacklistTerms: websiteConfig.blacklistTerms,
-					whitelistTerms: websiteConfig.whitelistTerms,
-					selectors: {
-						chapterTitle: 'h1', // Default, não temos no DB ainda
-						chapterImages: websiteConfig.selector,
-					},
-					headers: {
-						Referer: host,
-					},
-				},
+				useFlareSolverr,
 				uploadTarget: {
-					bucket: 'processing',
-					pathPrefix: `chapters/${book.id}/${chapter.id}`,
+					bucket: 'books',
+					pathPrefix: `processing/${chapter.id}`,
 				},
 			};
 
 			this.scraperClient.emit('scraping.chapter.requested', payload);
-
 			this.logger.debug(
-				`Solicitação de scraping enviada com sucesso para o capítulo ${chapter.id}`,
+				`Solicitação de scraping enviada para o microserviço Go: Capítulo ${chapter.id}`,
 			);
+
 			return true;
-		} catch (error) {
+		} catch (error: unknown) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
 			this.logger.error(
-				`Falha ao disparar scraping do capítulo ${chapter.id}: ${error.message}`,
+				`Falha ao disparar scraping do capítulo ${chapter.id}: ${errorMessage}`,
 			);
 
 			const lockKey = `lock:scraping:chapter:${chapter.id}`;
@@ -145,7 +98,7 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 			chapter.scrapingStatus = ScrapingStatus.ERROR;
 			await this.chapterRepository.save(chapter);
 
-			this.emitFailedEvent(chapter, error.message);
+			this.emitFailedEvent(chapter, errorMessage);
 			return false;
 		}
 	}
@@ -154,112 +107,83 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 	 * Emite evento de início do scraping
 	 */
 	emitStartedEvent(chapter: Chapter): void {
-		this.eventEmitter.emit('chapter.scraping.started', {
+		this.eventEmitter.emit(BookEvents.SCRAPING_STARTED, {
 			chapterId: chapter.id,
 			bookId: chapter.book?.id,
 		});
 	}
 
 	/**
-	 * Salva páginas extraídas de um capítulo (URLs externas temporárias).
+	 * Emite evento de falha no scraping
 	 */
-	async saveExtractedPages(
-		chapter: Chapter,
-		externalUrls: ChapterPageInput[],
-	): Promise<void> {
-		if (!externalUrls || !Array.isArray(externalUrls)) {
-			this.logger.error(
-				`Nenhuma URL externa recebida para o capítulo ${chapter.id}`,
-			);
-			return;
-		}
-
-		this.logger.debug(
-			`Fast-Track: Salvando ${externalUrls.length} URLs externas para o capítulo ${chapter.id}`,
-		);
-
-		// Remove páginas antigas se houver
-		await this.pageRepository.delete({ chapter: { id: chapter.id } });
-
-		let index = 1;
-		const newPages = externalUrls.map((item) => {
-			// Se for objeto { originalUrl, path }, prefere originalUrl para o fast-track (exibição imediata)
-			let path =
-				typeof item === 'string'
-					? item
-					: item.originalUrl || item.original_url || item.path;
-
-			// Salvaguarda: Se o path for local (não http) e não tiver o prefixo de processamento, adiciona-o.
-			path = this.ensureProcessingPrefix(path);
-
-			return this.pageRepository.create({
-				path: path,
-				index: index++,
-				chapter: chapter,
-			});
+	emitFailedEvent(chapter: Chapter, error: string): void {
+		this.eventEmitter.emit(BookEvents.SCRAPING_FAILED, {
+			chapterId: chapter.id,
+			bookId: chapter.book?.id,
+			error,
 		});
-
-		await this.pageRepository.save(newPages);
-
-		chapter.scrapingStatus = ScrapingStatus.READY;
-		await this.chapterRepository.save(chapter);
-
-		this.eventEmitter.emit('chapters.updated', chapter);
-		this.logger.log(
-			`Fast-Track: Capítulo ${chapter.id} liberado para leitura com URLs externas.`,
-		);
-	}
-
-	private ensureProcessingPrefix(path: string): string {
-		if (
-			path &&
-			!path.startsWith('http') &&
-			!path.startsWith('processing/')
-		) {
-			return `processing/${path}`;
-		}
-		return path;
 	}
 
 	/**
-	 * Finaliza o scraping de um capítulo, convertendo caminhos externos em internos.
+	 * Método legado mantido para compatibilidade.
+	 * @deprecated Use finalizeChapterScraping
+	 */
+	async saveExtractedPages(
+		chapter: Chapter,
+		images: ChapterPageInput[],
+	): Promise<void> {
+		return this.finalizeChapterScraping(chapter.id, images);
+	}
+
+	/**
+	 * Finaliza o scraping, atualizando as páginas no banco de dados.
+	 * Suporta atualização otimizada (sem deletar tudo) se o número de páginas for igual.
 	 */
 	async finalizeChapterScraping(
-		chapter: Chapter,
+		chapterId: string,
 		pagesPaths: ChapterPageInput[],
 	): Promise<void> {
-		if (!pagesPaths || !Array.isArray(pagesPaths)) {
+		const chapter = await this.chapterRepository.findOne({
+			where: { id: chapterId },
+			relations: ['book'],
+		});
+
+		if (!chapter) {
 			this.logger.error(
-				`Nenhum caminho de página recebido para o capítulo ${chapter.id}`,
+				`Capítulo ${chapterId} não encontrado para finalização.`,
 			);
 			return;
 		}
 
-		const startTime = Date.now();
-		const redis = this.redisService.getClient();
-
-		// Busca páginas existentes para atualizar
+		// Buscar páginas existentes
 		const existingPages = await this.pageRepository.find({
 			where: { chapter: { id: chapter.id } },
 			order: { index: 'ASC' },
 		});
 
+		const redis = this.redisService.getClient();
+
+		// Mapeia os caminhos otimizados se existirem no Redis
 		const optimizedData = await Promise.all(
 			pagesPaths.map(async (item) => {
-				let path = typeof item === 'string' ? item : item.path;
-				path = this.ensureProcessingPrefix(path);
+				const path = typeof item === 'string' ? item : item.path;
 
 				const cacheKey = `pending_optimization:${path}`;
 				const cached = await redis.get(cacheKey);
 				if (cached) {
 					try {
-						const data = JSON.parse(cached);
-						return { originalPath: path, ...data };
-					} catch (e) {
-						return { originalPath: path };
+						const data = JSON.parse(
+							cached,
+						) as Partial<OptimizedPageData>;
+						return {
+							originalPath: path,
+							...data,
+						} as OptimizedPageData;
+					} catch (_e) {
+						return { originalPath: path } as OptimizedPageData;
 					}
 				}
-				return { originalPath: path };
+				return { originalPath: path } as OptimizedPageData;
 			}),
 		);
 
@@ -269,9 +193,9 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 				`Finalizando capítulo ${chapter.id}: Atualizando ${existingPages.length} páginas existentes.`,
 			);
 			for (let i = 0; i < existingPages.length; i++) {
-				existingPages[i].path =
-					optimizedData[i].path || optimizedData[i].originalPath;
-				existingPages[i].metadata = optimizedData[i].metadata || null;
+				const data = optimizedData[i];
+				existingPages[i].path = data.path || data.originalPath;
+				existingPages[i].metadata = data.metadata || null;
 			}
 			await this.pageRepository.save(existingPages);
 		} else {
@@ -303,29 +227,17 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 		});
 		await Promise.all(cleanPromises).catch(() => {});
 
-		this.eventEmitter.emit('chapter.scraping.completed', {
+		this.eventEmitter.emit(BookEvents.SCRAPING_COMPLETED, {
 			chapterId: chapter.id,
 			bookId: chapter.book?.id,
 			pagesCount: pagesPaths.length,
 		});
-
-		this.eventEmitter.emit('chapters.updated', chapter);
-
-		this.logger.log(
-			`Capítulo ${chapter.id} finalizado com ${pagesPaths.length} páginas em ${(Date.now() - startTime) / 1000}s`,
-		);
 	}
 
-	/**
-	 * Emite evento de falha no scraping
-	 */
-	emitFailedEvent(chapter: Chapter, error: string): void {
-		this.eventEmitter.emit('chapter.scraping.failed', {
-			chapterId: chapter.id,
-			bookId: chapter.book?.id,
-			error,
-		});
-
-		this.eventEmitter.emit('chapters.updated', chapter);
+	private ensureProcessingPrefix(path: string): string {
+		if (!path.startsWith('http') && !path.startsWith('processing/')) {
+			return `processing/${path}`;
+		}
+		return path;
 	}
 }

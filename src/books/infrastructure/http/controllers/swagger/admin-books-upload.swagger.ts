@@ -1,14 +1,14 @@
-import { MULTIPART_SCHEMAS } from 'src/common/swagger/multipart-schemas';
-import { COMMON_RESPONSES } from 'src/common/swagger/common-responses';
 import { UploadTextContentDto } from '@books/application/dto/upload-text-content.dto';
 import { applyDecorators } from '@nestjs/common';
 import {
-	ApiOperation,
-	ApiConsumes,
-	ApiParam,
 	ApiBody,
+	ApiConsumes,
+	ApiOperation,
+	ApiParam,
 	ApiResponse,
 } from '@nestjs/swagger';
+import { COMMON_RESPONSES } from 'src/common/swagger/common-responses';
+import { MULTIPART_SCHEMAS } from 'src/common/swagger/multipart-schemas';
 
 export function ApiDocsReplaceCoverImage() {
 	return applyDecorators(

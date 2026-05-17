@@ -1,3 +1,4 @@
+import { GetPublicCollectionsUseCase } from '@/collections/application/use-cases/get-public-collections.use-case';
 import {
 	Controller,
 	Get,
@@ -6,13 +7,12 @@ import {
 	UseInterceptors,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { DataEnvelopeInterceptor } from 'src/common/interceptors/data-envelope.interceptor';
-import { GetPublicCollectionsUseCase } from '@/collections/application/use-cases/get-public-collections.use-case';
 import { SavedPagesService } from '@users/application/use-cases/saved-pages.service';
 import { UsersService } from '@users/application/use-cases/users.service';
+import { DataEnvelopeInterceptor } from 'src/common/interceptors/data-envelope.interceptor';
 import {
-	ApiDocsGetPublicProfile,
 	ApiDocsGetPublicCollections,
+	ApiDocsGetPublicProfile,
 	ApiDocsGetPublicSavedPages,
 	ApiDocsGetPublicSavedPagesByBook,
 } from './swagger/user-public-resources.swagger';

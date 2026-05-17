@@ -5,18 +5,18 @@ import {
 	NotFoundException,
 	OnApplicationBootstrap,
 } from '@nestjs/common';
-import { FilesService } from 'src/files/application/services/files.service';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
-import { getImageDimensions } from 'src/common/utils/image.utils';
-import { UpdateUserDto } from '@users/infrastructure/http/dto/update-user.dto';
-import { Role } from '@users/infrastructure/database/entities/role.entity';
-import { User } from '@users/infrastructure/database/entities/user.entity';
-import { UserImage } from '@users/infrastructure/database/entities/user-image.entity';
-import { RolesEnum } from '@users/domain/enums/roles.enum';
 import { UserResourcesMapper } from '@users/application/mappers/user-resources.mapper';
-import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
+import { RolesEnum } from '@users/domain/enums/roles.enum';
+import { Role } from '@users/infrastructure/database/entities/role.entity';
+import { UserImage } from '@users/infrastructure/database/entities/user-image.entity';
+import { User } from '@users/infrastructure/database/entities/user.entity';
+import { UpdateUserDto } from '@users/infrastructure/http/dto/update-user.dto';
 import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
+import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
+import { getImageDimensions } from 'src/common/utils/image.utils';
+import { FilesService } from 'src/files/application/services/files.service';
+import { DataSource, Repository } from 'typeorm';
 
 @Injectable()
 export class UsersService implements OnApplicationBootstrap {
@@ -34,8 +34,8 @@ export class UsersService implements OnApplicationBootstrap {
 		@InjectRepository(Role)
 		private readonly roleRepository: Repository<Role>,
 		@InjectRepository(UserImage)
-		private readonly userImageRepository: Repository<UserImage>,
-		private readonly dataSource: DataSource,
+		readonly _userImageRepository: Repository<UserImage>,
+		readonly _dataSource: DataSource,
 		private readonly filesService: FilesService,
 		private readonly userResourcesMapper: UserResourcesMapper,
 	) {}
@@ -69,14 +69,20 @@ export class UsersService implements OnApplicationBootstrap {
 					);
 				}
 			} catch (error) {
-				if (error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
+				const dbError = error as {
+					code?: string;
+					errno?: number;
+					message?: string;
+					stack?: string;
+				};
+				if (dbError.code === 'ER_DUP_ENTRY' || dbError.errno === 1062) {
 					this.logger.warn(
 						`Role '${role.name}' already exists (handled race condition)`,
 					);
 				} else {
 					this.logger.error(
-						`Error creating role '${role.name}': ${error.message}`,
-						error.stack,
+						`Error creating role '${role.name}': ${dbError.message || String(error)}`,
+						dbError.stack,
 					);
 					throw error;
 				}

@@ -1,10 +1,10 @@
+import { StorageBucket } from '@common/enum/storage-bucket.enum';
+import { ImageUpdateStrategy } from '@files/application/strategies/image-update/image-update.strategy';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
 	HandleImageProcessingCompletedUseCase,
 	IMAGE_UPDATE_STRATEGIES,
 } from './handle-image-processing-completed.use-case';
-import { StorageBucket } from '@common/enum/storage-bucket.enum';
-import { ImageUpdateStrategy } from '@files/application/strategies/image-update/image-update.strategy';
 
 describe('HandleImageProcessingCompletedUseCase', () => {
 	let useCase: HandleImageProcessingCompletedUseCase;

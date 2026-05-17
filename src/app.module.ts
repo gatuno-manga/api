@@ -3,7 +3,6 @@ import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { BullModule } from '@nestjs/bullmq';
 import { Module, OnApplicationBootstrap } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
-import { SystemEvents } from './common/domain/constants/events.constant';
 import {
 	EventEmitter2,
 	EventEmitterModule,
@@ -12,30 +11,32 @@ import {
 import { GraphQLModule } from '@nestjs/graphql';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { AdaptiveThrottlerGuard } from './common/guards/adaptive-throttler.guard';
-import { AppConfigModule } from './infrastructure/app-config/app-config.module';
-import { AppConfigService } from './infrastructure/app-config/app-config.service';
+import { Request, Response } from 'express';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { BookRequestsModule } from './book-requests/book-requests.module';
 import { BooksModule } from './books/books.module';
+import { CollectionsModule } from './collections/collections.module';
 import { CommonModule } from './common/common.module';
+import { SystemEvents } from './common/domain/constants/events.constant';
+import { AdaptiveThrottlerGuard } from './common/guards/adaptive-throttler.guard';
 import { EtagInterceptor } from './common/interceptors/etag.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
 import { DashboardModule } from './dashboard/dashboard.module';
-import { DatabaseModule } from './infrastructure/database/database.module';
-import { MeilisearchModule } from './infrastructure/meilisearch/meilisearch.module';
 import { FilesModule } from './files/files.module';
+import { AppConfigModule } from './infrastructure/app-config/app-config.module';
+import { AppConfigService } from './infrastructure/app-config/app-config.service';
+import { DatabaseModule } from './infrastructure/database/database.module';
 import { HealthModule } from './infrastructure/health/health.module';
 import { LoggingModule } from './infrastructure/logging/logging.module';
+import { MeilisearchModule } from './infrastructure/meilisearch/meilisearch.module';
 import { MqttModule } from './infrastructure/mqtt/mqtt.module';
+import { InteractionsModule } from './interactions/interactions.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { SyncModule } from './sync/sync.module';
 import { UsersModule } from './users/users.module';
-import { CollectionsModule } from './collections/collections.module';
-import { InteractionsModule } from './interactions/interactions.module';
 import { WebsitesModule } from './websites/websites.module';
 
 @Module({
@@ -66,7 +67,10 @@ import { WebsitesModule } from './websites/websites.module';
 				sortSchema: true,
 				playground: configService.nodeEnv !== 'production',
 				useGlobalPrefix: true,
-				context: ({ req, res }) => ({ req, res }),
+				context: ({ req, res }: { req: Request; res: Response }) => ({
+					req,
+					res,
+				}),
 			}),
 		}),
 		ThrottlerModule.forRoot([

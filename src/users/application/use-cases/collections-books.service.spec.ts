@@ -1,17 +1,17 @@
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { CollectionsBooksService } from './collections-books.service';
 import { CollectionBook } from '@users/infrastructure/database/entities/collection-book.entity';
-import { Book } from 'src/books/infrastructure/database/entities/book.entity';
 import { User } from '@users/infrastructure/database/entities/user.entity';
+import { Book } from 'src/books/infrastructure/database/entities/book.entity';
+import { Repository } from 'typeorm';
+import { CollectionsBooksService } from './collections-books.service';
 
 describe('CollectionsBooksService', () => {
 	let service: CollectionsBooksService;
-	let collectionRepo: jest.Mocked<Repository<CollectionBook>>;
-	let bookRepo: jest.Mocked<Repository<Book>>;
-	let userRepo: jest.Mocked<Repository<User>>;
+	let _collectionRepo: jest.Mocked<Repository<CollectionBook>>;
+	let _bookRepo: jest.Mocked<Repository<Book>>;
+	let _userRepo: jest.Mocked<Repository<User>>;
 
 	const mockCollectionRepo = {
 		findOne: jest.fn(),
@@ -49,9 +49,9 @@ describe('CollectionsBooksService', () => {
 		}).compile();
 
 		service = module.get<CollectionsBooksService>(CollectionsBooksService);
-		collectionRepo = module.get(getRepositoryToken(CollectionBook));
-		bookRepo = module.get(getRepositoryToken(Book));
-		userRepo = module.get(getRepositoryToken(User));
+		_collectionRepo = module.get(getRepositoryToken(CollectionBook));
+		_bookRepo = module.get(getRepositoryToken(Book));
+		_userRepo = module.get(getRepositoryToken(User));
 	});
 
 	afterEach(() => {

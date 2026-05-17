@@ -1,16 +1,16 @@
+import { StoragePort } from '@files/application/ports/storage.port';
 import {
 	Controller,
 	Get,
+	Logger,
+	NotFoundException,
 	Param,
 	Res,
-	NotFoundException,
-	Logger,
 } from '@nestjs/common';
-import { Response } from 'express';
-import { StoragePort } from '@files/application/ports/storage.port';
 import { Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
+import { Response } from 'express';
 
 @Controller('data')
 export class FilesController {
@@ -26,7 +26,7 @@ export class FilesController {
 	 */
 	@Get(':bucket/:shard/:filename')
 	@Throttle({ short: { limit: 100, ttl: 1000 } })
-	async getFileWithBucket(
+	getFileWithBucket(
 		@Param('bucket') bucket: string,
 		@Param('shard') shard: string,
 		@Param('filename') filename: string,
@@ -40,7 +40,7 @@ export class FilesController {
 	 */
 	@Get(':shard/:filename')
 	@Throttle({ short: { limit: 100, ttl: 1000 } })
-	async getFileLegacy(
+	getFileLegacy(
 		@Param('shard') shard: string,
 		@Param('filename') filename: string,
 		@Res() res: Response,

@@ -1,10 +1,11 @@
+import { createHash } from 'node:crypto';
 import {
 	CallHandler,
 	ExecutionContext,
 	Injectable,
 	NestInterceptor,
 } from '@nestjs/common';
-import { createHash } from 'node:crypto';
+import { Request, Response } from 'express';
 import { Observable, map } from 'rxjs';
 
 @Injectable()
@@ -17,8 +18,9 @@ export class EtagInterceptor implements NestInterceptor {
 			return next.handle();
 		}
 
-		const request = context.switchToHttp().getRequest();
-		const response = context.switchToHttp().getResponse();
+		const http = context.switchToHttp();
+		const request = http.getRequest<Request>();
+		const response = http.getResponse<Response>();
 
 		// Apenas aplica ETag em requisições GET de HTTP
 		if (request.method !== 'GET') {
@@ -26,7 +28,7 @@ export class EtagInterceptor implements NestInterceptor {
 		}
 
 		return next.handle().pipe(
-			map((data) => {
+			map((data: unknown) => {
 				if (!data) return data;
 
 				// Gera o hash do conteúdo para o ETag

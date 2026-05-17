@@ -1,3 +1,26 @@
+import { CreateChapterBatchItemDto } from '@books/application/dto/create-chapter-batch-item.dto';
+import { CreateChapterManualDto } from '@books/application/dto/create-chapter-manual.dto';
+import { CreateChapterDto } from '@books/application/dto/create-chapter.dto';
+import { OrderChaptersDto } from '@books/application/dto/order-chapters.dto';
+import { QueueTextProcessingDto } from '@books/application/dto/queue-text-processing.dto';
+import { UpdateChapterDto } from '@books/application/dto/update-chapter.dto';
+import {
+	IBookRepository,
+	I_BOOK_REPOSITORY,
+} from '@books/application/ports/book-repository.interface';
+import {
+	IChapterRepository,
+	I_CHAPTER_REPOSITORY,
+} from '@books/application/ports/chapter-repository.interface';
+import { BookEvents } from '@books/domain/constants/events.constant';
+import { Book } from '@books/domain/entities/book';
+import { Chapter } from '@books/domain/entities/chapter';
+import { ContentFormat } from '@books/domain/enums/content-format.enum';
+import { ContentType } from '@books/domain/enums/content-type.enum';
+import { ExportFormat } from '@books/domain/enums/export-format.enum';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
+import { ChapterUpdatedEvent } from '@books/infrastructure/events/chapter-updated.event';
+import { InjectQueue } from '@nestjs/bullmq';
 import {
 	BadRequestException,
 	Inject,
@@ -6,36 +29,12 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { normalizeUrl } from 'src/common/utils/url.utils';
-import { In } from 'typeorm';
-import { BookEvents } from '@books/domain/constants/events.constant';
-import { ChapterUpdatedEvent } from '@books/infrastructure/events/chapter-updated.event';
-import { CreateChapterBatchItemDto } from '@books/application/dto/create-chapter-batch-item.dto';
-import { CreateChapterManualDto } from '@books/application/dto/create-chapter-manual.dto';
-import { CreateChapterDto } from '@books/application/dto/create-chapter.dto';
-import { OrderChaptersDto } from '@books/application/dto/order-chapters.dto';
-import { UpdateChapterDto } from '@books/application/dto/update-chapter.dto';
-import { QueueTextProcessingDto } from '@books/application/dto/queue-text-processing.dto';
-import { Book } from '@books/domain/entities/book';
-import { Chapter } from '@books/domain/entities/chapter';
-import { ContentFormat } from '@books/domain/enums/content-format.enum';
-import { ContentType } from '@books/domain/enums/content-type.enum';
-import { ExportFormat } from '@books/domain/enums/export-format.enum';
-import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import {
-	I_BOOK_REPOSITORY,
-	IBookRepository,
-} from '@books/application/ports/book-repository.interface';
-import {
-	I_CHAPTER_REPOSITORY,
-	IChapterRepository,
-} from '@books/application/ports/chapter-repository.interface';
-import {
-	I_UNIT_OF_WORK,
 	IUnitOfWork,
+	I_UNIT_OF_WORK,
 } from 'src/common/application/ports/unit-of-work.interface';
+import { normalizeUrl } from 'src/common/utils/url.utils';
 
 /**
  * Service responsável por gerenciar capítulos de livros
@@ -239,7 +238,7 @@ export class ChapterManagementService {
 			format,
 		});
 
-		this.textProcessingQueue.add('process-text', {
+		await this.textProcessingQueue.add('process-text', {
 			entityId: savedChapter.id,
 			source: 'CHAPTER',
 			format,
@@ -471,7 +470,7 @@ export class ChapterManagementService {
 			);
 
 			if (chapter.contentType === ContentType.TEXT && chapter.content) {
-				this.textProcessingQueue.add('process-text', {
+				await this.textProcessingQueue.add('process-text', {
 					entityId: chapter.id,
 					source: 'CHAPTER',
 					format: chapter.contentFormat || ContentFormat.MARKDOWN,
@@ -594,7 +593,6 @@ export class ChapterManagementService {
 		return {
 			...book,
 			chapters: book.chapters.map((ch) => {
-				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				const { book: _, ...chapterWithoutBook } = ch;
 				return chapterWithoutBook as Chapter;
 			}),
@@ -623,7 +621,6 @@ export class ChapterManagementService {
 		return {
 			...book,
 			chapters: book.chapters.map((ch) => {
-				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				const { book: _, ...chapterWithoutBook } = ch;
 				return chapterWithoutBook as Chapter;
 			}),

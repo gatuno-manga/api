@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { SaveReadingProgressDto } from '@users/infrastructure/http/dto/reading-progress.dto';
 import { ReadingProgress } from '@users/infrastructure/database/entities/reading-progress.entity';
+import { SaveReadingProgressDto } from '@users/infrastructure/http/dto/reading-progress.dto';
 import {
 	SyncResolution,
 	SyncResolutionContext,

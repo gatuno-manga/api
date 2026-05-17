@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { CookieConfig } from '@websites/domain/storage-config';
 import {
 	IsArray,
 	IsBoolean,
@@ -8,7 +9,6 @@ import {
 	IsString,
 	Min,
 } from 'class-validator';
-import { CookieConfig } from '../../domain/storage-config';
 
 export class WebsiteConfigDto {
 	@ApiProperty({

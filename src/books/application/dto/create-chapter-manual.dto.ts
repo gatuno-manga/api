@@ -1,3 +1,4 @@
+import { ContentFormat } from '@books/domain/enums/content-format.enum';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -10,7 +11,6 @@ import {
 	MaxLength,
 	ValidateIf,
 } from 'class-validator';
-import { ContentFormat } from '@books/domain/enums/content-format.enum';
 
 export class CreateChapterManualDto {
 	@ApiPropertyOptional({

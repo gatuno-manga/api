@@ -1,25 +1,26 @@
+import { DownloadBookBodyDto } from '@books/application/dto/download-book-body.dto';
+import { DownloadBookQueryDto } from '@books/application/dto/download-book-query.dto';
+import { DownloadService } from '@books/application/services/download.service';
 import {
 	Body,
 	Controller,
+	Get,
 	Logger,
 	Param,
 	Post,
+	Query,
 	Res,
 	StreamableFile,
 	UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
-import { DownloadService } from '@books/application/services/download.service';
-import { DownloadBookBodyDto } from '@books/application/dto/download-book-body.dto';
-import { DownloadBookQueryDto } from '@books/application/dto/download-book-query.dto';
-import { Get, Query } from '@nestjs/common';
+import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import {
-	ApiDocsDownloadBookGet,
 	ApiDocsDownloadBook,
+	ApiDocsDownloadBookGet,
 } from './swagger/book-download.swagger';
 
 @ApiTags('Downloads')

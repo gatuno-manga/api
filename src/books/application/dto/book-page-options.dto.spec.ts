@@ -1,9 +1,9 @@
-import { validate } from 'class-validator';
 import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
 import { BookOrderField } from '@books/domain/enums/book-order-field.enum';
-import { OrderDirection } from 'src/common/enum/order-direction.enum';
+import { validate } from 'class-validator';
 import { FilterLogic } from 'src/common/enum/filter-logic.enum';
 import { FilterOperator } from 'src/common/enum/filter-operator.enum';
+import { OrderDirection } from 'src/common/enum/order-direction.enum';
 
 describe('BookPageOptionsDto', () => {
 	it('should pass validation with valid data', async () => {

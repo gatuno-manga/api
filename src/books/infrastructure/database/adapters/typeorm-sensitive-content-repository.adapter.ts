@@ -1,16 +1,16 @@
+import { ISensitiveContentRepository } from '@books/application/ports/sensitive-content-repository.interface';
+import { SensitiveContent as DomainSensitiveContent } from '@books/domain/entities/sensitive-content';
+import { SensitiveContentCriteria } from '@books/domain/types/criteria.types';
+import { SensitiveContent as InfrastructureSensitiveContent } from '@books/infrastructure/database/entities/sensitive-content.entity';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
+	EntityManager,
+	FindOptionsWhere,
 	In,
 	LessThanOrEqual,
 	Repository,
-	FindOptionsWhere,
-	EntityManager,
 } from 'typeorm';
-import { ISensitiveContentRepository } from '@books/application/ports/sensitive-content-repository.interface';
-import { SensitiveContent as DomainSensitiveContent } from '@books/domain/entities/sensitive-content';
-import { SensitiveContent as InfrastructureSensitiveContent } from '@books/infrastructure/database/entities/sensitive-content.entity';
-import { SensitiveContentCriteria } from '@books/domain/types/criteria.types';
 
 @Injectable()
 export class TypeOrmSensitiveContentRepositoryAdapter

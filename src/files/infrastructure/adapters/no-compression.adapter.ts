@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
 import { IFileCompressor } from '@files/application/ports/file-compressor.interface';
+import { Injectable, Logger } from '@nestjs/common';
 
 @Injectable()
 export class NoCompressionAdapter implements IFileCompressor {
@@ -10,7 +10,7 @@ export class NoCompressionAdapter implements IFileCompressor {
 		return Promise.resolve(buffer);
 	}
 
-	supports(extension: string): boolean {
+	supports(_extension: string): boolean {
 		return true;
 	}
 

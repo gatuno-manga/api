@@ -1,19 +1,17 @@
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { In } from 'typeorm';
-import { Author } from '@books/domain/entities/author';
-import { Book } from '@books/domain/entities/book';
-import { SensitiveContentService } from './sensitive-content.service';
+import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants';
 import { AuthorsOptions } from '@books/application/dto/authors-options.dto';
 import {
-	I_AUTHOR_REPOSITORY,
 	IAuthorRepository,
+	I_AUTHOR_REPOSITORY,
 } from '@books/application/ports/author-repository.interface';
 import {
-	I_BOOK_REPOSITORY,
 	IBookRepository,
+	I_BOOK_REPOSITORY,
 } from '@books/application/ports/book-repository.interface';
-import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants';
+import { Author } from '@books/domain/entities/author';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Meilisearch } from 'meilisearch';
+import { SensitiveContentService } from './sensitive-content.service';
 
 @Injectable()
 export class AuthorsService {
@@ -22,8 +20,7 @@ export class AuthorsService {
 	constructor(
 		@Inject(I_AUTHOR_REPOSITORY)
 		private readonly authorsRepository: IAuthorRepository,
-		@Inject(I_BOOK_REPOSITORY)
-		private readonly bookRepository: IBookRepository,
+		@Inject(I_BOOK_REPOSITORY) readonly _bookRepository: IBookRepository,
 		private readonly sensitiveContentService: SensitiveContentService,
 		@Inject(MEILI_CLIENT) private readonly meiliClient: Meilisearch,
 	) {}
@@ -43,9 +40,9 @@ export class AuthorsService {
 				createdAt: new Date((hit.createdAt as number) * 1000),
 				updatedAt: new Date((hit.updatedAt as number) * 1000),
 			})) as unknown as Author[];
-		} catch (error) {
+		} catch (error: unknown) {
 			this.logger.error(
-				`Error searching authors in Meilisearch: ${error.message}`,
+				`Error searching authors in Meilisearch: ${error instanceof Error ? error.message : String(error)}`,
 			);
 			// Fallback ou lista vazia
 			return [];
@@ -73,7 +70,7 @@ export class AuthorsService {
 		return this.get(options, maxWeightSensitiveContent);
 	}
 
-	async mergeAuthors(id: string, copy: string[]) {
+	async mergeAuthors(id: string, _copy: string[]) {
 		const author = await this.authorsRepository.findById(id);
 		if (!author) {
 			this.logger.warn(`Author with id ${id} not found`);

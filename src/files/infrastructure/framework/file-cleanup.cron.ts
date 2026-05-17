@@ -1,7 +1,7 @@
+import { FileCleanupService } from '@files/application/services/file-cleanup.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { FileCleanupService } from '@files/application/services/file-cleanup.service';
 
 @Injectable()
 export class FileCleanupCron {

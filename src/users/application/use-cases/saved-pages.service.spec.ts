@@ -1,19 +1,19 @@
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { SavedPagesService } from './saved-pages.service';
-import { SavedPage } from '@users/infrastructure/database/entities/saved-page.entity';
-import { Page } from 'src/books/infrastructure/database/entities/page.entity';
-import { Chapter } from 'src/books/infrastructure/database/entities/chapter.entity';
-import { Book } from 'src/books/infrastructure/database/entities/book.entity';
 import { UserResourcesMapper } from '@users/application/mappers/user-resources.mapper';
+import { SavedPage } from '@users/infrastructure/database/entities/saved-page.entity';
+import { Book } from 'src/books/infrastructure/database/entities/book.entity';
+import { Chapter } from 'src/books/infrastructure/database/entities/chapter.entity';
+import { Page } from 'src/books/infrastructure/database/entities/page.entity';
+import { Repository } from 'typeorm';
+import { SavedPagesService } from './saved-pages.service';
 
 describe('SavedPagesService', () => {
 	let service: SavedPagesService;
-	let savedPageRepository: jest.Mocked<Repository<SavedPage>>;
-	let pageRepository: jest.Mocked<Repository<Page>>;
-	let userResourcesMapper: jest.Mocked<UserResourcesMapper>;
+	let _savedPageRepository: jest.Mocked<Repository<SavedPage>>;
+	let _pageRepository: jest.Mocked<Repository<Page>>;
+	let _userResourcesMapper: jest.Mocked<UserResourcesMapper>;
 
 	const mockSavedPageRepository = {
 		findOne: jest.fn(),
@@ -64,9 +64,9 @@ describe('SavedPagesService', () => {
 		}).compile();
 
 		service = module.get<SavedPagesService>(SavedPagesService);
-		savedPageRepository = module.get(getRepositoryToken(SavedPage));
-		pageRepository = module.get(getRepositoryToken(Page));
-		userResourcesMapper = module.get(UserResourcesMapper);
+		_savedPageRepository = module.get(getRepositoryToken(SavedPage));
+		_pageRepository = module.get(getRepositoryToken(Page));
+		_userResourcesMapper = module.get(UserResourcesMapper);
 	});
 
 	afterEach(() => {

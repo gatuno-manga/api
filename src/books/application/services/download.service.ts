@@ -2,18 +2,6 @@ import { promises as fs } from 'node:fs';
 import { PassThrough, Readable, pipeline } from 'node:stream';
 import { promisify } from 'node:util';
 import {
-	Injectable,
-	Logger,
-	NotFoundException,
-	StreamableFile,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
-import { In, Repository } from 'typeorm';
-import { Book } from '@books/infrastructure/database/entities/book.entity';
-import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
-import { DownloadCacheService } from './download-cache.service';
-import {
 	BookDownloadFormat,
 	DownloadBookBodyDto,
 } from '@books/application/dto/download-book-body.dto';
@@ -25,6 +13,18 @@ import { DownloadStrategy } from '@books/application/strategies/download.strateg
 import { PdfStrategy } from '@books/application/strategies/pdf.strategy';
 import { PdfsZipStrategy } from '@books/application/strategies/pdfs-zip.strategy';
 import { ZipStrategy } from '@books/application/strategies/zip.strategy';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
+import {
+	Injectable,
+	Logger,
+	NotFoundException,
+	StreamableFile,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
+import { In, Repository } from 'typeorm';
+import { DownloadCacheService } from './download-cache.service';
 
 const pipelineAsync = promisify(pipeline);
 
@@ -292,13 +292,12 @@ export class DownloadService {
 	 * Remove caracteres inválidos de nomes de arquivo
 	 */
 	private sanitizeFileName(name: string): string {
-		return name
-			.replace(
-				// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional sanitization of control characters
-				/[<>:"/\\|?*\x00-\x1F]/g,
-				'_',
-			)
-			.trim();
+		const controlChars = `${String.fromCharCode(0)}-${String.fromCharCode(31)}`;
+		const controlCharsRegex = new RegExp(
+			`[<>:"/\\\\|?*${controlChars}]`,
+			'g',
+		);
+		return name.replace(controlCharsRegex, '_').trim();
 	}
 
 	/**
@@ -357,7 +356,9 @@ export class DownloadService {
 		this.cacheService
 			.set(cacheKey, formatKey, strategy.getExtension(), buffer)
 			.catch((err) =>
-				this.logger.error(`Cache save failed: ${err.message}`),
+				this.logger.error(
+					`Cache save failed: ${err instanceof Error ? err.message : String(err)}`,
+				),
 			);
 
 		// Retornar buffer
@@ -399,7 +400,9 @@ export class DownloadService {
 
 		// Configurar error handling
 		sourceStream.on('error', (err) => {
-			this.logger.error(`Stream generation failed: ${err.message}`);
+			this.logger.error(
+				`Stream generation failed: ${err instanceof Error ? err.message : String(err)}`,
+			);
 			toClient.destroy(err);
 			toCache.destroy(err);
 		});
@@ -415,7 +418,9 @@ export class DownloadService {
 			strategy.getExtension(),
 			toCache,
 		).catch((err) =>
-			this.logger.error(`Async cache save failed: ${err.message}`),
+			this.logger.error(
+				`Async cache save failed: ${err instanceof Error ? err.message : String(err)}`,
+			),
 		);
 
 		// Retornar stream para cliente

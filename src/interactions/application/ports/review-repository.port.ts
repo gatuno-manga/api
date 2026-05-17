@@ -1,6 +1,6 @@
 import { Review } from '@/interactions/domain/entities/review';
-import { UserId } from '@common/domain/value-objects/user-id.vo';
 import { BookId } from '@common/domain/value-objects/book-id.vo';
+import { UserId } from '@common/domain/value-objects/user-id.vo';
 
 export interface ReviewRepository {
 	save(review: Review): Promise<void>;

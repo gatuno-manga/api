@@ -1,5 +1,4 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { PasswordEncryption } from './password-encryption.provider';
 import { BcryptStrategy } from './strategies/bcrypt.strategy';
 import { ScryptStrategy } from './strategies/scrypt.strategy';

@@ -1,3 +1,5 @@
+import { AuthMethod, AuthRiskLevel } from '@auth/types/auth-security.types';
+import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import {
 	Column,
 	CreateDateColumn,
@@ -8,8 +10,6 @@ import {
 	PrimaryColumn,
 	UpdateDateColumn,
 } from 'typeorm';
-import { User } from 'src/users/infrastructure/database/entities/user.entity';
-import { AuthMethod, AuthRiskLevel } from '@auth/types/auth-security.types';
 
 @Entity('auth_sessions')
 @Index(['userId', 'revokedAt'])

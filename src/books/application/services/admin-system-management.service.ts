@@ -1,6 +1,6 @@
+import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
-import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { CronJob } from 'cron';
 
@@ -20,7 +20,7 @@ export class AdminSystemManagementService {
 		private readonly fixChapterQueue: Queue,
 	) {}
 
-	async listCronJobs() {
+	listCronJobs() {
 		const jobs = this.schedulerRegistry.getCronJobs();
 		const result: Array<{
 			name: string;
@@ -39,7 +39,7 @@ export class AdminSystemManagementService {
 					running?: boolean;
 				};
 				status = jobWithRunning.running ? 'running' : 'stopped';
-			} catch (e) {
+			} catch (_e) {
 				// Fallback if running property is not accessible
 			}
 
@@ -56,12 +56,12 @@ export class AdminSystemManagementService {
 
 	async stopCronJob(name: string) {
 		const job = this.schedulerRegistry.getCronJob(name);
-		job.stop();
+		await job.stop();
 		this.logger.log(`Cron job ${name} stopped by admin`);
 		return { name, status: 'stopped' };
 	}
 
-	async startCronJob(name: string) {
+	startCronJob(name: string) {
 		const job = this.schedulerRegistry.getCronJob(name);
 		job.start();
 		this.logger.log(`Cron job ${name} started by admin`);
@@ -99,7 +99,7 @@ export class AdminSystemManagementService {
 		const client = await this.chapterScrapingQueue.client;
 		const count = await client.get(key);
 		return {
-			consecutiveFailures: count ? Number.parseInt(count) : 0,
+			consecutiveFailures: count ? Number.parseInt(count, 10) : 0,
 			threshold: 5, // Poderia vir do config
 		};
 	}

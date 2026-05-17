@@ -1,20 +1,20 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
 import { CreateAuthorDto } from '@books/application/dto/create-author.dto';
+import {
+	IAuthorRepository,
+	I_AUTHOR_REPOSITORY,
+} from '@books/application/ports/author-repository.interface';
+import {
+	ISensitiveContentRepository,
+	I_SENSITIVE_CONTENT_REPOSITORY,
+} from '@books/application/ports/sensitive-content-repository.interface';
+import {
+	ITagRepository,
+	I_TAG_REPOSITORY,
+} from '@books/application/ports/tag-repository.interface';
 import { Author } from '@books/domain/entities/author';
 import { SensitiveContent } from '@books/domain/entities/sensitive-content';
 import { Tag } from '@books/domain/entities/tag';
-import {
-	I_TAG_REPOSITORY,
-	ITagRepository,
-} from '@books/application/ports/tag-repository.interface';
-import {
-	I_AUTHOR_REPOSITORY,
-	IAuthorRepository,
-} from '@books/application/ports/author-repository.interface';
-import {
-	I_SENSITIVE_CONTENT_REPOSITORY,
-	ISensitiveContentRepository,
-} from '@books/application/ports/sensitive-content-repository.interface';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 /**
  * Service responsável por gerenciar relacionamentos de livros
@@ -73,7 +73,7 @@ export class BookRelationshipService {
 					this.logger.debug(`Tag criada: ${lowerName}`);
 					byName.set(lowerName, saved);
 					result.push(saved);
-				} catch (err) {
+				} catch (_err) {
 					const tag = await tagRepo.findByName(lowerName);
 					if (tag) {
 						byName.set(lowerName, tag);
@@ -96,7 +96,7 @@ export class BookRelationshipService {
 		if (authorsDto.length === 0) return [];
 		const authorRepo = repo || this.authorRepository;
 
-		const names = authorsDto.map((a) => a.name);
+		const _names = authorsDto.map((a) => a.name);
 
 		// Busca todos os autores do batch de uma vez
 		const existing = await authorRepo.findWithFilters({
@@ -121,7 +121,7 @@ export class BookRelationshipService {
 					this.logger.debug(`Autor criado: ${dto.name}`);
 					byName.set(dto.name, saved);
 					result.push(saved);
-				} catch (err) {
+				} catch (_err) {
 					const author = await authorRepo.findByName(dto.name);
 					if (author) {
 						byName.set(dto.name, author);
@@ -172,7 +172,7 @@ export class BookRelationshipService {
 					this.logger.debug(`Conteúdo sensível criado: ${lowerName}`);
 					byName.set(lowerName, saved);
 					result.push(saved);
-				} catch (err) {
+				} catch (_err) {
 					const sc = await sensitiveRepo.findByName(lowerName);
 					if (sc) {
 						byName.set(lowerName, sc);

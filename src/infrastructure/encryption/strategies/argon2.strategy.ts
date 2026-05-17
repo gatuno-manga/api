@@ -1,7 +1,7 @@
+import { PasswordHasher } from '@encryption/interfaces/password-hasher.interface';
 import { Injectable } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
-import { PasswordHasher } from '@encryption/interfaces/password-hasher.interface';
 
 @Injectable()
 export class Argon2Strategy implements PasswordHasher {
@@ -25,7 +25,7 @@ export class Argon2Strategy implements PasswordHasher {
 	async compare(password: string, hash: string): Promise<boolean> {
 		try {
 			return argon2.verify(hash, password);
-		} catch (error) {
+		} catch (_error) {
 			return false;
 		}
 	}

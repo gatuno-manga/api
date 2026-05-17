@@ -1,3 +1,5 @@
+import { BookType } from '@books/domain/enums/book-type.enum';
+import { NormalizeUrl } from '@common/decorators/normalize-url.decorator';
 import { ApiPropertyOptional, OmitType, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -7,8 +9,6 @@ import {
 	IsUrl,
 	ValidateNested,
 } from 'class-validator';
-import { NormalizeUrl } from '@common/decorators/normalize-url.decorator';
-import { BookType } from '@books/domain/enums/book-type.enum';
 import { CreateAuthorDto } from './create-author.dto';
 import { CreateBookDto } from './create-book.dto';
 

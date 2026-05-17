@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, Repository } from 'typeorm';
 import { IUserRepository } from '@users/application/ports/user-repository.interface';
 import { User as DomainUser } from '@users/domain/entities/user';
 import { User as InfrastructureUser } from '@users/infrastructure/database/entities/user.entity';
+import { FindOptionsWhere, Repository } from 'typeorm';
 
 @Injectable()
 export class TypeOrmUserRepositoryAdapter implements IUserRepository {

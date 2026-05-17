@@ -1,10 +1,10 @@
 import { PassThrough } from 'node:stream';
-import { Injectable, Logger, StreamableFile } from '@nestjs/common';
-import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { ContentType } from '@books/domain/enums/content-type.enum';
 import { DocumentFormat } from '@books/domain/enums/document-format.enum';
-import { DownloadStrategy } from './download.strategy';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
+import { Injectable, Logger, StreamableFile } from '@nestjs/common';
 import { FilesService } from '@src/files/application/services/files.service';
+import { DownloadStrategy } from './download.strategy';
 
 /**
  * Strategy para download de documentos (PDF/EPUB)

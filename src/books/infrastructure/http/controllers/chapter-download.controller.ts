@@ -1,3 +1,5 @@
+import { DownloadChapterQueryDto } from '@books/application/dto/download-chapter-query.dto';
+import { DownloadService } from '@books/application/services/download.service';
 import {
 	Controller,
 	Get,
@@ -9,12 +11,10 @@ import {
 	UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
-import { DownloadService } from '@books/application/services/download.service';
-import { DownloadChapterQueryDto } from '@books/application/dto/download-chapter-query.dto';
+import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { ApiDocsDownloadChapter } from './swagger/chapter-download.swagger';
 
 @ApiTags('Downloads')

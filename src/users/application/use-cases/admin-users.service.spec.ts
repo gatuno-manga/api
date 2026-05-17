@@ -1,21 +1,21 @@
-import { Test, type TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { AdminUsersService } from './admin-users.service';
-import { User } from '@users/infrastructure/database/entities/user.entity';
-import { Role } from '@users/infrastructure/database/entities/role.entity';
-import { UserGroup } from '@users/infrastructure/database/entities/user-group.entity';
-import { AccessPolicy } from '@users/infrastructure/database/entities/access-policy.entity';
-import { AccessPolicyEffectEnum } from '@users/domain/enums/access-policy-effect.enum';
-import { AccessPolicyScopeEnum } from '@users/domain/enums/access-policy-scope.enum';
 import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants';
 import { PasswordEncryption } from '@encryption/password-encryption.provider';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { AccessPolicyEffectEnum } from '@users/domain/enums/access-policy-effect.enum';
+import { AccessPolicyScopeEnum } from '@users/domain/enums/access-policy-scope.enum';
+import { AccessPolicy } from '@users/infrastructure/database/entities/access-policy.entity';
+import { Role } from '@users/infrastructure/database/entities/role.entity';
+import { UserGroup } from '@users/infrastructure/database/entities/user-group.entity';
+import { User } from '@users/infrastructure/database/entities/user.entity';
+import { Repository } from 'typeorm';
+import { AdminUsersService } from './admin-users.service';
 
 describe('AdminUsersService', () => {
 	let service: AdminUsersService;
 	let userRepository: jest.Mocked<Repository<User>>;
-	let roleRepository: jest.Mocked<Repository<Role>>;
-	let userGroupRepository: jest.Mocked<Repository<UserGroup>>;
+	let _roleRepository: jest.Mocked<Repository<Role>>;
+	let _userGroupRepository: jest.Mocked<Repository<UserGroup>>;
 	let accessPolicyRepository: jest.Mocked<Repository<AccessPolicy>>;
 	let meiliClient: any;
 
@@ -83,8 +83,8 @@ describe('AdminUsersService', () => {
 
 		service = module.get<AdminUsersService>(AdminUsersService);
 		userRepository = module.get(getRepositoryToken(User));
-		roleRepository = module.get(getRepositoryToken(Role));
-		userGroupRepository = module.get(getRepositoryToken(UserGroup));
+		_roleRepository = module.get(getRepositoryToken(Role));
+		_userGroupRepository = module.get(getRepositoryToken(UserGroup));
 		accessPolicyRepository = module.get(getRepositoryToken(AccessPolicy));
 	});
 

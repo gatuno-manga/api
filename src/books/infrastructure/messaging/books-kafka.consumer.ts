@@ -1,34 +1,34 @@
-import { Controller, Inject, Logger } from '@nestjs/common';
-import { EventPattern, Payload } from '@nestjs/microservices';
-import { KafkaMessage } from 'kafkajs';
-import { BookContentUpdateService } from '@books/application/services/book-content-update.service';
-import { BookCreationService } from '@books/application/services/book-creation.service';
-import { ChapterScrapingSharedService } from '@books/infrastructure/jobs/chapter-scraping.shared';
-import {
-	I_BOOK_REPOSITORY,
-	IBookRepository,
-} from '@books/application/ports/book-repository.interface';
-import {
-	I_CHAPTER_REPOSITORY,
-	IChapterRepository,
-} from '@books/application/ports/chapter-repository.interface';
-import {
-	I_CHAPTER_COMMENT_REPOSITORY,
-	IChapterCommentRepository,
-} from '@books/application/ports/chapter-comment-repository.interface';
-import {
-	I_COVER_REPOSITORY,
-	ICoverRepository,
-} from '@books/application/ports/cover-repository.interface';
-import { MediaUrlService } from '@common/services/media-url.service';
-import { StorageBucket } from '@common/enum/storage-bucket.enum';
 import { RedisService } from '@/infrastructure/redis/redis.service';
 import { CreateBookDto } from '@books/application/dto/create-book.dto';
+import {
+	IBookRepository,
+	I_BOOK_REPOSITORY,
+} from '@books/application/ports/book-repository.interface';
+import {
+	IChapterCommentRepository,
+	I_CHAPTER_COMMENT_REPOSITORY,
+} from '@books/application/ports/chapter-comment-repository.interface';
+import {
+	IChapterRepository,
+	I_CHAPTER_REPOSITORY,
+} from '@books/application/ports/chapter-repository.interface';
+import {
+	ICoverRepository,
+	I_COVER_REPOSITORY,
+} from '@books/application/ports/cover-repository.interface';
+import { BookContentUpdateService } from '@books/application/services/book-content-update.service';
+import { BookCreationService } from '@books/application/services/book-creation.service';
 import { ContentFormat } from '@books/domain/enums/content-format.enum';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
+import { ChapterComment as InfraComment } from '@books/infrastructure/database/entities/chapter-comment.entity';
+import { Chapter as InfraChapter } from '@books/infrastructure/database/entities/chapter.entity';
+import { ChapterScrapingSharedService } from '@books/infrastructure/jobs/chapter-scraping.shared';
+import { StorageBucket } from '@common/enum/storage-bucket.enum';
+import { MediaUrlService } from '@common/services/media-url.service';
+import { Controller, Inject, Logger } from '@nestjs/common';
+import { EventPattern, Payload } from '@nestjs/microservices';
 import * as cheerio from 'cheerio';
-import { Chapter as InfraChapter } from '../database/entities/chapter.entity';
-import { ChapterComment as InfraComment } from '../database/entities/chapter-comment.entity';
+import { KafkaMessage } from 'kafkajs';
 
 interface ScrapingBookCompletedPayload {
 	jobId?: string;
@@ -120,10 +120,10 @@ export class BooksKafkaConsumer {
 		if (
 			typeof message === 'object' &&
 			'value' in message &&
-			Buffer.isBuffer((message as KafkaMessage).value)
+			Buffer.isBuffer(message.value)
 		) {
 			try {
-				const value = (message as KafkaMessage).value;
+				const value = message.value;
 				if (!value) return null;
 				const parsed = JSON.parse(value.toString()) as T;
 				this.logger.debug(
@@ -132,7 +132,7 @@ export class BooksKafkaConsumer {
 				return parsed;
 			} catch (error) {
 				this.logger.error(
-					`Erro ao desserializar mensagem Kafka: ${error.message}`,
+					`Erro ao desserializar mensagem Kafka: ${error instanceof Error ? error.message : String(error)}`,
 				);
 				return null;
 			}
@@ -203,7 +203,7 @@ export class BooksKafkaConsumer {
 				);
 			} catch (error) {
 				this.logger.error(
-					`Erro ao criar livro automaticamente para o job ${jobId}: ${error.message}`,
+					`Erro ao criar livro automaticamente para o job ${jobId}: ${error instanceof Error ? error.message : String(error)}`,
 				);
 			}
 		}
@@ -396,8 +396,9 @@ export class BooksKafkaConsumer {
 					const cover = processingCovers[i];
 					// Se tivermos um caminho correspondente no results, usamos
 					// Caso contrário (mismatch de quantidade), mantemos o status READY mas sem trocar a URL se não houver path
-					if (results[i]) {
-						let path = results[i];
+					const resultPath = results[i];
+					if (resultPath) {
+						let path: string = resultPath;
 						if (
 							!path.startsWith('http') &&
 							!path.startsWith('processing/')
@@ -411,12 +412,15 @@ export class BooksKafkaConsumer {
 						);
 						if (cached) {
 							try {
-								const optimized = JSON.parse(cached);
+								const optimized = JSON.parse(cached) as {
+									path: string;
+									metadata?: Record<string, unknown>;
+								};
 								path = optimized.path;
 								if (optimized.metadata) {
 									cover.metadata = optimized.metadata;
 								}
-							} catch (e) {
+							} catch (_e) {
 								this.logger.warn(
 									`Erro ao parsear cache de otimização para capa: ${path}`,
 								);
@@ -434,7 +438,7 @@ export class BooksKafkaConsumer {
 				);
 			} catch (error) {
 				this.logger.error(
-					`Erro ao finalizar scraping de capas para o livro ${bookId}: ${error.message}`,
+					`Erro ao finalizar scraping de capas para o livro ${bookId}: ${error instanceof Error ? error.message : String(error)}`,
 				);
 			} finally {
 				await this.redisService
@@ -446,7 +450,8 @@ export class BooksKafkaConsumer {
 
 	@EventPattern('scraping.covers.failed')
 	async handleCoversScrapingFailed(
-		@Payload() messages:
+		@Payload()
+		messages:
 			| KafkaMessage[]
 			| { bookId?: string; book_id?: string; error: string },
 	) {
@@ -482,7 +487,7 @@ export class BooksKafkaConsumer {
 				}
 			} catch (error) {
 				this.logger.error(
-					`Erro ao marcar falha de capas para o livro ${bookId}: ${error.message}`,
+					`Erro ao marcar falha de capas para o livro ${bookId}: ${error instanceof Error ? error.message : String(error)}`,
 				);
 			} finally {
 				await this.redisService
@@ -549,9 +554,8 @@ export class BooksKafkaConsumer {
 				}
 
 				const internalUrlMap = new Map<string, string>();
-				for (let [originalUrl, internalPath] of Object.entries(
-					urlMap,
-				)) {
+				for (const [originalUrl, pathValue] of Object.entries(urlMap)) {
+					let internalPath = pathValue;
 					if (
 						!internalPath.startsWith('http') &&
 						!internalPath.startsWith('processing/')
@@ -588,7 +592,7 @@ export class BooksKafkaConsumer {
 				);
 			} catch (error) {
 				this.logger.error(
-					`Erro ao processar URLs de imagens para ${data.source} ${entityId}: ${error.message}`,
+					`Erro ao processar URLs de imagens para ${data.source} ${entityId}: ${error instanceof Error ? error.message : String(error)}`,
 				);
 			}
 		}
@@ -596,7 +600,8 @@ export class BooksKafkaConsumer {
 
 	@EventPattern('scraping.chapter.failed')
 	async handleChapterScrapingFailed(
-		@Payload() messages:
+		@Payload()
+		messages:
 			| KafkaMessage[]
 			| { chapterId?: string; chapter_id?: string; error: string },
 	) {

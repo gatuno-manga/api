@@ -1,12 +1,16 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository, FindOptionsWhere, EntityManager } from 'typeorm';
 import { ITagRepository } from '@books/application/ports/tag-repository.interface';
 import { Tag as DomainTag } from '@books/domain/entities/tag';
-import { Tag as InfrastructureTag } from '@books/infrastructure/database/entities/tags.entity';
-import { TagsOptions } from '@books/application/dto/tags-options.dto';
 import { Book as InfrastructureBook } from '@books/infrastructure/database/entities/book.entity';
-import { TagCriteria } from '@books/domain/types/criteria.types';
+import { Tag as InfrastructureTag } from '@books/infrastructure/database/entities/tags.entity';
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { FindOptionsWhere, In, Repository } from 'typeorm';
+
+interface RawTagResult {
+	tag_id: string;
+	tag_name: string;
+	bt_booksId: string;
+}
 
 @Injectable()
 export class TypeOrmTagRepositoryAdapter implements ITagRepository {
@@ -18,88 +22,125 @@ export class TypeOrmTagRepositoryAdapter implements ITagRepository {
 		repository: Repository<InfrastructureTag>,
 		@InjectRepository(InfrastructureBook)
 		bookRepository: Repository<InfrastructureBook>,
-		entityManager?: EntityManager,
 	) {
-		this.repository = entityManager
-			? entityManager.getRepository(InfrastructureTag)
-			: repository;
-		this.bookRepository = entityManager
-			? entityManager.getRepository(InfrastructureBook)
-			: bookRepository;
+		this.repository = repository;
+		this.bookRepository = bookRepository;
 	}
 
-	async findById(
-		id: string,
-		relations?: string[],
-	): Promise<DomainTag | null> {
-		const tag = await this.repository.findOne({
-			where: { id } as unknown as FindOptionsWhere<InfrastructureTag>,
-			relations,
-		});
-		return tag as unknown as DomainTag;
-	}
-
-	async findAll(): Promise<DomainTag[]> {
-		const tags = await this.repository.find();
-		return tags as unknown as DomainTag[];
+	async findById(id: string): Promise<DomainTag | null> {
+		const tag = await this.repository.findOne({ where: { id } });
+		if (!tag) return null;
+		const domainTag = new DomainTag();
+		Object.assign(domainTag, tag);
+		return domainTag;
 	}
 
 	async save(tag: DomainTag): Promise<DomainTag> {
-		const saved = await this.repository.save(
-			tag as unknown as InfrastructureTag,
-		);
-		return saved as unknown as DomainTag;
+		const entity = this.repository.create();
+		Object.assign(entity, tag);
+		const saved = await this.repository.save(entity);
+		const result = new DomainTag();
+		Object.assign(result, saved);
+		return result;
 	}
 
-	async remove(tags: DomainTag[]): Promise<void> {
-		await this.repository.remove(tags as unknown as InfrastructureTag[]);
-	}
-
-	async deleteByIds(ids: string[]): Promise<void> {
-		await this.repository.delete(ids);
-	}
-
-	async findByName(name: string): Promise<DomainTag | null> {
-		const tag = await this.repository.findOne({
-			where: { name } as unknown as FindOptionsWhere<InfrastructureTag>,
+	async saveAll(tags: DomainTag[]): Promise<DomainTag[]> {
+		const entities = tags.map((t) => {
+			const entity = this.repository.create();
+			Object.assign(entity, t);
+			return entity;
 		});
-		return tag as unknown as DomainTag;
-	}
-
-	async exists(id: string): Promise<boolean> {
-		return this.repository.exists({
-			where: { id } as unknown as FindOptionsWhere<InfrastructureTag>,
+		const saved = await this.repository.save(entities);
+		return saved.map((s) => {
+			const result = new DomainTag();
+			Object.assign(result, s);
+			return result;
 		});
 	}
 
-	async count(criteria?: TagCriteria): Promise<number> {
-		return this.repository.count({
-			where: criteria as unknown as FindOptionsWhere<InfrastructureTag>,
+	async update(id: string, data: Partial<DomainTag>): Promise<void> {
+		const updateData = data as QueryDeepPartialEntity<InfrastructureTag>;
+		await this.repository.update(id, updateData);
+	}
+
+	async delete(id: string): Promise<void> {
+		await this.repository.delete(id);
+	}
+
+	async findByIds(ids: string[]): Promise<DomainTag[]> {
+		const tags = await this.repository.find({
+			where: { id: In(ids) },
+			order: { name: 'ASC' },
+		});
+		return tags.map((t) => {
+			const result = new DomainTag();
+			Object.assign(result, t);
+			return result;
 		});
 	}
 
-	async findWithFilters(
-		options: TagsOptions,
-		maxWeight = 99,
+	async findOne(
+		criteria: FindOptionsWhere<InfrastructureTag>,
+	): Promise<DomainTag | null> {
+		const tag = await this.repository.findOne({ where: criteria });
+		if (!tag) return null;
+		const result = new DomainTag();
+		Object.assign(result, tag);
+		return result;
+	}
+
+	async find(
+		criteria: FindOptionsWhere<InfrastructureTag>,
 	): Promise<DomainTag[]> {
-		const queryBuilder = this.bookRepository
-			.createQueryBuilder('book')
-			.leftJoinAndSelect('book.tags', 'tag')
-			.leftJoin('book.sensitiveContent', 'sensitiveContent');
+		const tags = await this.repository.find({ where: criteria });
+		return tags.map((t) => {
+			const result = new DomainTag();
+			Object.assign(result, t);
+			return result;
+		});
+	}
 
-		if (options.sensitiveContent && options.sensitiveContent.length > 0) {
-			queryBuilder.andWhere('sensitiveContent.name IN (:...names)', {
-				names: options.sensitiveContent,
-			});
+	async findOrCreateByName(name: string): Promise<DomainTag> {
+		let tag = await this.repository.findOne({ where: { name } });
+		if (!tag) {
+			tag = this.repository.create({ name });
+			tag = await this.repository.save(tag);
 		}
-		queryBuilder.andWhere(
-			'sensitiveContent.weight <= :maxWeight OR sensitiveContent.id IS NULL',
-			{ maxWeight },
-		);
+		const result = new DomainTag();
+		Object.assign(result, tag);
+		return result;
+	}
 
-		const books = await queryBuilder.getMany();
-		const tagIds = Array.from(
-			new Set(books.flatMap((book) => book.tags.map((tag) => tag.id))),
+	async findByBookId(bookId: string): Promise<DomainTag[]> {
+		const book = await this.bookRepository.findOne({
+			where: { id: bookId },
+			relations: ['tags'],
+		});
+		return (book?.tags || []).map((t) => {
+			const result = new DomainTag();
+			Object.assign(result, t);
+			return result;
+		});
+	}
+
+	async findByNames(names: string[]): Promise<DomainTag[]> {
+		if (names.length === 0) return [];
+		const authors = await this.repository.find({
+			where: { name: In(names) },
+		});
+		return authors.map((t) => {
+			const result = new DomainTag();
+			Object.assign(result, t);
+			return result;
+		});
+	}
+
+	async searchByNames(names: string[]): Promise<DomainTag[]> {
+		const tagIds = await Promise.all(
+			names.map(async (name) => {
+				const tag = await this.findOrCreateByName(name);
+				return tag.id;
+			}),
 		);
 
 		if (tagIds.length === 0) return [];
@@ -108,7 +149,11 @@ export class TypeOrmTagRepositoryAdapter implements ITagRepository {
 			where: { id: In(tagIds) },
 			order: { name: 'ASC' },
 		});
-		return tags as unknown as DomainTag[];
+		return tags.map((t) => {
+			const result = new DomainTag();
+			Object.assign(result, t);
+			return result;
+		});
 	}
 
 	async findByBookIds(
@@ -119,12 +164,15 @@ export class TypeOrmTagRepositoryAdapter implements ITagRepository {
 			.innerJoin('books_tags_tags', 'bt', 'tag.id = bt.tagsId')
 			.select(['tag.id', 'tag.name', 'bt.booksId'])
 			.where('bt.booksId IN (:...bookIds)', { bookIds })
-			.getRawMany();
+			.getRawMany<RawTagResult>();
 
-		return results.map((r) => ({
-			id: r.tag_id,
-			name: r.tag_name,
-			bookId: r.bt_booksId,
-		})) as unknown as (DomainTag & { bookId: string })[];
+		return results.map((r) => {
+			const domainTag = new DomainTag();
+			domainTag.id = r.tag_id;
+			domainTag.name = r.tag_name;
+			return Object.assign(domainTag, {
+				bookId: r.bt_booksId,
+			}) as DomainTag & { bookId: string };
+		});
 	}
 }

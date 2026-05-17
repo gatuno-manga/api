@@ -1,9 +1,9 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
-import { v7 as uuidv7 } from 'uuid';
 import { StorageBucket } from '@common/enum/storage-bucket.enum';
-import { FileCompressorFactory } from '@files/infrastructure/adapters/file-compressor.factory';
-import { StoragePort } from '@files/application/ports/storage.port';
 import { EventPublisherPort } from '@files/application/ports/event-publisher.port';
+import { StoragePort } from '@files/application/ports/storage.port';
+import { FileCompressorFactory } from '@files/infrastructure/adapters/file-compressor.factory';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { v7 as uuidv7 } from 'uuid';
 
 @Injectable()
 export class FilesService {
@@ -15,10 +15,6 @@ export class FilesService {
 		@Inject('EVENT_PUBLISHER_PORT')
 		private readonly eventPublisher: EventPublisherPort,
 	) {}
-
-	private getPublicPath(fileKey: string): string {
-		return `/data/${fileKey}`;
-	}
 
 	/**
 	 * Returns the compressor factory for external use (e.g., NetworkInterceptor)
@@ -157,14 +153,14 @@ export class FilesService {
 					fileKey,
 					fallbackBucket,
 				);
-			} catch (fallbackError) {
+			} catch (_fallbackError) {
 				// 3. Última tentativa: Bucket default (sem especificar bucket no adapter)
 				try {
 					this.logger.debug(
 						`File not found in ${fallbackBucket}, trying default bucket: ${fileKey}`,
 					);
 					return await this.storagePort.getBuffer(fileKey);
-				} catch (finalError) {
+				} catch (_finalError) {
 					this.logger.error(
 						`Failed to retrieve file from any bucket: ${fileKey}`,
 					);

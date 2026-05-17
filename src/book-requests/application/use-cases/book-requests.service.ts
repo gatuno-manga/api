@@ -1,30 +1,30 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { CreateBookRequestDto } from '@/book-requests/application/dto/create-book-request.dto';
+import { RejectBookRequestDto } from '@/book-requests/application/dto/reject-book-request.dto';
 import {
 	BookRequestRepository,
 	I_BOOK_REQUEST_REPOSITORY,
 } from '@/book-requests/application/ports/book-request.repository';
-import { CreateBookRequestDto } from '@/book-requests/application/dto/create-book-request.dto';
-import { RejectBookRequestDto } from '@/book-requests/application/dto/reject-book-request.dto';
+import { BookRequestEvents } from '@/book-requests/domain/constants/events.constant';
 import { BookRequest } from '@/book-requests/domain/entities/book-request';
+import { BookRequestStatus } from '@/book-requests/domain/enums/book-request-status.enum';
+import {
+	BookInformation,
+	BookRequestBody,
+	BookRequestOutcome,
+	BookRequestProposition,
+	ResolutionDetails,
+} from '@/book-requests/domain/value-objects/book-request-body.vo';
 import {
 	BookRequestHeader,
 	BookRequestIdentity,
 	BookRequestTiming,
 } from '@/book-requests/domain/value-objects/book-request-header.vo';
-import {
-	BookRequestBody,
-	BookRequestProposition,
-	BookInformation,
-	BookRequestOutcome,
-	ResolutionDetails,
-} from '@/book-requests/domain/value-objects/book-request-body.vo';
+import { BookRequestReason } from '@/book-requests/domain/value-objects/book-request-reason.vo';
 import { BookRequestTitle } from '@/book-requests/domain/value-objects/book-request-title.vo';
 import { BookRequestUrl } from '@/book-requests/domain/value-objects/book-request-url.vo';
-import { BookRequestReason } from '@/book-requests/domain/value-objects/book-request-reason.vo';
-import { BookRequestStatus } from '@/book-requests/domain/enums/book-request-status.enum';
 import { RejectionMessage } from '@/book-requests/domain/value-objects/rejection-message.vo';
-import { BookRequestEvents } from '@/book-requests/domain/constants/events.constant';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class BookRequestsService {

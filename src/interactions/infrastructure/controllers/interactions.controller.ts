@@ -1,25 +1,25 @@
+import { FavoriteBookUseCase } from '@/interactions/application/use-cases/favorite-book.use-case';
+import { ReviewBookUseCase } from '@/interactions/application/use-cases/review-book.use-case';
+import { SubscribeToBookUseCase } from '@/interactions/application/use-cases/subscribe-to-book.use-case';
+import { ReviewBookDto } from '@/interactions/infrastructure/http/dto/review-book.dto';
+import { CurrentUserDto } from '@auth/application/dto/current-user.dto';
+import { CurrentUser } from '@auth/infrastructure/framework/current-user.decorator';
+import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
+import { DataEnvelopeInterceptor } from '@common/interceptors/data-envelope.interceptor';
+import { SWAGGER_AUTH_SCHEME } from '@common/swagger/swagger-auth.constants';
 import {
 	Body,
 	Controller,
+	Param,
 	Post,
 	UseGuards,
 	UseInterceptors,
-	Param,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
-import { CurrentUser } from '@auth/infrastructure/framework/current-user.decorator';
-import { CurrentUserDto } from '@auth/application/dto/current-user.dto';
-import { DataEnvelopeInterceptor } from '@common/interceptors/data-envelope.interceptor';
-import { FavoriteBookUseCase } from '@/interactions/application/use-cases/favorite-book.use-case';
-import { SubscribeToBookUseCase } from '@/interactions/application/use-cases/subscribe-to-book.use-case';
-import { ReviewBookUseCase } from '@/interactions/application/use-cases/review-book.use-case';
-import { ReviewBookDto } from '@/interactions/infrastructure/http/dto/review-book.dto';
-import { SWAGGER_AUTH_SCHEME } from '@common/swagger/swagger-auth.constants';
 import {
 	ApiDocsFavorite,
-	ApiDocsSubscribe,
 	ApiDocsReview,
+	ApiDocsSubscribe,
 } from './swagger/interactions.swagger';
 
 @ApiTags('Interactions')

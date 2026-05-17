@@ -1,9 +1,9 @@
+import { BookContentUpdateService } from '@books/application/services/book-content-update.service';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
-import { Book } from '@books/infrastructure/database/entities/book.entity';
-import { BookContentUpdateService } from '@books/application/services/book-content-update.service';
 import { BookUpdateProcessor } from './book-update.processor';
 import { CoverImageService } from './cover-image.service';
 

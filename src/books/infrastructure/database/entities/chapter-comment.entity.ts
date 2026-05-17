@@ -29,21 +29,14 @@ export class ChapterComment {
 	@Column({ name: 'user_name', type: 'varchar', length: 255 })
 	userName: string;
 
-	@ManyToOne(
-		() => ChapterComment,
-		(comment) => comment.replies,
-		{
-			nullable: true,
-			onDelete: 'CASCADE',
-		},
-	)
+	@ManyToOne(() => ChapterComment, (comment) => comment.replies, {
+		nullable: true,
+		onDelete: 'CASCADE',
+	})
 	@JoinColumn({ name: 'parent_id' })
 	parent: Relation<ChapterComment | null>;
 
-	@OneToMany(
-		() => ChapterComment,
-		(comment) => comment.parent,
-	)
+	@OneToMany(() => ChapterComment, (comment) => comment.parent)
 	replies: Relation<ChapterComment[]>;
 
 	@Column({ type: 'text' })

@@ -1,9 +1,9 @@
 import { PassThrough } from 'node:stream';
-import { Injectable, Logger, StreamableFile } from '@nestjs/common';
-import archiver from 'archiver';
 import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
-import { DownloadStrategy } from './download.strategy';
+import { Injectable, Logger, StreamableFile } from '@nestjs/common';
 import { FilesService } from '@src/files/application/services/files.service';
+import archiver from 'archiver';
+import { DownloadStrategy } from './download.strategy';
 
 // Configuração de paralelismo
 const PARALLEL_CHAPTERS = 4; // Capítulos processados em paralelo
@@ -66,12 +66,14 @@ export class ZipStrategy implements DownloadStrategy {
 				this.logger.debug('All files added, archive finalized');
 			})
 			.catch((err) => {
-				this.logger.error(`ZIP generation failed: ${err.message}`);
-				outputStream.destroy(err);
+				const error =
+					err instanceof Error ? err : new Error(String(err));
+				this.logger.error(`ZIP generation failed: ${error.message}`);
+				outputStream.destroy(error);
 			});
 
 		// Retornar imediatamente o stream
-		return new StreamableFile(outputStream);
+		return Promise.resolve(new StreamableFile(outputStream));
 	}
 
 	/**
@@ -184,12 +186,11 @@ export class ZipStrategy implements DownloadStrategy {
 	}
 
 	private sanitizeFileName(name: string): string {
-		return name
-			.replace(
-				// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional sanitization of control characters
-				/[<>:"/\\|?*\x00-\x1F]/g,
-				'_',
-			)
-			.trim();
+		const controlChars = `${String.fromCharCode(0)}-${String.fromCharCode(31)}`;
+		const controlCharsRegex = new RegExp(
+			`[<>:"/\\\\|?*${controlChars}]`,
+			'g',
+		);
+		return name.replace(controlCharsRegex, '_').trim();
 	}
 }

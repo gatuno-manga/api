@@ -1,7 +1,7 @@
+import { AppConfigService } from '@app-config/app-config.service';
 import { INestApplication, Logger } from '@nestjs/common';
 import { MicroserviceOptions } from '@nestjs/microservices';
 import { Partitioners } from 'kafkajs';
-import { AppConfigService } from '@app-config/app-config.service';
 import { KafkaBatchStrategy } from './kafka-batch.strategy';
 
 export function configureKafka(

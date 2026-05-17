@@ -1,45 +1,45 @@
+import { BookChaptersCursorOptionsDto } from '@books/application/dto/book-chapters-cursor-options.dto';
+import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
+import { ChapterCommentsPageOptionsDto } from '@books/application/dto/chapter-comments-page-options.dto';
+import { AuthorsService } from '@books/application/services/authors.service';
+import { BookDataLoaderService } from '@books/application/services/book-dataloader.service';
+import { BooksService } from '@books/application/services/books.service';
+import { ChapterCommentsService } from '@books/application/services/chapter-comments.service';
+import { ChapterService } from '@books/application/services/chapter.service';
+import { TagsService } from '@books/application/services/tags.service';
+import { BookFilterInput } from '@books/infrastructure/graphql/models/book-filter.input';
+import {
+	AuthorModel,
+	BookModel,
+	CoverModel,
+	TagModel,
+} from '@books/infrastructure/graphql/models/book.model';
+import { ChapterFilterInput } from '@books/infrastructure/graphql/models/chapter-filter.input';
+import { ChapterModel } from '@books/infrastructure/graphql/models/chapter.model';
+import { ChapterCommentModel } from '@books/infrastructure/graphql/models/comment.model';
+import { PaginatedBookResponseModel } from '@books/infrastructure/graphql/models/paginated-book-response.model';
+import { PaginatedChapterResponseModel } from '@books/infrastructure/graphql/models/paginated-chapter-response.model';
+import { PaginatedCommentResponseModel } from '@books/infrastructure/graphql/models/paginated-comment-response.model';
+import { StorageBucket } from '@common/enum/storage-bucket.enum';
+import { ImageMetadataModel } from '@common/infrastructure/graphql/models/image-metadata.model';
+import { CacheTTL } from '@nestjs/cache-manager';
+import { UseGuards, UseInterceptors } from '@nestjs/common';
 import {
 	Args,
 	ID,
 	Int,
-	Query,
-	Resolver,
-	ResolveField,
 	Parent,
+	Query,
+	ResolveField,
+	Resolver,
 } from '@nestjs/graphql';
-import { UseGuards, UseInterceptors } from '@nestjs/common';
-import { CacheTTL } from '@nestjs/cache-manager';
-import { BooksService } from '@books/application/services/books.service';
-import { ChapterService } from '@books/application/services/chapter.service';
-import { ChapterCommentsService } from '@books/application/services/chapter-comments.service';
-import { AuthorsService } from '@books/application/services/authors.service';
-import { TagsService } from '@books/application/services/tags.service';
-import { BookDataLoaderService } from '@books/application/services/book-dataloader.service';
-import { MediaUrlService } from 'src/common/services/media-url.service';
-import { StorageBucket } from '@common/enum/storage-bucket.enum';
-import {
-	BookModel,
-	CoverModel,
-	AuthorModel,
-	TagModel,
-} from '@books/infrastructure/graphql/models/book.model';
-import { ImageMetadataModel } from '@common/infrastructure/graphql/models/image-metadata.model';
-import { ChapterModel } from '@books/infrastructure/graphql/models/chapter.model';
-import { ChapterCommentModel } from '@books/infrastructure/graphql/models/comment.model';
-import { PaginatedBookResponseModel } from '@books/infrastructure/graphql/models/paginated-book-response.model';
-import { PaginatedCommentResponseModel } from '@books/infrastructure/graphql/models/paginated-comment-response.model';
-import { PaginatedChapterResponseModel } from '@books/infrastructure/graphql/models/paginated-chapter-response.model';
-import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
-import { BookChaptersCursorOptionsDto } from '@books/application/dto/book-chapters-cursor-options.dto';
-import { ChapterCommentsPageOptionsDto } from '@books/application/dto/chapter-comments-page-options.dto';
-import { BookFilterInput } from '@books/infrastructure/graphql/models/book-filter.input';
-import { ChapterFilterInput } from '@books/infrastructure/graphql/models/chapter-filter.input';
-import { GqlCurrentUser } from 'src/auth/infrastructure/framework/gql-current-user.decorator';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
+import { GqlCurrentUser } from 'src/auth/infrastructure/framework/gql-current-user.decorator';
 import { OptionalGqlJwtAuthGuard } from 'src/auth/infrastructure/framework/optional-gql-jwt-auth.guard';
 import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-cache.interceptor';
-import { PageDto } from 'src/common/pagination/page.dto';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
+import { PageDto } from 'src/common/pagination/page.dto';
+import { MediaUrlService } from 'src/common/services/media-url.service';
 
 @Resolver(() => BookModel)
 export class BookResolver {
@@ -196,9 +196,11 @@ export class BookResolver {
 	}
 
 	@ResolveField(() => String, { name: 'cover', nullable: true })
-	async getBookCover(@Parent() book: BookModel): Promise<string | null> {
-		if (!book.cover) return null;
-		return this.mediaUrlService.resolveUrl(book.cover, StorageBucket.BOOKS);
+	getBookCover(@Parent() book: BookModel): Promise<string | null> {
+		if (!book.cover) return Promise.resolve(null);
+		return Promise.resolve(
+			this.mediaUrlService.resolveUrl(book.cover, StorageBucket.BOOKS),
+		);
 	}
 
 	@Query(() => ChapterModel, { name: 'chapter', nullable: true })

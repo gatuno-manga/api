@@ -1,9 +1,9 @@
 import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
-import { Book } from '@books/domain/entities/book';
 import { FilterStrategy } from '@books/application/strategies';
+import { Book } from '@books/domain/entities/book';
 import {
-	BookCriteria,
 	AccessContext,
+	BookCriteria,
 } from '@books/domain/types/criteria.types';
 
 export interface IBookRepository {

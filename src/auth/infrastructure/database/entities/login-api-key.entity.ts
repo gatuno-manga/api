@@ -1,3 +1,4 @@
+import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import {
 	Column,
 	CreateDateColumn,
@@ -8,7 +9,6 @@ import {
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
 } from 'typeorm';
-import { User } from 'src/users/infrastructure/database/entities/user.entity';
 
 @Entity('auth_login_api_keys')
 @Index(['userId', 'expiresAt'])

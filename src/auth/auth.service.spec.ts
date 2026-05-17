@@ -1,37 +1,37 @@
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { Test, type TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { AppConfigService } from '@app-config/app-config.service';
 import { DataEncryptionProvider } from '@encryption/data-encryption.provider';
 import { PasswordEncryption } from '@encryption/password-encryption.provider';
 import { PasswordMigrationService } from '@encryption/password-migration.service';
+import { UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { Role } from 'src/users/infrastructure/database/entities/role.entity';
 import { User } from 'src/users/infrastructure/database/entities/user.entity';
-import { AuthService } from './auth.service';
-import { SignUpUseCase } from './application/use-cases/sign-up.use-case';
 import { SignInUseCase } from './application/use-cases/sign-in.use-case';
-import { LoginApiKey } from './infrastructure/database/entities/login-api-key.entity';
+import { SignUpUseCase } from './application/use-cases/sign-up.use-case';
+import { AuthService } from './auth.service';
 import { MfaService } from './infrastructure/adapters/mfa.service';
 import { SessionAuditService } from './infrastructure/adapters/session-audit.service';
 import { SessionManagementService } from './infrastructure/adapters/session-management.service';
 import { TokenStoreService } from './infrastructure/adapters/token-store.service';
+import { LoginApiKey } from './infrastructure/database/entities/login-api-key.entity';
 
 describe('AuthService', () => {
 	let service: AuthService;
 	let module: TestingModule;
 	let userRepository: any;
-	let roleRepository: any;
+	let _roleRepository: any;
 	let loginApiKeyRepository: any;
 	let jwtService: any;
 	let passwordEncryption: any;
-	let passwordMigration: any;
+	let _passwordMigration: any;
 	let dataEncryption: any;
-	let appConfigService: any;
+	let _appConfigService: any;
 	let tokenStore: any;
 	let sessionAudit: any;
-	let sessionManagement: any;
-	let mfaService: any;
+	let _sessionManagement: any;
+	let _mfaService: any;
 
 	beforeEach(async () => {
 		const mockUserRepository = {
@@ -206,23 +206,23 @@ describe('AuthService', () => {
 
 		service = module.get<AuthService>(AuthService);
 		userRepository = module.get(getRepositoryToken(User));
-		roleRepository = module.get(getRepositoryToken(Role));
+		_roleRepository = module.get(getRepositoryToken(Role));
 		loginApiKeyRepository = module.get(getRepositoryToken(LoginApiKey));
 		jwtService = module.get<JwtService>(JwtService);
 		passwordEncryption = module.get<PasswordEncryption>(PasswordEncryption);
-		passwordMigration = module.get<PasswordMigrationService>(
+		_passwordMigration = module.get<PasswordMigrationService>(
 			PasswordMigrationService,
 		);
 		dataEncryption = module.get<DataEncryptionProvider>(
 			DataEncryptionProvider,
 		);
-		appConfigService = module.get<AppConfigService>(AppConfigService);
+		_appConfigService = module.get<AppConfigService>(AppConfigService);
 		tokenStore = module.get<TokenStoreService>(TokenStoreService);
 		sessionAudit = module.get<SessionAuditService>(SessionAuditService);
-		sessionManagement = module.get<SessionManagementService>(
+		_sessionManagement = module.get<SessionManagementService>(
 			SessionManagementService,
 		);
-		mfaService = module.get<MfaService>(MfaService);
+		_mfaService = module.get<MfaService>(MfaService);
 	});
 
 	it('should be defined', () => {
@@ -286,7 +286,7 @@ describe('AuthService', () => {
 		it('should sign in user successfully', async () => {
 			const email = 'test@example.com';
 			const password = 'password123';
-			const user = { id: '123', email };
+			const _user = { id: '123', email };
 			const tokens = {
 				accessToken: 'access_token',
 				refreshToken: 'refresh_token',

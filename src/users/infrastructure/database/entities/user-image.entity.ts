@@ -1,3 +1,4 @@
+import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
 import {
 	Column,
 	CreateDateColumn,
@@ -5,7 +6,6 @@ import {
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
 } from 'typeorm';
-import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
 
 @Entity('user_images')
 export class UserImage {

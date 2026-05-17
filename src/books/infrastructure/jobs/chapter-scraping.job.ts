@@ -1,10 +1,10 @@
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Job } from 'bullmq';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { DataSource, Repository } from 'typeorm';
-import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { ChapterScrapingSharedService } from './chapter-scraping.shared';
 
 const QUEUE_NAME = 'chapter-scraping';
@@ -15,7 +15,7 @@ export class ChapterScrapingJob extends WorkerHost implements OnModuleInit {
 
 	constructor(
 		@InjectRepository(Chapter)
-		private readonly chapterRepository: Repository<Chapter>,
+		readonly _chapterRepository: Repository<Chapter>,
 		private readonly dataSource: DataSource,
 		private readonly configService: AppConfigService,
 		private readonly chapterScrapingShared: ChapterScrapingSharedService,
@@ -98,7 +98,7 @@ export class ChapterScrapingJob extends WorkerHost implements OnModuleInit {
 			}
 		} catch (error) {
 			this.logger.error(
-				`Erro ao incrementar retentativa para o capítulo ${chapterId}: ${error.message}`,
+				`Erro ao incrementar retentativa para o capítulo ${chapterId}: ${error instanceof Error ? error.message : String(error)}`,
 			);
 		} finally {
 			await queryRunner.release();
@@ -130,7 +130,7 @@ export class ChapterScrapingJob extends WorkerHost implements OnModuleInit {
 			}
 		} catch (error) {
 			this.logger.error(
-				`Erro ao emitir evento de falha para o capítulo ${chapterId}: ${error.message}`,
+				`Erro ao emitir evento de falha para o capítulo ${chapterId}: ${error instanceof Error ? error.message : String(error)}`,
 			);
 		} finally {
 			await queryRunner.release();

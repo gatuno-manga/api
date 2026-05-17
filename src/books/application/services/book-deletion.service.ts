@@ -1,4 +1,20 @@
 import {
+	IBookRepository,
+	I_BOOK_REPOSITORY,
+} from '@books/application/ports/book-repository.interface';
+import {
+	IChapterRepository,
+	I_CHAPTER_REPOSITORY,
+} from '@books/application/ports/chapter-repository.interface';
+import {
+	ICoverRepository,
+	I_COVER_REPOSITORY,
+} from '@books/application/ports/cover-repository.interface';
+import {
+	IPageRepository,
+	I_PAGE_REPOSITORY,
+} from '@books/application/ports/page-repository.interface';
+import {
 	BadRequestException,
 	Inject,
 	Injectable,
@@ -6,27 +22,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { DataSource, In } from 'typeorm';
-import { Book } from '@books/domain/entities/book';
-import { Chapter } from '@books/domain/entities/chapter';
-import { Cover } from '@books/domain/entities/cover';
-import { Page } from '@books/domain/entities/page';
-import {
-	I_BOOK_REPOSITORY,
-	IBookRepository,
-} from '@books/application/ports/book-repository.interface';
-import {
-	I_CHAPTER_REPOSITORY,
-	IChapterRepository,
-} from '@books/application/ports/chapter-repository.interface';
-import {
-	I_COVER_REPOSITORY,
-	ICoverRepository,
-} from '@books/application/ports/cover-repository.interface';
-import {
-	I_PAGE_REPOSITORY,
-	IPageRepository,
-} from '@books/application/ports/page-repository.interface';
+import { DataSource } from 'typeorm';
 
 export interface DeletionResult {
 	deletedBooks?: number;
@@ -51,8 +47,8 @@ export class BookDeletionService {
 		private readonly coverRepository: ICoverRepository,
 		@Inject(I_PAGE_REPOSITORY)
 		private readonly pageRepository: IPageRepository,
-		private readonly eventEmitter: EventEmitter2,
-		private readonly dataSource: DataSource,
+		readonly _eventEmitter: EventEmitter2,
+		readonly _dataSource: DataSource,
 	) {}
 
 	async deleteBook(bookId: string): Promise<DeletionResult> {
@@ -186,19 +182,19 @@ export class BookDeletionService {
 		await this.pageRepository.softRemove(pagesToDelete);
 	}
 
-	async listDeletedBooks(): Promise<unknown[]> {
+	listDeletedBooks(): unknown[] {
 		return [];
 	}
 
-	async listDeletedChapters(): Promise<unknown[]> {
+	listDeletedChapters(): unknown[] {
 		return [];
 	}
 
-	async listDeletedCovers(): Promise<unknown[]> {
+	listDeletedCovers(): unknown[] {
 		return [];
 	}
 
-	async listDeletedPages(): Promise<unknown[]> {
+	listDeletedPages(): unknown[] {
 		return [];
 	}
 }

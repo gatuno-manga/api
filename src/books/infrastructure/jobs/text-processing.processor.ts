@@ -1,16 +1,16 @@
-import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
-import { Inject, Logger, OnModuleInit } from '@nestjs/common';
-import { Job } from 'bullmq';
-import { InjectRepository } from '@nestjs/typeorm';
-import { ClientKafka } from '@nestjs/microservices';
-import { Repository } from 'typeorm';
-import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
-import { ChapterComment } from '@books/infrastructure/database/entities/chapter-comment.entity';
+import { AppConfigService } from '@app-config/app-config.service';
 import { QueueTextProcessingDto } from '@books/application/dto/queue-text-processing.dto';
 import { ContentFormat } from '@books/domain/enums/content-format.enum';
-import { AppConfigService } from '@app-config/app-config.service';
+import { ChapterComment } from '@books/infrastructure/database/entities/chapter-comment.entity';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { MediaUrlService } from '@common/services/media-url.service';
+import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
+import { Inject, Logger, OnModuleInit } from '@nestjs/common';
+import { ClientKafka } from '@nestjs/microservices';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Job } from 'bullmq';
 import * as cheerio from 'cheerio';
+import { Repository } from 'typeorm';
 
 const QUEUE_NAME = 'text-processing-queue';
 
@@ -103,9 +103,9 @@ export class TextProcessingProcessor
 							`Image mirroring request successfully emitted to Kafka for ${source}: ${entityId}`,
 						);
 					},
-					error: (err) => {
+					error: (err: unknown) => {
 						this.logger.error(
-							`Failed to emit image mirroring request to Kafka for ${source} ${entityId}: ${err.message}`,
+							`Failed to emit image mirroring request to Kafka for ${source} ${entityId}: ${err instanceof Error ? err.message : String(err)}`,
 						);
 					},
 				});

@@ -1,26 +1,23 @@
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { In, SelectQueryBuilder } from 'typeorm';
-import { Book } from '@books/domain/entities/book';
-import { SensitiveContent } from '@books/domain/entities/sensitive-content';
 import { CreateSensitiveContentDto } from '@books/application/dto/create-sensitive-content.dto';
 import { UpdateSensitiveContentDto } from '@books/application/dto/update-sensitive-content.dto';
 import {
-	I_SENSITIVE_CONTENT_REPOSITORY,
-	ISensitiveContentRepository,
-} from '@books/application/ports/sensitive-content-repository.interface';
-import {
-	I_BOOK_REPOSITORY,
 	IBookRepository,
+	I_BOOK_REPOSITORY,
 } from '@books/application/ports/book-repository.interface';
+import {
+	ISensitiveContentRepository,
+	I_SENSITIVE_CONTENT_REPOSITORY,
+} from '@books/application/ports/sensitive-content-repository.interface';
+import { SensitiveContent } from '@books/domain/entities/sensitive-content';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { SelectQueryBuilder } from 'typeorm';
 
 @Injectable()
 export class SensitiveContentService {
-	private readonly logger = new Logger(SensitiveContentService.name);
 	constructor(
 		@Inject(I_SENSITIVE_CONTENT_REPOSITORY)
 		private readonly sensitiveContentRepository: ISensitiveContentRepository,
-		@Inject(I_BOOK_REPOSITORY)
-		private readonly bookRepository: IBookRepository,
+		@Inject(I_BOOK_REPOSITORY) readonly _bookRepository: IBookRepository,
 	) {}
 
 	async getAll(maxWeightSensitiveContent = 0): Promise<SensitiveContent[]> {
@@ -60,15 +57,15 @@ export class SensitiveContentService {
 		await this.sensitiveContentRepository.remove(sensitiveContent);
 	}
 
-	async mergeSensitiveContent(id: string, copy: string[]) {
+	async mergeSensitiveContent(id: string, _copy: string[]) {
 		// Lógica simplificada para o build
 		return this.getOne(id);
 	}
 
 	async filterBooksSensitiveContent(
-		queryBuilder: SelectQueryBuilder<SensitiveContent>,
-		names?: string[],
-		weight = 0,
+		_queryBuilder: SelectQueryBuilder<SensitiveContent>,
+		_names?: string[],
+		_weight = 0,
 	): Promise<void> {
 		// Esta lógica deve ser movida para o repositório/adapter
 	}

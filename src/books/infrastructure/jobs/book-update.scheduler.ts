@@ -1,10 +1,10 @@
+import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CronJob } from 'cron';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { IsNull, Repository } from 'typeorm';
-import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { BookUpdateJobService } from './book-update.service';
 
 const CRON_JOB_NAME = 'book-update-cron';
@@ -37,7 +37,11 @@ export class BookUpdateScheduler implements OnModuleInit {
 		);
 
 		const job = new CronJob(cronExpression, () => {
-			this.handleScheduledUpdate();
+			this.handleScheduledUpdate().catch((error) => {
+				this.logger.error(
+					`Cron job handler failed: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			});
 		});
 
 		this.schedulerRegistry.addCronJob(CRON_JOB_NAME, job);
@@ -91,8 +95,8 @@ export class BookUpdateScheduler implements OnModuleInit {
 			);
 		} catch (error) {
 			this.logger.error(
-				`Error during scheduled book update: ${error.message}`,
-				error.stack,
+				`Error during scheduled book update: ${error instanceof Error ? error.message : String(error)}`,
+				error instanceof Error ? error.stack : undefined,
 			);
 		}
 	}

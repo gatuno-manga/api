@@ -1,19 +1,17 @@
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { In } from 'typeorm';
-import { Book } from '@books/domain/entities/book';
-import { Tag } from '@books/domain/entities/tag';
-import { SensitiveContentService } from './sensitive-content.service';
+import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants';
 import { TagsOptions } from '@books/application/dto/tags-options.dto';
 import {
-	I_TAG_REPOSITORY,
-	ITagRepository,
-} from '@books/application/ports/tag-repository.interface';
-import {
-	I_BOOK_REPOSITORY,
 	IBookRepository,
+	I_BOOK_REPOSITORY,
 } from '@books/application/ports/book-repository.interface';
-import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants';
+import {
+	ITagRepository,
+	I_TAG_REPOSITORY,
+} from '@books/application/ports/tag-repository.interface';
+import { Tag } from '@books/domain/entities/tag';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Meilisearch } from 'meilisearch';
+import { SensitiveContentService } from './sensitive-content.service';
 
 @Injectable()
 export class TagsService {
@@ -21,9 +19,8 @@ export class TagsService {
 	constructor(
 		@Inject(I_TAG_REPOSITORY)
 		private readonly tagRepository: ITagRepository,
-		@Inject(I_BOOK_REPOSITORY)
-		private readonly bookRepository: IBookRepository,
-		private readonly sensitiveContentService: SensitiveContentService,
+		@Inject(I_BOOK_REPOSITORY) readonly _bookRepository: IBookRepository,
+		readonly _sensitiveContentService: SensitiveContentService,
 		@Inject(MEILI_CLIENT) private readonly meiliClient: Meilisearch,
 	) {}
 
@@ -39,9 +36,9 @@ export class TagsService {
 				altNames: hit.altNames as string[],
 				description: hit.description as string,
 			})) as unknown as Tag[];
-		} catch (error) {
+		} catch (error: unknown) {
 			this.logger.error(
-				`Error searching tags in Meilisearch: ${error.message}`,
+				`Error searching tags in Meilisearch: ${error instanceof Error ? error.message : String(error)}`,
 			);
 			return [];
 		}
@@ -57,7 +54,7 @@ export class TagsService {
 		);
 	}
 
-	async mergeTags(id: string, copy: string[]) {
+	async mergeTags(id: string, _copy: string[]) {
 		const tag = await this.tagRepository.findById(id);
 		if (!tag) {
 			this.logger.warn(`Tag with id ${id} not found`);

@@ -1,8 +1,8 @@
+import { SubscriptionRepository } from '@/interactions/application/ports/subscription-repository.port';
+import { BookEvents } from '@books/domain/constants/events.constant';
+import { BookId } from '@common/domain/value-objects/book-id.vo';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { SubscriptionRepository } from '@/interactions/application/ports/subscription-repository.port';
-import { BookId } from '@common/domain/value-objects/book-id.vo';
-import { BookEvents } from '@books/domain/constants/events.constant';
 
 @Injectable()
 export class NotificationEvents {

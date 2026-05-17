@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
 import { AppConfigService } from '@app-config/app-config.service';
 import { StorageBucket } from '@common/enum/storage-bucket.enum';
+import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class MediaUrlService {

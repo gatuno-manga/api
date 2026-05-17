@@ -1,8 +1,8 @@
-import { Inject, Injectable } from '@nestjs/common';
 import { StorageBucket } from '@common/enum/storage-bucket.enum';
+import { Inject, Injectable } from '@nestjs/common';
 import {
-	I_USER_IMAGE_REPOSITORY,
 	IUserImageRepository,
+	I_USER_IMAGE_REPOSITORY,
 } from '@users/application/ports/user-image-repository.interface';
 import {
 	ImageProcessingCompletedEvent,

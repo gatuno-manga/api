@@ -1,3 +1,5 @@
+import { BookContentUpdateService } from '@books/application/services/book-content-update.service';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -5,8 +7,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Job } from 'bullmq';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { Repository } from 'typeorm';
-import { Book } from '@books/infrastructure/database/entities/book.entity';
-import { BookContentUpdateService } from '@books/application/services/book-content-update.service';
 import { CoverImageService } from './cover-image.service';
 
 const QUEUE_NAME = 'book-update-queue';
@@ -35,14 +35,14 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
 		super();
 	}
 
-	async onModuleInit() {
+	onModuleInit() {
 		this.worker.concurrency =
 			this.configService.queueConcurrency?.bookUpdate ?? 2;
 
 		// Recalcula hashes de capas que por acaso não tenham sido calculados
 		this.coverImageService.recalculateMissingCoverHashes().catch((err) => {
 			this.logger.error(
-				`Erro ao recalcular hashes de capas: ${err.message}`,
+				`Erro ao recalcular hashes de capas: ${err instanceof Error ? err.message : String(err)}`,
 			);
 		});
 	}

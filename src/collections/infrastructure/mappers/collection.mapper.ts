@@ -1,8 +1,8 @@
-import { CollectionEntity } from '@/collections/infrastructure/database/entities/collection.entity';
 import {
 	Collection,
 	CollectionSnapshot,
 } from '@/collections/domain/entities/collection';
+import { CollectionEntity } from '@/collections/infrastructure/database/entities/collection.entity';
 
 export const CollectionMapper = {
 	toDomain(entity: CollectionEntity): Collection {

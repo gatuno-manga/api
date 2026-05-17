@@ -1,3 +1,4 @@
+import { NormalizeUrl } from '@common/decorators/normalize-url.decorator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -10,7 +11,6 @@ import {
 	IsUrl,
 	ValidateNested,
 } from 'class-validator';
-import { NormalizeUrl } from '@common/decorators/normalize-url.decorator';
 
 export class CookieConfigDto {
 	@ApiProperty({ description: 'Cookie name', example: 'lang' })

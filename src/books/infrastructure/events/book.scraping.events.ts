@@ -1,13 +1,13 @@
+import { BookEvents } from '@books/domain/constants/events.constant';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
+import { ChapterScrapingService } from '@books/infrastructure/jobs/chapter-scraping.service';
+import { FixChapterService } from '@books/infrastructure/jobs/fix-chapter.service';
 import { Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { BookEvents } from '@books/domain/constants/events.constant';
-import { Book } from '@books/infrastructure/database/entities/book.entity';
-import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
-import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
-import { ChapterScrapingService } from '@books/infrastructure/jobs/chapter-scraping.service';
-import { FixChapterService } from '@books/infrastructure/jobs/fix-chapter.service';
 
 export class BookScrapingEvents {
 	private logger = new Logger(BookScrapingEvents.name);

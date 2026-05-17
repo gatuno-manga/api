@@ -1,18 +1,18 @@
+import { AdminSystemManagementService } from '@books/application/services/admin-system-management.service';
 import { Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
-import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
-import { AdminSystemManagementService } from '@books/application/services/admin-system-management.service';
+import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 import {
 	ApiDocsListCronJobs,
-	ApiDocsStopCronJob,
-	ApiDocsStartCronJob,
 	ApiDocsListQueues,
 	ApiDocsPauseQueue,
-	ApiDocsResumeQueue,
 	ApiDocsResetAutoPause,
+	ApiDocsResumeQueue,
+	ApiDocsStartCronJob,
+	ApiDocsStopCronJob,
 } from './swagger/admin-system-management.swagger';
 
 @ApiTags('Admin System Management')

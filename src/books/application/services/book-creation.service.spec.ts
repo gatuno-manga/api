@@ -1,16 +1,16 @@
-import { Test, type TestingModule } from '@nestjs/testing';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { I_BOOK_REPOSITORY } from '@books/application/ports/book-repository.interface';
+import { I_CHAPTER_REPOSITORY } from '@books/application/ports/chapter-repository.interface';
+import { BookEvents } from '@books/domain/constants/events.constant';
+import { Book } from '@books/domain/entities/book';
+import { CoverImageService } from '@books/infrastructure/jobs/cover-image.service';
 import { BadRequestException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { WebsiteService } from '@websites/application/services/website.service';
+import { I_UNIT_OF_WORK } from 'src/common/application/ports/unit-of-work.interface';
 import { BookCreationService } from './book-creation.service';
 import { BookRelationshipService } from './book-relationship.service';
 import { ChapterManagementService } from './chapter-management.service';
-import { CoverImageService } from '@books/infrastructure/jobs/cover-image.service';
-import { I_BOOK_REPOSITORY } from '@books/application/ports/book-repository.interface';
-import { I_CHAPTER_REPOSITORY } from '@books/application/ports/chapter-repository.interface';
-import { I_UNIT_OF_WORK } from 'src/common/application/ports/unit-of-work.interface';
-import { BookEvents } from '@books/domain/constants/events.constant';
-import { Book } from '@books/domain/entities/book';
-import { WebsiteService } from '@websites/application/services/website.service';
 
 describe('BookCreationService', () => {
 	let service: BookCreationService;

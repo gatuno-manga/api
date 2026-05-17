@@ -1,11 +1,11 @@
 import { INestApplication } from '@nestjs/common';
-import { Test, TestingModule } from '@nestjs/testing';
-import { v7 as uuidv7 } from 'uuid';
-import cookieParser from 'cookie-parser';
 import { JwtService } from '@nestjs/jwt';
-import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
+import { Test, TestingModule } from '@nestjs/testing';
+import cookieParser from 'cookie-parser';
 import { AppModule } from 'src/app.module';
+import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { configureValidationPipe } from 'src/infrastructure/http/config/validation-pipe.config';
+import { v7 as uuidv7 } from 'uuid';
 
 export async function createE2EApp(): Promise<INestApplication> {
 	const moduleFixture: TestingModule = await Test.createTestingModule({

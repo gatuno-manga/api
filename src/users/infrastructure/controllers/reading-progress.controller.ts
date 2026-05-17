@@ -9,10 +9,7 @@ import {
 	UseGuards,
 	UseInterceptors,
 } from '@nestjs/common';
-import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
-import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
-import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
-import { DataEnvelopeInterceptor } from 'src/common/interceptors/data-envelope.interceptor';
+import { ReadingProgressService } from '@users/application/use-cases/reading-progress.service';
 import {
 	BulkReadingProgressDto,
 	ReadingProgressResponseDto,
@@ -20,7 +17,10 @@ import {
 	SyncReadingProgressDto,
 	SyncResponseDto,
 } from '@users/infrastructure/http/dto/reading-progress.dto';
-import { ReadingProgressService } from '@users/application/use-cases/reading-progress.service';
+import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
+import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
+import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
+import { DataEnvelopeInterceptor } from 'src/common/interceptors/data-envelope.interceptor';
 
 @Controller('users/me/reading-progress')
 @UseGuards(JwtAuthGuard)

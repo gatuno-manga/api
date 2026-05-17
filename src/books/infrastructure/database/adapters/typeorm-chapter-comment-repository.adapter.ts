@@ -1,20 +1,20 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import {
-	Brackets,
-	Repository,
-	FindOptionsWhere,
-	DeepPartial,
-	SelectQueryBuilder,
-} from 'typeorm';
 import { IChapterCommentRepository } from '@books/application/ports/chapter-comment-repository.interface';
 import { ChapterComment as DomainChapterComment } from '@books/domain/entities/chapter-comment';
+import {
+	PaginationOptions,
+	ViewerContext,
+} from '@books/domain/types/criteria.types';
 import { ChapterComment as InfrastructureChapterComment } from '@books/infrastructure/database/entities/chapter-comment.entity';
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { RolesEnum } from '@users/domain/enums/roles.enum';
 import {
-	ViewerContext,
-	PaginationOptions,
-} from '@books/domain/types/criteria.types';
+	Brackets,
+	DeepPartial,
+	FindOptionsWhere,
+	Repository,
+	SelectQueryBuilder,
+} from 'typeorm';
 
 @Injectable()
 export class TypeOrmChapterCommentRepositoryAdapter
@@ -99,23 +99,23 @@ export class TypeOrmChapterCommentRepositoryAdapter
 		return roots as unknown as DomainChapterComment[];
 	}
 
-	async findRootsWithCursor(
-		chapterId: string,
-		options: PaginationOptions,
-		viewer?: ViewerContext,
+	findRootsWithCursor(
+		_chapterId: string,
+		_options: PaginationOptions,
+		_viewer?: ViewerContext,
 	): Promise<DomainChapterComment[]> {
 		// Simplified for build
-		return [];
+		return Promise.resolve([]);
 	}
 
-	async findDescendantsByRoots(
-		chapterId: string,
-		rootIds: string[],
-		maxDepth: number,
-		viewer?: ViewerContext,
+	findDescendantsByRoots(
+		_chapterId: string,
+		_rootIds: string[],
+		_maxDepth: number,
+		_viewer?: ViewerContext,
 	): Promise<DomainChapterComment[]> {
 		// Implementation from service moved here
-		return [];
+		return Promise.resolve([]);
 	}
 
 	create(data: Partial<DomainChapterComment>): DomainChapterComment {

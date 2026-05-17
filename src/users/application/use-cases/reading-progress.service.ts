@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, MoreThan, Not, Repository } from 'typeorm';
+import { UserResourcesMapper } from '@users/application/mappers/user-resources.mapper';
+import { SyncStrategyResolver } from '@users/application/strategies/sync-strategy.resolver';
+import { ReadingProgress } from '@users/infrastructure/database/entities/reading-progress.entity';
 import {
 	BulkReadingProgressDto,
 	ReadingProgressResponseDto,
@@ -9,9 +11,7 @@ import {
 	SyncReadingProgressDto,
 	SyncResponseDto,
 } from '@users/infrastructure/http/dto/reading-progress.dto';
-import { ReadingProgress } from '@users/infrastructure/database/entities/reading-progress.entity';
-import { SyncStrategyResolver } from '@users/application/strategies/sync-strategy.resolver';
-import { UserResourcesMapper } from '@users/application/mappers/user-resources.mapper';
+import { In, MoreThan, Not, Repository } from 'typeorm';
 
 @Injectable()
 export class ReadingProgressService {

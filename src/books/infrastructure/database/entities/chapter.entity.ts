@@ -1,3 +1,7 @@
+import { ContentFormat } from '@books/domain/enums/content-format.enum';
+import { ContentType } from '@books/domain/enums/content-type.enum';
+import { DocumentFormat } from '@books/domain/enums/document-format.enum';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import {
 	Column,
 	CreateDateColumn,
@@ -11,10 +15,6 @@ import {
 	Unique,
 	UpdateDateColumn,
 } from 'typeorm';
-import { ContentFormat } from '@books/domain/enums/content-format.enum';
-import { ContentType } from '@books/domain/enums/content-type.enum';
-import { DocumentFormat } from '@books/domain/enums/document-format.enum';
-import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { Book } from './book.entity';
 import { ChapterComment } from './chapter-comment.entity';
 import { Page } from './page.entity';
@@ -109,17 +109,10 @@ export class Chapter {
 	@JoinColumn({ name: 'bookId' })
 	book: Relation<Book>;
 
-	@OneToMany(
-		() => Page,
-		(page) => page.chapter,
-		{ cascade: true },
-	)
+	@OneToMany(() => Page, (page) => page.chapter, { cascade: true })
 	pages: Relation<Page[]>;
 
-	@OneToMany(
-		() => ChapterComment,
-		(comment) => comment.chapter,
-	)
+	@OneToMany(() => ChapterComment, (comment) => comment.chapter)
 	comments: Relation<ChapterComment[]>;
 
 	@Column({

@@ -1,9 +1,7 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from '@/app.module';
-import { DataSource } from 'typeorm';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 import { execSync } from 'node:child_process';
+import { AppModule } from '@/app.module';
+import { NestFactory } from '@nestjs/core';
+import { DataSource } from 'typeorm';
 
 async function migrate() {
 	const app = await NestFactory.createApplicationContext(AppModule);
@@ -64,7 +62,7 @@ async function migrate() {
 						`docker run --rm --network gatuno_gatuno-net minio/mc sh -c "mc alias set myrustfs http://rustfs:9000 rustfsadmin rustfsadmin --api s3v4 && ${moveCmd}"`,
 						{ stdio: 'inherit' },
 					);
-				} catch (err) {
+				} catch (_err) {
 					// console.log(`      ⚠️ Arquivo não encontrado ou já movido: ${internalPath}`);
 				}
 			}

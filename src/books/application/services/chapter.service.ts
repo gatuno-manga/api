@@ -1,14 +1,14 @@
+import { ContentType } from '@books/domain/enums/content-type.enum';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
+import { ChapterRead } from '@books/infrastructure/database/entities/chapter-read.entity';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
+import { ChapterUpdatedEvent } from '@books/infrastructure/events/chapter-updated.event';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
 import { MediaUrlService } from 'src/common/services/media-url.service';
 import { In, Repository } from 'typeorm';
-import { ChapterRead } from '@books/infrastructure/database/entities/chapter-read.entity';
-import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
-import { ContentType } from '@books/domain/enums/content-type.enum';
-import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
-import { ChapterUpdatedEvent } from '@books/infrastructure/events/chapter-updated.event';
 
 interface ChapterIndexRaw {
 	max: string | number | null;

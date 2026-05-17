@@ -1,9 +1,9 @@
+import { MqttTopics } from '@common/domain/constants/mqtt-topics.constant';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { ClientProxy } from '@nestjs/microservices';
 import { ReadingEvents } from '@users/domain/constants/events.constant';
 import { ReadingProgressResponseDto } from '@users/infrastructure/http/dto/reading-progress.dto';
-import { MqttTopics } from '@common/domain/constants/mqtt-topics.constant';
 
 interface ProgressUpdatePayload {
 	userId: string;
@@ -31,9 +31,9 @@ export class ReadingProgressNotifier {
 
 	private publish(topic: string, event: string, payload: unknown) {
 		this.mqttClient.emit(topic, { event, payload }).subscribe({
-			error: (err) => {
+			error: (err: unknown) => {
 				this.logger.error(
-					`Failed to publish to ${topic}: ${err.message}`,
+					`Failed to publish to ${topic}: ${err instanceof Error ? err.message : String(err)}`,
 				);
 			},
 		});

@@ -1,20 +1,22 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import {
-	In,
-	Repository,
-	FindOptionsWhere,
-	DeepPartial,
-	FindOptionsOrder,
-	EntityManager,
-} from 'typeorm';
-import { IChapterRepository } from '@books/application/ports/chapter-repository.interface';
+	ChapterNavigation,
+	IChapterRepository,
+} from '@books/application/ports/chapter-repository.interface';
 import { Chapter as DomainChapter } from '@books/domain/entities/chapter';
-import { Chapter as InfrastructureChapter } from '@books/infrastructure/database/entities/chapter.entity';
 import {
 	ChapterCriteria,
 	ChapterQueryOptions,
 } from '@books/domain/types/criteria.types';
+import { Chapter as InfrastructureChapter } from '@books/infrastructure/database/entities/chapter.entity';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import {
+	EntityManager,
+	FindOptionsOrder,
+	FindOptionsWhere,
+	In,
+	Repository,
+} from 'typeorm';
 
 @Injectable()
 export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
@@ -32,42 +34,47 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 			: repository;
 	}
 
-	createQueryBuilder(alias: string) {
-		return this.repository.createQueryBuilder(alias);
-	}
-
 	async findById(
 		id: string,
 		relations?: string[],
-		comment?: string,
 	): Promise<DomainChapter | null> {
 		const chapter = await this.repository.findOne({
-			where: { id } as unknown as FindOptionsWhere<InfrastructureChapter>,
+			where: { id },
 			relations,
-			comment,
 		});
-		return chapter as unknown as DomainChapter;
+		if (!chapter) return null;
+		const result = new DomainChapter();
+		Object.assign(result, chapter);
+		return result;
 	}
 
 	async save(chapter: DomainChapter): Promise<DomainChapter> {
-		const saved = await this.repository.save(
-			chapter as unknown as InfrastructureChapter,
-		);
-		return saved as unknown as DomainChapter;
+		const entity = this.repository.create();
+		Object.assign(entity, chapter);
+		const saved = await this.repository.save(entity);
+		const result = new DomainChapter();
+		Object.assign(result, saved);
+		return result;
 	}
 
 	async saveAll(chapters: DomainChapter[]): Promise<DomainChapter[]> {
-		const saved = await this.repository.save(
-			chapters as unknown as InfrastructureChapter[],
-		);
-		return saved as unknown as DomainChapter[];
+		const entities = chapters.map((ch) => {
+			const entity = this.repository.create();
+			Object.assign(entity, ch);
+			return entity;
+		});
+		const saved = await this.repository.save(entities);
+		return saved.map((s) => {
+			const result = new DomainChapter();
+			Object.assign(result, s);
+			return result;
+		});
 	}
 
 	async update(id: string, data: Partial<DomainChapter>): Promise<void> {
-		await this.repository.update(
-			id,
-			data as unknown as DeepPartial<InfrastructureChapter>,
-		);
+		const updateData =
+			data as QueryDeepPartialEntity<InfrastructureChapter>;
+		await this.repository.update(id, updateData);
 	}
 
 	async delete(id: string): Promise<void> {
@@ -79,42 +86,43 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 	}
 
 	async softRemove(chapter: DomainChapter): Promise<void> {
-		await this.repository.softRemove(
-			chapter as unknown as InfrastructureChapter,
-		);
+		const entity = this.repository.create();
+		Object.assign(entity, chapter);
+		await this.repository.softRemove(entity);
 	}
 
 	async exists(id: string): Promise<boolean> {
-		return this.repository.exists({
-			where: { id } as unknown as FindOptionsWhere<InfrastructureChapter>,
-		});
+		const count = await this.repository.count({ where: { id } });
+		return count > 0;
 	}
 
 	async findByIds(ids: string[]): Promise<DomainChapter[]> {
 		const chapters = await this.repository.find({
-			where: {
-				id: In(ids),
-			} as unknown as FindOptionsWhere<InfrastructureChapter>,
+			where: { id: In(ids) },
 		});
-		return chapters as unknown as DomainChapter[];
+		return chapters.map((ch) => {
+			const result = new DomainChapter();
+			Object.assign(result, ch);
+			return result;
+		});
 	}
 
 	async findByBookIds(bookIds: string[]): Promise<DomainChapter[]> {
 		const chapters = await this.repository.find({
 			where: {
 				book: { id: In(bookIds) },
-			} as unknown as FindOptionsWhere<InfrastructureChapter>,
-			relations: ['book'],
-			order: {
-				index: 'ASC',
-			} as unknown as FindOptionsOrder<InfrastructureChapter>,
+			} as FindOptionsWhere<InfrastructureChapter>,
 		});
-		return chapters as unknown as DomainChapter[];
+		return chapters.map((ch) => {
+			const result = new DomainChapter();
+			Object.assign(result, ch);
+			return result;
+		});
 	}
 
 	async count(criteria?: ChapterCriteria): Promise<number> {
 		return this.repository.count({
-			where: criteria as unknown as FindOptionsWhere<InfrastructureChapter>,
+			where: (criteria || {}) as FindOptionsWhere<InfrastructureChapter>,
 		});
 	}
 
@@ -122,30 +130,47 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 		bookId: string,
 		options?: ChapterQueryOptions,
 	): Promise<DomainChapter[]> {
+		const order: FindOptionsOrder<InfrastructureChapter> = {};
+		if (options?.order) {
+			order.index = options.order;
+		} else {
+			order.index = 'ASC';
+		}
+
 		const chapters = await this.repository.find({
 			where: {
 				book: { id: bookId },
-			} as unknown as FindOptionsWhere<InfrastructureChapter>,
-			...options,
-			order: {
-				index: options?.order || 'ASC',
-			} as unknown as FindOptionsOrder<InfrastructureChapter>,
+			} as FindOptionsWhere<InfrastructureChapter>,
+			order,
+			take: options?.limit,
+			skip: options?.offset,
 		});
-		return chapters as unknown as DomainChapter[];
+		return chapters.map((ch) => {
+			const result = new DomainChapter();
+			Object.assign(result, ch);
+			return result;
+		});
 	}
 
 	async findOne(criteria: ChapterCriteria): Promise<DomainChapter | null> {
 		const chapter = await this.repository.findOne({
-			where: criteria as unknown as FindOptionsWhere<InfrastructureChapter>,
+			where: criteria as FindOptionsWhere<InfrastructureChapter>,
 		});
-		return chapter as unknown as DomainChapter;
+		if (!chapter) return null;
+		const result = new DomainChapter();
+		Object.assign(result, chapter);
+		return result;
 	}
 
 	async find(criteria: ChapterCriteria): Promise<DomainChapter[]> {
 		const chapters = await this.repository.find({
-			where: criteria as unknown as FindOptionsWhere<InfrastructureChapter>,
+			where: criteria as FindOptionsWhere<InfrastructureChapter>,
 		});
-		return chapters as unknown as DomainChapter[];
+		return chapters.map((ch) => {
+			const result = new DomainChapter();
+			Object.assign(result, ch);
+			return result;
+		});
 	}
 
 	async findWithRelations(
@@ -153,53 +178,45 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 		relations: string[],
 	): Promise<DomainChapter | null> {
 		const chapter = await this.repository.findOne({
-			where: { id } as unknown as FindOptionsWhere<InfrastructureChapter>,
+			where: { id },
 			relations,
 		});
-		return chapter as unknown as DomainChapter;
+		if (!chapter) return null;
+		const result = new DomainChapter();
+		Object.assign(result, chapter);
+		return result;
 	}
 
 	async findChaptersByBookIdWithCursor(
 		bookId: string,
 		options: ChapterQueryOptions,
 		userId?: string,
-	): Promise<unknown[]> {
-		this.logger.debug(
-			`findChaptersByBookIdWithCursor bookId=${bookId} options=${JSON.stringify(options)} userId=${userId}`,
-		);
-
+	): Promise<Record<string, unknown>[]> {
 		const chaptersQuery = this.repository
 			.createQueryBuilder('chapter')
-			.where('chapter.bookId = :id', { id: bookId })
-			.select([
-				'chapter.id',
-				'chapter.title',
-				'chapter.index',
-				'chapter.scrapingStatus',
-			])
-			.orderBy('chapter.index', options.order || 'ASC')
-			.limit((options.limit || 200) + 1);
+			.where('chapter.bookId = :bookId', { bookId });
 
-		if (
-			options.cursorIndex !== undefined &&
-			options.cursorIndex !== null &&
-			!Number.isNaN(Number(options.cursorIndex))
-		) {
-			if (options.order === 'DESC') {
-				chaptersQuery.andWhere('chapter.index < :cursorIndex', {
-					cursorIndex: options.cursorIndex,
-				});
-			} else {
-				chaptersQuery.andWhere('chapter.index > :cursorIndex', {
-					cursorIndex: options.cursorIndex,
-				});
-			}
+		if (options.cursorIndex !== undefined && options.cursorIndex !== null) {
+			const operator = options.order === 'DESC' ? '<' : '>';
+			chaptersQuery.andWhere(`chapter.index ${operator} :cursorIndex`, {
+				cursorIndex: options.cursorIndex,
+			});
+		}
+
+		chaptersQuery.orderBy('chapter.index', options.order || 'ASC');
+
+		if (options.limit) {
+			chaptersQuery.take(options.limit);
 		}
 
 		if (!userId) {
 			const result = await chaptersQuery.getMany();
 			this.logger.debug(`Found ${result.length} chapters (no userId)`);
-			return result;
+			return result.map((ch) => {
+				const res: Record<string, unknown> = {};
+				Object.assign(res, ch);
+				return res;
+			});
 		}
 
 		chaptersQuery.addSelect(
@@ -214,18 +231,23 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 
 		const result = await chaptersQuery.getRawMany();
 		this.logger.debug(`Found ${result.length} chapters (with userId)`);
-		return result;
+		return result as Record<string, unknown>[];
 	}
 
-	async findChaptersWithError(bookId: string): Promise<unknown[]> {
-		return this.repository
+	async findChaptersWithError(bookId: string): Promise<DomainChapter[]> {
+		const chapters = await this.repository
 			.createQueryBuilder('ch')
 			.where('ch.bookId = :bookId', { bookId: bookId })
 			.select(['ch.id', 'ch.title', 'ch.scrapingStatus'])
 			.getMany();
+		return chapters.map((ch) => {
+			const result = new DomainChapter();
+			Object.assign(result, ch);
+			return result;
+		});
 	}
 
-	async findWithNavigation(id: string): Promise<unknown> {
+	async findWithNavigation(id: string): Promise<ChapterNavigation | null> {
 		const chapter = await this.repository
 			.createQueryBuilder('chapter')
 			.leftJoinAndSelect('chapter.book', 'book')
@@ -261,8 +283,11 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 			.select('MAX(chapter.index)', 'max')
 			.getRawOne<{ max: string | number | null }>();
 
+		const domainChapter = new DomainChapter();
+		Object.assign(domainChapter, chapter);
+
 		return {
-			chapter,
+			chapter: domainChapter,
 			previousId: previousChapter?.id,
 			nextId: nextChapter?.id,
 			totalChapters: maxIndexChapter?.max
@@ -272,17 +297,26 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 	}
 
 	create(data: Partial<DomainChapter>): DomainChapter {
-		const chapter = this.repository.create(
-			data as unknown as DeepPartial<InfrastructureChapter>,
-		);
-		return chapter as unknown as DomainChapter;
+		const entity = this.repository.create();
+		Object.assign(entity, data);
+		const result = new DomainChapter();
+		Object.assign(result, entity);
+		return result;
 	}
 
 	merge(chapter: DomainChapter, data: Partial<DomainChapter>): DomainChapter {
+		const entity = this.repository.create();
+		Object.assign(entity, chapter);
 		const merged = this.repository.merge(
-			chapter as unknown as InfrastructureChapter,
-			data as unknown as DeepPartial<InfrastructureChapter>,
+			entity,
+			data as QueryDeepPartialEntity<InfrastructureChapter>,
 		);
-		return merged as unknown as DomainChapter;
+		const result = new DomainChapter();
+		Object.assign(result, merged);
+		return result;
+	}
+
+	createQueryBuilder(alias: string): unknown {
+		return this.repository.createQueryBuilder(alias);
 	}
 }

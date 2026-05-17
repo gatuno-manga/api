@@ -1,15 +1,14 @@
+import { CacheTTL } from '@nestjs/cache-manager';
 import { UseGuards, UseInterceptors } from '@nestjs/common';
 import { Args, ID, Query, Resolver } from '@nestjs/graphql';
-import { CacheTTL } from '@nestjs/cache-manager';
-import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
-import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
-import { RolesEnum } from 'src/users/domain/enums/roles.enum';
-import { GqlJwtAuthGuard } from 'src/auth/infrastructure/framework/gql-jwt-auth.guard';
 import { AdminUsersService } from '@users/application/use-cases/admin-users.service';
-import { UserFilterInput } from '@users/infrastructure/graphql/models/user-filter.input';
 import { PaginatedUserResponseModel } from '@users/infrastructure/graphql/models/paginated-user-response.model';
+import { UserFilterInput } from '@users/infrastructure/graphql/models/user-filter.input';
 import { UserModel } from '@users/infrastructure/graphql/models/user.model';
+import { GqlJwtAuthGuard } from 'src/auth/infrastructure/framework/gql-jwt-auth.guard';
+import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
 import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-cache.interceptor';
+import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 
 @Resolver(() => UserModel)
 @UseGuards(GqlJwtAuthGuard)

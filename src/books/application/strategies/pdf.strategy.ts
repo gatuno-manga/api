@@ -1,10 +1,10 @@
 import { PassThrough } from 'node:stream';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { Injectable, Logger, StreamableFile } from '@nestjs/common';
+import { FilesService } from '@src/files/application/services/files.service';
 import PDFDocument from 'pdfkit';
 import sharp from 'sharp';
-import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { DownloadStrategy } from './download.strategy';
-import { FilesService } from '@src/files/application/services/files.service';
 
 @Injectable()
 export class PdfStrategy implements DownloadStrategy {
@@ -52,12 +52,14 @@ export class PdfStrategy implements DownloadStrategy {
 				this.logger.debug('PDF generation complete');
 			})
 			.catch((err) => {
-				this.logger.error(`PDF generation failed: ${err.message}`);
-				outputStream.destroy(err);
+				const error =
+					err instanceof Error ? err : new Error(String(err));
+				this.logger.error(`PDF generation failed: ${error.message}`);
+				outputStream.destroy(error);
 			});
 
 		// Retornar imediatamente o stream
-		return new StreamableFile(outputStream);
+		return Promise.resolve(new StreamableFile(outputStream));
 	}
 
 	/**

@@ -1,3 +1,4 @@
+import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
 import {
 	Column,
 	DeleteDateColumn,
@@ -9,7 +10,6 @@ import {
 	Unique,
 } from 'typeorm';
 import { Chapter } from './chapter.entity';
-import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
 
 @Entity('pages')
 @Unique(['index', 'chapter'])

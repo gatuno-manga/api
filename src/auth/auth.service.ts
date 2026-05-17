@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import {
 	BadRequestException,
 	Injectable,
@@ -5,8 +6,6 @@ import {
 	NotFoundException,
 	UnauthorizedException,
 } from '@nestjs/common';
-import { randomBytes } from 'node:crypto';
-import { v7 as uuidv7 } from 'uuid';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import ms from 'ms';
@@ -14,23 +13,24 @@ import { AppConfigService } from 'src/infrastructure/app-config/app-config.servi
 import { DataEncryptionProvider } from 'src/infrastructure/encryption/data-encryption.provider';
 import { PasswordEncryption } from 'src/infrastructure/encryption/password-encryption.provider';
 import { PasswordMigrationService } from 'src/infrastructure/encryption/password-migration.service';
-import { SignUpUseCase } from './application/use-cases/sign-up.use-case';
-import { SignInUseCase } from './application/use-cases/sign-in.use-case';
-import { UserAuthData } from './application/ports/user-repository.port';
 import { Role } from 'src/users/infrastructure/database/entities/role.entity';
 import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import { Repository } from 'typeorm';
+import { v7 as uuidv7 } from 'uuid';
 import { JwtPayloadBuilder } from './application/builders/jwt-payload.builder';
-import { ListAuthAuditQueryDto } from './infrastructure/http/dto/list-auth-audit-query.dto';
 import { StoredTokenDto } from './application/dto/stored-token.dto';
-import { LoginApiKey } from './infrastructure/database/entities/login-api-key.entity';
+import { UserAuthData } from './application/ports/user-repository.port';
+import { SignInUseCase } from './application/use-cases/sign-in.use-case';
+import { SignUpUseCase } from './application/use-cases/sign-up.use-case';
+import { MfaService } from './infrastructure/adapters/mfa.service';
 import {
 	SessionAuditEvent,
 	SessionAuditService,
 } from './infrastructure/adapters/session-audit.service';
 import { SessionManagementService } from './infrastructure/adapters/session-management.service';
-import { MfaService } from './infrastructure/adapters/mfa.service';
 import { TokenStoreService } from './infrastructure/adapters/token-store.service';
+import { LoginApiKey } from './infrastructure/database/entities/login-api-key.entity';
+import { ListAuthAuditQueryDto } from './infrastructure/http/dto/list-auth-audit-query.dto';
 import {
 	AuthFlowResult,
 	AuthMethod,
@@ -88,8 +88,7 @@ export class AuthService {
 	constructor(
 		@InjectRepository(User)
 		private readonly userRepository: Repository<User>,
-		@InjectRepository(Role)
-		private readonly roleRepository: Repository<Role>,
+		@InjectRepository(Role) readonly _roleRepository: Repository<Role>,
 		@InjectRepository(LoginApiKey)
 		private readonly loginApiKeyRepository: Repository<LoginApiKey>,
 		private readonly passwordEncryption: PasswordEncryption,

@@ -1,10 +1,10 @@
-import { INestApplication } from '@nestjs/common';
-import { Test, TestingModule } from '@nestjs/testing';
-import request from 'supertest';
 import { AppModule } from '@/app.module';
 import { configureValidationPipe } from '@/infrastructure/http/config/validation-pipe.config';
-import cookieParser from 'cookie-parser';
 import { KafkaEventPublisherAdapter } from '@files/infrastructure/adapters/kafka-event-publisher.adapter';
+import { INestApplication } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import cookieParser from 'cookie-parser';
+import request from 'supertest';
 
 describe('GraphQL BFF (e2e)', () => {
 	let app: INestApplication;

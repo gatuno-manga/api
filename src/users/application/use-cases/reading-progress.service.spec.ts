@@ -1,17 +1,17 @@
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { UserResourcesMapper } from '@users/application/mappers/user-resources.mapper';
+import { SyncStrategyResolver } from '@users/application/strategies/sync-strategy.resolver';
+import { ReadingProgress } from '@users/infrastructure/database/entities/reading-progress.entity';
 import { Repository } from 'typeorm';
 import { ReadingProgressService } from './reading-progress.service';
-import { ReadingProgress } from '@users/infrastructure/database/entities/reading-progress.entity';
-import { SyncStrategyResolver } from '@users/application/strategies/sync-strategy.resolver';
-import { UserResourcesMapper } from '@users/application/mappers/user-resources.mapper';
 
 describe('ReadingProgressService', () => {
 	let service: ReadingProgressService;
-	let repository: jest.Mocked<Repository<ReadingProgress>>;
-	let eventEmitter: jest.Mocked<EventEmitter2>;
-	let userResourcesMapper: jest.Mocked<UserResourcesMapper>;
+	let _repository: jest.Mocked<Repository<ReadingProgress>>;
+	let _eventEmitter: jest.Mocked<EventEmitter2>;
+	let _userResourcesMapper: jest.Mocked<UserResourcesMapper>;
 
 	const mockRepository = {
 		findOne: jest.fn(),
@@ -59,9 +59,9 @@ describe('ReadingProgressService', () => {
 		}).compile();
 
 		service = module.get<ReadingProgressService>(ReadingProgressService);
-		repository = module.get(getRepositoryToken(ReadingProgress));
-		eventEmitter = module.get(EventEmitter2);
-		userResourcesMapper = module.get(UserResourcesMapper);
+		_repository = module.get(getRepositoryToken(ReadingProgress));
+		_eventEmitter = module.get(EventEmitter2);
+		_userResourcesMapper = module.get(UserResourcesMapper);
 	});
 
 	afterEach(() => {

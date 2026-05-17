@@ -1,7 +1,7 @@
 import { PassThrough, Readable } from 'node:stream';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { Injectable, Logger, StreamableFile } from '@nestjs/common';
 import archiver from 'archiver';
-import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { DownloadStrategy } from './download.strategy';
 import { PdfStrategy } from './pdf.strategy';
 
@@ -63,12 +63,14 @@ export class PdfsZipStrategy implements DownloadStrategy {
 				this.logger.debug('All PDFs added, archive finalized');
 			})
 			.catch((err) => {
-				this.logger.error(`PDF generation failed: ${err.message}`);
-				outputStream.destroy(err);
+				const error =
+					err instanceof Error ? err : new Error(String(err));
+				this.logger.error(`PDF generation failed: ${error.message}`);
+				outputStream.destroy(error);
 			});
 
 		// Retornar imediatamente o stream
-		return new StreamableFile(outputStream);
+		return Promise.resolve(new StreamableFile(outputStream));
 	}
 
 	/**
@@ -166,13 +168,12 @@ export class PdfsZipStrategy implements DownloadStrategy {
 	}
 
 	private sanitizeFileName(name: string): string {
-		return name
-			.replace(
-				// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional sanitization of control characters
-				/[<>:"/\\|?*\x00-\x1F]/g,
-				'_',
-			)
-			.trim();
+		const controlChars = `${String.fromCharCode(0)}-${String.fromCharCode(31)}`;
+		const controlCharsRegex = new RegExp(
+			`[<>:"/\\\\|?*${controlChars}]`,
+			'g',
+		);
+		return name.replace(controlCharsRegex, '_').trim();
 	}
 
 	private async streamToBuffer(stream: Readable): Promise<Buffer> {

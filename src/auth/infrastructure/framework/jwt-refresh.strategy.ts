@@ -1,11 +1,11 @@
+import { PayloadAuthDto } from '@auth/application/dto/payload-auth.dto';
+import { TokenStoreService } from '@auth/infrastructure/adapters/token-store.service';
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Request } from 'express';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { DataEncryptionProvider } from 'src/infrastructure/encryption/data-encryption.provider';
-import { PayloadAuthDto } from '@auth/application/dto/payload-auth.dto';
-import { TokenStoreService } from '@auth/infrastructure/adapters/token-store.service';
 
 @Injectable()
 export class JwtRefreshStrategy extends PassportStrategy(
@@ -14,7 +14,7 @@ export class JwtRefreshStrategy extends PassportStrategy(
 ) {
 	private readonly logger = new Logger(JwtRefreshStrategy.name);
 	constructor(
-		private readonly configService: AppConfigService,
+		readonly configService: AppConfigService,
 		private readonly DataEncryption: DataEncryptionProvider,
 		private readonly tokenStore: TokenStoreService,
 	) {

@@ -1,3 +1,4 @@
+import { RedisModule } from '@/infrastructure/redis/redis.module';
 import { AppConfigModule } from '@app-config/app-config.module';
 import { AuthModule } from '@auth/auth.module';
 import { FilesModule } from '@files/files.module';
@@ -9,8 +10,8 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '@users/infrastructure/database/entities/user.entity';
 import { UsersModule } from '@users/users.module';
+import { WebsitesModule } from '@websites/websites.module';
 import { I_UNIT_OF_WORK } from 'src/common/application/ports/unit-of-work.interface';
-import { RedisModule } from '@/infrastructure/redis/redis.module';
 import { I_AUTHOR_REPOSITORY } from './application/ports/author-repository.interface';
 import { I_BOOK_RELATIONSHIP_REPOSITORY } from './application/ports/book-relationship-repository.interface';
 import { I_BOOK_REPOSITORY } from './application/ports/book-repository.interface';
@@ -33,9 +34,9 @@ import { BookRelationshipService } from './application/services/book-relationshi
 import { BookUpdateService } from './application/services/book-update.service';
 import { BookUploadService } from './application/services/book-upload.service';
 import { BooksService } from './application/services/books.service';
-import { ChapterService } from './application/services/chapter.service';
 import { ChapterCommentsService } from './application/services/chapter-comments.service';
 import { ChapterManagementService } from './application/services/chapter-management.service';
+import { ChapterService } from './application/services/chapter.service';
 import { DownloadModule } from './application/services/download.module';
 import { SensitiveContentService } from './application/services/sensitive-content.service';
 import { TagsService } from './application/services/tags.service';
@@ -51,11 +52,11 @@ import { TypeOrmSensitiveContentRepositoryAdapter } from './infrastructure/datab
 import { TypeOrmTagRepositoryAdapter } from './infrastructure/database/adapters/typeorm-tag-repository.adapter';
 import { TypeOrmUnitOfWorkAdapter } from './infrastructure/database/adapters/typeorm-unit-of-work.adapter';
 import { Author } from './infrastructure/database/entities/author.entity';
-import { Book } from './infrastructure/database/entities/book.entity';
 import { BookRelationship } from './infrastructure/database/entities/book-relationship.entity';
-import { Chapter } from './infrastructure/database/entities/chapter.entity';
+import { Book } from './infrastructure/database/entities/book.entity';
 import { ChapterComment } from './infrastructure/database/entities/chapter-comment.entity';
 import { ChapterRead } from './infrastructure/database/entities/chapter-read.entity';
+import { Chapter } from './infrastructure/database/entities/chapter.entity';
 import { Cover } from './infrastructure/database/entities/cover.entity';
 import { Page } from './infrastructure/database/entities/page.entity';
 import { SensitiveContent } from './infrastructure/database/entities/sensitive-content.entity';
@@ -70,13 +71,13 @@ import {
 	PageResolver,
 } from './infrastructure/graphql/resolvers/media.resolver';
 import { AdminBookRelationshipsController } from './infrastructure/http/controllers/admin-book-relationships.controller';
-import { AdminBooksController } from './infrastructure/http/controllers/admin-books.controller';
 import { AdminBooksDashboardController } from './infrastructure/http/controllers/admin-books-dashboard.controller';
 import { AdminBooksUploadController } from './infrastructure/http/controllers/admin-books-upload.controller';
+import { AdminBooksController } from './infrastructure/http/controllers/admin-books.controller';
 import { AdminSystemManagementController } from './infrastructure/http/controllers/admin-system-management.controller';
 import { BooksController } from './infrastructure/http/controllers/books.controller';
-import { ChapterController } from './infrastructure/http/controllers/chapter.controller';
 import { ChapterCommentsController } from './infrastructure/http/controllers/chapter-comments.controller';
+import { ChapterController } from './infrastructure/http/controllers/chapter.controller';
 import { SensitiveContentController } from './infrastructure/http/controllers/sensitive-content.controller';
 import { TagsController } from './infrastructure/http/controllers/tags.controller';
 import { BookUpdateProcessor } from './infrastructure/jobs/book-update.processor';
@@ -92,10 +93,9 @@ import { FixChapterService } from './infrastructure/jobs/fix-chapter.service';
 import { QueueAutoPauseListener } from './infrastructure/jobs/queue-auto-pause.listener';
 import { ScrapingRecoveryScheduler } from './infrastructure/jobs/scraping-recovery.scheduler';
 import { TextProcessingProcessor } from './infrastructure/jobs/text-processing.processor';
+import { BooksKafkaConsumer } from './infrastructure/messaging/books-kafka.consumer';
 import { BooksNotifier } from './infrastructure/notifiers/books.notifier';
 import { ContentUploadedListener } from './infrastructure/notifiers/content-uploaded.listener';
-import { BooksKafkaConsumer } from './infrastructure/messaging/books-kafka.consumer';
-import { WebsitesModule } from '@websites/websites.module';
 
 @Module({
 	imports: [

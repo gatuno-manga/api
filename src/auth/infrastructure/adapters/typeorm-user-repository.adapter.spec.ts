@@ -1,7 +1,7 @@
-import { Repository } from 'typeorm';
+import { EmailVO } from '@auth/domain/value-objects/email.vo';
 import { Role } from 'src/users/infrastructure/database/entities/role.entity';
 import { User } from 'src/users/infrastructure/database/entities/user.entity';
-import { EmailVO } from '@auth/domain/value-objects/email.vo';
+import { Repository } from 'typeorm';
 import { TypeOrmUserRepositoryAdapter } from './typeorm-user-repository.adapter';
 
 describe('TypeOrmUserRepositoryAdapter', () => {

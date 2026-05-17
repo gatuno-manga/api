@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
-import { Test, type TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { Cover } from '@books/infrastructure/database/entities/cover.entity';
 import { StorageBucket } from '@common/enum/storage-bucket.enum';
 import { FilesService } from '@files/application/services/files.service';
-import { Cover } from '@books/infrastructure/database/entities/cover.entity';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { CoverImageService } from './cover-image.service';
 
 describe('CoverImageService', () => {

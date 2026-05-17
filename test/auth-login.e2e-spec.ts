@@ -1,7 +1,7 @@
 import { BadRequestException, INestApplication } from '@nestjs/common';
-import { v7 as uuidv7 } from 'uuid';
-import request from 'supertest';
 import { AuthService } from 'src/auth/auth.service';
+import request from 'supertest';
+import { v7 as uuidv7 } from 'uuid';
 import { createE2EApp } from './helpers/e2e-app.helper';
 
 jest.setTimeout(120000);

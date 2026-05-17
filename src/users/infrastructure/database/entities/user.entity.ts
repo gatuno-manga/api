@@ -56,13 +56,9 @@ export class User {
 	@JoinTable({ name: 'users_roles' })
 	roles: Role[];
 
-	@ManyToMany(
-		() => UserGroup,
-		(group) => group.members,
-		{
-			eager: true,
-		},
-	)
+	@ManyToMany(() => UserGroup, (group) => group.members, {
+		eager: true,
+	})
 	@JoinTable({ name: 'users_groups' })
 	groups: UserGroup[];
 

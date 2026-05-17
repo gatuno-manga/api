@@ -1,16 +1,16 @@
+import { CurrentUserDto } from '@auth/application/dto/current-user.dto';
+import { PayloadAuthDto } from '@auth/application/dto/payload-auth.dto';
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
-import { CurrentUserDto } from '@auth/application/dto/current-user.dto';
-import { PayloadAuthDto } from '@auth/application/dto/payload-auth.dto';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
 	constructor(
-		private readonly jwtService: JwtService,
-		private readonly configService: AppConfigService,
+		readonly _jwtService: JwtService,
+		readonly configService: AppConfigService,
 	) {
 		super({
 			jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),

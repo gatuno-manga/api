@@ -11,12 +11,6 @@ import { Socket } from 'socket.io';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { ROLES_KEY } from './roles.decorator';
 
-interface WsJwtPayload {
-	sub?: string;
-	roles?: string[];
-	[key: string]: unknown;
-}
-
 /**
  * Guard WebSocket para autenticação JWT
  * Valida token no handshake e verifica roles quando necessário
@@ -40,14 +34,17 @@ export class WsJwtGuard implements CanActivate {
 				throw new WsException('Token not provided');
 			}
 
-			const payload = this.jwtService.verify(token, {
+			const payload = this.jwtService.verify<{
+				roles?: string[];
+				sub?: string;
+			}>(token, {
 				secret: this.configService.jwt.accessSecret,
 				issuer: this.configService.jwt.issuer,
 				audience: this.configService.jwt.audience,
 			});
 
 			// Anexa o payload ao client para uso posterior
-			client.data.user = payload;
+			(client.data as { user: typeof payload }).user = payload;
 
 			// Verifica roles se necessário
 			const requiredRoles = this.reflector.getAllAndOverride<string[]>(

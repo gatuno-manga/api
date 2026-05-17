@@ -1,3 +1,7 @@
+import { WsJwtGuard } from '@auth/infrastructure/framework/ws-jwt.guard';
+import { BookEvents } from '@books/domain/constants/events.constant';
+import { Book } from '@books/infrastructure/database/entities/book.entity';
+import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { Logger, UseGuards } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import {
@@ -10,12 +14,8 @@ import {
 	WebSocketGateway,
 	WebSocketServer,
 } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
-import { WsJwtGuard } from '@auth/infrastructure/framework/ws-jwt.guard';
 import { RolesEnum } from '@users/domain/enums/roles.enum';
-import { BookEvents } from '@books/domain/constants/events.constant';
-import { Book } from '@books/infrastructure/database/entities/book.entity';
-import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
+import { Server, Socket } from 'socket.io';
 
 interface WsUser {
 	id: string;
@@ -57,9 +57,10 @@ export class BooksGateway
 		);
 	}
 
-	handleConnection(client: Socket) {
+	async handleConnection(client: Socket) {
 		try {
-			const user = client.data.user as WsUser;
+			const data = client.data as Record<string, unknown>;
+			const user = data.user as WsUser;
 			const isAdmin = user?.roles?.includes(RolesEnum.ADMIN) || false;
 
 			this.logger.log(
@@ -75,7 +76,7 @@ export class BooksGateway
 
 			// Se for admin, adiciona à room admin
 			if (isAdmin) {
-				client.join('admin');
+				await client.join('admin');
 				this.logger.debug(`Admin ${client.id} joined admin room`);
 			}
 		} catch (error: unknown) {
@@ -129,7 +130,7 @@ export class BooksGateway
 	// ==================== EVENTOS DE INSCRIÇÃO ====================
 
 	@SubscribeMessage(BookEvents.SUBSCRIBE_BOOK)
-	handleSubscribeBook(
+	async handleSubscribeBook(
 		@ConnectedSocket() client: Socket,
 		@MessageBody() bookId: string,
 	) {
@@ -139,7 +140,7 @@ export class BooksGateway
 				return;
 			}
 
-			client.join(`book:${bookId}`);
+			await client.join(`book:${bookId}`);
 			this.connectedClients.get(client.id)?.bookIds.add(bookId);
 
 			this.logger.debug(
@@ -166,7 +167,7 @@ export class BooksGateway
 	}
 
 	@SubscribeMessage(BookEvents.SUBSCRIBE_CHAPTER)
-	handleSubscribeChapter(
+	async handleSubscribeChapter(
 		@ConnectedSocket() client: Socket,
 		@MessageBody() chapterId: string,
 	) {
@@ -176,7 +177,7 @@ export class BooksGateway
 				return;
 			}
 
-			client.join(`chapter:${chapterId}`);
+			await client.join(`chapter:${chapterId}`);
 			this.connectedClients.get(client.id)?.chapterIds.add(chapterId);
 
 			this.logger.debug(
@@ -203,12 +204,12 @@ export class BooksGateway
 	}
 
 	@SubscribeMessage(BookEvents.UNSUBSCRIBE_BOOK)
-	handleUnsubscribeBook(
+	async handleUnsubscribeBook(
 		@ConnectedSocket() client: Socket,
 		@MessageBody() bookId: string,
 	) {
 		try {
-			client.leave(`book:${bookId}`);
+			await client.leave(`book:${bookId}`);
 			this.connectedClients.get(client.id)?.bookIds.delete(bookId);
 
 			this.logger.debug(
@@ -227,12 +228,12 @@ export class BooksGateway
 	}
 
 	@SubscribeMessage(BookEvents.UNSUBSCRIBE_CHAPTER)
-	handleUnsubscribeChapter(
+	async handleUnsubscribeChapter(
 		@ConnectedSocket() client: Socket,
 		@MessageBody() chapterId: string,
 	) {
 		try {
-			client.leave(`chapter:${chapterId}`);
+			await client.leave(`chapter:${chapterId}`);
 			this.connectedClients.get(client.id)?.chapterIds.delete(chapterId);
 
 			this.logger.debug(

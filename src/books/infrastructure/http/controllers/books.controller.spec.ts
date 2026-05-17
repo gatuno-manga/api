@@ -1,7 +1,7 @@
+import { BooksService } from '@books/application/services/books.service';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { BooksController } from './books.controller';
-import { BooksService } from '@books/application/services/books.service';
 
 describe('BooksController', () => {
 	let controller: BooksController;

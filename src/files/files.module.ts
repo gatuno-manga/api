@@ -1,40 +1,40 @@
+import { RedisModule } from '@/infrastructure/redis/redis.module';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AppConfigModule } from 'src/infrastructure/app-config/app-config.module';
 import { AuthModule } from 'src/auth/auth.module';
-import { RedisModule } from '@/infrastructure/redis/redis.module';
+import { I_COVER_REPOSITORY } from 'src/books/application/ports/cover-repository.interface';
+import { I_PAGE_REPOSITORY } from 'src/books/application/ports/page-repository.interface';
+import { TypeOrmCoverRepositoryAdapter } from 'src/books/infrastructure/database/adapters/typeorm-cover-repository.adapter';
+import { TypeOrmPageRepositoryAdapter } from 'src/books/infrastructure/database/adapters/typeorm-page-repository.adapter';
 import { Book } from 'src/books/infrastructure/database/entities/book.entity';
 import { Chapter } from 'src/books/infrastructure/database/entities/chapter.entity';
 import { Cover } from 'src/books/infrastructure/database/entities/cover.entity';
 import { Page } from 'src/books/infrastructure/database/entities/page.entity';
-import { User } from 'src/users/infrastructure/database/entities/user.entity';
+import { AppConfigModule } from 'src/infrastructure/app-config/app-config.module';
+import { I_USER_IMAGE_REPOSITORY } from 'src/users/application/ports/user-image-repository.interface';
+import { TypeOrmUserImageRepositoryAdapter } from 'src/users/infrastructure/database/adapters/typeorm-user-image-repository.adapter';
 import { UserImage } from 'src/users/infrastructure/database/entities/user-image.entity';
-import { NoCompressionAdapter } from './infrastructure/adapters/no-compression.adapter';
-import { SharpAdapter } from './infrastructure/adapters/sharp.adapter';
-import { FileCompressorFactory } from './infrastructure/adapters/file-compressor.factory';
+import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import { IFileCompressor } from './application/ports/file-compressor.interface';
-import { FileCleanupController } from './infrastructure/controllers/file-cleanup.controller';
-import { FilesController } from './infrastructure/controllers/files.controller';
-import { FileCleanupCron } from './infrastructure/framework/file-cleanup.cron';
 import { FileCleanupService } from './application/services/file-cleanup.service';
 import { FilesService } from './application/services/files.service';
 import { ImageMetadataBackfillService } from './application/services/image-metadata-backfill.service';
-import { S3StorageAdapter } from './infrastructure/adapters/s3-storage.adapter';
-import { KafkaEventPublisherAdapter } from './infrastructure/adapters/kafka-event-publisher.adapter';
-import { ImageProcessingController } from './infrastructure/controllers/image-processing.controller';
-import { ImageBackfillController } from './infrastructure/controllers/image-backfill.controller';
+import { BooksImageUpdateStrategy } from './application/strategies/image-update/books-image-update.strategy';
+import { UsersImageUpdateStrategy } from './application/strategies/image-update/users-image-update.strategy';
 import {
 	HandleImageProcessingCompletedUseCase,
 	IMAGE_UPDATE_STRATEGIES,
 } from './application/use-cases/handle-image-processing-completed.use-case';
-import { BooksImageUpdateStrategy } from './application/strategies/image-update/books-image-update.strategy';
-import { UsersImageUpdateStrategy } from './application/strategies/image-update/users-image-update.strategy';
-import { I_PAGE_REPOSITORY } from 'src/books/application/ports/page-repository.interface';
-import { TypeOrmPageRepositoryAdapter } from 'src/books/infrastructure/database/adapters/typeorm-page-repository.adapter';
-import { I_COVER_REPOSITORY } from 'src/books/application/ports/cover-repository.interface';
-import { TypeOrmCoverRepositoryAdapter } from 'src/books/infrastructure/database/adapters/typeorm-cover-repository.adapter';
-import { I_USER_IMAGE_REPOSITORY } from 'src/users/application/ports/user-image-repository.interface';
-import { TypeOrmUserImageRepositoryAdapter } from 'src/users/infrastructure/database/adapters/typeorm-user-image-repository.adapter';
+import { FileCompressorFactory } from './infrastructure/adapters/file-compressor.factory';
+import { KafkaEventPublisherAdapter } from './infrastructure/adapters/kafka-event-publisher.adapter';
+import { NoCompressionAdapter } from './infrastructure/adapters/no-compression.adapter';
+import { S3StorageAdapter } from './infrastructure/adapters/s3-storage.adapter';
+import { SharpAdapter } from './infrastructure/adapters/sharp.adapter';
+import { FileCleanupController } from './infrastructure/controllers/file-cleanup.controller';
+import { FilesController } from './infrastructure/controllers/files.controller';
+import { ImageBackfillController } from './infrastructure/controllers/image-backfill.controller';
+import { ImageProcessingController } from './infrastructure/controllers/image-processing.controller';
+import { FileCleanupCron } from './infrastructure/framework/file-cleanup.cron';
 
 @Module({
 	controllers: [

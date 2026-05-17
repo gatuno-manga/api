@@ -1,16 +1,16 @@
-import { NestFactory } from '@nestjs/core';
 import { Logger as NestLogger } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import { Logger } from 'nestjs-pino';
-import { AppConfigService } from './infrastructure/app-config/app-config.service';
 import { AppModule } from './app.module';
+import { AppConfigService } from './infrastructure/app-config/app-config.service';
 import { configureBodyParser } from './infrastructure/http/config/body-parser.config';
 import { configureCors } from './infrastructure/http/config/cors.config';
+import { configureKafka } from './infrastructure/http/config/kafka.config';
 import { configureStaticAssets } from './infrastructure/http/config/static-assets.config';
 import { configureSwagger } from './infrastructure/http/config/swagger.config';
 import { configureValidationPipe } from './infrastructure/http/config/validation-pipe.config';
-import { configureKafka } from './infrastructure/http/config/kafka.config';
 
 async function bootstrap() {
 	const logger = new NestLogger('Bootstrap');
@@ -49,4 +49,7 @@ async function bootstrap() {
 	logger.log(`API rodando na porta: ${configService.port}`);
 }
 
-bootstrap();
+bootstrap().catch((err) => {
+	console.error('Fatal error during bootstrap:', err);
+	process.exit(1);
+});

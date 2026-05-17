@@ -1,8 +1,8 @@
+import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
+import { Roles } from '@auth/infrastructure/framework/roles.decorator';
 import { Controller, Get, Logger, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
-import { Roles } from '@auth/infrastructure/framework/roles.decorator';
-import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
 import { PasswordEncryption } from 'src/infrastructure/encryption/password-encryption.provider';
 import { PasswordMigrationService } from 'src/infrastructure/encryption/password-migration.service';
 import { RolesEnum } from 'src/users/domain/enums/roles.enum';
@@ -87,7 +87,17 @@ export class PasswordMigrationController {
 	getCurrentAlgorithm() {
 		const algorithm = this.passwordEncryption.getAlgorithm();
 
-		const algorithmInfo = {
+		const algorithmInfo: Record<
+			string,
+			{
+				name: string;
+				security: string;
+				performance: string;
+				memoryUsage: string;
+				dependencies: string;
+				recommendation: string;
+			}
+		> = {
 			scrypt: {
 				name: 'Scrypt',
 				security: 'Alta',
@@ -116,7 +126,14 @@ export class PasswordMigrationController {
 
 		return {
 			algorithm,
-			info: algorithmInfo[algorithm] || { name: 'Unknown' },
+			info: algorithmInfo[algorithm] || {
+				name: 'Unknown',
+				security: 'Desconhecida',
+				performance: 'Desconhecida',
+				memoryUsage: 'Desconhecido',
+				dependencies: 'Nenhuma',
+				recommendation: 'Não recomendado',
+			},
 		};
 	}
 }

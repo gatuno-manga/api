@@ -1,16 +1,17 @@
-import {
-	Injectable,
-	Logger,
-	OnModuleInit,
-	OnModuleDestroy,
-} from '@nestjs/common';
-import { ClientKafka } from '@nestjs/microservices';
-import { Partitioners } from 'kafkajs';
 import { AppConfigService } from '@app-config/app-config.service';
 import {
 	EventPublisherPort,
 	ImageProcessingRequestEvent,
 } from '@files/application/ports/event-publisher.port';
+import {
+	Injectable,
+	Logger,
+	OnModuleDestroy,
+	OnModuleInit,
+} from '@nestjs/common';
+import { ClientKafka } from '@nestjs/microservices';
+import { Partitioners } from 'kafkajs';
+import { lastValueFrom } from 'rxjs';
 
 @Injectable()
 export class KafkaEventPublisherAdapter
@@ -55,18 +56,18 @@ export class KafkaEventPublisherAdapter
 	async publishImageProcessingRequest(
 		event: ImageProcessingRequestEvent,
 	): Promise<void> {
-		this.client.emit('image.processing.requested', event).subscribe({
-			next: () => {
-				this.logger.log(
-					`Evento de processamento de imagem publicado: ${event.rawPath}`,
-				);
-			},
-			error: (error) => {
-				this.logger.error(
-					`Erro ao publicar evento no Kafka para ${event.rawPath}: ${error.message}`,
-					error.stack,
-				);
-			},
-		});
+		try {
+			await lastValueFrom(
+				this.client.emit('image.processing.requested', event),
+			);
+			this.logger.log(
+				`Evento de processamento de imagem publicado: ${event.rawPath}`,
+			);
+		} catch (error: unknown) {
+			this.logger.error(
+				`Erro ao publicar evento no Kafka para ${event.rawPath}: ${error instanceof Error ? error.message : String(error)}`,
+				error instanceof Error ? error.stack : undefined,
+			);
+		}
 	}
 }

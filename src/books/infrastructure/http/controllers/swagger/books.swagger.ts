@@ -1,8 +1,8 @@
+import { BookChaptersCursorPageDto } from '@books/application/dto/book-chapters-cursor-page.dto';
+import { BookRelationshipsPageDto } from '@books/application/dto/book-relationships-page.dto';
 import { applyDecorators } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { COMMON_RESPONSES } from 'src/common/swagger/common-responses';
-import { BookChaptersCursorPageDto } from '@books/application/dto/book-chapters-cursor-page.dto';
-import { BookRelationshipsPageDto } from '@books/application/dto/book-relationships-page.dto';
 
 export function ApiDocsGetAllBooks() {
 	return applyDecorators(

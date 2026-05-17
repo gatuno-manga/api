@@ -1,11 +1,12 @@
+import { WebAuthnCredential } from '@auth/infrastructure/database/entities/webauthn-credential.entity';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
 	BadRequestException,
 	Inject,
 	Injectable,
 	UnauthorizedException,
 } from '@nestjs/common';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
+import { InjectRepository } from '@nestjs/typeorm';
 import {
 	generateAuthenticationOptions,
 	generateRegistrationOptions,
@@ -13,11 +14,10 @@ import {
 	verifyRegistrationResponse,
 } from '@simplewebauthn/server';
 import { isoBase64URL } from '@simplewebauthn/server/helpers';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Cache } from 'cache-manager';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { User } from 'src/users/infrastructure/database/entities/user.entity';
-import { WebAuthnCredential } from '@auth/infrastructure/database/entities/webauthn-credential.entity';
+import { Repository } from 'typeorm';
 
 type SupportedTransport =
 	| 'ble'

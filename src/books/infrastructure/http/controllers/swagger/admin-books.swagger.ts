@@ -1,3 +1,5 @@
+import { CreateChapterManualDto } from '@books/application/dto/create-chapter-manual.dto';
+import { ToggleAutoUpdateDto } from '@books/application/dto/toggle-auto-update.dto';
 import { applyDecorators } from '@nestjs/common';
 import {
 	ApiBody,
@@ -6,8 +8,6 @@ import {
 	ApiParam,
 	ApiResponse,
 } from '@nestjs/swagger';
-import { ToggleAutoUpdateDto } from '@books/application/dto/toggle-auto-update.dto';
-import { CreateChapterManualDto } from '@books/application/dto/create-chapter-manual.dto';
 
 export function ApiDocsCreateBook() {
 	return applyDecorators(

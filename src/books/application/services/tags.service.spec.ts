@@ -1,10 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { TagsService } from './tags.service';
-import { I_TAG_REPOSITORY } from '@books/application/ports/tag-repository.interface';
-import { I_BOOK_REPOSITORY } from '@books/application/ports/book-repository.interface';
-import { SensitiveContentService } from './sensitive-content.service';
 import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants';
+import { I_BOOK_REPOSITORY } from '@books/application/ports/book-repository.interface';
+import { I_TAG_REPOSITORY } from '@books/application/ports/tag-repository.interface';
+import { Test, TestingModule } from '@nestjs/testing';
 import { Meilisearch } from 'meilisearch';
+import { SensitiveContentService } from './sensitive-content.service';
+import { TagsService } from './tags.service';
 
 describe('TagsService', () => {
 	let service: TagsService;

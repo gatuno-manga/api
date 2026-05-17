@@ -4,12 +4,12 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Book } from 'src/books/infrastructure/database/entities/book.entity';
-import { Repository } from 'typeorm';
+import { CollectionBook } from '@users/infrastructure/database/entities/collection-book.entity';
 import { User } from '@users/infrastructure/database/entities/user.entity';
 import { AddBookCollectionDto } from '@users/infrastructure/http/dto/add-book-collection.dto';
 import { CreateCollectionBookDto } from '@users/infrastructure/http/dto/create-collection-book.dto';
-import { CollectionBook } from '@users/infrastructure/database/entities/collection-book.entity';
+import { Book } from 'src/books/infrastructure/database/entities/book.entity';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class CollectionsBooksService {

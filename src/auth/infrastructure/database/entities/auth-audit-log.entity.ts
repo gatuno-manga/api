@@ -1,3 +1,5 @@
+import { AuthMethod, AuthRiskLevel } from '@auth/types/auth-security.types';
+import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import {
 	Column,
 	CreateDateColumn,
@@ -7,8 +9,6 @@ import {
 	ManyToOne,
 	PrimaryGeneratedColumn,
 } from 'typeorm';
-import { User } from 'src/users/infrastructure/database/entities/user.entity';
-import { AuthMethod, AuthRiskLevel } from '@auth/types/auth-security.types';
 
 @Entity('auth_audit_logs')
 @Index(['userId', 'createdAt'])

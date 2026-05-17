@@ -1,11 +1,11 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, DeepPartial, In } from 'typeorm';
 import { IPageRepository } from '@books/application/ports/page-repository.interface';
 import { Page as DomainPage } from '@books/domain/entities/page';
-import { Page as InfrastructurePage } from '@books/infrastructure/database/entities/page.entity';
-import { ImageMetadata } from '@src/common/domain/value-objects/image-metadata.vo';
 import { PageCriteria } from '@books/domain/types/criteria.types';
+import { Page as InfrastructurePage } from '@books/infrastructure/database/entities/page.entity';
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { ImageMetadata } from '@src/common/domain/value-objects/image-metadata.vo';
+import { DeepPartial, FindOptionsWhere, In, Repository } from 'typeorm';
 
 @Injectable()
 export class TypeOrmPageRepositoryAdapter implements IPageRepository {

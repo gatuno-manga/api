@@ -1,7 +1,7 @@
-import { applyDecorators, UseGuards } from '@nestjs/common';
+import { UseGuards, applyDecorators } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
-import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
+import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
 import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 import { SWAGGER_AUTH_SCHEME } from './swagger-auth.constants';
 
