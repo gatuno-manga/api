@@ -95,6 +95,14 @@ export class LoggerRuleEngine {
 		rule: string,
 	): { contexts: string[]; level: LogLevel } | null {
 		try {
+			// Handle simple level string (e.g., "debug")
+			if (this.isLogLevel(rule)) {
+				return {
+					contexts: [this.DEFAULT_CONTEXT],
+					level: rule,
+				};
+			}
+
 			let contextPart = this.DEFAULT_CONTEXT;
 			let levelPart = this.DEFAULT_LEVEL;
 

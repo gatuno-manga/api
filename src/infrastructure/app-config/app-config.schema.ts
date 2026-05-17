@@ -159,6 +159,12 @@ export const validationSchema = Joi.object({
 			'00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00',
 		)
 		.description('Comma-separated SHA-256 fingerprints for Android app'),
+	LOG_LEVEL: Joi.string()
+		.optional()
+		.default('context=*;level=info')
+		.description(
+			'Log level rules (e.g. debug or context=AuthService;level=debug)',
+		),
 	ENABLE_SWAGGER: Joi.boolean()
 		.default(false)
 		.description('Force enable Swagger UI regardless of NODE_ENV'),
