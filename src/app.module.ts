@@ -12,7 +12,7 @@ import {
 import { GraphQLModule } from '@nestjs/graphql';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { GqlThrottlerGuard } from './common/guards/gql-throttler.guard';
+import { AdaptiveThrottlerGuard } from './common/guards/adaptive-throttler.guard';
 import { AppConfigModule } from './infrastructure/app-config/app-config.module';
 import { AppConfigService } from './infrastructure/app-config/app-config.service';
 import { AppController } from './app.controller';
@@ -73,17 +73,17 @@ import { InteractionsModule } from './interactions/interactions.module';
 			{
 				name: 'short',
 				ttl: 1000,
-				limit: 100,
+				limit: 3,
 			},
 			{
 				name: 'medium',
 				ttl: 10000,
-				limit: 200,
+				limit: 20,
 			},
 			{
 				name: 'long',
 				ttl: 60000,
-				limit: 1000,
+				limit: 100,
 			},
 		]),
 		BullModule.forRootAsync({
@@ -141,7 +141,7 @@ import { InteractionsModule } from './interactions/interactions.module';
 		},
 		{
 			provide: APP_GUARD,
-			useClass: GqlThrottlerGuard,
+			useClass: AdaptiveThrottlerGuard,
 		},
 	],
 })

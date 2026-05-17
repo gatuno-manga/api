@@ -10,10 +10,9 @@ import { Response } from 'express';
 import { StoragePort } from '@files/application/ports/storage.port';
 import { Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { SkipThrottle } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('data')
-@SkipThrottle()
 export class FilesController {
 	private readonly logger = new Logger(FilesController.name);
 
@@ -26,6 +25,7 @@ export class FilesController {
 	 * Rota para os novos Buckets Reais (ex: /data/books/ab/uuid.webp)
 	 */
 	@Get(':bucket/:shard/:filename')
+	@Throttle({ short: { limit: 100, ttl: 1000 } })
 	async getFileWithBucket(
 		@Param('bucket') bucket: string,
 		@Param('shard') shard: string,
@@ -39,6 +39,7 @@ export class FilesController {
 	 * Rota legado para arquivos no bucket padrão (ex: /data/ab/uuid.webp)
 	 */
 	@Get(':shard/:filename')
+	@Throttle({ short: { limit: 100, ttl: 1000 } })
 	async getFileLegacy(
 		@Param('shard') shard: string,
 		@Param('filename') filename: string,

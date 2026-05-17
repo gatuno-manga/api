@@ -27,6 +27,7 @@ async function bootstrap() {
 	app.enableShutdownHooks();
 	app.use(cookieParser());
 	app.setGlobalPrefix('api');
+	app.getHttpAdapter().getInstance().set('trust proxy', true);
 
 	configureKafka(app, configService);
 
