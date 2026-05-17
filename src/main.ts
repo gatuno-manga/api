@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { Logger } from '@nestjs/common';
+import { Logger as NestLogger } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import { Logger } from 'nestjs-pino';
@@ -13,6 +13,7 @@ import { configureValidationPipe } from './infrastructure/http/config/validation
 import { configureKafka } from './infrastructure/http/config/kafka.config';
 
 async function bootstrap() {
+	const logger = new NestLogger('Bootstrap');
 	const app = await NestFactory.create<NestExpressApplication>(AppModule, {
 		bufferLogs: true,
 	});
