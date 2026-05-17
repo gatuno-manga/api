@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, Logger } from '@nestjs/common';
 import { MicroserviceOptions } from '@nestjs/microservices';
 import { Partitioners } from 'kafkajs';
 import { AppConfigService } from '@app-config/app-config.service';
@@ -8,11 +8,16 @@ export function configureKafka(
 	app: INestApplication,
 	configService: AppConfigService,
 ) {
+	const logger = new Logger('KafkaConfig');
+	const broker = configService.kafkaBroker;
+
+	logger.log(`Configurando microserviço Kafka no broker: ${broker}`);
+
 	app.connectMicroservice<MicroserviceOptions>({
 		strategy: new KafkaBatchStrategy({
 			client: {
 				clientId: 'gatuno-api-consumer',
-				brokers: [configService.kafkaBroker],
+				brokers: [broker],
 				retry: {
 					initialRetryTime: 1000,
 					retries: 10,

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppConfigModule } from 'src/infrastructure/app-config/app-config.module';
 import { AuthModule } from 'src/auth/auth.module';
+import { RedisModule } from '@/infrastructure/redis/redis.module';
 import { Book } from 'src/books/infrastructure/database/entities/book.entity';
 import { Chapter } from 'src/books/infrastructure/database/entities/chapter.entity';
 import { Cover } from 'src/books/infrastructure/database/entities/cover.entity';
@@ -104,6 +105,7 @@ import { TypeOrmUserImageRepositoryAdapter } from 'src/users/infrastructure/data
 	imports: [
 		AppConfigModule,
 		AuthModule,
+		RedisModule,
 		TypeOrmModule.forFeature([Page, Cover, Book, Chapter, User, UserImage]),
 	],
 	exports: [FilesService, FileCleanupService],

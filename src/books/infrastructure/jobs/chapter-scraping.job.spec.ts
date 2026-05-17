@@ -25,6 +25,7 @@ describe('ChapterScrapingJob', () => {
 
 	const mockChapterScrapingShared = {
 		processChapterPages: jest.fn(),
+		requestScrapingViaGo: jest.fn(),
 		emitStartedEvent: jest.fn(),
 		emitFailedEvent: jest.fn(),
 	};
@@ -84,7 +85,7 @@ describe('ChapterScrapingJob', () => {
 			pages: [],
 		};
 		mockQueryRunner.manager.findOne.mockResolvedValue(chapter);
-		mockChapterScrapingShared.processChapterPages.mockResolvedValue(
+		mockChapterScrapingShared.requestScrapingViaGo.mockResolvedValue(
 			undefined,
 		);
 
@@ -95,7 +96,7 @@ describe('ChapterScrapingJob', () => {
 
 		expect(mockQueryRunner.manager.findOne).toHaveBeenCalled();
 		expect(
-			mockChapterScrapingShared.processChapterPages,
+			mockChapterScrapingShared.requestScrapingViaGo,
 		).toHaveBeenCalledWith(chapter);
 		expect(mockQueryRunner.release).toHaveBeenCalled();
 	});

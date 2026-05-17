@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { StorageBucket } from '@common/enum/storage-bucket.enum';
+import { RedisService } from '@/infrastructure/redis/redis.service';
 import {
 	I_PAGE_REPOSITORY,
 	IPageRepository,
@@ -20,6 +21,7 @@ export class BooksImageUpdateStrategy implements ImageUpdateStrategy {
 		private readonly pageRepository: IPageRepository,
 		@Inject(I_COVER_REPOSITORY)
 		private readonly coverRepository: ICoverRepository,
+		private readonly redisService: RedisService,
 	) {}
 
 	supports(bucket: StorageBucket): boolean {
@@ -27,16 +29,46 @@ export class BooksImageUpdateStrategy implements ImageUpdateStrategy {
 	}
 
 	async updateBatch(events: ImageProcessingCompletedEvent[]): Promise<void> {
-		const updates = events.map((event) => ({
-			oldPath: event.rawPath,
-			newPath: `${event.targetBucket}/${event.targetPath}`,
-			metadata: event.metadata,
-		}));
+		const updates = events
+			.filter((event) => event.results && event.results.length > 0)
+			.map((event) => {
+				let oldPath = event.rawPath;
+				if (
+					oldPath &&
+					!oldPath.startsWith('http') &&
+					!oldPath.startsWith('processing/')
+				) {
+					oldPath = `processing/${oldPath}`;
+				}
 
-		// Atualiza Páginas e Capas em lote
+				return {
+					oldPath,
+					newPath: event.results[0].targetPath,
+					metadata: event.results[0].metadata,
+				};
+			});
+
+		if (updates.length === 0) return;
+
 		await Promise.all([
 			this.pageRepository.updateBatch(updates),
 			this.coverRepository.updateBatch(updates),
 		]);
+
+		const redis = this.redisService.getClient();
+		const cachePromises = updates.map((update) => {
+			const cacheKey = `pending_optimization:${update.oldPath}`;
+			return redis.set(
+				cacheKey,
+				JSON.stringify({
+					path: update.newPath,
+					metadata: update.metadata,
+				}),
+				'EX',
+				3600,
+			);
+		});
+
+		await Promise.all(cachePromises);
 	}
 }

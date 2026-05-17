@@ -72,6 +72,10 @@ export class BooksService {
 		return this.bookCreationService.createBook(dto);
 	}
 
+	async autoCreateBook(url: string) {
+		return this.bookCreationService.autoCreateBook(url);
+	}
+
 	async checkBookTitleConflict(
 		title: string,
 		alternativeTitles: string[] = [],

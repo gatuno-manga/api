@@ -18,7 +18,7 @@ Gatuno API is the backend component of the Gatuno ecosystem, responsible for con
   - **Alerting:** Alertmanager.
 
 ## Shared Domain Concepts
-- **Scraping Engine:** A centralized, high-performance Playwright-based engine used to fetch and process content.
+- **Scraping Engine:** An external event-driven microservice (Go + Playwright-Go) that processes extraction requests and communicates via Kafka.
 - **Book Relationships:** Support for complex work hierarchies (sequences, spin-offs, adaptations).
 - **Synchronization:** Real-time reading progress and state synchronization.
 

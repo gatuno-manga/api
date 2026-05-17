@@ -16,8 +16,8 @@ interface BookUpdateJobData {
 }
 
 interface BookUpdateResult {
-	newChapters: number;
-	newCovers: number;
+	dispatched: boolean;
+	urlsProcessed: number;
 }
 
 @Processor(QUEUE_NAME, { lockDuration: 120000 })
@@ -39,7 +39,12 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
 		this.worker.concurrency =
 			this.configService.queueConcurrency?.bookUpdate ?? 2;
 
-		await this.coverImageService.recalculateMissingCoverHashes();
+		// Recalcula hashes de capas que por acaso não tenham sido calculados
+		this.coverImageService.recalculateMissingCoverHashes().catch((err) => {
+			this.logger.error(
+				`Erro ao recalcular hashes de capas: ${err.message}`,
+			);
+		});
 	}
 
 	@OnWorkerEvent('active')
@@ -72,12 +77,12 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
 				bookId: book.id,
 				bookTitle: book.title,
 				jobId: job.id,
-				newChapters: result.newChapters,
-				newCovers: result.newCovers,
+				dispatched: result.dispatched,
+				urlsProcessed: result.urlsProcessed,
 				timestamp: Date.now(),
 			});
 			this.logger.debug(
-				`Update completed for book: ${book.title} (${result.newChapters} new chapters, ${result.newCovers} new covers)`,
+				`Update request dispatched for book: ${book.title} (Urls: ${result.urlsProcessed})`,
 			);
 		}
 	}
@@ -107,7 +112,7 @@ export class BookUpdateProcessor extends WorkerHost implements OnModuleInit {
 	async process(job: Job<BookUpdateJobData>): Promise<BookUpdateResult> {
 		const { bookId } = job.data;
 		const result =
-			await this.bookContentUpdateService.performUpdate(bookId);
+			await this.bookContentUpdateService.requestUpdateViaScraper(bookId);
 		return result;
 	}
 }

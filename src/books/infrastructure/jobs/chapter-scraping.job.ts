@@ -63,7 +63,7 @@ export class ChapterScrapingJob extends WorkerHost implements OnModuleInit {
 				throw new Error(`Capítulo com ID ${chapterId} não encontrado.`);
 			}
 
-			await this.chapterScrapingShared.processChapterPages(chapter);
+			await this.chapterScrapingShared.requestScrapingViaGo(chapter);
 
 			const endTime = Date.now();
 			this.logger.debug(

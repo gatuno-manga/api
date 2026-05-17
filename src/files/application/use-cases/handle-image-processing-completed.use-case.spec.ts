@@ -45,7 +45,12 @@ describe('HandleImageProcessingCompletedUseCase', () => {
 		const event = {
 			rawPath: 'raw/path.jpg',
 			targetBucket: StorageBucket.BOOKS,
-			targetPath: 'processed/path.jpg',
+			results: [
+				{
+					targetPath: 'processed/path.jpg',
+					metadata: { width: 100, height: 100 },
+				},
+			],
 		};
 
 		await useCase.executeBatch([event]);
@@ -58,12 +63,22 @@ describe('HandleImageProcessingCompletedUseCase', () => {
 		const bookEvent = {
 			rawPath: 'raw/book.jpg',
 			targetBucket: StorageBucket.BOOKS,
-			targetPath: 'processed/book.jpg',
+			results: [
+				{
+					targetPath: 'processed/book.jpg',
+					metadata: { width: 100, height: 100 },
+				},
+			],
 		};
 		const userEvent = {
 			rawPath: 'raw/user.jpg',
 			targetBucket: StorageBucket.USERS,
-			targetPath: 'processed/user.jpg',
+			results: [
+				{
+					targetPath: 'processed/user.jpg',
+					metadata: { width: 100, height: 100 },
+				},
+			],
 		};
 
 		await useCase.executeBatch([bookEvent, userEvent]);
@@ -76,7 +91,12 @@ describe('HandleImageProcessingCompletedUseCase', () => {
 		const event = {
 			rawPath: 'raw/other.jpg',
 			targetBucket: 'UNKNOWN' as any,
-			targetPath: 'processed/other.jpg',
+			results: [
+				{
+					targetPath: 'processed/other.jpg',
+					metadata: { width: 100, height: 100 },
+				},
+			],
 		};
 
 		const loggerSpy = jest.spyOn((useCase as any).logger, 'warn');

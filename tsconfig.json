@@ -26,7 +26,7 @@
 			"@health/*": ["src/infrastructure/health/*"],
 			"@logging/*": ["src/infrastructure/logging/*"],
 			"@metrics/*": ["src/metrics/*"],
-			"@scraping/*": ["src/scraping/*"],
+			"@websites/*": ["src/websites/*"],
 			"@users/*": ["src/users/*"]
 		},
 		"incremental": true,

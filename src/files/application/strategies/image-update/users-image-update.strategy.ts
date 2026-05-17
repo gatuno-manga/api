@@ -21,11 +21,24 @@ export class UsersImageUpdateStrategy implements ImageUpdateStrategy {
 	}
 
 	async updateBatch(events: ImageProcessingCompletedEvent[]): Promise<void> {
-		const updates = events.map((event) => ({
-			oldPath: event.rawPath,
-			newPath: `${event.targetBucket}/${event.targetPath}`,
-			metadata: event.metadata,
-		}));
+		const updates = events
+			.filter((event) => event.results && event.results.length > 0)
+			.map((event) => {
+				let oldPath = event.rawPath;
+				if (
+					oldPath &&
+					!oldPath.startsWith('http') &&
+					!oldPath.startsWith('processing/')
+				) {
+					oldPath = `processing/${oldPath}`;
+				}
+
+				return {
+					oldPath,
+					newPath: event.results[0].targetPath,
+					metadata: event.results[0].metadata,
+				};
+			});
 
 		await this.userImageRepository.updateBatch(updates);
 	}

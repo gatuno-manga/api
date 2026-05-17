@@ -2,8 +2,6 @@
 node_modules/
 dist/
 build/
-.playwright-cache/*
-!.playwright-cache/.gitkeep
 
 # Environment variables
 .env

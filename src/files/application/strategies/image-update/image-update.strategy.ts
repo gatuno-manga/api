@@ -1,11 +1,16 @@
 import { StorageBucket } from '@common/enum/storage-bucket.enum';
 import { ImageMetadata } from '@common/domain/value-objects/image-metadata.vo';
 
+export interface ImageProcessingResult {
+	targetPath: string;
+	metadata: ImageMetadata;
+}
+
 export interface ImageProcessingCompletedEvent {
 	rawPath: string;
+	originalUrl?: string;
 	targetBucket: string;
-	targetPath: string;
-	metadata?: ImageMetadata;
+	results: ImageProcessingResult[];
 }
 
 export interface ImageUpdateStrategy {

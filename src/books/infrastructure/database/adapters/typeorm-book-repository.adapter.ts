@@ -37,10 +37,12 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 	async findById(
 		id: string,
 		relations?: string[],
+		comment?: string,
 	): Promise<DomainBook | null> {
 		const book = await this.repository.findOne({
 			where: { id } as unknown as FindOptionsWhere<InfrastructureBook>,
 			relations,
+			comment,
 		});
 		return book as unknown as DomainBook;
 	}

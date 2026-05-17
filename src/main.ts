@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { Logger } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import { Logger } from 'nestjs-pino';
@@ -29,9 +30,12 @@ async function bootstrap() {
 	app.setGlobalPrefix('api');
 	app.getHttpAdapter().getInstance().set('trust proxy', true);
 
+	logger.log('Iniciando configuração do Kafka...');
 	configureKafka(app, configService);
 
+	logger.log('Disparando inicialização de todos os microserviços...');
 	await app.startAllMicroservices();
+	logger.log('Microserviços inicializados.');
 
 	if (
 		configService.nodeEnv === 'development' ||
@@ -41,6 +45,7 @@ async function bootstrap() {
 	}
 
 	await app.listen(configService.port);
+	logger.log(`API rodando na porta: ${configService.port}`);
 }
 
 bootstrap();

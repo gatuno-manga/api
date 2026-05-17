@@ -5,7 +5,11 @@ import {
 } from '@books/domain/types/criteria.types';
 
 export interface IChapterRepository {
-	findById(id: string, relations?: string[]): Promise<Chapter | null>;
+	findById(
+		id: string,
+		relations?: string[],
+		comment?: string,
+	): Promise<Chapter | null>;
 	save(chapter: Chapter): Promise<Chapter>;
 	saveAll(chapters: Chapter[]): Promise<Chapter[]>;
 	update(id: string, data: Partial<Chapter>): Promise<void>;

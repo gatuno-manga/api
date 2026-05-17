@@ -67,7 +67,10 @@ export class TypeOrmCoverRepositoryAdapter implements ICoverRepository {
 		);
 	}
 
-	async findByBookId(bookId: string): Promise<DomainCover[]> {
+	async findByBookId(
+		bookId: string,
+		comment?: string,
+	): Promise<DomainCover[]> {
 		const covers = await this.repository.find({
 			where: {
 				book: { id: bookId },
@@ -75,6 +78,7 @@ export class TypeOrmCoverRepositoryAdapter implements ICoverRepository {
 			order: {
 				index: 'ASC',
 			} as unknown as FindOptionsOrder<InfrastructureCover>,
+			comment,
 		});
 		return covers as unknown as DomainCover[];
 	}

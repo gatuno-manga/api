@@ -46,8 +46,8 @@ export class FixChapterProcessor extends WorkerHost implements OnModuleInit {
 
 		// Processa usando o serviço compartilhado com minPages
 		const minPages = chapter.pages?.length || undefined;
-		await this.chapterScrapingShared.processChapterPages(chapter, minPages);
-
+		// Dispara o scraping via microserviço
+		await this.chapterScrapingShared.processChapterPages(chapter);
 		this.logger.log(`Capítulo ${chapterId} processado para conserto.`);
 	}
 

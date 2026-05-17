@@ -1,12 +1,3 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { normalizeUrl } from 'src/common/utils/url.utils';
-import { ScrapingService } from '@scraping/application/services/scraping.service';
-import { Book } from '@books/domain/entities/book';
-import { Chapter } from '@books/domain/entities/chapter';
-import { Cover } from '@books/domain/entities/cover';
-import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
-import { CoverImageService } from '@books/infrastructure/jobs/cover-image.service';
 import {
 	I_BOOK_REPOSITORY,
 	IBookRepository,
@@ -19,6 +10,18 @@ import {
 	I_COVER_REPOSITORY,
 	ICoverRepository,
 } from '@books/application/ports/cover-repository.interface';
+import { Book } from '@books/domain/entities/book';
+import { Chapter } from '@books/domain/entities/chapter';
+import { Cover } from '@books/domain/entities/cover';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
+import { CoverImageService } from '@books/infrastructure/jobs/cover-image.service';
+import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { normalizeUrl } from 'src/common/utils/url.utils';
+import { RedisService } from '@/infrastructure/redis/redis.service';
+import { ClientKafka } from '@nestjs/microservices';
+import { WebsiteService } from '@websites/application/services/website.service';
+import { v7 as uuidv7 } from 'uuid';
 
 interface ScrapedChapter {
 	title: string;
@@ -42,7 +45,7 @@ interface BookContentUpdateResult {
  * (novos capítulos e capas detectados via scraping)
  */
 @Injectable()
-export class BookContentUpdateService {
+export class BookContentUpdateService implements OnModuleInit {
 	private readonly logger = new Logger(BookContentUpdateService.name);
 
 	constructor(
@@ -52,13 +55,21 @@ export class BookContentUpdateService {
 		private readonly chapterRepository: IChapterRepository,
 		@Inject(I_COVER_REPOSITORY)
 		private readonly coverRepository: ICoverRepository,
-		private readonly scrapingService: ScrapingService,
+		@Inject('SCRAPER_SERVICE')
+		private readonly scraperClient: ClientKafka,
+		private readonly websiteService: WebsiteService,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly coverImageService: CoverImageService,
+		private readonly redisService: RedisService,
 	) {}
 
+	async onModuleInit() {
+		await this.scraperClient.connect();
+	}
+
 	/**
-	 * Executa a atualização de conteúdo de um livro
+	 * Executa a atualização de conteúdo de um livro via scraping direto
+	 * @deprecated Use requestUpdateViaScraper para o novo fluxo com microserviço Go
 	 */
 	async performUpdate(bookId: string): Promise<BookContentUpdateResult> {
 		this.logger.debug(`Processing book content update for: ${bookId}`);
@@ -73,62 +84,122 @@ export class BookContentUpdateService {
 			throw new Error(`Book ${bookId} not found`);
 		}
 
-		if (!book.originalUrl || book.originalUrl.length === 0) {
-			this.logger.warn(`Book ${book.title} has no original URL`);
-			return { newChapters: 0, newCovers: 0 };
+		return { newChapters: 0, newCovers: 0 };
+	}
+
+	/**
+	 * Dispara a solicitação de scraping para o microserviço em Go via Kafka
+	 */
+	async requestUpdateViaScraper(
+		bookId: string,
+	): Promise<{ dispatched: boolean; urlsProcessed: number }> {
+		this.logger.log(
+			`Requesting update via scraper microservice: ${bookId}`,
+		);
+
+		const book = await this.bookRepository.findById(bookId, []);
+		if (!book) {
+			throw new Error(`Book ${bookId} not found`);
 		}
 
-		let totalNewCovers = 0;
-		let totalNewChapters = 0;
-		const allCreatedChapters: Chapter[] = [];
+		if (!book.originalUrl || book.originalUrl.length === 0) {
+			this.logger.warn(`Book ${book.title} has no original URL`);
+			return { dispatched: false, urlsProcessed: 0 };
+		}
 
+		// Adicionar lock distribuído para evitar múltiplas solicitações simultâneas
+		const redis = this.redisService.getClient();
+		const lockKey = `lock:scraping:book:${bookId}`;
+		const isLocked = await redis.set(lockKey, 'true', 'EX', 300, 'NX');
+
+		if (!isLocked) {
+			this.logger.warn(
+				`Scraping already in progress for book ${bookId} (locked)`,
+			);
+			return { dispatched: false, urlsProcessed: 0 };
+		}
+
+		let urlsProcessed = 0;
 		for (const bookUrl of book.originalUrl) {
 			try {
-				this.logger.debug(`Scraping book info from: ${bookUrl}`);
+				const host = new URL(bookUrl).hostname;
+				const websiteConfig = await this.websiteService.getByUrl(host);
 
-				const bookInfo =
-					await this.scrapingService.scrapeBookInfo(bookUrl);
-
-				const newCovers = await this.syncCovers(
-					book,
-					bookInfo.covers || [],
-					bookUrl,
-				);
-				totalNewCovers += newCovers;
-
-				if (bookInfo.chapters.length === 0) {
-					this.logger.debug(`No chapters found from URL: ${bookUrl}`);
+				if (!websiteConfig) {
+					this.logger.warn(
+						`Não há configuração de scraping para o site: ${host}`,
+					);
 					continue;
 				}
 
-				const createdChapters = await this.syncChapters(
-					book,
-					bookInfo.chapters,
-					allCreatedChapters,
+				const jobId = uuidv7();
+				const payload = {
+					jobId,
+					bookId: book.id,
+					targetUrl: bookUrl,
+					websiteConfig: {
+						name: host,
+						cloudflareBypass: websiteConfig.useFlareSolverr,
+						preScript: websiteConfig.preScript,
+						posScript: websiteConfig.posScript,
+						useNetworkInterception:
+							websiteConfig.useNetworkInterception,
+						useScreenshotMode: websiteConfig.useScreenshotMode,
+						cookies: websiteConfig.cookies,
+						localStorage: websiteConfig.localStorage,
+						sessionStorage: websiteConfig.sessionStorage,
+						reloadAfterStorageInjection:
+							websiteConfig.reloadAfterStorageInjection,
+						enableAdaptiveTimeouts:
+							websiteConfig.enableAdaptiveTimeouts,
+						timeoutMultipliers: websiteConfig.timeoutMultipliers,
+						proxyUrl: websiteConfig.proxyUrl,
+						blacklistTerms: websiteConfig.blacklistTerms,
+						whitelistTerms: websiteConfig.whitelistTerms,
+						selectors: {
+							chapterListSelector:
+								websiteConfig.chapterListSelector,
+							bookInfoExtractScript:
+								websiteConfig.bookInfoExtractScript,
+							newBookExtractScript:
+								websiteConfig.newBookExtractScript,
+						},
+						headers: {
+							Referer: host,
+						},
+					},
+					uploadTarget: {
+						bucket: 'processing',
+						pathPrefix: `${jobId.slice(-2)}/${jobId}`,
+					},
+				};
+
+				this.scraperClient.emit(
+					'scraping.update-book.requested',
+					payload,
 				);
-				allCreatedChapters.push(...createdChapters);
-				totalNewChapters += createdChapters.length;
+				urlsProcessed++;
 			} catch (error) {
 				this.logger.warn(
-					`Error scraping from URL ${bookUrl}: ${error.message}`,
+					`Error requesting scrape from URL ${bookUrl}: ${error.message}`,
 				);
 			}
 		}
 
-		if (allCreatedChapters.length > 0) {
-			this.emitUpdateEvents(book, allCreatedChapters, totalNewCovers);
+		if (urlsProcessed === 0) {
+			await redis.del(lockKey);
 		}
 
-		return { newChapters: totalNewChapters, newCovers: totalNewCovers };
+		return { dispatched: urlsProcessed > 0, urlsProcessed };
 	}
 
 	/**
 	 * Sincroniza capítulos: identifica novos capítulos e os cria no banco
 	 */
-	private async syncChapters(
+	public async syncChapters(
 		book: Book,
 		scrapedChapters: ScrapedChapter[],
-		alreadyCreatedChapters: Chapter[],
+		alreadyCreatedChapters: Chapter[] = [],
 	): Promise<Chapter[]> {
 		const existingUrls = new Set([
 			...book.chapters.map((ch) => normalizeUrl(ch.originalUrl)),
@@ -172,17 +243,17 @@ export class BookContentUpdateService {
 			existingIndexes.add(nextIndex);
 		}
 
+		if (createdChapters.length > 0) {
+			this.emitUpdateEvents(book, createdChapters, 0);
+		}
+
 		return createdChapters;
 	}
 
-	/**
-	 * Busca todos os índices de capítulos existentes
-	 */
 	private async getExistingChapterIndexes(
 		bookId: string,
 		additionalChapters: Chapter[],
 	): Promise<Set<number>> {
-		// Simplified for build - in real implementation this should use a specific repo method
 		const chapters = await this.chapterRepository.findByBookId(bookId);
 
 		return new Set([
@@ -191,9 +262,6 @@ export class BookContentUpdateService {
 		]);
 	}
 
-	/**
-	 * Determina o próximo índice disponível para um capítulo
-	 */
 	private determineNextChapterIndex(
 		scrapedChapter: ScrapedChapter,
 		existingIndexes: Set<number>,
@@ -215,7 +283,7 @@ export class BookContentUpdateService {
 	/**
 	 * Sincroniza capas: identifica novas capas por hash e as cria
 	 */
-	private async syncCovers(
+	public async syncCovers(
 		book: Book,
 		scrapedCovers: ScrapedCover[],
 		refererUrl: string,
@@ -224,42 +292,39 @@ export class BookContentUpdateService {
 			return 0;
 		}
 
-		const existingHashes = new Set(
-			book.covers.filter((c) => c.imageHash).map((c) => c.imageHash),
+		const existingUrls = new Set(
+			book.covers
+				.filter((c) => c.originalUrl)
+				.map((c) => normalizeUrl(c.originalUrl as string)),
 		);
 
 		let newCoversCount = 0;
 
 		for (const scrapedCover of scrapedCovers) {
 			try {
-				const imageHash =
-					await this.coverImageService.calculateImageHash(
-						scrapedCover.url,
-						refererUrl,
-					);
-
-				if (existingHashes.has(imageHash)) {
+				const normalizedUrl = normalizeUrl(scrapedCover.url);
+				if (existingUrls.has(normalizedUrl)) {
 					this.logger.debug(
-						`Cover already exists (hash match): ${scrapedCover.url}`,
+						`Cover already exists (URL match): ${scrapedCover.url}`,
 					);
 					continue;
 				}
 
 				const cover = new Cover();
 				Object.assign(cover, {
-					url: normalizeUrl(scrapedCover.url),
-					originalUrl: normalizeUrl(scrapedCover.url),
+					url: normalizedUrl,
+					originalUrl: normalizedUrl,
 					title:
 						scrapedCover.title || `Capa ${book.covers.length + 1}`,
 					index: book.covers.length,
-					imageHash: imageHash,
 					selected: book.covers.length === 0,
 					book: book,
+					scrapingStatus: ScrapingStatus.PROCESS,
 				});
 
 				const savedCover = await this.coverRepository.save(cover);
 				book.covers.push(savedCover);
-				existingHashes.add(imageHash);
+				existingUrls.add(normalizedUrl);
 				newCoversCount++;
 
 				await this.coverImageService.addCoverToQueue(
@@ -282,20 +347,20 @@ export class BookContentUpdateService {
 			this.logger.log(
 				`Added ${newCoversCount} new covers to book: ${book.title}`,
 			);
+			this.emitUpdateEvents(book, [], newCoversCount);
 		}
 
 		return newCoversCount;
 	}
 
-	/**
-	 * Emite eventos de atualização
-	 */
 	private emitUpdateEvents(
 		book: Book,
 		newChapters: Chapter[],
 		newCoversCount: number,
 	): void {
-		this.eventEmitter.emit('chapters.updated', newChapters);
+		if (newChapters.length > 0) {
+			this.eventEmitter.emit('chapters.updated', newChapters);
+		}
 
 		this.eventEmitter.emit('book.new-chapters', {
 			bookId: book.id,
@@ -310,7 +375,7 @@ export class BookContentUpdateService {
 		});
 
 		this.logger.log(
-			`Added ${newChapters.length} new chapters to book: ${book.title}`,
+			`Added ${newChapters.length} new chapters and ${newCoversCount} covers to book: ${book.title}`,
 		);
 	}
 }

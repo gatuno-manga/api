@@ -133,7 +133,6 @@ docker compose -f docker-compose.tools.yml up -d --build
 
 - **PhpMyAdmin**: http://localhost:8080
 - **Redis Commander**: http://localhost:8081
-- **Playwright Debug (browser remoto)**: http://localhost:3001
 
 ### Executando o ambiente de produção
 
@@ -162,31 +161,6 @@ docker compose -f docker-compose.common.yml -f docker-compose.prod.yml up -d --b
 docker exec gatuno-database-slave-1 mysql -uroot -p"${DB_PASS}" -e "SHOW REPLICA STATUS\\G"
 docker exec gatuno-database-slave-2 mysql -uroot -p"${DB_PASS}" -e "SHOW REPLICA STATUS\\G"
 ```
-
-### Build offline do backend (fallback de Chromium)
-
-No build do backend, a revisão de Chromium exigida pelo Playwright é verificada primeiro no cache local.
-
-- Se a mesma revisão já estiver no cache, o build reutiliza o cache e não baixa novamente.
-- Se a revisão não estiver no cache, o build tenta baixar.
-- Se não for possível verificar/atualizar pela rede, o build usa o cache disponível.
-
-1. Popule o cache uma vez (com internet):
-
-```bash
-cd back
-npm run chromium:cache
-```
-
-2. Execute o build normalmente (inclusive offline):
-
-```bash
-docker compose -f docker-compose.common.yml -f docker-compose.prod.yml up -d --build
-```
-
-Cache local usado no fallback: `./.playwright-cache/`.
-
-Se o download falhar e não houver cache válido, o build falha com erro explícito.
 
 ### Observabilidade de logs da API (PLG Stack)
 
@@ -291,10 +265,6 @@ Serviços opcionais de ferramentas (`docker-compose.tools.yml`):
 - **redis-commander**: Interface web para Redis (porta 8081)
 - **phpmyadmin**: Interface web para MySQL (porta 8080)
 
-Serviço opcional de debug browser (`docker-compose.dev.yml`):
-
-- **playwright-debug**: Browser remoto para scraping/debug (porta 3001)
-
 # 🤝 Contribuidores
 
  <a href = "https://github.com/bgluis/gatuno/graphs/contributors">
@@ -322,6 +292,5 @@ Serviço opcional de debug browser (`docker-compose.dev.yml`):
 [JavaScript.io]: https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black
 [TypeScript.io]: https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white
 [Redis.io]: https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white
-[Selenium.io]: https://img.shields.io/badge/Selenium-43B02A?style=for-the-badge&logo=selenium&logoColor=white
 [BullMQ.io]: https://img.shields.io/badge/BullMQ-339933?style=for-the-badge&logo=node.js&logoColor=white
 [TypeORM.io]: https://img.shields.io/badge/TypeORM-FE0803?logo=typeorm&logoColor=fff&style=for-the-badge

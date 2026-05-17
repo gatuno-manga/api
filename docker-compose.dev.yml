@@ -14,9 +14,6 @@ services:
       - ALLOWED_URL=${ALLOWED_URL:-http://localhost:4200}
       - APP_URL=${APP_SCHEME:-http}://${APP_HOST:-localhost:4200}
       - API_URL=${API_SCHEME:-http}://localhost:${API_PORT}
-      - PLAYWRIGHT_WS_ENDPOINT=${PLAYWRIGHT_WS_ENDPOINT:-ws://browserless:3000}
-      - PLAYWRIGHT_DEBUG=${PLAYWRIGHT_DEBUG:-true}
-      - PLAYWRIGHT_SLOW_MO=${PLAYWRIGHT_SLOW_MO}
       - KAFKA_HOST=${KAFKA_HOST:-kafka}
       - KAFKA_PORT=${KAFKA_PORT:-9092}
       - NANOMQ_HOST=${NANOMQ_HOST:-nanomq}
@@ -26,7 +23,6 @@ services:
       # - JWT_REFRESH_EXPIRATION=7d
       # - MAX_SESSIONS_PER_USER=0
     depends_on:
-      - browserless
       - kafka
       - nanomq
     develop:
@@ -42,20 +38,6 @@ services:
     volumes:
       - ./.env:/usr/src/app/.env
       - ./tsconfig.json:/usr/src/app/tsconfig.json
-
-  browserless:
-    image: browserless/chrome:latest
-    ports:
-      - "${PLAYWRIGHT_NOVNC_PORT}:3000"
-      - "9222:9222"
-    environment:
-      - CONNECTION_TIMEOUT=600000
-      - MAX_CONCURRENT_SESSIONS=10
-      - ENABLE_DEBUGGER=true
-      - PREBOOT_CHROME=true
-      - KEEP_ALIVE=true
-    networks:
-      - gatuno-net
 
   database-master:
     ports:

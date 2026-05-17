@@ -1,15 +1,14 @@
-import { createHash } from 'node:crypto';
-import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Queue } from 'bullmq';
-import { ScrapingService } from '@scraping/application/services/scraping.service';
+import { InjectQueue } from '@nestjs/bullmq';
 import { FilesService } from '@files/application/services/files.service';
 import { StorageBucket } from '@common/enum/storage-bucket.enum';
 import { IsNull, Repository } from 'typeorm';
 import { QueueCoverProcessorDto } from '@books/application/dto/queue-cover-processor.dto';
 import { UrlImageDto } from '@books/application/dto/url-image.dto';
 import { Cover } from '@books/infrastructure/database/entities/cover.entity';
+import { createHash } from 'node:crypto';
 
 const QUEUE_NAME = 'cover-image-queue';
 const JOB_NAME = 'process-cover';
@@ -23,7 +22,6 @@ export class CoverImageService {
 		private readonly coverImageQueue: Queue<QueueCoverProcessorDto>,
 		@InjectRepository(Cover)
 		private readonly coverRepository: Repository<Cover>,
-		private readonly scrapingService: ScrapingService,
 		private readonly filesService: FilesService,
 	) {}
 
@@ -60,7 +58,6 @@ export class CoverImageService {
 
 	/**
 	 * Adiciona um job de capa à fila por ID da capa.
-	 * Usado para re-enfileirar capas específicas para correção ou recuperação automática.
 	 */
 	public async addCoverToQueueById(coverId: string): Promise<void> {
 		const cover = await this.coverRepository.findOne({
@@ -104,97 +101,50 @@ export class CoverImageService {
 	}
 
 	/**
-	 * Calcula o hash SHA-256 do conteúdo de uma imagem.
-	 * Suporta tanto URLs HTTP/HTTPS quanto caminhos de arquivo locais (Storage).
-	 * @param imageSource URL ou caminho local da imagem
-	 * @param refererUrl URL de origem para usar como referer (opcional)
-	 * @returns Hash da imagem em hexadecimal
+	 * Calcula o hash SHA-256 de um arquivo no storage.
+	 * O Scraper externo agora cuida de baixar as imagens, então a API só calcula hash de arquivos locais.
 	 */
-	async calculateImageHash(
-		imageSource: string,
-		refererUrl?: string,
-	): Promise<string> {
-		let buffer: Buffer;
-
-		if (
-			imageSource.startsWith('http://') ||
-			imageSource.startsWith('https://')
-		) {
-			const pageUrl = refererUrl || new URL(imageSource).origin;
-
-			try {
-				buffer = await this.scrapingService.fetchImageBuffer(
-					pageUrl,
-					imageSource,
-				);
-			} catch (error) {
-				this.logger.error(
-					`Failed to download image for hash calculation: ${imageSource} (referer: ${pageUrl})`,
-					error,
-				);
-				throw error;
-			}
-		} else {
-			try {
-				// Usa o FilesService para buscar o buffer do storage (S3/RustFS)
-				buffer = await this.filesService.getFileBuffer(
-					imageSource,
-					StorageBucket.BOOKS,
-				);
-			} catch (error) {
-				this.logger.error(
-					`Failed to read image buffer from storage: ${imageSource}`,
-					error,
-				);
-				throw error;
-			}
+	async calculateLocalImageHash(storagePath: string): Promise<string> {
+		try {
+			const buffer = await this.filesService.getFileBuffer(
+				storagePath,
+				StorageBucket.BOOKS,
+			);
+			return createHash('sha256').update(buffer).digest('hex');
+		} catch (error) {
+			this.logger.error(
+				`Failed to read image buffer from storage for hash: ${storagePath}`,
+				error,
+			);
+			throw error;
 		}
-
-		return createHash('sha256').update(buffer).digest('hex');
 	}
 
 	/**
-	 * Recalcula o hash das capas existentes que ainda não têm imageHash preenchido.
-	 * Isso é necessário para capas que foram cadastradas antes da implementação do sistema de deduplicação.
+	 * Recalcula hashes de capas que não possuem imageHash.
 	 */
 	async recalculateMissingCoverHashes(): Promise<void> {
-		const coversWithoutHash = await this.coverRepository.find({
+		const covers = await this.coverRepository.find({
 			where: { imageHash: IsNull() },
-			relations: ['book'],
 		});
 
-		if (coversWithoutHash.length === 0) {
-			this.logger.debug('No covers without hash found');
-			return;
-		}
+		if (covers.length === 0) return;
 
-		this.logger.log(
-			`Found ${coversWithoutHash.length} covers without hash. Recalculating...`,
+		this.logger.debug(
+			`Iniciando recalculo de hash para ${covers.length} capas.`,
 		);
 
-		let successCount = 0;
-		let errorCount = 0;
-
-		for (const cover of coversWithoutHash) {
-			try {
-				const refererUrl = cover.book?.originalUrl?.[0];
-				const imageHash = await this.calculateImageHash(
-					cover.url,
-					refererUrl,
-				);
-				cover.imageHash = imageHash;
-				await this.coverRepository.save(cover);
-				successCount++;
-			} catch (error) {
-				this.logger.warn(
-					`Failed to calculate hash for cover ${cover.id} (${cover.url}): ${error.message}`,
-				);
-				errorCount++;
+		for (const cover of covers) {
+			if (cover.url && !cover.url.startsWith('http')) {
+				try {
+					const hash = await this.calculateLocalImageHash(cover.url);
+					await this.coverRepository.update(cover.id, {
+						imageHash: hash,
+					});
+				} catch (error) {
+					// Ignora erros individuais
+				}
 			}
 		}
-
-		this.logger.log(
-			`Cover hash recalculation complete: ${successCount} success, ${errorCount} errors`,
-		);
 	}
 }
