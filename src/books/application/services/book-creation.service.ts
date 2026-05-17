@@ -12,6 +12,8 @@ import { WebsiteService } from '@websites/application/services/website.service';
 import { BookEvents } from '@books/domain/constants/events.constant';
 import { CreateBookDto } from '@books/application/dto/create-book.dto';
 import { Book } from '@books/domain/entities/book';
+import { Cover } from '@books/domain/entities/cover';
+import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { CoverImageService } from '@books/infrastructure/jobs/cover-image.service';
 import { BookRelationshipService } from './book-relationship.service';
 import { ChapterManagementService } from './chapter-management.service';
@@ -182,6 +184,28 @@ export class BookCreationService implements OnModuleInit {
 			}
 
 			if (dto.cover?.urlImgs && dto.cover.urlImgs.length > 0) {
+				const coverRepo = uow.getCoverRepository();
+				const covers = dto.cover.urlImgs.map((img, index) => {
+					const cover = new Cover();
+					Object.assign(cover, {
+						url: img.url, // Fast-track: usa a URL original imediatamente
+						originalUrl: img.url,
+						title: img.title || `Capa ${index + 1}`,
+						index: index,
+						selected: index === 0,
+						book: savedBook,
+						scrapingStatus: ScrapingStatus.PROCESS,
+					});
+					return cover;
+				});
+
+				const savedCovers = await coverRepo.saveAll(covers);
+				// Remove referência circular para evitar erros de serialização (JSON.stringify)
+				savedBook.covers = savedCovers.map((c) => {
+					const { book, ...coverData } = c;
+					return coverData as Cover;
+				});
+
 				await this.coverImageService.addCoverToQueue(
 					savedBook.id,
 					dto.cover.urlOrigin,

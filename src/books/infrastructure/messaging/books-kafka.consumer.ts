@@ -241,10 +241,11 @@ export class BooksKafkaConsumer {
 				`Recebido conclusão de scraping (UPDATE) para livro: ${bookId}`,
 			);
 
-			const book = await this.bookRepository.findById(bookId, [
-				'chapters',
-				'covers',
-			]);
+			const book = await this.bookRepository.findById(
+				bookId,
+				['chapters', 'covers'],
+				'force_master',
+			);
 
 			if (!book) {
 				this.logger.error(
@@ -351,12 +352,6 @@ export class BooksKafkaConsumer {
 				continue;
 			}
 
-			const scrapedTitle = data.scrapedTitle || data.scraped_title;
-			if (scrapedTitle && !chapter.title) {
-				const mutableChapter = chapter as unknown as InfraChapter;
-				mutableChapter.title = scrapedTitle;
-			}
-
 			await this.chapterScrapingShared.finalizeChapterScraping(
 				chapter as unknown as InfraChapter,
 				data.images || [],
@@ -386,12 +381,16 @@ export class BooksKafkaConsumer {
 			);
 
 			try {
-				const covers = await this.coverRepository.findByBookId(bookId);
+				const covers = await this.coverRepository.findByBookId(
+					bookId,
+					'force_master',
+				);
 				const processingCovers = covers.filter(
 					(c) => c.scrapingStatus === ScrapingStatus.PROCESS,
 				);
 
 				const results = data.results || [];
+				const redis = this.redisService.getClient();
 
 				for (let i = 0; i < processingCovers.length; i++) {
 					const cover = processingCovers[i];
@@ -405,6 +404,25 @@ export class BooksKafkaConsumer {
 						) {
 							path = `processing/${path}`;
 						}
+
+						// Verifica se já existe otimização no cache (race condition com processamento de imagem)
+						const cached = await redis.get(
+							`pending_optimization:${path}`,
+						);
+						if (cached) {
+							try {
+								const optimized = JSON.parse(cached);
+								path = optimized.path;
+								if (optimized.metadata) {
+									cover.metadata = optimized.metadata;
+								}
+							} catch (e) {
+								this.logger.warn(
+									`Erro ao parsear cache de otimização para capa: ${path}`,
+								);
+							}
+						}
+
 						cover.url = path;
 					}
 					cover.scrapingStatus = ScrapingStatus.READY;
@@ -450,7 +468,10 @@ export class BooksKafkaConsumer {
 			);
 
 			try {
-				const covers = await this.coverRepository.findByBookId(bookId);
+				const covers = await this.coverRepository.findByBookId(
+					bookId,
+					'force_master',
+				);
 				const processCovers = covers.filter(
 					(c) => c.scrapingStatus === ScrapingStatus.PROCESS,
 				);
