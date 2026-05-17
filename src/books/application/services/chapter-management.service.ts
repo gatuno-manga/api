@@ -106,6 +106,19 @@ export class ChapterManagementService {
 			throw new NotFoundException(`Book with ID ${bookId} not found`);
 		}
 
+		// Check if index already exists for manual creation
+		if (dto.index !== undefined && dto.index !== null) {
+			const existingChapter = await this.chapterRepository.findOne({
+				book: { id: bookId } as Book,
+				index: dto.index,
+			});
+			if (existingChapter) {
+				throw new BadRequestException(
+					`Chapter with index ${dto.index} already exists`,
+				);
+			}
+		}
+
 		const chapter = this.chapterRepository.create({
 			title: dto.title,
 			index: dto.index,
@@ -117,6 +130,9 @@ export class ChapterManagementService {
 		});
 
 		const savedChapter = await this.chapterRepository.save(chapter);
+
+		// Persist book (without loading chapters) to avoid relation sync issues in callers
+		await this.bookRepository.save(book);
 
 		// Enfileira para processamento de texto (ex: extrair imagens se houver)
 		if (savedChapter.content) {
@@ -233,19 +249,44 @@ export class ChapterManagementService {
 
 	async createManualChaptersInBatch(
 		dtos: CreateChapterBatchItemDto[],
-	): Promise<Chapter[]> {
-		const results: Chapter[] = [];
+	): Promise<{
+		total: number;
+		success: number;
+		results: Array<{
+			status: 'success' | 'error';
+			chapter?: Chapter;
+			error?: string;
+		}>;
+	}> {
+		const results: Array<{
+			status: 'success' | 'error';
+			chapter?: Chapter;
+			error?: string;
+		}> = [];
+		let success = 0;
+
 		for (const dto of dtos) {
-			results.push(
-				await this.createManualChapter(dto.bookId, {
+			try {
+				const chapter = await this.createManualChapter(dto.bookId, {
 					title: dto.title,
 					index: dto.index,
 					content: dto.content,
 					format: dto.format,
-				}),
-			);
+				});
+				results.push({ status: 'success', chapter });
+				success += 1;
+			} catch (err: unknown) {
+				const message =
+					err instanceof Error ? err.message : String(err);
+				results.push({ status: 'error', error: message });
+			}
 		}
-		return results;
+
+		return {
+			total: dtos.length,
+			success,
+			results,
+		};
 	}
 
 	async reorderChapters(

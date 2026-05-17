@@ -222,13 +222,10 @@ export class BookCreationService implements OnModuleInit {
 		bookId: string,
 		chaptersDto: CreateChapterDto[],
 	): Promise<Chapter[]> {
-		const results: Chapter[] = [];
-		for (const dto of chaptersDto) {
-			results.push(
-				await this.chapterManagementService.createChapter(bookId, dto),
-			);
-		}
-		return results;
+		return this.chapterManagementService.createChaptersFromDto(
+			bookId,
+			chaptersDto,
+		);
 	}
 
 	async checkBookTitleConflict(

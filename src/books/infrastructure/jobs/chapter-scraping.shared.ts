@@ -2,11 +2,11 @@ import { BookEvents } from '@books/domain/constants/events.constant';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { Page } from '@books/infrastructure/database/entities/page.entity';
-import { RedisService } from '@infrastructure/redis/redis.service';
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ClientKafka } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
+import { RedisService } from '@src/infrastructure/redis/redis.service';
 import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
 import { Repository } from 'typeorm';
 
