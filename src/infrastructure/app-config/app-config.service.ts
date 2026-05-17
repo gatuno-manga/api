@@ -152,7 +152,7 @@ export class AppConfigService {
 		};
 	}
 
-	get LogLevel(): string {
+	get logLevel(): string {
 		return this.config.get<string>('LOG_LEVEL') || 'context=*;level=info';
 	}
 
