@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
+import { Logger } from 'nestjs-pino';
 import { AppConfigService } from './infrastructure/app-config/app-config.service';
 import { AppModule } from './app.module';
 import { configureBodyParser } from './infrastructure/http/config/body-parser.config';
@@ -11,7 +12,10 @@ import { configureValidationPipe } from './infrastructure/http/config/validation
 import { configureKafka } from './infrastructure/http/config/kafka.config';
 
 async function bootstrap() {
-	const app = await NestFactory.create<NestExpressApplication>(AppModule);
+	const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+		bufferLogs: true,
+	});
+	app.useLogger(app.get(Logger));
 	const configService = app.get(AppConfigService);
 
 	configureBodyParser(app);

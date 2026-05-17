@@ -122,7 +122,7 @@ import { LoggerRuleEngine } from './logger-rule-engine';
 			provide: LoggerRuleEngine,
 			useFactory: (config: AppConfigService) => {
 				return new LoggerRuleEngine(
-					config.LogLevel,
+					config.logLevel,
 					config.logSamplingRate,
 				);
 			},
