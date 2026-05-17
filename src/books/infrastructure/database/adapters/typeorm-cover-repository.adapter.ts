@@ -5,7 +5,6 @@ import { Injectable, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ImageMetadata } from '@src/common/domain/value-objects/image-metadata.vo';
 import {
-	DeepPartial,
 	EntityManager,
 	FindOptionsOrder,
 	FindOptionsWhere,
@@ -33,24 +32,36 @@ export class TypeOrmCoverRepositoryAdapter implements ICoverRepository {
 		relations?: string[],
 	): Promise<DomainCover | null> {
 		const cover = await this.repository.findOne({
-			where: { id } as unknown as FindOptionsWhere<InfrastructureCover>,
+			where: { id } as FindOptionsWhere<InfrastructureCover>,
 			relations,
 		});
-		return cover as unknown as DomainCover;
+		if (!cover) return null;
+		const domainCover = new DomainCover();
+		Object.assign(domainCover, cover);
+		return domainCover;
 	}
 
 	async save(cover: DomainCover): Promise<DomainCover> {
-		const saved = await this.repository.save(
-			cover as unknown as InfrastructureCover,
-		);
-		return saved as unknown as DomainCover;
+		const entity = this.repository.create();
+		Object.assign(entity, cover);
+		const saved = await this.repository.save(entity);
+		const result = new DomainCover();
+		Object.assign(result, saved);
+		return result;
 	}
 
 	async saveAll(covers: DomainCover[]): Promise<DomainCover[]> {
-		const saved = await this.repository.save(
-			covers as unknown as InfrastructureCover[],
-		);
-		return saved as unknown as DomainCover[];
+		const entities = covers.map((c) => {
+			const entity = this.repository.create();
+			Object.assign(entity, c);
+			return entity;
+		});
+		const saved = await this.repository.save(entities);
+		return saved.map((s) => {
+			const result = new DomainCover();
+			Object.assign(result, s);
+			return result;
+		});
 	}
 
 	async delete(id: string): Promise<void> {
@@ -62,9 +73,20 @@ export class TypeOrmCoverRepositoryAdapter implements ICoverRepository {
 	}
 
 	async softRemove(cover: DomainCover): Promise<void> {
-		await this.repository.softRemove(
-			cover as unknown as InfrastructureCover,
-		);
+		const entity = this.repository.create();
+		Object.assign(entity, cover);
+		await this.repository.softRemove(entity);
+	}
+
+	async find(criteria: Partial<DomainCover>): Promise<DomainCover[]> {
+		const covers = await this.repository.find({
+			where: criteria as FindOptionsWhere<InfrastructureCover>,
+		});
+		return covers.map((c) => {
+			const result = new DomainCover();
+			Object.assign(result, c);
+			return result;
+		});
 	}
 
 	async findByBookId(
@@ -74,39 +96,51 @@ export class TypeOrmCoverRepositoryAdapter implements ICoverRepository {
 		const covers = await this.repository.find({
 			where: {
 				book: { id: bookId },
-			} as unknown as FindOptionsWhere<InfrastructureCover>,
+			} as FindOptionsWhere<InfrastructureCover>,
 			order: {
 				index: 'ASC',
-			} as unknown as FindOptionsOrder<InfrastructureCover>,
+			} as FindOptionsOrder<InfrastructureCover>,
 			comment,
 		});
-		return covers as unknown as DomainCover[];
+		return covers.map((c) => {
+			const result = new DomainCover();
+			Object.assign(result, c);
+			return result;
+		});
 	}
 
 	async findByBookIds(bookIds: string[]): Promise<DomainCover[]> {
 		const covers = await this.repository.find({
 			where: {
 				book: { id: In(bookIds) },
-			} as unknown as FindOptionsWhere<InfrastructureCover>,
+			} as FindOptionsWhere<InfrastructureCover>,
 			relations: ['book'],
 			order: {
 				index: 'ASC',
-			} as unknown as FindOptionsOrder<InfrastructureCover>,
+			} as FindOptionsOrder<InfrastructureCover>,
 		});
-		return covers as unknown as DomainCover[];
+		return covers.map((c) => {
+			const result = new DomainCover();
+			Object.assign(result, c);
+			return result;
+		});
 	}
 
 	create(data: Partial<DomainCover>): DomainCover {
-		const cover = this.repository.create(
-			data as unknown as DeepPartial<InfrastructureCover>,
-		);
-		return cover as unknown as DomainCover;
+		const entity = this.repository.create();
+		Object.assign(entity, data);
+		const result = new DomainCover();
+		Object.assign(result, entity);
+		return result;
 	}
 
-	async update(criteria: unknown, data: Partial<DomainCover>): Promise<void> {
+	async update(
+		criteria: Partial<DomainCover>,
+		data: Partial<DomainCover>,
+	): Promise<void> {
 		await this.repository.update(
 			criteria as FindOptionsWhere<InfrastructureCover>,
-			data as unknown as InfrastructureCover,
+			data as Parameters<Repository<InfrastructureCover>['update']>[1],
 		);
 	}
 

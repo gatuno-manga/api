@@ -1,13 +1,17 @@
+import { ContentFormat } from '@books/domain/enums/content-format.enum';
 import { NormalizeUrl } from '@common/decorators/normalize-url.decorator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+	IsEnum,
+	IsNotEmpty,
 	IsNumber,
 	IsOptional,
 	IsPositive,
 	IsString,
 	IsUrl,
 	MaxLength,
+	ValidateIf,
 } from 'class-validator';
 
 export class UpdateChapterDto {
@@ -40,4 +44,22 @@ export class UpdateChapterDto {
 	@IsNumber()
 	@IsPositive()
 	index: number;
+
+	@ApiPropertyOptional({
+		description: 'Optional chapter textual content',
+		maxLength: 500000,
+	})
+	@IsString()
+	@IsOptional()
+	@IsNotEmpty()
+	content?: string;
+
+	@ApiPropertyOptional({
+		description: 'Optional textual format',
+		enum: ContentFormat,
+	})
+	@IsEnum(ContentFormat)
+	@IsOptional()
+	@ValidateIf((dto: UpdateChapterDto) => dto.content !== undefined)
+	format?: ContentFormat;
 }

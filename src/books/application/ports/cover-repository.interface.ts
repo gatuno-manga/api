@@ -7,10 +7,11 @@ export interface ICoverRepository {
 	delete(id: string): Promise<void>;
 	softDelete(id: string): Promise<void>;
 	softRemove(cover: Cover): Promise<void>;
+	find(criteria: Partial<Cover>): Promise<Cover[]>;
 	findByBookId(bookId: string, comment?: string): Promise<Cover[]>;
 	findByBookIds(bookIds: string[]): Promise<Cover[]>;
 	create(data: Partial<Cover>): Cover;
-	update(criteria: unknown, data: Partial<Cover>): Promise<void>;
+	update(criteria: Partial<Cover>, data: Partial<Cover>): Promise<void>;
 	updateBatch(
 		updates: { oldPath: string; newPath: string; metadata?: unknown }[],
 	): Promise<void>;

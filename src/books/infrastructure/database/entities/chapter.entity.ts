@@ -28,10 +28,10 @@ export class Chapter {
 	@Column({
 		nullable: true,
 	})
-	title: string;
+	title: string | null;
 
 	@Column({ nullable: true })
-	originalUrl: string;
+	originalUrl: string | null;
 
 	@Column({ type: 'decimal', precision: 15, scale: 5 })
 	index: number;
@@ -109,10 +109,17 @@ export class Chapter {
 	@JoinColumn({ name: 'bookId' })
 	book: Relation<Book>;
 
-	@OneToMany(() => Page, (page) => page.chapter, { cascade: true })
+	@OneToMany(
+		() => Page,
+		(page) => page.chapter,
+		{ cascade: true },
+	)
 	pages: Relation<Page[]>;
 
-	@OneToMany(() => ChapterComment, (comment) => comment.chapter)
+	@OneToMany(
+		() => ChapterComment,
+		(comment) => comment.chapter,
+	)
 	comments: Relation<ChapterComment[]>;
 
 	@Column({

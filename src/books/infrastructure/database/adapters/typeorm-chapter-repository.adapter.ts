@@ -29,7 +29,7 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 		@Optional()
 		entityManager?: EntityManager,
 	) {
-		this.repository = entityManager
+		this.repository = entityManager?.getRepository
 			? entityManager.getRepository(InfrastructureChapter)
 			: repository;
 	}
@@ -49,7 +49,7 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 	}
 
 	async save(chapter: DomainChapter): Promise<DomainChapter> {
-		const entity = this.repository.create();
+		const entity = this.repository.create() ?? {};
 		Object.assign(entity, chapter);
 		const saved = await this.repository.save(entity);
 		const result = new DomainChapter();
@@ -72,8 +72,28 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 	}
 
 	async update(id: string, data: Partial<DomainChapter>): Promise<void> {
-		const updateData =
-			data as QueryDeepPartialEntity<InfrastructureChapter>;
+		const updateData: Parameters<
+			Repository<InfrastructureChapter>['update']
+		>[1] = {};
+
+		if (data.title !== undefined) updateData.title = data.title;
+		if (data.index !== undefined) updateData.index = data.index;
+		if (data.originalUrl !== undefined)
+			updateData.originalUrl = data.originalUrl;
+		if (data.contentType !== undefined)
+			updateData.contentType = data.contentType;
+		if (data.content !== undefined) updateData.content = data.content;
+		if (data.contentFormat !== undefined)
+			updateData.contentFormat = data.contentFormat;
+		if (data.documentPath !== undefined)
+			updateData.documentPath = data.documentPath;
+		if (data.documentFormat !== undefined)
+			updateData.documentFormat = data.documentFormat;
+		if (data.scrapingStatus !== undefined)
+			updateData.scrapingStatus = data.scrapingStatus;
+		if (data.retries !== undefined) updateData.retries = data.retries;
+		if (data.isFinal !== undefined) updateData.isFinal = data.isFinal;
+
 		await this.repository.update(id, updateData);
 	}
 
@@ -122,7 +142,8 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 
 	async count(criteria?: ChapterCriteria): Promise<number> {
 		return this.repository.count({
-			where: (criteria || {}) as FindOptionsWhere<InfrastructureChapter>,
+			where: (criteria ||
+				{}) as unknown as FindOptionsWhere<InfrastructureChapter>,
 		});
 	}
 
@@ -154,7 +175,7 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 
 	async findOne(criteria: ChapterCriteria): Promise<DomainChapter | null> {
 		const chapter = await this.repository.findOne({
-			where: criteria as FindOptionsWhere<InfrastructureChapter>,
+			where: criteria as unknown as FindOptionsWhere<InfrastructureChapter>,
 		});
 		if (!chapter) return null;
 		const result = new DomainChapter();
@@ -164,7 +185,7 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 
 	async find(criteria: ChapterCriteria): Promise<DomainChapter[]> {
 		const chapters = await this.repository.find({
-			where: criteria as FindOptionsWhere<InfrastructureChapter>,
+			where: criteria as unknown as FindOptionsWhere<InfrastructureChapter>,
 		});
 		return chapters.map((ch) => {
 			const result = new DomainChapter();
@@ -206,7 +227,7 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 		chaptersQuery.orderBy('chapter.index', options.order || 'ASC');
 
 		if (options.limit) {
-			chaptersQuery.take(options.limit);
+			chaptersQuery.limit(options.limit);
 		}
 
 		if (!userId) {
@@ -307,10 +328,15 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 	merge(chapter: DomainChapter, data: Partial<DomainChapter>): DomainChapter {
 		const entity = this.repository.create();
 		Object.assign(entity, chapter);
-		const merged = this.repository.merge(
-			entity,
-			data as QueryDeepPartialEntity<InfrastructureChapter>,
-		);
+
+		const updateData: Parameters<
+			Repository<InfrastructureChapter>['merge']
+		>[1] = {};
+		if (data.title !== undefined) updateData.title = data.title;
+		if (data.index !== undefined) updateData.index = data.index;
+		if (data.content !== undefined) updateData.content = data.content;
+
+		const merged = this.repository.merge(entity, updateData);
 		const result = new DomainChapter();
 		Object.assign(result, merged);
 		return result;

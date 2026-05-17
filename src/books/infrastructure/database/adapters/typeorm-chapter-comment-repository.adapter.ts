@@ -10,7 +10,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { RolesEnum } from '@users/domain/enums/roles.enum';
 import {
 	Brackets,
-	DeepPartial,
 	FindOptionsWhere,
 	Repository,
 	SelectQueryBuilder,
@@ -31,27 +30,42 @@ export class TypeOrmChapterCommentRepositoryAdapter
 		comment?: string,
 	): Promise<DomainChapterComment | null> {
 		const result = await this.repository.findOne({
-			where: {
-				id,
-			} as unknown as FindOptionsWhere<InfrastructureChapterComment>,
+			where: { id } as FindOptionsWhere<InfrastructureChapterComment>,
 			relations,
 			withDeleted: true,
 			comment,
 		});
-		return result as unknown as DomainChapterComment;
+		if (!result) return null;
+		const domainComment = new DomainChapterComment();
+		Object.assign(domainComment, result);
+		return domainComment;
 	}
 
 	async save(comment: DomainChapterComment): Promise<DomainChapterComment> {
-		const saved = await this.repository.save(
-			comment as unknown as InfrastructureChapterComment,
+		const entity = this.repository.create();
+		Object.assign(entity, comment);
+		const saved = await this.repository.save(entity);
+		const result = new DomainChapterComment();
+		Object.assign(result, saved);
+		return result;
+	}
+
+	async update(
+		id: string,
+		data: Partial<DomainChapterComment>,
+	): Promise<void> {
+		await this.repository.update(
+			id,
+			data as Parameters<
+				Repository<InfrastructureChapterComment>['update']
+			>[1],
 		);
-		return saved as unknown as DomainChapterComment;
 	}
 
 	async softRemove(comment: DomainChapterComment): Promise<void> {
-		await this.repository.softRemove(
-			comment as unknown as InfrastructureChapterComment,
-		);
+		const entity = this.repository.create();
+		Object.assign(entity, comment);
+		await this.repository.softRemove(entity);
 	}
 
 	async countRoots(
@@ -96,7 +110,11 @@ export class TypeOrmChapterCommentRepositoryAdapter
 			'comment',
 		);
 		const roots = await qb.getMany();
-		return roots as unknown as DomainChapterComment[];
+		return roots.map((root) => {
+			const domainComment = new DomainChapterComment();
+			Object.assign(domainComment, root);
+			return domainComment;
+		});
 	}
 
 	findRootsWithCursor(
@@ -119,10 +137,11 @@ export class TypeOrmChapterCommentRepositoryAdapter
 	}
 
 	create(data: Partial<DomainChapterComment>): DomainChapterComment {
-		const comment = this.repository.create(
-			data as unknown as DeepPartial<InfrastructureChapterComment>,
-		);
-		return comment as unknown as DomainChapterComment;
+		const entity = this.repository.create();
+		Object.assign(entity, data);
+		const result = new DomainChapterComment();
+		Object.assign(result, entity);
+		return result;
 	}
 
 	private applyVisibilityFilter(

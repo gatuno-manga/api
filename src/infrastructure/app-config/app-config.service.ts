@@ -317,7 +317,10 @@ export class AppConfigService {
 		const appsJson = this.config.get<string>('ANDROID_APPS');
 		if (appsJson) {
 			try {
-				const parsed = JSON.parse(appsJson) as Record<string, unknown>[];
+				const parsed = JSON.parse(appsJson) as Record<
+					string,
+					unknown
+				>[];
 				if (Array.isArray(parsed)) {
 					return parsed as {
 						packageName: string;

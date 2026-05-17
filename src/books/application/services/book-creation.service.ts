@@ -1,10 +1,12 @@
 import { CreateBookDto } from '@books/application/dto/create-book.dto';
+import { CreateChapterDto } from '@books/application/dto/create-chapter.dto';
 import {
 	IBookRepository,
 	I_BOOK_REPOSITORY,
 } from '@books/application/ports/book-repository.interface';
 import { BookEvents } from '@books/domain/constants/events.constant';
 import { Book } from '@books/domain/entities/book';
+import { Chapter } from '@books/domain/entities/chapter';
 import { Cover } from '@books/domain/entities/cover';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { CoverImageService } from '@books/infrastructure/jobs/cover-image.service';
@@ -128,7 +130,6 @@ export class BookCreationService implements OnModuleInit {
 
 		return this.unitOfWork.runInTransaction(async (uow) => {
 			const bookRepo = uow.getBookRepository();
-			const chapterRepo = uow.getChapterRepository();
 			const tagRepo = uow.getTagRepository();
 			const authorRepo = uow.getAuthorRepository();
 			const sensitiveRepo = uow.getSensitiveContentRepository();
@@ -174,12 +175,10 @@ export class BookCreationService implements OnModuleInit {
 			const savedBook = await bookRepo.save(book);
 
 			if (dto.chapters && dto.chapters.length > 0) {
-				const createdChapters =
-					await this.chapterManagementService.createChaptersFromDto(
-						dto.chapters,
-						savedBook,
-						chapterRepo,
-					);
+				const createdChapters = await this.createChaptersFromDto(
+					savedBook.id,
+					dto.chapters,
+				);
 				savedBook.chapters = createdChapters;
 			}
 
@@ -217,6 +216,19 @@ export class BookCreationService implements OnModuleInit {
 
 			return savedBook;
 		});
+	}
+
+	async createChaptersFromDto(
+		bookId: string,
+		chaptersDto: CreateChapterDto[],
+	): Promise<Chapter[]> {
+		const results: Chapter[] = [];
+		for (const dto of chaptersDto) {
+			results.push(
+				await this.chapterManagementService.createChapter(bookId, dto),
+			);
+		}
+		return results;
 	}
 
 	async checkBookTitleConflict(

@@ -1,8 +1,12 @@
+import {
+	IncomingHttpHeaders,
+	IncomingMessage,
+	ServerResponse,
+} from 'node:http';
 import { CustomLogger } from '@/custom.logger';
 import { AppConfigModule } from '@app-config/app-config.module';
 import { AppConfigService } from '@app-config/app-config.service';
 import { Module } from '@nestjs/common';
-import { IncomingMessage, ServerResponse } from 'node:http';
 import { LoggerModule } from 'nestjs-pino';
 import { v7 as uuidv7 } from 'uuid';
 import { LoggerRuleEngine } from './logger-rule-engine';
@@ -13,7 +17,7 @@ interface PinoRequest extends IncomingMessage {
 	url: string;
 	query: Record<string, unknown>;
 	params: Record<string, unknown>;
-	headers: Record<string, unknown>;
+	headers: IncomingHttpHeaders;
 	raw?: { body?: unknown };
 	body?: unknown;
 	remoteAddress: string;
@@ -89,18 +93,15 @@ interface PinoError extends Error {
 						customLogLevel: (
 							_req: IncomingMessage,
 							res: ServerResponse,
-							err: Error | null,
+							error?: Error,
 						) => {
 							if (res.statusCode >= 400 && res.statusCode < 500) {
 								return 'warn';
 							}
-							if (res.statusCode >= 500 || err) {
+							if (res.statusCode >= 500 || error) {
 								return 'error';
 							}
-							if (
-								res.statusCode >= 300 &&
-								res.statusCode < 400
-							) {
+							if (res.statusCode >= 300 && res.statusCode < 400) {
 								return 'silent';
 							}
 							return 'info';

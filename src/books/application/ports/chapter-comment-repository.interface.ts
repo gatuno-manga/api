@@ -11,6 +11,7 @@ export interface IChapterCommentRepository {
 		comment?: string,
 	): Promise<ChapterComment | null>;
 	save(comment: ChapterComment): Promise<ChapterComment>;
+	update(id: string, data: Partial<ChapterComment>): Promise<void>;
 	softRemove(comment: ChapterComment): Promise<void>;
 	countRoots(chapterId: string, viewer?: ViewerContext): Promise<number>;
 	findRootsWithPagination(

@@ -60,8 +60,13 @@ export class AdaptiveThrottlerGuard extends ThrottlerGuard {
 		const res = http.getResponse<Response>();
 
 		return {
-			req: req || ({ headers: {}, ip: '127.0.0.1' } as Partial<Request>),
-			res: res || ({ header: () => {} } as Partial<Response>),
+			req:
+				req ||
+				({
+					headers: {},
+					ip: '127.0.0.1',
+				} as unknown as Partial<Request>),
+			res: res || ({ header: () => {} } as unknown as Partial<Response>),
 		};
 	}
 }

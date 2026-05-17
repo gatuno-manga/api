@@ -20,7 +20,7 @@ export class Author {
 	@Column({
 		nullable: true,
 	})
-	biography: string;
+	biography: string | null;
 
 	@CreateDateColumn()
 	createdAt: Date;
@@ -28,6 +28,9 @@ export class Author {
 	@UpdateDateColumn()
 	updatedAt: Date;
 
-	@ManyToMany(() => Book, (book) => book.authors)
+	@ManyToMany(
+		() => Book,
+		(book) => book.authors,
+	)
 	books: Relation<Book[]>;
 }

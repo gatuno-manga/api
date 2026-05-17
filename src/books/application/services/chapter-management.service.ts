@@ -2,24 +2,15 @@ import { CreateChapterBatchItemDto } from '@books/application/dto/create-chapter
 import { CreateChapterManualDto } from '@books/application/dto/create-chapter-manual.dto';
 import { CreateChapterDto } from '@books/application/dto/create-chapter.dto';
 import { OrderChaptersDto } from '@books/application/dto/order-chapters.dto';
-import { QueueTextProcessingDto } from '@books/application/dto/queue-text-processing.dto';
 import { UpdateChapterDto } from '@books/application/dto/update-chapter.dto';
-import {
-	IBookRepository,
-	I_BOOK_REPOSITORY,
-} from '@books/application/ports/book-repository.interface';
-import {
-	IChapterRepository,
-	I_CHAPTER_REPOSITORY,
-} from '@books/application/ports/chapter-repository.interface';
+import { IBookRepository } from '@books/application/ports/book-repository.interface';
+import { IChapterRepository } from '@books/application/ports/chapter-repository.interface';
 import { BookEvents } from '@books/domain/constants/events.constant';
 import { Book } from '@books/domain/entities/book';
 import { Chapter } from '@books/domain/entities/chapter';
 import { ContentFormat } from '@books/domain/enums/content-format.enum';
 import { ContentType } from '@books/domain/enums/content-type.enum';
-import { ExportFormat } from '@books/domain/enums/export-format.enum';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
-import { ChapterUpdatedEvent } from '@books/infrastructure/events/chapter-updated.event';
 import { InjectQueue } from '@nestjs/bullmq';
 import {
 	BadRequestException,
@@ -30,71 +21,28 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Queue } from 'bullmq';
-import {
-	IUnitOfWork,
-	I_UNIT_OF_WORK,
-} from 'src/common/application/ports/unit-of-work.interface';
-import { normalizeUrl } from 'src/common/utils/url.utils';
 
-/**
- * Service responsável por gerenciar capítulos de livros
- */
 @Injectable()
 export class ChapterManagementService {
 	private readonly logger = new Logger(ChapterManagementService.name);
 
 	constructor(
-		@Inject(I_CHAPTER_REPOSITORY)
-		private readonly chapterRepository: IChapterRepository,
-		@Inject(I_BOOK_REPOSITORY)
+		@Inject('IBookRepository')
 		private readonly bookRepository: IBookRepository,
-		@Inject(I_UNIT_OF_WORK)
-		private readonly unitOfWork: IUnitOfWork,
-		@InjectQueue('text-processing-queue')
-		private readonly textProcessingQueue: Queue<QueueTextProcessingDto>,
+		@Inject('IChapterRepository')
+		private readonly chapterRepository: IChapterRepository,
 		private readonly eventEmitter: EventEmitter2,
+		@InjectQueue('text-processing-queue')
+		private readonly textProcessingQueue: Queue,
 	) {}
 
-	private validateManualChapterTextFields(dto: CreateChapterManualDto) {
-		const hasContent = dto.content !== undefined && dto.content !== null;
-		const hasFormat = dto.format !== undefined && dto.format !== null;
-
-		if (hasContent !== hasFormat) {
-			throw new BadRequestException(
-				"Campos 'content' e 'format' devem ser enviados juntos",
-			);
-		}
-	}
-
-	private mapContentFormatToExportFormat(
-		format: ContentFormat,
-	): ExportFormat {
-		switch (format) {
-			case ContentFormat.MARKDOWN:
-				return ExportFormat.MARKDOWN;
-			case ContentFormat.HTML:
-			case ContentFormat.PLAIN:
-				return ExportFormat.PDF;
-			default:
-				return ExportFormat.PDF;
-		}
-	}
-
-	/**
-	 * Cria um capítulo manual (sem URL para scraping)
-	 */
-	async createManualChapter(
+	async createChapter(
 		bookId: string,
-		dto: CreateChapterManualDto,
+		dto: CreateChapterDto,
 	): Promise<Chapter> {
-		this.validateManualChapterTextFields(dto);
-		this.logger.log(`Creating manual chapter for book: ${bookId}`);
-
 		const book = await this.bookRepository.findById(bookId);
-
 		if (!book) {
-			this.logger.warn(`Book with id ${bookId} not found`);
-			throw new NotFoundException(`Book with id ${bookId} not found`);
+			throw new NotFoundException(`Book with ID ${bookId} not found`);
 		}
 
 		// Determinar índice automaticamente se não fornecido
@@ -110,7 +58,7 @@ export class ChapterManagementService {
 
 		// Verificar se o índice já existe
 		const existingChapter = await this.chapterRepository.findOne({
-			book: { id: bookId },
+			book: { id: bookId } as Book,
 			index: index,
 		});
 
@@ -121,509 +69,354 @@ export class ChapterManagementService {
 		}
 
 		const chapter = this.chapterRepository.create({
-			title: dto.title || `Chapter ${index}`,
-			originalUrl: '', // Capítulo manual não tem URL
+			title: dto.title,
+			originalUrl: dto.url,
 			index,
-			book,
-			scrapingStatus: ScrapingStatus.READY, // Pronto para receber páginas
+			isFinal: dto.isFinal,
+			book: { id: bookId } as Book,
 		});
 
 		const savedChapter = await this.chapterRepository.save(chapter);
 
-		this.logger.log(
-			`Manual chapter created: ${savedChapter.title} (${savedChapter.id})`,
-		);
-
 		this.eventEmitter.emit(BookEvents.CHAPTER_CREATED, savedChapter);
-		this.eventEmitter.emit(
-			BookEvents.CHAPTER_UPDATED,
-			new ChapterUpdatedEvent(savedChapter.id, bookId),
-		);
 
 		return savedChapter;
 	}
 
-	/**
-	 * Cria capítulo manual e, opcionalmente, já salva conteúdo textual
-	 */
+	async createManualChapter(
+		bookId: string,
+		dto: CreateChapterManualDto,
+	): Promise<Chapter> {
+		return this.createChapterManual(bookId, dto);
+	}
+
 	async createManualChapterWithContent(
 		bookId: string,
 		dto: CreateChapterManualDto,
 	): Promise<Chapter> {
-		this.validateManualChapterTextFields(dto);
-		const content = dto.content;
-		const format = dto.format;
-		if (!content || !format) {
-			return this.createManualChapter(bookId, dto);
+		return this.createChapterManual(bookId, dto);
+	}
+
+	async createChapterManual(
+		bookId: string,
+		dto: CreateChapterManualDto,
+	): Promise<Chapter> {
+		const book = await this.bookRepository.findById(bookId);
+		if (!book) {
+			throw new NotFoundException(`Book with ID ${bookId} not found`);
 		}
 
-		const savedChapter = await this.unitOfWork.runInTransaction(
-			async (uow) => {
-				const bookRepo = uow.getBookRepository();
-				const chapterRepo = uow.getChapterRepository();
+		const chapter = this.chapterRepository.create({
+			title: dto.title,
+			index: dto.index,
+			content: dto.content,
+			contentFormat: dto.format || ContentFormat.MARKDOWN,
+			contentType: ContentType.TEXT,
+			book: { id: bookId } as Book,
+			scrapingStatus: ScrapingStatus.READY,
+		});
 
-				const book = await bookRepo.findById(bookId);
+		const savedChapter = await this.chapterRepository.save(chapter);
 
-				if (!book) {
-					this.logger.warn(`Book with id ${bookId} not found`);
-					throw new NotFoundException(
-						`Book with id ${bookId} not found`,
-					);
-				}
-
-				let index = dto.index;
-				if (index === undefined || index === null) {
-					const lastChapters = await chapterRepo.findByBookId(
-						bookId,
-						{
-							order: 'DESC',
-							limit: 1,
-						},
-					);
-					const lastChapter =
-						lastChapters.length > 0 ? lastChapters[0] : null;
-					index = (lastChapter ? Number(lastChapter.index) : 0) + 1;
-				}
-
-				const existingChapter = await chapterRepo.findOne({
-					book: { id: bookId },
-					index: index,
-				});
-
-				if (existingChapter) {
-					throw new BadRequestException(
-						`Chapter with index ${index} already exists`,
-					);
-				}
-
-				const chapter = chapterRepo.create({
-					title: dto.title || `Chapter ${index}`,
-					originalUrl: '',
-					index,
-					book,
-					scrapingStatus: null,
-					contentType: ContentType.TEXT,
-					content,
-					contentFormat: format,
-					documentPath: null,
-					documentFormat: null,
-				});
-
-				const createdChapter = await chapterRepo.save(chapter);
-
-				const exportFormat =
-					this.mapContentFormatToExportFormat(format);
-				const currentFormats = book.availableFormats || [];
-				if (!currentFormats.includes(exportFormat)) {
-					book.availableFormats = [...currentFormats, exportFormat];
-					await bookRepo.save(book);
-				}
-
-				return createdChapter;
-			},
-		);
-
-		this.logger.log(
-			`Manual chapter with text created: ${savedChapter.title} (${savedChapter.id})`,
-		);
+		// Enfileira para processamento de texto (ex: extrair imagens se houver)
+		if (savedChapter.content) {
+			await this.textProcessingQueue.add('process-text', {
+				entityId: savedChapter.id,
+				bookId,
+				source: 'CHAPTER',
+				format: savedChapter.contentFormat || ContentFormat.MARKDOWN,
+			});
+		}
 
 		this.eventEmitter.emit(BookEvents.CHAPTER_CREATED, savedChapter);
-		this.eventEmitter.emit(
-			BookEvents.CHAPTER_UPDATED,
-			new ChapterUpdatedEvent(savedChapter.id, bookId),
-		);
-		this.eventEmitter.emit('chapter.content.uploaded', {
-			chapterId: savedChapter.id,
-			bookId,
-			format,
-		});
-
-		await this.textProcessingQueue.add('process-text', {
-			entityId: savedChapter.id,
-			source: 'CHAPTER',
-			format,
-		});
 
 		return savedChapter;
 	}
 
-	/**
-	 * Cria capítulos manuais em lote com resultado por item
-	 */
-	async createManualChaptersInBatch(
-		items: CreateChapterBatchItemDto[],
-	): Promise<{
-		total: number;
-		success: number;
-		failed: number;
-		results: Array<{
-			position: number;
-			bookId: string;
-			chapterId?: string;
-			status: 'success' | 'error';
-			message?: string;
-		}>;
-	}> {
-		const results: Array<{
-			position: number;
-			bookId: string;
-			chapterId?: string;
-			status: 'success' | 'error';
-			message?: string;
-		}> = [];
-
-		for (let i = 0; i < items.length; i++) {
-			const item = items[i];
-			try {
-				const chapter = await this.createManualChapterWithContent(
-					item.bookId,
-					{
-						title: item.title,
-						index: item.index,
-						content: item.content,
-						format: item.format,
-					},
-				);
-
-				results.push({
-					position: i,
-					bookId: item.bookId,
-					chapterId: chapter.id,
-					status: 'success',
-				});
-			} catch (error) {
-				const message =
-					error instanceof Error
-						? error.message
-						: 'Erro desconhecido';
-				results.push({
-					position: i,
-					bookId: item.bookId,
-					status: 'error',
-					message,
-				});
-			}
+	async updateChapter(id: string, dto: UpdateChapterDto): Promise<Chapter> {
+		const chapter = await this.chapterRepository.findById(id, ['book']);
+		if (!chapter) {
+			throw new NotFoundException(`Chapter with ID ${id} not found`);
 		}
 
-		const success = results.filter((r) => r.status === 'success').length;
-		return {
-			total: items.length,
-			success,
-			failed: items.length - success,
-			results,
-		};
+		const updatedChapter = this.chapterRepository.merge(chapter, {
+			title: dto.title,
+			originalUrl: dto.url,
+			index: dto.index,
+			content: dto.content,
+			contentFormat: dto.format,
+		});
+		const savedChapter = await this.chapterRepository.save(updatedChapter);
+
+		// Se o conteúdo mudou, reprocessa
+		if (dto.content || dto.url) {
+			await this.textProcessingQueue.add('process-text', {
+				entityId: savedChapter.id,
+				bookId: savedChapter.book?.id,
+				source: 'CHAPTER',
+				format:
+					savedChapter.contentFormat ||
+					dto.format ||
+					ContentFormat.MARKDOWN,
+			});
+		}
+
+		this.eventEmitter.emit(BookEvents.CHAPTERS_UPDATED, savedChapter);
+
+		return savedChapter;
 	}
 
-	/**
-	 * Cria capítulos a partir de DTOs em uma transação
-	 */
-	async createChaptersFromDto(
-		chaptersDto: CreateChapterDto[],
-		book: Book,
-		repo?: IChapterRepository,
+	async updateChapters(
+		bookId: string,
+		dtos: UpdateChapterDto[],
 	): Promise<Chapter[]> {
-		const chapterRepo = repo || this.chapterRepository;
-		const indices = chaptersDto.map((c) => c.index);
-		const filteredIndices = indices.filter(
-			(index) => index !== undefined && index !== null,
-		);
-		const uniqueFilteredIndices = new Set(filteredIndices);
-		const duplicates = filteredIndices.filter(
-			(item, idx) => filteredIndices.indexOf(item) !== idx,
-		);
-		const uniqueDuplicates = [...new Set(duplicates)];
+		const results: Chapter[] = [];
+		for (const dto of dtos) {
+			if (dto.index) {
+				const chapter = await this.chapterRepository.findOne({
+					book: { id: bookId } as Book,
+					index: dto.index,
+				});
+				if (chapter) {
+					results.push(await this.updateChapter(chapter.id, dto));
+				}
+			}
+		}
+		return results;
+	}
 
-		if (filteredIndices.length !== uniqueFilteredIndices.size) {
-			throw new BadRequestException(
-				`Há capítulos com índices duplicados: ${uniqueDuplicates.join(', ')}`,
-			);
+	async deleteChapter(id: string): Promise<void> {
+		const chapter = await this.chapterRepository.findById(id, [
+			'book',
+			'pages',
+		]);
+		if (!chapter) {
+			throw new NotFoundException(`Chapter with ID ${id} not found`);
 		}
 
-		const allHaveIndex = chaptersDto.every(
-			(chapterDto) =>
-				chapterDto.index !== undefined && chapterDto.index !== null,
-		);
-		let count = 1;
-		const chapters = chaptersDto.map((chapterDto) =>
-			chapterRepo.create({
-				title: chapterDto.title,
-				originalUrl: chapterDto.url ? normalizeUrl(chapterDto.url) : '',
-				index: allHaveIndex ? chapterDto.index : count++,
-				book,
-				scrapingStatus: chapterDto.url
-					? ScrapingStatus.PROCESS
-					: ScrapingStatus.READY,
+		const pages = chapter.pages?.map((p) => p.path) || [];
+		const bookId = chapter.book?.id;
+
+		await this.chapterRepository.delete(id);
+
+		this.eventEmitter.emit(BookEvents.CHAPTER_DELETED, {
+			chapterId: id,
+			bookId,
+			pages,
+		});
+	}
+
+	async createChaptersBatch(
+		bookId: string,
+		chaptersDto: CreateChapterBatchItemDto[],
+	): Promise<Chapter[]> {
+		const book = await this.bookRepository.findById(bookId);
+		if (!book) {
+			throw new NotFoundException(`Book with ID ${bookId} not found`);
+		}
+
+		const chapters = chaptersDto.map((dto) =>
+			this.chapterRepository.create({
+				title: dto.title,
+				index: dto.index,
+				originalUrl: dto.url,
+				book: { id: bookId } as Book,
 			}),
 		);
 
-		return chapterRepo.saveAll(chapters);
-	}
+		const savedChapters = await this.chapterRepository.saveAll(chapters);
 
-	private determineDecimalPlaces(
-		dto: UpdateChapterDto[],
-		existingChapters: Chapter[],
-	): number {
-		for (const c of dto) {
-			if (c.index !== undefined && c.index !== null) {
-				const s = c.index.toString();
-				if (s.includes('.')) {
-					return s.split('.')[1].length;
-				}
-			}
-		}
-
-		let maxPlaces = 0;
-		for (const chapter of existingChapters) {
-			if (chapter.index?.toString().includes('.')) {
-				const places = chapter.index.toString().split('.')[1].length;
-				if (places > maxPlaces) maxPlaces = places;
-			}
-		}
-
-		return maxPlaces > 0 ? maxPlaces : 3;
-	}
-
-	/**
-	 * Atualiza capítulos de um livro
-	 */
-	async updateChapters(
-		idBook: string,
-		dto: UpdateChapterDto[],
-	): Promise<Chapter[]> {
-		const book = await this.bookRepository.findById(idBook);
-
-		if (!book) {
-			this.logger.warn(`Book with id ${idBook} not found`);
-			throw new NotFoundException(`Book with id ${idBook} not found`);
-		}
-
-		// Validar duplicatas no DTO
-		const indices = dto.map((c) => c.index);
-		const uniqueIndices = new Set(indices);
-		if (indices.length !== uniqueIndices.size) {
-			const duplicates = indices.filter(
-				(item, idx) => indices.indexOf(item) !== idx,
-			);
-			throw new BadRequestException(
-				`Há capítulos com índices duplicados: ${[...new Set(duplicates)].join(', ')}`,
-			);
-		}
-
-		// Buscar capítulos existentes que correspondem aos índices do DTO
-		const existingChapters = await this.chapterRepository.find({
-			book: { id: idBook },
-			index: indices,
-		});
-
-		const decimalPlaces = this.determineDecimalPlaces(
-			dto,
-			existingChapters,
-		);
-		const chapterMap = new Map<string, Chapter>();
-		for (const ch of existingChapters) {
-			chapterMap.set(Number(ch.index).toFixed(decimalPlaces), ch);
-		}
-
-		const updatedChapters: Chapter[] = [];
-		for (const chapterDto of dto) {
-			const indexStr = Number.parseFloat(
-				chapterDto.index.toString(),
-			).toFixed(decimalPlaces);
-			let chapter = chapterMap.get(indexStr);
-
-			if (!chapter) {
-				if (!chapterDto.url) {
-					throw new NotFoundException(
-						`Chapter with index ${chapterDto.index} not found and no URL provided to create it`,
-					);
-				}
-				chapter = this.chapterRepository.create({
-					title: chapterDto.title,
-					index: chapterDto.index,
-					originalUrl: chapterDto.url,
-					book: book,
-				});
-			} else {
-				const scrapingStatus = chapterDto.url
-					? ScrapingStatus.PROCESS
-					: chapter.scrapingStatus;
-
-				chapter = this.chapterRepository.merge(chapter, {
-					title: chapterDto.title,
-					index: chapterDto.index,
-					originalUrl: chapterDto.url,
-					scrapingStatus,
-				});
-			}
-			updatedChapters.push(chapter);
-		}
-
-		const savedChapters =
-			await this.chapterRepository.saveAll(updatedChapters);
-
-		// Emitir eventos
 		this.eventEmitter.emit(BookEvents.CHAPTERS_UPDATED, savedChapters);
-		for (const chapter of savedChapters) {
-			this.eventEmitter.emit(
-				BookEvents.CHAPTER_UPDATED,
-				new ChapterUpdatedEvent(chapter.id, idBook),
-			);
-
-			if (chapter.contentType === ContentType.TEXT && chapter.content) {
-				await this.textProcessingQueue.add('process-text', {
-					entityId: chapter.id,
-					source: 'CHAPTER',
-					format: chapter.contentFormat || ContentFormat.MARKDOWN,
-				});
-			}
-		}
 
 		return savedChapters;
 	}
 
-	/**
-	 * Reordena capítulos de um livro
-	 */
-	async orderChapters(
-		idBook: string,
-		chapters: OrderChaptersDto[],
-	): Promise<Book> {
-		const book = await this.bookRepository.findById(idBook, ['chapters']);
-
-		if (!book) {
-			this.logger.warn(`Book with id ${idBook} not found`);
-			throw new NotFoundException(`Book with id ${idBook} not found`);
-		}
-
-		if (chapters.length !== book.chapters.length) {
-			this.logger.warn(
-				`Number of chapters to order does not match the number of chapters in the book ${idBook}`,
-			);
-			throw new NotFoundException(
-				`Number of chapters to order does not match the number of chapters in the book ${idBook}`,
+	async createManualChaptersInBatch(
+		dtos: CreateChapterBatchItemDto[],
+	): Promise<Chapter[]> {
+		const results: Chapter[] = [];
+		for (const dto of dtos) {
+			results.push(
+				await this.createManualChapter(dto.bookId, {
+					title: dto.title,
+					index: dto.index,
+					content: dto.content,
+					format: dto.format,
+				}),
 			);
 		}
-
-		const chapterMap = new Map<string, Chapter>();
-		for (const chapter of book.chapters) {
-			chapterMap.set(chapter.id, chapter);
-		}
-		for (const chapterDto of chapters) {
-			if (!chapterMap.has(chapterDto.id)) {
-				this.logger.warn(
-					`Chapter with id ${chapterDto.id} not found in book ${idBook}`,
-				);
-				throw new NotFoundException(
-					`Chapter with id ${chapterDto.id} not found in book ${idBook}`,
-				);
-			}
-		}
-
-		const { savedBook, orderedChapters } =
-			await this.unitOfWork.runInTransaction(async (uow) => {
-				const transactionChapterRepo = uow.getChapterRepository();
-				const transactionBookRepo = uow.getBookRepository();
-
-				// Usar índices temporários negativos para evitar conflitos de UNIQUE constraint durante o processo
-				let tempIndex = -100_000;
-				for (const chapter of book.chapters) {
-					chapter.index = tempIndex++;
-				}
-				await transactionChapterRepo.saveAll(book.chapters);
-
-				// Aplicar os novos índices finais
-				for (const chapterDto of chapters) {
-					const chapter = chapterMap.get(chapterDto.id);
-					if (chapter) chapter.index = chapterDto.index;
-				}
-
-				const resultChapters = await transactionChapterRepo.saveAll(
-					Array.from(chapterMap.values()),
-				);
-				book.chapters = resultChapters;
-
-				const resultBook = await transactionBookRepo.save(book);
-
-				return {
-					savedBook: resultBook,
-					orderedChapters: resultChapters,
-				};
-			});
-
-		this.logger.log(`Reordered chapters for book ${idBook}`);
-
-		for (const ch of savedBook.chapters) {
-			ch.book = savedBook;
-		}
-		for (const chapter of orderedChapters) {
-			this.eventEmitter.emit(
-				BookEvents.CHAPTER_UPDATED,
-				new ChapterUpdatedEvent(chapter.id, idBook),
-			);
-		}
-		this.eventEmitter.emit(BookEvents.CHAPTERS_UPDATED, savedBook.chapters);
-
-		return savedBook;
+		return results;
 	}
 
-	/**
-	 * Reseta o status de scraping de todos os capítulos
-	 */
-	async resetBookChapters(idBook: string): Promise<Book> {
-		const book = await this.bookRepository.findById(idBook, ['chapters']);
+	async reorderChapters(
+		_bookId: string,
+		chapterIds: string[],
+	): Promise<Chapter[]> {
+		const chapters = await this.chapterRepository.findByIds(chapterIds);
 
+		if (chapters.length !== chapterIds.length) {
+			throw new BadRequestException('Some chapters were not found');
+		}
+
+		const updatedChapters = chapters.map((chapter) => {
+			const newIndex = chapterIds.indexOf(chapter.id) + 1;
+			chapter.index = newIndex;
+			return chapter;
+		});
+
+		const savedChapters =
+			await this.chapterRepository.saveAll(updatedChapters);
+
+		this.eventEmitter.emit(BookEvents.CHAPTERS_UPDATED, savedChapters);
+
+		return savedChapters;
+	}
+
+	async orderChapters(
+		bookId: string,
+		dtos: OrderChaptersDto[],
+	): Promise<Chapter[]> {
+		const chapterIds = dtos
+			.sort((a, b) => a.index - b.index)
+			.map((d) => d.id);
+		return this.reorderChapters(bookId, chapterIds);
+	}
+
+	async fixBookChapters(bookId: string): Promise<Book> {
+		return this.fixChaptersIndices(bookId);
+	}
+
+	async resetBookChapters(bookId: string): Promise<Book> {
+		const book = await this.bookRepository.findById(bookId, ['chapters']);
 		if (!book) {
-			this.logger.warn(`Book with id ${idBook} not found`);
-			throw new NotFoundException(`Book with id ${idBook} not found`);
+			throw new NotFoundException(`Book with ID ${bookId} not found`);
 		}
 
 		for (const chapter of book.chapters) {
-			chapter.scrapingStatus = ScrapingStatus.PROCESS;
+			await this.chapterRepository.delete(chapter.id);
 		}
 
-		await this.bookRepository.save(book);
-
-		// Garantir que o livro esteja anexado para o evento sem causar erro de referência circular no JSON
-		for (const ch of book.chapters) {
-			ch.book = book;
-		}
-		this.eventEmitter.emit(BookEvents.CHAPTERS_UPDATED, book.chapters);
-
-		// Remover referências circulares de forma limpa antes de retornar
 		return {
 			...book,
-			chapters: book.chapters.map((ch) => {
+			chapters: [],
+		} as Book;
+	}
+
+	async fixChaptersIndices(bookId: string): Promise<Book> {
+		const book = await this.bookRepository.findById(bookId, ['chapters']);
+		if (!book) {
+			throw new NotFoundException(`Book with ID ${bookId} not found`);
+		}
+
+		const sortedChapters = [...book.chapters].sort(
+			(a, b) => a.index - b.index,
+		);
+
+		const updatedChapters = sortedChapters.map((chapter, idx) => {
+			chapter.index = idx + 1;
+			return chapter;
+		});
+
+		await this.chapterRepository.saveAll(updatedChapters);
+
+		this.eventEmitter.emit(BookEvents.CHAPTERS_FIX, updatedChapters);
+
+		return {
+			...book,
+			chapters: updatedChapters.map((ch) => {
 				const { book: _, ...chapterWithoutBook } = ch;
 				return chapterWithoutBook as Chapter;
 			}),
 		} as Book;
 	}
 
-	/**
-	 * Emite evento para consertar capítulos
-	 */
-	async fixBookChapters(idBook: string): Promise<Book> {
-		const book = await this.bookRepository.findById(idBook, [
-			'chapters',
-			'chapters.pages',
+	async swapChaptersIndices(
+		_idBook: string,
+		idChapterA: string,
+		idChapterB: string,
+	): Promise<Chapter[]> {
+		const [chapterA, chapterB] = await Promise.all([
+			this.chapterRepository.findById(idChapterA),
+			this.chapterRepository.findById(idChapterB),
 		]);
 
-		if (!book) {
-			this.logger.warn(`Book with id ${idBook} not found`);
-			throw new NotFoundException(`Book with id ${idBook} not found`);
+		if (!chapterA || !chapterB) {
+			throw new NotFoundException('One or both chapters not found');
 		}
 
-		for (const ch of book.chapters) {
-			ch.book = book;
-		}
-		this.eventEmitter.emit(BookEvents.CHAPTERS_FIX, book.chapters);
+		const indexA = chapterA.index;
+		const indexB = chapterB.index;
 
-		return {
-			...book,
-			chapters: book.chapters.map((ch) => {
-				const { book: _, ...chapterWithoutBook } = ch;
-				return chapterWithoutBook as Chapter;
-			}),
-		} as Book;
+		chapterA.index = indexB;
+		chapterB.index = indexA;
+
+		const saved = await this.chapterRepository.saveAll([
+			chapterA,
+			chapterB,
+		]);
+
+		this.eventEmitter.emit(BookEvents.CHAPTERS_UPDATED, saved);
+
+		return saved;
+	}
+
+	async setChaptersIndex(
+		_idBook: string,
+		idChapters: string[],
+		indices: number[],
+	): Promise<Chapter[]> {
+		if (idChapters.length !== indices.length) {
+			throw new BadRequestException(
+				'Arrays of IDs and indices must have the same length',
+			);
+		}
+
+		const chapters = await this.chapterRepository.findByIds(idChapters);
+
+		if (chapters.length !== idChapters.length) {
+			throw new BadRequestException('Some chapters were not found');
+		}
+
+		const updatedChapters = chapters.map((chapter) => {
+			const idIdx = idChapters.indexOf(chapter.id);
+			chapter.index = indices[idIdx];
+			return chapter;
+		});
+
+		const saved = await this.chapterRepository.saveAll(updatedChapters);
+
+		this.eventEmitter.emit(BookEvents.CHAPTERS_UPDATED, saved);
+
+		return saved;
+	}
+
+	async shiftChaptersIndices(
+		idBook: string,
+		startIndex: number,
+		shift: number,
+	): Promise<void> {
+		const chapters = await this.chapterRepository.findByBookId(idBook);
+
+		const toUpdate = chapters.filter((ch) => ch.index >= startIndex);
+
+		const updated = toUpdate.map((ch) => {
+			ch.index += shift;
+			return ch;
+		});
+
+		await this.chapterRepository.saveAll(updated);
+
+		this.eventEmitter.emit(BookEvents.CHAPTERS_UPDATED, updated);
+	}
+
+	async createChaptersFromDto(
+		bookId: string,
+		chaptersDto: CreateChapterDto[],
+	): Promise<Chapter[]> {
+		const results: Chapter[] = [];
+		for (const dto of chaptersDto) {
+			results.push(await this.createChapter(bookId, dto));
+		}
+		return results;
 	}
 }

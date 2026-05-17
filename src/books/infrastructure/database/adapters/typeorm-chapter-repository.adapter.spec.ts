@@ -110,8 +110,8 @@ describe('TypeOrmChapterRepositoryAdapter', () => {
 
 			expect(result).toEqual(chapters);
 			expect(mockQueryBuilder.where).toHaveBeenCalledWith(
-				'chapter.bookId = :id',
-				{ id: 'book-1' },
+				'chapter.bookId = :bookId',
+				{ bookId: 'book-1' },
 			);
 			expect(mockQueryBuilder.getMany).toHaveBeenCalled();
 		});

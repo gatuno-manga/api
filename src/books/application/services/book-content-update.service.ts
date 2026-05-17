@@ -378,4 +378,23 @@ export class BookContentUpdateService implements OnModuleInit {
 			`Added ${newChapters.length} new chapters and ${newCoversCount} covers to book: ${book.title}`,
 		);
 	}
+
+	async addScrapedChapters(
+		bookId: string,
+		scrapedChapters: ScrapedChapter[],
+		scrapedCovers: string[],
+	): Promise<void> {
+		const book = await this.bookRepository.findById(bookId, [
+			'chapters',
+			'covers',
+		]);
+		if (!book) {
+			throw new Error(`Book ${bookId} not found`);
+		}
+
+		await this.syncChapters(book, scrapedChapters);
+
+		const covers: ScrapedCover[] = scrapedCovers.map((url) => ({ url }));
+		await this.syncCovers(book, covers, book.originalUrl?.[0] || '');
+	}
 }

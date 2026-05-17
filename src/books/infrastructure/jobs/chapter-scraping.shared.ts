@@ -7,6 +7,7 @@ import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ClientKafka } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
 import { Repository } from 'typeorm';
 
 type ChapterPageInput =
@@ -16,7 +17,7 @@ type ChapterPageInput =
 interface OptimizedPageData {
 	path?: string;
 	originalPath: string;
-	metadata?: Record<string, unknown>;
+	metadata?: ImageMetadata;
 }
 
 /**
@@ -172,9 +173,9 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 				const cached = await redis.get(cacheKey);
 				if (cached) {
 					try {
-						const data = JSON.parse(
-							cached,
-						) as Partial<OptimizedPageData>;
+						const data = JSON.parse(cached) as Partial<
+							ImageMetadata & { path: string }
+						>;
 						return {
 							originalPath: path,
 							...data,
