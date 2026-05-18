@@ -9,12 +9,13 @@ on:
     branches:
       - main
       - developer
+  workflow_dispatch:
 
 jobs:
   check-changes:
     runs-on: ubuntu-latest
     outputs:
-      backend: ${{ steps.filter.outputs.backend }}
+      backend: ${{ steps.filter.outputs.backend == 'true' || github.event_name == 'workflow_dispatch' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -44,7 +45,7 @@ jobs:
     needs: [check-changes, ci]
     if: |
       needs.check-changes.outputs.backend == 'true' &&
-      github.event_name == 'push' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/developer')
     uses: gatuno-manga/workflows/.github/workflows/registry.yml@main
     with:
