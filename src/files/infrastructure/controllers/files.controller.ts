@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Throttle } from '@nestjs/throttler';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 
 @Controller('data')
@@ -23,9 +23,11 @@ export class FilesController {
 
 	/**
 	 * Rota para os novos Buckets Reais (ex: /data/books/ab/uuid.webp)
+	 * TODO: Temporário - Removido rate limit para evitar bloqueio no carregamento de capítulos.
+	 * Achar uma solução melhor (ex: assinar URLs ou delegar para o Nginx/Storage diretamente).
 	 */
 	@Get(':bucket/:shard/:filename')
-	@Throttle({ short: { limit: 100, ttl: 1000 } })
+	@SkipThrottle({ short: true, medium: true, long: true })
 	getFileWithBucket(
 		@Param('bucket') bucket: string,
 		@Param('shard') shard: string,
@@ -37,9 +39,10 @@ export class FilesController {
 
 	/**
 	 * Rota legado para arquivos no bucket padrão (ex: /data/ab/uuid.webp)
+	 * TODO: Temporário - Removido rate limit para evitar bloqueio no carregamento de capítulos.
 	 */
 	@Get(':shard/:filename')
-	@Throttle({ short: { limit: 100, ttl: 1000 } })
+	@SkipThrottle({ short: true, medium: true, long: true })
 	getFileLegacy(
 		@Param('shard') shard: string,
 		@Param('filename') filename: string,
