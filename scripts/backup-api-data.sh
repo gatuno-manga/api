@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Script para fazer backup do volume api-data
+# Script para fazer backup do volume rustfs-data
 # Uso: ./backup-api-data.sh [diretório-de-destino] [opções]
 #
 # Opções:
 #   -r N    Manter apenas os últimos N backups (padrão: 5)
-#   -s      Parar container da API durante backup (consistência)
+#   -s      Parar container do RustFS durante backup (consistência)
 #   -q      Modo silencioso (sem barra de progresso)
 #   -h      Mostrar ajuda
 
@@ -14,13 +14,13 @@ set -euo pipefail
 # ============================================
 # Configurações
 # ============================================
-VOLUME_NAME="gatuno_api-data"
+VOLUME_NAME="gatuno_rustfs_data"
 BACKUP_DIR="./backups"
 MAX_BACKUPS=5
 STOP_CONTAINER=false
 QUIET=false
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-BACKUP_FILE="api-data-backup-${TIMESTAMP}.tar.zst"
+BACKUP_FILE="rustfs-data-backup-${TIMESTAMP}.tar.zst"
 LOG_FILE=""
 
 # ============================================
@@ -32,14 +32,14 @@ show_help() {
     echo ""
     echo "Opções:"
     echo "  -r N    Manter apenas os últimos N backups (padrão: 5)"
-    echo "  -s      Parar container da API durante backup"
+    echo "  -s      Parar container do RustFS durante backup"
     echo "  -q      Modo silencioso"
     echo "  -h      Mostrar esta ajuda"
     echo ""
     echo "Exemplos:"
     echo "  $0                      # Backup para ./backups"
     echo "  $0 /mnt/storage         # Backup para /mnt/storage"
-    echo "  $0 -r 10 -s             # Manter 10 backups, parar API"
+    echo "  $0 -r 10 -s             # Manter 10 backups, parar RustFS"
 }
 
 log() {
@@ -103,11 +103,11 @@ spinner() {
 
 cleanup() {
     local exit_code=$?
-    
+
     # Reiniciar container se foi parado
     if [ "$STOP_CONTAINER" = true ] && [ "$CONTAINER_STOPPED" = true ]; then
-        log "🔄 Reiniciando container da API..."
-        docker-compose -f docker-compose.dev.yml start api 2>/dev/null || true
+        log "🔄 Reiniciando container do RustFS..."
+        docker-compose -f docker-compose.dev.yml start rustfs 2>/dev/null || true
     fi
 
     # Limpar arquivos incompletos se o backup falhou
@@ -210,8 +210,8 @@ CONTAINER_STOPPED=false
 trap cleanup EXIT
 
 if [ "$STOP_CONTAINER" = true ]; then
-    log "⏸️  Parando container da API para consistência..."
-    if docker-compose -f docker-compose.dev.yml stop api 2>/dev/null; then
+    log "⏸️  Parando container do RustFS para consistência..."
+    if docker-compose -f docker-compose.dev.yml stop rustfs 2>/dev/null; then
         CONTAINER_STOPPED=true
         log "   Container parado com sucesso"
     else
@@ -354,13 +354,13 @@ log ""
 # Política de retenção
 # ============================================
 
-BACKUP_COUNT=$(ls -1 "${BACKUP_DIR}"/api-data-backup-*.tar.zst 2>/dev/null | wc -l)
+BACKUP_COUNT=$(ls -1 "${BACKUP_DIR}"/rustfs-data-backup-*.tar.zst 2>/dev/null | wc -l)
 
 if [ "$BACKUP_COUNT" -gt "$MAX_BACKUPS" ]; then
     log "🗑️  Aplicando política de retenção (máximo: ${MAX_BACKUPS})..."
 
     # Listar backups antigos a remover
-    OLD_BACKUPS=$(ls -1t "${BACKUP_DIR}"/api-data-backup-*.tar.zst | tail -n +$((MAX_BACKUPS + 1)))
+    OLD_BACKUPS=$(ls -1t "${BACKUP_DIR}"/rustfs-data-backup-*.tar.zst | tail -n +$((MAX_BACKUPS + 1)))
 
     for old_backup in $OLD_BACKUPS; do
         log "   Removendo: $(basename "$old_backup")"
