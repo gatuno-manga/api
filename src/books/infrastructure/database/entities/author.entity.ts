@@ -18,6 +18,7 @@ export class Author {
 	name: string;
 
 	@Column({
+		type: 'text',
 		nullable: true,
 	})
 	biography: string | null;

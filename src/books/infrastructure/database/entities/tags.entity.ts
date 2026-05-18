@@ -14,6 +14,7 @@ export class Tag {
 	altNames: string[];
 
 	@Column({
+		type: 'text',
 		nullable: true,
 	})
 	description: string;

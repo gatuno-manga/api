@@ -38,7 +38,7 @@ export class BookRequestEntity {
 	})
 	status: BookRequestStatus;
 
-	@Column({ name: 'admin_id', nullable: true })
+	@Column({ name: 'admin_id', type: 'varchar', length: 36, nullable: true })
 	adminId: string | null;
 
 	@ManyToOne(() => User, { nullable: true })

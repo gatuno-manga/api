@@ -38,7 +38,11 @@ export class Book {
 	@Column({ length: 500 })
 	title: string;
 
-	@OneToMany(() => Cover, (cover) => cover.book, { cascade: true })
+	@OneToMany(
+		() => Cover,
+		(cover) => cover.book,
+		{ cascade: true },
+	)
 	covers: Relation<Cover[]>;
 
 	@Column({
@@ -100,18 +104,26 @@ export class Book {
 	})
 	availableFormats: ExportFormat[];
 
-	@OneToMany(() => Chapter, (chapter) => chapter.book, {
-		cascade: true,
-	})
+	@OneToMany(
+		() => Chapter,
+		(chapter) => chapter.book,
+		{
+			cascade: true,
+		},
+	)
 	chapters: Relation<Chapter[]>;
 
 	@ManyToMany(() => Tag)
 	@JoinTable()
 	tags: Relation<Tag[]>;
 
-	@ManyToMany(() => Author, (author) => author.books, {
-		cascade: true,
-	})
+	@ManyToMany(
+		() => Author,
+		(author) => author.books,
+		{
+			cascade: true,
+		},
+	)
 	@JoinTable()
 	authors: Relation<Author[]>;
 

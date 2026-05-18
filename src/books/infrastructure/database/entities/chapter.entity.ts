@@ -26,11 +26,17 @@ export class Chapter {
 	id: string;
 
 	@Column({
+		type: 'varchar',
+		length: 255,
 		nullable: true,
 	})
 	title: string | null;
 
-	@Column({ nullable: true })
+	@Column({
+		type: 'varchar',
+		length: 500,
+		nullable: true,
+	})
 	originalUrl: string | null;
 
 	@Column({ type: 'decimal', precision: 15, scale: 5 })

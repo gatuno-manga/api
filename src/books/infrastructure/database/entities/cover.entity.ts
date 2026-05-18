@@ -53,7 +53,11 @@ export class Cover {
 	})
 	retries: number;
 
-	@ManyToOne(() => Book, (book) => book.covers, { onDelete: 'CASCADE' })
+	@ManyToOne(
+		() => Book,
+		(book) => book.covers,
+		{ onDelete: 'CASCADE' },
+	)
 	book: Relation<Book>;
 
 	@CreateDateColumn()
