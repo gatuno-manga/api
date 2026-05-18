@@ -20,7 +20,6 @@ import {
 import { BookContentUpdateService } from '@books/application/services/book-content-update.service';
 import { BookCreationService } from '@books/application/services/book-creation.service';
 import { Book } from '@books/domain/entities/book';
-import { Chapter } from '@books/domain/entities/chapter';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { ChapterScrapingSharedService } from '@books/infrastructure/jobs/chapter-scraping.shared';
 import { StorageBucket } from '@common/enum/storage-bucket.enum';
