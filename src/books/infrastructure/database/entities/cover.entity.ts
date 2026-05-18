@@ -30,11 +30,11 @@ export class Cover {
 	@Column({ type: 'json', nullable: true })
 	metadata: ImageMetadata | null;
 
-	@Column({ nullable: true })
+	@Column({ type: 'varchar', length: 255, nullable: true })
 	@Index()
 	imageHash: string | null;
 
-	@Column({ nullable: true })
+	@Column({ type: 'text', nullable: true })
 	originalUrl: string | null;
 
 	@Column({ default: false })

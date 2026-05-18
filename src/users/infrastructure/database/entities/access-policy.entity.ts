@@ -32,35 +32,35 @@ export class AccessPolicy {
 	})
 	scope: AccessPolicyScopeEnum;
 
-	@Column({ nullable: true })
+	@Column({ type: 'varchar', length: 36, nullable: true })
 	targetUserId: string | null;
 
 	@ManyToOne(() => User, { nullable: true, onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'targetUserId' })
 	targetUser: User | null;
 
-	@Column({ nullable: true })
+	@Column({ type: 'varchar', length: 36, nullable: true })
 	targetGroupId: string | null;
 
 	@ManyToOne(() => UserGroup, { nullable: true, onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'targetGroupId' })
 	targetGroup: UserGroup | null;
 
-	@Column({ nullable: true })
+	@Column({ type: 'varchar', length: 36, nullable: true })
 	bookId: string | null;
 
 	@ManyToOne(() => Book, { nullable: true, onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'bookId' })
 	book: Book | null;
 
-	@Column({ nullable: true })
+	@Column({ type: 'varchar', length: 36, nullable: true })
 	tagId: string | null;
 
 	@ManyToOne(() => Tag, { nullable: true, onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'tagId' })
 	tag: Tag | null;
 
-	@Column({ nullable: true })
+	@Column({ type: 'varchar', length: 36, nullable: true })
 	sensitiveContentId: string | null;
 
 	@ManyToOne(() => SensitiveContent, { nullable: true, onDelete: 'CASCADE' })
@@ -79,7 +79,7 @@ export class AccessPolicy {
 	@Column({ type: 'datetime', nullable: true })
 	expiresAt: Date | null;
 
-	@Column({ nullable: true })
+	@Column({ type: 'varchar', length: 36, nullable: true })
 	createdByUserId: string | null;
 
 	@ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
