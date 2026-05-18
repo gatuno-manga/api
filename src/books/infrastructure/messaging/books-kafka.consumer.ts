@@ -20,12 +20,13 @@ import {
 import { BookContentUpdateService } from '@books/application/services/book-content-update.service';
 import { BookCreationService } from '@books/application/services/book-creation.service';
 import { Book } from '@books/domain/entities/book';
+import { Chapter } from '@books/domain/entities/chapter';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { ChapterScrapingSharedService } from '@books/infrastructure/jobs/chapter-scraping.shared';
 import { StorageBucket } from '@common/enum/storage-bucket.enum';
 import { MediaUrlService } from '@common/services/media-url.service';
-import { Inject, Injectable, Logger } from '@nestjs/common';
-import { Payload } from '@nestjs/microservices';
+import { Controller, Inject, Logger } from '@nestjs/common';
+import { EventPattern, Payload } from '@nestjs/microservices';
 import { KafkaMessage } from 'kafkajs';
 import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
 
@@ -59,7 +60,13 @@ interface ChapterCompletedPayload {
 	chapter_id?: string;
 	targetUrl?: string;
 	target_url?: string;
-	pages: Array<
+	pages?: Array<
+		string | { originalUrl?: string; original_url?: string; path: string }
+	>;
+	results?: Array<
+		string | { originalUrl?: string; original_url?: string; path: string }
+	>;
+	images?: Array<
 		string | { originalUrl?: string; original_url?: string; path: string }
 	>;
 }
@@ -75,7 +82,7 @@ interface TextMirroringCompletedPayload {
 	urlMap: Record<string, string>;
 }
 
-@Injectable()
+@Controller()
 export class BooksKafkaConsumer {
 	private readonly logger = new Logger(BooksKafkaConsumer.name);
 
@@ -98,12 +105,12 @@ export class BooksKafkaConsumer {
 	private parseMessage<T>(message: KafkaMessage): T | null {
 		try {
 			if (!message.value) return null;
-			const data = JSON.parse(message.value.toString()) as unknown;
+			const data = JSON.parse(message.value.toString()) as T;
 			this.logger.debug(
 				`BooksKafkaConsumer: Mensagem Kafka parseada com sucesso: ${typeof data}`,
 			);
-			return data as T;
-		} catch (error: unknown) {
+			return data;
+		} catch (error) {
 			this.logger.error(
 				`Erro ao parsear mensagem Kafka: ${error instanceof Error ? error.message : String(error)}`,
 			);
@@ -111,6 +118,7 @@ export class BooksKafkaConsumer {
 		}
 	}
 
+	@EventPattern('scraping.new-book.completed')
 	async handleNewBookScrapingCompleted(
 		@Payload() messages: KafkaMessage[] | ScrapingBookCompletedPayload,
 	) {
@@ -141,9 +149,12 @@ export class BooksKafkaConsumer {
 					(name) => ({ name }),
 				);
 
+				const targetUrl = data.targetUrl || data.target_url || '';
+
 				const dto: CreateBookDto = {
 					title: data.title || 'Unknown',
 					description: data.description,
+					originalUrl: targetUrl ? [targetUrl] : [],
 					authors,
 					tags: data.tags || [],
 					chapters: (data.chapters || []).map((c) => ({
@@ -152,24 +163,22 @@ export class BooksKafkaConsumer {
 						index: c.index,
 						isFinal: c.isFinal || false,
 					})),
-					cover: data.covers?.[0]
-						? {
-								urlOrigin: data.covers[0].url,
-								urlImgs: [],
-							}
-						: undefined,
-					ignoreConflict: false,
+					cover: {
+						urlOrigin: targetUrl,
+						urlImgs: (data.covers || []).map((c) => ({
+							url: c.url,
+							title: 'Cover Image',
+						})),
+					},
+					ignoreConflict: true,
 				};
 
-				await this.bookCreationService.createChaptersFromDto(
-					bookId,
-					dto.chapters || [],
-				);
+				const book = await this.bookCreationService.createBook(dto);
 
 				this.logger.log(
-					`Sucesso ao criar capítulos para o livro ${bookId} a partir do scraping (Job: ${jobId || 'N/A'}).`,
+					`Sucesso ao criar livro ${book.title} (ID: ${book.id}) a partir do scraping (Job: ${jobId || 'N/A'}).`,
 				);
-			} catch (error: unknown) {
+			} catch (error) {
 				this.logger.error(
 					`Erro ao processar criação de livro ${bookId}: ${error instanceof Error ? error.message : String(error)}`,
 				);
@@ -181,6 +190,7 @@ export class BooksKafkaConsumer {
 		}
 	}
 
+	@EventPattern('scraping.update-book.completed')
 	async handleUpdateBookScrapingCompleted(
 		@Payload() messages: KafkaMessage[] | ScrapingBookCompletedPayload,
 	) {
@@ -224,7 +234,7 @@ export class BooksKafkaConsumer {
 				this.logger.log(
 					`Sucesso ao atualizar conteúdo do livro ${bookId} (Job: ${jobId || 'N/A'}).`,
 				);
-			} catch (error: unknown) {
+			} catch (error) {
 				this.logger.error(
 					`Erro ao processar atualização do livro ${bookId}: ${error instanceof Error ? error.message : String(error)}`,
 				);
@@ -236,6 +246,60 @@ export class BooksKafkaConsumer {
 		}
 	}
 
+	@EventPattern('scraping.chapter.pages_extracted')
+	async handleChapterPagesExtracted(
+		@Payload() messages: KafkaMessage[] | ChapterCompletedPayload,
+	) {
+		const messageArray = Array.isArray(messages) ? messages : [messages];
+		this.logger.debug(
+			`handleChapterPagesExtracted: processando ${messageArray.length} mensagens`,
+		);
+
+		for (const message of messageArray) {
+			const data = this.parseMessage<ChapterCompletedPayload>(
+				message as KafkaMessage,
+			);
+			if (!data) continue;
+
+			const chapterId = data.chapterId || data.chapter_id;
+			const pages = data.images || data.pages || data.results;
+
+			if (!chapterId) {
+				this.logger.error(
+					'Fast-Track: Mensagem de páginas extraídas sem ID!',
+				);
+				continue;
+			}
+
+			if (!pages || !Array.isArray(pages)) {
+				this.logger.warn(
+					`Fast-Track: Capítulo ${chapterId} sem páginas extraídas no payload!`,
+				);
+				continue;
+			}
+
+			try {
+				const chapterPlaceholder = new Chapter();
+				if (chapterId) {
+					chapterPlaceholder.id = chapterId;
+				}
+
+				await this.chapterScrapingShared.saveExtractedPages(
+					chapterPlaceholder,
+					pages,
+				);
+				this.logger.log(
+					`Fast-Track: URLs de páginas registradas para o capítulo ${chapterId}.`,
+				);
+			} catch (error) {
+				this.logger.error(
+					`Fast-Track: Erro ao registrar páginas para o capítulo ${chapterId}: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			}
+		}
+	}
+
+	@EventPattern('scraping.chapter.completed')
 	async handleChapterScrapingCompleted(
 		@Payload() messages: KafkaMessage[] | ChapterCompletedPayload,
 	) {
@@ -252,21 +316,29 @@ export class BooksKafkaConsumer {
 			if (!data) continue;
 
 			const chapterId = data.chapterId || data.chapter_id;
+			const pages = data.images || data.pages || data.results;
 
 			if (!chapterId) {
 				this.logger.error('Mensagem de scraping de capítulo sem ID!');
 				continue;
 			}
 
+			if (!pages || !Array.isArray(pages)) {
+				this.logger.error(
+					`Erro: Capítulo ${chapterId} finalizado sem páginas no payload!`,
+				);
+				continue;
+			}
+
 			try {
 				await this.chapterScrapingShared.finalizeChapterScraping(
 					chapterId,
-					data.pages,
+					pages,
 				);
 				this.logger.log(
 					`Sucesso ao finalizar scraping do capítulo ${chapterId}.`,
 				);
-			} catch (error: unknown) {
+			} catch (error) {
 				this.logger.error(
 					`Erro ao processar finalização do capítulo ${chapterId}: ${error instanceof Error ? error.message : String(error)}`,
 				);
@@ -278,6 +350,7 @@ export class BooksKafkaConsumer {
 		}
 	}
 
+	@EventPattern('scraping.covers.completed')
 	async handleCoversScrapingCompleted(
 		@Payload() messages: KafkaMessage[] | BatchCoversCompletedPayload,
 	) {
@@ -308,12 +381,6 @@ export class BooksKafkaConsumer {
 					const resultPath = results[i];
 					if (resultPath) {
 						let path: string = resultPath;
-						if (
-							!path.startsWith('http') &&
-							!path.startsWith('processing/')
-						) {
-							path = `processing/${path}`;
-						}
 
 						const cached = await redis.get(
 							`pending_optimization:${path}`,
@@ -343,7 +410,7 @@ export class BooksKafkaConsumer {
 				this.logger.log(
 					`Sucesso ao processar lote de capas para livro ${bookId}.`,
 				);
-			} catch (error: unknown) {
+			} catch (error) {
 				this.logger.error(
 					`Erro ao processar lote de capas para livro ${bookId}: ${error instanceof Error ? error.message : String(error)}`,
 				);
@@ -355,6 +422,7 @@ export class BooksKafkaConsumer {
 		}
 	}
 
+	@EventPattern('scraping.covers.failed')
 	async handleCoversScrapingFailed(@Payload() messages: KafkaMessage[]) {
 		const messageArray = Array.isArray(messages) ? messages : [messages];
 
@@ -374,7 +442,7 @@ export class BooksKafkaConsumer {
 					},
 					{ scrapingStatus: ScrapingStatus.ERROR },
 				);
-			} catch (error: unknown) {
+			} catch (error) {
 				this.logger.error(
 					`Erro ao marcar erro em capas para livro ${bookId}: ${error instanceof Error ? error.message : String(error)}`,
 				);
@@ -386,6 +454,7 @@ export class BooksKafkaConsumer {
 		}
 	}
 
+	@EventPattern('scraping.images.completed')
 	async handleTextMirroringCompleted(
 		@Payload() messages: KafkaMessage[] | TextMirroringCompletedPayload,
 	) {
@@ -422,13 +491,7 @@ export class BooksKafkaConsumer {
 
 				const internalUrlMap = new Map<string, string>();
 				for (const [originalUrl, pathValue] of Object.entries(urlMap)) {
-					let internalPath = pathValue;
-					if (
-						!internalPath.startsWith('http') &&
-						!internalPath.startsWith('processing/')
-					) {
-						internalPath = `processing/${internalPath}`;
-					}
+					const internalPath = pathValue;
 
 					const internalUrl = this.mediaUrlService.resolveUrl(
 						internalPath,
@@ -457,7 +520,7 @@ export class BooksKafkaConsumer {
 				this.logger.log(
 					`Sucesso ao processar URLs de imagens para ${source}: ${entityId}`,
 				);
-			} catch (error: unknown) {
+			} catch (error) {
 				this.logger.error(
 					`Erro ao processar URLs de imagens para ${source} ${entityId}: ${error instanceof Error ? error.message : String(error)}`,
 				);

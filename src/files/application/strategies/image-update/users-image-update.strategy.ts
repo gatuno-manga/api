@@ -24,14 +24,7 @@ export class UsersImageUpdateStrategy implements ImageUpdateStrategy {
 		const updates = events
 			.filter((event) => event.results && event.results.length > 0)
 			.map((event) => {
-				let oldPath = event.rawPath;
-				if (
-					oldPath &&
-					!oldPath.startsWith('http') &&
-					!oldPath.startsWith('processing/')
-				) {
-					oldPath = `processing/${oldPath}`;
-				}
+				const oldPath = event.rawPath;
 
 				return {
 					oldPath,

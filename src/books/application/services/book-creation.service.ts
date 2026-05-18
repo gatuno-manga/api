@@ -83,6 +83,8 @@ export class BookCreationService implements OnModuleInit {
 				blacklistTerms: websiteConfig.blacklistTerms,
 				whitelistTerms: websiteConfig.whitelistTerms,
 				selectors: {
+					chapterTitle: websiteConfig.selector,
+					chapterImages: websiteConfig.selector,
 					chapterListSelector: websiteConfig.chapterListSelector,
 					bookInfoExtractScript: websiteConfig.bookInfoExtractScript,
 					newBookExtractScript: websiteConfig.newBookExtractScript,
@@ -91,6 +93,7 @@ export class BookCreationService implements OnModuleInit {
 					Referer: host,
 				},
 			},
+			newBookExtractScript: websiteConfig.newBookExtractScript,
 			uploadTarget: {
 				bucket: 'processing',
 				pathPrefix: `${jobId.slice(-2)}/${jobId}`,
@@ -175,11 +178,26 @@ export class BookCreationService implements OnModuleInit {
 			const savedBook = await bookRepo.save(book);
 
 			if (dto.chapters && dto.chapters.length > 0) {
-				const createdChapters = await this.createChaptersFromDto(
-					savedBook.id,
-					dto.chapters,
-				);
-				savedBook.chapters = createdChapters;
+				const chapterRepo = uow.getChapterRepository();
+				const chaptersToCreate = dto.chapters.map((chDto) => {
+					const chapter = new Chapter();
+					Object.assign(chapter, {
+						title: chDto.title,
+						originalUrl: chDto.url,
+						index: chDto.index,
+						isFinal: chDto.isFinal ?? false,
+						book: savedBook,
+						scrapingStatus: ScrapingStatus.PROCESS,
+					});
+					return chapter;
+				});
+
+				const savedChapters =
+					await chapterRepo.saveAll(chaptersToCreate);
+				savedBook.chapters = savedChapters.map((c) => {
+					const { book: _, ...chapterData } = c;
+					return chapterData as Chapter;
+				});
 			}
 
 			if (dto.cover?.urlImgs && dto.cover.urlImgs.length > 0) {

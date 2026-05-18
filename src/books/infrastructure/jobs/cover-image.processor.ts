@@ -97,10 +97,34 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 							cloudflareBypass: websiteConfig.useFlareSolverr,
 							preScript: websiteConfig.preScript,
 							posScript: websiteConfig.posScript,
+							useNetworkInterception:
+								websiteConfig.useNetworkInterception,
+							useScreenshotMode: websiteConfig.useScreenshotMode,
 							cookies: websiteConfig.cookies,
 							localStorage: websiteConfig.localStorage,
 							sessionStorage: websiteConfig.sessionStorage,
+							reloadAfterStorageInjection:
+								websiteConfig.reloadAfterStorageInjection,
+							enableAdaptiveTimeouts:
+								websiteConfig.enableAdaptiveTimeouts,
+							timeoutMultipliers:
+								websiteConfig.timeoutMultipliers,
 							proxyUrl: websiteConfig.proxyUrl,
+							blacklistTerms: websiteConfig.blacklistTerms,
+							whitelistTerms: websiteConfig.whitelistTerms,
+							selectors: {
+								chapterTitle: websiteConfig.selector,
+								chapterImages: websiteConfig.selector,
+								chapterListSelector:
+									websiteConfig.chapterListSelector,
+								bookInfoExtractScript:
+									websiteConfig.bookInfoExtractScript,
+								newBookExtractScript:
+									websiteConfig.newBookExtractScript,
+							},
+							headers: {
+								Referer: host,
+							},
 						}
 					: undefined,
 				images: covers.map((c) => ({
@@ -109,7 +133,7 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 				})),
 				uploadTarget: {
 					bucket: 'processing',
-					pathPrefix: '', // No prefix for covers, let it be at root of bucket (hashed)
+					pathPrefix: '',
 				},
 			};
 

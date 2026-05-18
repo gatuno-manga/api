@@ -173,11 +173,17 @@ export class BooksService {
 		);
 	}
 
-	async getOne(id: string, maxWeightSensitiveContent = 0, userId?: string) {
+	async getOne(
+		id: string,
+		maxWeightSensitiveContent = 0,
+		userId?: string,
+		forceMaster = false,
+	) {
 		return this.bookQueryService.getOne(
 			id,
 			maxWeightSensitiveContent,
 			userId,
+			forceMaster,
 		);
 	}
 

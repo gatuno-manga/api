@@ -12,7 +12,7 @@ export interface IBookRepository {
 		relations?: string[],
 		comment?: string,
 	): Promise<Book | null>;
-	findByIdWithDetails(id: string): Promise<Book | null>;
+	findByIdWithDetails(id: string, comment?: string): Promise<Book | null>;
 	save(book: Book): Promise<Book>;
 	update(id: string, data: Partial<Book>): Promise<void>;
 	delete(id: string): Promise<void>;

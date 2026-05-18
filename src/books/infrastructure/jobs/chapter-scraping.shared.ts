@@ -7,6 +7,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ClientKafka } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { RedisService } from '@src/infrastructure/redis/redis.service';
+import { WebsiteService } from '@src/websites/application/services/website.service';
 import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
 import { Repository } from 'typeorm';
 
@@ -35,6 +36,7 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 		private readonly chapterRepository: Repository<Chapter>,
 		@Inject('SCRAPER_SERVICE')
 		private readonly scraperClient: ClientKafka,
+		private readonly websiteService: WebsiteService,
 		private readonly redisService: RedisService,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
@@ -66,14 +68,56 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 	): Promise<boolean> {
 		try {
 			const book = chapter.book;
+			const host = new URL(chapter.originalUrl).hostname;
+			const websiteConfig = await this.websiteService.getByUrl(host);
+
+			if (!websiteConfig) {
+				this.logger.warn(
+					`Não há configuração de scraping para o site: ${host}`,
+				);
+				return false;
+			}
 
 			this.emitStartedEvent(chapter);
 
 			const payload = {
+				jobId: `chapter-${chapter.id}-${Date.now()}`,
 				chapterId: chapter.id,
 				bookId: book?.id,
 				targetUrl: chapter.originalUrl,
-				useFlareSolverr,
+				websiteConfig: {
+					name: host,
+					cloudflareBypass:
+						useFlareSolverr || websiteConfig.useFlareSolverr,
+					preScript: websiteConfig.preScript,
+					posScript: websiteConfig.posScript,
+					useNetworkInterception:
+						websiteConfig.useNetworkInterception,
+					useScreenshotMode: websiteConfig.useScreenshotMode,
+					cookies: websiteConfig.cookies,
+					localStorage: websiteConfig.localStorage,
+					sessionStorage: websiteConfig.sessionStorage,
+					reloadAfterStorageInjection:
+						websiteConfig.reloadAfterStorageInjection,
+					enableAdaptiveTimeouts:
+						websiteConfig.enableAdaptiveTimeouts,
+					timeoutMultipliers: websiteConfig.timeoutMultipliers,
+					proxyUrl: websiteConfig.proxyUrl,
+					blacklistTerms: websiteConfig.blacklistTerms,
+					whitelistTerms: websiteConfig.whitelistTerms,
+					selectors: {
+						chapterTitle: websiteConfig.selector, // Mapping 'selector' to 'chapterTitle' as it's the primary content selector
+						chapterImages: websiteConfig.selector,
+						chapterListSelector: websiteConfig.chapterListSelector,
+						bookInfoExtractScript:
+							websiteConfig.bookInfoExtractScript,
+						newBookExtractScript:
+							websiteConfig.newBookExtractScript,
+					},
+					headers: {
+						Referer: host,
+					},
+				},
 				uploadTarget: {
 					bucket: 'books',
 					pathPrefix: `processing/${chapter.id}`,
@@ -86,7 +130,7 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 			);
 
 			return true;
-		} catch (error: unknown) {
+		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : String(error);
 			this.logger.error(
@@ -222,8 +266,7 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 		await this.chapterRepository.save(chapter);
 
 		const cleanPromises = pagesPaths.map((item) => {
-			let path = typeof item === 'string' ? item : item.path;
-			path = this.ensureProcessingPrefix(path);
+			const path = typeof item === 'string' ? item : item.path;
 			return redis.del(`pending_optimization:${path}`);
 		});
 		await Promise.all(cleanPromises).catch(() => {});
@@ -233,12 +276,5 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 			bookId: chapter.book?.id,
 			pagesCount: pagesPaths.length,
 		});
-	}
-
-	private ensureProcessingPrefix(path: string): string {
-		if (!path.startsWith('http') && !path.startsWith('processing/')) {
-			return `processing/${path}`;
-		}
-		return path;
 	}
 }

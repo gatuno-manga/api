@@ -188,8 +188,16 @@ export class BookQueryService {
 		return { id: book.id };
 	}
 
-	async getOne(id: string, maxWeightSensitiveContent = 0, userId?: string) {
-		const book = await this.bookRepository.findByIdWithDetails(id);
+	async getOne(
+		id: string,
+		maxWeightSensitiveContent = 0,
+		userId?: string,
+		forceMaster = false,
+	) {
+		const book = await this.bookRepository.findByIdWithDetails(
+			id,
+			forceMaster ? 'force_master' : undefined,
+		);
 		if (!book) throw new NotFoundException('Book not found');
 
 		await this.ensureUserCanAccessBook(

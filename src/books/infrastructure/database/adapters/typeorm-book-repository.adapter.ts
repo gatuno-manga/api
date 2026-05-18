@@ -47,9 +47,17 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 		return book as unknown as DomainBook;
 	}
 
-	async findByIdWithDetails(id: string): Promise<DomainBook | null> {
-		const book = await this.repository
-			.createQueryBuilder('book')
+	async findByIdWithDetails(
+		id: string,
+		comment?: string,
+	): Promise<DomainBook | null> {
+		const queryBuilder = this.repository.createQueryBuilder('book');
+
+		if (comment) {
+			queryBuilder.setComment(comment);
+		}
+
+		const book = await queryBuilder
 			.leftJoinAndSelect('book.tags', 'tags')
 			.leftJoinAndSelect('book.authors', 'authors')
 			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')

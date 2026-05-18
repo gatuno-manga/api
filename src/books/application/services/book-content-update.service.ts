@@ -157,6 +157,8 @@ export class BookContentUpdateService implements OnModuleInit {
 						blacklistTerms: websiteConfig.blacklistTerms,
 						whitelistTerms: websiteConfig.whitelistTerms,
 						selectors: {
+							chapterTitle: websiteConfig.selector,
+							chapterImages: websiteConfig.selector,
 							chapterListSelector:
 								websiteConfig.chapterListSelector,
 							bookInfoExtractScript:
@@ -168,6 +170,7 @@ export class BookContentUpdateService implements OnModuleInit {
 							Referer: host,
 						},
 					},
+					bookInfoExtractScript: websiteConfig.bookInfoExtractScript,
 					uploadTarget: {
 						bucket: 'processing',
 						pathPrefix: `${jobId.slice(-2)}/${jobId}`,
@@ -336,7 +339,7 @@ export class BookContentUpdateService implements OnModuleInit {
 				this.logger.debug(
 					`Added new cover for book ${book.title}: ${scrapedCover.title || scrapedCover.url}`,
 				);
-			} catch (error: unknown) {
+			} catch (error) {
 				this.logger.warn(
 					`Failed to process cover ${scrapedCover.url}: ${error instanceof Error ? error.message : String(error)}`,
 				);
@@ -384,10 +387,11 @@ export class BookContentUpdateService implements OnModuleInit {
 		scrapedChapters: ScrapedChapter[],
 		scrapedCovers: string[],
 	): Promise<void> {
-		const book = await this.bookRepository.findById(bookId, [
-			'chapters',
-			'covers',
-		]);
+		const book = await this.bookRepository.findById(
+			bookId,
+			['chapters', 'covers'],
+			'force_master',
+		);
 		if (!book) {
 			throw new Error(`Book ${bookId} not found`);
 		}
