@@ -32,10 +32,10 @@ export class Cover {
 
 	@Column({ nullable: true })
 	@Index()
-	imageHash: string;
+	imageHash: string | null;
 
 	@Column({ nullable: true })
-	originalUrl: string;
+	originalUrl: string | null;
 
 	@Column({ default: false })
 	selected: boolean;
@@ -67,5 +67,5 @@ export class Cover {
 	updatedAt: Date;
 
 	@DeleteDateColumn()
-	deletedAt: Date;
+	deletedAt: Date | null;
 }

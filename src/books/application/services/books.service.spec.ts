@@ -278,6 +278,7 @@ describe('BooksService', () => {
 				id,
 				maxWeight,
 				undefined,
+				false,
 			);
 			expect(result).toEqual(mockBook);
 		});

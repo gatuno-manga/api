@@ -54,7 +54,7 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 		const queryBuilder = this.repository.createQueryBuilder('book');
 
 		if (comment) {
-			queryBuilder.setComment(comment);
+			queryBuilder.comment(comment);
 		}
 
 		const book = await queryBuilder

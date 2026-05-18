@@ -68,6 +68,12 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 	): Promise<boolean> {
 		try {
 			const book = chapter.book;
+			if (!chapter.originalUrl) {
+				this.logger.error(
+					`Capítulo ${chapter.id} não possui URL original para scraping.`,
+				);
+				return false;
+			}
 			const host = new URL(chapter.originalUrl).hostname;
 			const websiteConfig = await this.websiteService.getByUrl(host);
 

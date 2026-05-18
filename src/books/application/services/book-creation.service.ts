@@ -194,10 +194,13 @@ export class BookCreationService implements OnModuleInit {
 
 				const savedChapters =
 					await chapterRepo.saveAll(chaptersToCreate);
-				savedBook.chapters = savedChapters.map((c) => {
-					const { book: _, ...chapterData } = c;
-					return chapterData as Chapter;
-				});
+
+				if (savedChapters) {
+					savedBook.chapters = savedChapters.map((c) => {
+						const { book: _, ...chapterData } = c;
+						return chapterData as Chapter;
+					});
+				}
 			}
 
 			if (dto.cover?.urlImgs && dto.cover.urlImgs.length > 0) {

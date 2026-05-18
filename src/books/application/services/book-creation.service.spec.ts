@@ -150,9 +150,7 @@ describe('BookCreationService', () => {
 				conflict: false,
 			});
 			mockBookRepository.save.mockResolvedValue(savedBook);
-			mockChapterManagementService.createChaptersFromDto.mockResolvedValue(
-				createdChapters,
-			);
+			mockChapterRepository.saveAll.mockResolvedValue(createdChapters);
 
 			await service.createBook(dto);
 
@@ -165,7 +163,7 @@ describe('BookCreationService', () => {
 				}),
 			);
 
-			expect(savedBook.chapters).toBe(createdChapters);
+			expect(savedBook.chapters).toEqual(createdChapters);
 		});
 
 		it('should throw BadRequestException if title conflict exists', async () => {

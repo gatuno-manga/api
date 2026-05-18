@@ -279,13 +279,8 @@ export class BooksKafkaConsumer {
 			}
 
 			try {
-				const chapterPlaceholder = new Chapter();
-				if (chapterId) {
-					chapterPlaceholder.id = chapterId;
-				}
-
-				await this.chapterScrapingShared.saveExtractedPages(
-					chapterPlaceholder,
+				await this.chapterScrapingShared.finalizeChapterScraping(
+					chapterId,
 					pages,
 				);
 				this.logger.log(
