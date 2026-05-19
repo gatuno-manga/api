@@ -226,7 +226,7 @@ export class BookContentUpdateService implements OnModuleInit {
 			alreadyCreatedChapters,
 		);
 
-		const createdChapters: Chapter[] = [];
+		const chaptersToCreate: Chapter[] = [];
 		for (const scraped of newChapters) {
 			const nextIndex = this.determineNextChapterIndex(
 				scraped,
@@ -242,12 +242,14 @@ export class BookContentUpdateService implements OnModuleInit {
 				scrapingStatus: ScrapingStatus.PROCESS,
 			});
 
-			const saved = await this.chapterRepository.save(chapter);
-			createdChapters.push(saved);
+			chaptersToCreate.push(chapter);
 			existingIndexes.add(nextIndex);
 		}
 
-		if (createdChapters.length > 0) {
+		let createdChapters: Chapter[] = [];
+		if (chaptersToCreate.length > 0) {
+			createdChapters =
+				await this.chapterRepository.saveAll(chaptersToCreate);
 			this.emitUpdateEvents(book, createdChapters, 0);
 		}
 
@@ -274,7 +276,13 @@ export class BookContentUpdateService implements OnModuleInit {
 			typeof scrapedChapter.index === 'number' &&
 			!Number.isNaN(scrapedChapter.index)
 		) {
-			return scrapedChapter.index;
+			let index = scrapedChapter.index;
+			while (existingIndexes.has(index)) {
+				// Adiciona uma pequena fração para evitar colisão, mantendo a ordem próxima.
+				// O toFixed(5) garante compatibilidade com a precisão do banco de dados (Decimal 10,5).
+				index = Number((index + 0.00001).toFixed(5));
+			}
+			return index;
 		}
 
 		let index = 1;
