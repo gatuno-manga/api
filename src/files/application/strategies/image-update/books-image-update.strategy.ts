@@ -32,7 +32,14 @@ export class BooksImageUpdateStrategy implements ImageUpdateStrategy {
 		const updates = events
 			.filter((event) => event.results && event.results.length > 0)
 			.map((event) => {
-				const oldPath = event.rawPath;
+				let oldPath = event.rawPath;
+
+				// Normalização robusta: garante que o oldPath comece com 'processing/'
+				// para bater com o que foi salvo no banco pelo consumidor Kafka.
+				oldPath = oldPath.replace(/^(books|processing)\//, '');
+				if (!oldPath.startsWith('processing/')) {
+					oldPath = `processing/${oldPath}`;
+				}
 
 				return {
 					oldPath,

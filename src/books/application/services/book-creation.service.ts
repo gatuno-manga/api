@@ -10,6 +10,7 @@ import { Chapter } from '@books/domain/entities/chapter';
 import { Cover } from '@books/domain/entities/cover';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { CoverImageService } from '@books/infrastructure/jobs/cover-image.service';
+import { StorageBucket } from '@common/enum/storage-bucket.enum';
 import {
 	BadRequestException,
 	Inject,
@@ -95,7 +96,7 @@ export class BookCreationService implements OnModuleInit {
 			},
 			newBookExtractScript: websiteConfig.newBookExtractScript,
 			uploadTarget: {
-				bucket: 'processing',
+				bucket: StorageBucket.PROCESSING,
 				pathPrefix: `${jobId.slice(-2)}/${jobId}`,
 			},
 		};

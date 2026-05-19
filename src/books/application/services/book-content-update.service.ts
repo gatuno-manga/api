@@ -16,6 +16,7 @@ import { Chapter } from '@books/domain/entities/chapter';
 import { Cover } from '@books/domain/entities/cover';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { CoverImageService } from '@books/infrastructure/jobs/cover-image.service';
+import { StorageBucket } from '@common/enum/storage-bucket.enum';
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ClientKafka } from '@nestjs/microservices';
@@ -172,7 +173,7 @@ export class BookContentUpdateService implements OnModuleInit {
 					},
 					bookInfoExtractScript: websiteConfig.bookInfoExtractScript,
 					uploadTarget: {
-						bucket: 'processing',
+						bucket: StorageBucket.PROCESSING,
 						pathPrefix: `${jobId.slice(-2)}/${jobId}`,
 					},
 				};
