@@ -3,6 +3,7 @@ import { QueueTextProcessingDto } from '@books/application/dto/queue-text-proces
 import { ContentFormat } from '@books/domain/enums/content-format.enum';
 import { ChapterComment } from '@books/infrastructure/database/entities/chapter-comment.entity';
 import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
+import { StorageBucket } from '@common/enum/storage-bucket.enum';
 import { MediaUrlService } from '@common/services/media-url.service';
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject, Logger, OnModuleInit } from '@nestjs/common';
@@ -89,7 +90,7 @@ export class TextProcessingProcessor
 				format: format,
 				urls: externalUrls,
 				uploadTarget: {
-					bucket: 'books',
+					bucket: StorageBucket.PROCESSING,
 					pathPrefix: `mirrored/${source.toLowerCase()}/${entityId}`,
 				},
 			};

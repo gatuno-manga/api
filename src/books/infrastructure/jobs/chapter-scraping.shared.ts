@@ -2,6 +2,7 @@ import { BookEvents } from '@books/domain/constants/events.constant';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { Page } from '@books/infrastructure/database/entities/page.entity';
+import { StorageBucket } from '@common/enum/storage-bucket.enum';
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ClientKafka } from '@nestjs/microservices';
@@ -125,8 +126,8 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 					},
 				},
 				uploadTarget: {
-					bucket: 'books',
-					pathPrefix: `processing/${chapter.id}`,
+					bucket: StorageBucket.PROCESSING,
+					pathPrefix: `${chapter.id}`,
 				},
 			};
 
@@ -219,7 +220,14 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 			pagesPaths.map(async (item) => {
 				const path = typeof item === 'string' ? item : item.path;
 
-				const cacheKey = `pending_optimization:${path}`;
+				// Normalização robusta: garante que o path usado no Redis comece com 'processing/'
+				// e não tenha prefixos de buckets conhecidos duplicados.
+				let lookupPath = path.replace(/^(books|processing)\//, '');
+				if (!lookupPath.startsWith('processing/')) {
+					lookupPath = `processing/${lookupPath}`;
+				}
+
+				const cacheKey = `pending_optimization:${lookupPath}`;
 				const cached = await redis.get(cacheKey);
 				if (cached) {
 					try {
@@ -227,14 +235,16 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 							ImageMetadata & { path: string }
 						>;
 						return {
-							originalPath: path,
+							originalPath: lookupPath,
 							...data,
 						} as OptimizedPageData;
 					} catch (_e) {
-						return { originalPath: path } as OptimizedPageData;
+						return {
+							originalPath: lookupPath,
+						} as OptimizedPageData;
 					}
 				}
-				return { originalPath: path } as OptimizedPageData;
+				return { originalPath: lookupPath } as OptimizedPageData;
 			}),
 		);
 
@@ -273,7 +283,11 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 
 		const cleanPromises = pagesPaths.map((item) => {
 			const path = typeof item === 'string' ? item : item.path;
-			return redis.del(`pending_optimization:${path}`);
+			let lookupPath = path.replace(/^(books|processing)\//, '');
+			if (!lookupPath.startsWith('processing/')) {
+				lookupPath = `processing/${lookupPath}`;
+			}
+			return redis.del(`pending_optimization:${lookupPath}`);
 		});
 		await Promise.all(cleanPromises).catch(() => {});
 

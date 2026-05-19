@@ -2,6 +2,7 @@ import { QueueCoverProcessorDto } from '@books/application/dto/queue-cover-proce
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { Cover } from '@books/infrastructure/database/entities/cover.entity';
+import { StorageBucket } from '@common/enum/storage-bucket.enum';
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject, Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -132,8 +133,8 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 					title: c.title,
 				})),
 				uploadTarget: {
-					bucket: 'processing',
-					pathPrefix: '',
+					bucket: StorageBucket.PROCESSING,
+					pathPrefix: 'capas',
 				},
 			};
 

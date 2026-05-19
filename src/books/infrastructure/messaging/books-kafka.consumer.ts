@@ -376,9 +376,21 @@ export class BooksKafkaConsumer {
 					if (resultPath) {
 						let path: string = resultPath;
 
-						const cached = await redis.get(
-							`pending_optimization:${path}`,
+						// Normalização robusta: garante que o path usado no Redis comece com 'processing/'
+						// e não tenha prefixos de buckets conhecidos duplicados.
+						let lookupPath = path.replace(
+							/^(books|processing)\//,
+							'',
 						);
+						if (!lookupPath.startsWith('processing/')) {
+							lookupPath = `processing/${lookupPath}`;
+						}
+
+						path = lookupPath;
+
+						const cacheKey = `pending_optimization:${lookupPath}`;
+
+						const cached = await redis.get(cacheKey);
 						if (cached) {
 							try {
 								const optimized = JSON.parse(
@@ -404,6 +416,17 @@ export class BooksKafkaConsumer {
 				this.logger.log(
 					`Sucesso ao processar lote de capas para livro ${bookId}.`,
 				);
+
+				// Cleanup do cache de otimização
+				for (const path of results) {
+					let lookupPath = path.replace(/^(books|processing)\//, '');
+					if (!lookupPath.startsWith('processing/')) {
+						lookupPath = `processing/${lookupPath}`;
+					}
+					await redis
+						.del(`pending_optimization:${lookupPath}`)
+						.catch(() => {});
+				}
 			} catch (error) {
 				this.logger.error(
 					`Erro ao processar lote de capas para livro ${bookId}: ${error instanceof Error ? error.message : String(error)}`,
