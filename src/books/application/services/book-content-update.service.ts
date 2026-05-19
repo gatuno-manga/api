@@ -228,6 +228,16 @@ export class BookContentUpdateService implements OnModuleInit {
 
 		const chaptersToCreate: Chapter[] = [];
 		for (const scraped of newChapters) {
+			if (
+				typeof scraped.index === 'number' &&
+				existingIndexes.has(scraped.index)
+			) {
+				this.logger.debug(
+					`Skipping chapter ${scraped.title} - index ${scraped.index} already exists`,
+				);
+				continue;
+			}
+
 			const nextIndex = this.determineNextChapterIndex(
 				scraped,
 				existingIndexes,
@@ -276,13 +286,7 @@ export class BookContentUpdateService implements OnModuleInit {
 			typeof scrapedChapter.index === 'number' &&
 			!Number.isNaN(scrapedChapter.index)
 		) {
-			let index = scrapedChapter.index;
-			while (existingIndexes.has(index)) {
-				// Adiciona uma pequena fração para evitar colisão, mantendo a ordem próxima.
-				// O toFixed(5) garante compatibilidade com a precisão do banco de dados (Decimal 10,5).
-				index = Number((index + 0.00001).toFixed(5));
-			}
-			return index;
+			return scrapedChapter.index;
 		}
 
 		let index = 1;
