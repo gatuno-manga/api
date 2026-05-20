@@ -41,10 +41,6 @@ interface BookContentUpdateResult {
 	newCovers: number;
 }
 
-/**
- * Service responsável pela lógica de negócio de atualização de conteúdo de livros
- * (novos capítulos e capas detectados via scraping)
- */
 @Injectable()
 export class BookContentUpdateService implements OnModuleInit {
 	private readonly logger = new Logger(BookContentUpdateService.name);
@@ -68,10 +64,6 @@ export class BookContentUpdateService implements OnModuleInit {
 		await this.scraperClient.connect();
 	}
 
-	/**
-	 * Executa a atualização de conteúdo de um livro via scraping direto
-	 * @deprecated Use requestUpdateViaScraper para o novo fluxo com microserviço Go
-	 */
 	async performUpdate(bookId: string): Promise<BookContentUpdateResult> {
 		this.logger.debug(`Processing book content update for: ${bookId}`);
 
@@ -88,9 +80,6 @@ export class BookContentUpdateService implements OnModuleInit {
 		return { newChapters: 0, newCovers: 0 };
 	}
 
-	/**
-	 * Dispara a solicitação de scraping para o microserviço em Go via Kafka
-	 */
 	async requestUpdateViaScraper(
 		bookId: string,
 	): Promise<{ dispatched: boolean; urlsProcessed: number }> {
@@ -108,7 +97,6 @@ export class BookContentUpdateService implements OnModuleInit {
 			return { dispatched: false, urlsProcessed: 0 };
 		}
 
-		// Adicionar lock distribuído para evitar múltiplas solicitações simultâneas
 		const redis = this.redisService.getClient();
 		const lockKey = `lock:scraping:book:${bookId}`;
 		const isLocked = await redis.set(lockKey, 'true', 'EX', 300, 'NX');
@@ -197,9 +185,6 @@ export class BookContentUpdateService implements OnModuleInit {
 		return { dispatched: urlsProcessed > 0, urlsProcessed };
 	}
 
-	/**
-	 * Sincroniza capítulos: identifica novos capítulos e os cria no banco
-	 */
 	public async syncChapters(
 		book: Book,
 		scrapedChapters: ScrapedChapter[],
@@ -228,20 +213,32 @@ export class BookContentUpdateService implements OnModuleInit {
 
 		const chaptersToCreate: Chapter[] = [];
 		for (const scraped of newChapters) {
+			const scrapedIndex =
+				typeof scraped.index === 'string'
+					? Number.parseFloat(scraped.index)
+					: scraped.index;
+
 			if (
-				typeof scraped.index === 'number' &&
-				existingIndexes.has(scraped.index)
+				typeof scrapedIndex === 'number' &&
+				!Number.isNaN(scrapedIndex) &&
+				existingIndexes.has(scrapedIndex)
 			) {
 				this.logger.debug(
-					`Skipping chapter ${scraped.title} - index ${scraped.index} already exists`,
+					`Skipping chapter ${scraped.title} - index ${scrapedIndex} already exists`,
 				);
 				continue;
 			}
 
 			const nextIndex = this.determineNextChapterIndex(
-				scraped,
+				{ ...scraped, index: scrapedIndex },
 				existingIndexes,
 			);
+
+			if (nextIndex % 1 !== 0) {
+				this.logger.warn(
+					`Chapter ${scraped.title} (${scraped.url}) has a fractional index: ${nextIndex}`,
+				);
+			}
 
 			const chapter = this.chapterRepository.create({
 				title: scraped.title,
@@ -296,9 +293,6 @@ export class BookContentUpdateService implements OnModuleInit {
 		return index;
 	}
 
-	/**
-	 * Sincroniza capas: identifica novas capas por hash e as cria
-	 */
 	public async syncCovers(
 		book: Book,
 		scrapedCovers: ScrapedCover[],
