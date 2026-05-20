@@ -163,6 +163,64 @@ describe('BookContentUpdateService', () => {
 			expect(mockChapterRepository.create).not.toHaveBeenCalled();
 		});
 
+		it('should skip chapters with trailing slashes in URLs', async () => {
+			const book = {
+				id: 'book-1',
+				title: 'Test Book',
+				chapters: [
+					{
+						id: 'ch-1',
+						index: 1,
+						originalUrl: 'http://example.com/ch1',
+					},
+				] as any[],
+			} as Book;
+
+			const scrapedChapters = [
+				{
+					title: 'Chapter 1 (Trailing Slash)',
+					url: 'http://example.com/ch1/',
+					index: 1,
+				},
+			];
+
+			const result = await service.syncChapters(book, scrapedChapters);
+
+			expect(result).toHaveLength(0);
+			expect(mockChapterRepository.create).not.toHaveBeenCalled();
+		});
+
+		it('should handle string indices and skip duplicates', async () => {
+			const book = {
+				id: 'book-1',
+				title: 'Test Book',
+				chapters: [
+					{
+						id: 'ch-1',
+						index: 1,
+						originalUrl: 'http://example.com/ch1',
+					},
+				] as any[],
+			} as Book;
+
+			const scrapedChapters = [
+				{
+					title: 'Chapter 1 (String Index)',
+					url: 'http://example.com/ch1-new',
+					index: '1' as any,
+				},
+			];
+
+			mockChapterRepository.findByBookId.mockResolvedValue([
+				{ id: 'ch-1', index: 1, originalUrl: 'http://example.com/ch1' },
+			]);
+
+			const result = await service.syncChapters(book, scrapedChapters);
+
+			expect(result).toHaveLength(0);
+			expect(mockChapterRepository.create).not.toHaveBeenCalled();
+		});
+
 		it('should generate next available integer index if index is not provided', async () => {
 			const book = {
 				id: 'book-1',
