@@ -1,3 +1,4 @@
+import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants';
 import { BookChaptersCursorOptionsDto } from '@books/application/dto/book-chapters-cursor-options.dto';
 import {
 	BookChapterCursorItemDto,
@@ -41,6 +42,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { Job, Queue } from 'bullmq';
+import { Meilisearch } from 'meilisearch';
 import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
 import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
@@ -48,8 +50,6 @@ import { MetadataPageDto } from 'src/common/pagination/metadata-page.dto';
 import { PageDto } from 'src/common/pagination/page.dto';
 import { MediaUrlService } from 'src/common/services/media-url.service';
 import { AdminUsersService } from 'src/users/application/use-cases/admin-users.service';
-import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants';
-import { Meilisearch } from 'meilisearch';
 import { MeilisearchFilterBuilder } from '../builders/meilisearch-filter.builder';
 import { SensitiveContentService } from './sensitive-content.service';
 

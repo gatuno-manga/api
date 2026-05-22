@@ -1,27 +1,17 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { BookQueryService } from './book-query.service';
-import { I_BOOK_REPOSITORY } from '@books/application/ports/book-repository.interface';
 import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants';
-import { AdminUsersService } from 'src/users/application/use-cases/admin-users.service';
-import { MediaUrlService } from 'src/common/services/media-url.service';
+import { I_AUTHOR_REPOSITORY } from '@books/application/ports/author-repository.interface';
+import { I_BOOK_REPOSITORY } from '@books/application/ports/book-repository.interface';
+import { I_CHAPTER_REPOSITORY } from '@books/application/ports/chapter-repository.interface';
+import { I_PAGE_REPOSITORY } from '@books/application/ports/page-repository.interface';
+import { I_SENSITIVE_CONTENT_REPOSITORY } from '@books/application/ports/sensitive-content-repository.interface';
+import { I_TAG_REPOSITORY } from '@books/application/ports/tag-repository.interface';
 import { getQueueToken } from '@nestjs/bullmq';
-import {
-	I_AUTHOR_REPOSITORY,
-} from '@books/application/ports/author-repository.interface';
-import {
-	I_CHAPTER_REPOSITORY,
-} from '@books/application/ports/chapter-repository.interface';
-import {
-	I_PAGE_REPOSITORY,
-} from '@books/application/ports/page-repository.interface';
-import {
-	I_SENSITIVE_CONTENT_REPOSITORY,
-} from '@books/application/ports/sensitive-content-repository.interface';
-import {
-	I_TAG_REPOSITORY,
-} from '@books/application/ports/tag-repository.interface';
-import { SensitiveContentService } from './sensitive-content.service';
+import { Test, TestingModule } from '@nestjs/testing';
+import { MediaUrlService } from 'src/common/services/media-url.service';
+import { AdminUsersService } from 'src/users/application/use-cases/admin-users.service';
 import { BookPageOptionsDto } from '../dto/book-page-options.dto';
+import { BookQueryService } from './book-query.service';
+import { SensitiveContentService } from './sensitive-content.service';
 
 describe('BookQueryService (Search Optimization)', () => {
 	let service: BookQueryService;
@@ -40,9 +30,11 @@ describe('BookQueryService (Search Optimization)', () => {
 		};
 
 		bookRepository = {
-			findByIdsPreservingOrder: jest.fn().mockResolvedValue([
-				{ id: 'book-1', title: 'Solo Leveling', covers: [] },
-			]),
+			findByIdsPreservingOrder: jest
+				.fn()
+				.mockResolvedValue([
+					{ id: 'book-1', title: 'Solo Leveling', covers: [] },
+				]),
 			findWithFilters: jest.fn(),
 		};
 
@@ -58,7 +50,10 @@ describe('BookQueryService (Search Optimization)', () => {
 				{ provide: I_BOOK_REPOSITORY, useValue: bookRepository },
 				{ provide: MEILI_CLIENT, useValue: meiliClient },
 				{ provide: AdminUsersService, useValue: adminUsersService },
-				{ provide: MediaUrlService, useValue: { resolveUrl: jest.fn() } },
+				{
+					provide: MediaUrlService,
+					useValue: { resolveUrl: jest.fn() },
+				},
 				{ provide: I_CHAPTER_REPOSITORY, useValue: {} },
 				{ provide: I_PAGE_REPOSITORY, useValue: {} },
 				{ provide: I_TAG_REPOSITORY, useValue: {} },
@@ -88,7 +83,9 @@ describe('BookQueryService (Search Optimization)', () => {
 			'Solo',
 			expect.objectContaining({ limit: 10, offset: 0 }),
 		);
-		expect(bookRepository.findByIdsPreservingOrder).toHaveBeenCalledWith(['book-1']);
+		expect(bookRepository.findByIdsPreservingOrder).toHaveBeenCalledWith([
+			'book-1',
+		]);
 		expect(result.data[0].id).toBe('book-1');
 	});
 

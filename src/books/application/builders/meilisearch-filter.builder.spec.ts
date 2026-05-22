@@ -26,7 +26,9 @@ describe('MeilisearchFilterBuilder', () => {
 
 		const filter = MeilisearchFilterBuilder.build(options, accessContext);
 
-		expect(filter).toContain('(sites = "hiper.cool" OR sites = "manganato.com")');
+		expect(filter).toContain(
+			'(sites = "hiper.cool" OR sites = "manganato.com")',
+		);
 		expect(filter).toContain('(tagIds = "tag-1" AND tagIds = "tag-2")');
 		expect(filter).toContain('maxSensitiveWeight <= 2');
 		expect(filter).toContain('(tagIds != "forbidden-tag")');

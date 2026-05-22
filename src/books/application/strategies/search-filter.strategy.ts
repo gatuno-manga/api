@@ -37,7 +37,7 @@ export class SearchFilterStrategy implements FilterStrategy {
 		const fulltextClause = `MATCH(${FULLTEXT_COLUMNS}) AGAINST(:booleanQuery IN BOOLEAN MODE)`;
 
 		// 2. Cláusula SOUNDS LIKE (Apenas para termos curtos para evitar lentidão)
-		let soundexClauses: string[] = [];
+		const soundexClauses: string[] = [];
 		if (terms.length > 0 && terms.length <= 3) {
 			for (let i = 0; i < terms.length; i++) {
 				params[`soundex_${i}`] = terms[i];
