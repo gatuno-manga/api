@@ -11,9 +11,11 @@ import {
 	IsString,
 	IsUrl,
 	Max,
+	MaxLength,
 	Min,
 	ValidateNested,
 } from 'class-validator';
+import { AlternativeTitleDto } from './alternative-title.dto';
 import { CoverBookDto } from './cover-book.dto';
 import { CreateAuthorDto } from './create-author.dto';
 import { CreateChapterDto } from './create-chapter.dto';
@@ -30,13 +32,34 @@ export class CreateBookDto {
 
 	@ApiPropertyOptional({
 		description: 'Alternative titles for the book',
-		example: ['ワンピース', 'Wan Pīsu'],
-		type: [String],
+		type: [AlternativeTitleDto],
 		isArray: true,
 	})
 	@IsOptional()
+	@ValidateNested({ each: true })
+	@Type(() => AlternativeTitleDto)
+	alternativeTitles?: AlternativeTitleDto[];
+
+	@ApiPropertyOptional({
+		description: 'Legacy field for alternative titles (string array)',
+		example: ['ワンピース', 'Wan Pīsu'],
+		type: [String],
+		isArray: true,
+		deprecated: true,
+	})
+	@IsOptional()
 	@IsString({ each: true })
-	alternativeTitle?: string[] = [];
+	alternativeTitle?: string[];
+
+	@ApiPropertyOptional({
+		description: 'Original language code (BCP 47)',
+		example: 'ja-JP',
+		maxLength: 10,
+	})
+	@IsOptional()
+	@IsString()
+	@MaxLength(10)
+	originalLanguageCode?: string;
 
 	@ApiPropertyOptional({
 		description:

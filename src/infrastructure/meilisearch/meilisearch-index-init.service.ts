@@ -48,10 +48,11 @@ export class MeilisearchIndexInitService implements OnApplicationBootstrap {
 				'sensitiveContentIds',
 				'maxSensitiveWeight',
 				'sites',
+				'originalLanguageCode',
 			],
 			searchableAttributes: [
 				'title',
-				'alternativeTitle',
+				'alternativeTitles',
 				'description',
 				'authors',
 				'tags',

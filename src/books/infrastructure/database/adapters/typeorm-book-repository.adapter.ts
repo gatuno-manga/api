@@ -15,6 +15,7 @@ import {
 	DeepPartial,
 	EntityManager,
 	FindOptionsWhere,
+	QueryDeepPartialEntity,
 	Repository,
 } from 'typeorm';
 
@@ -74,16 +75,62 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 	}
 
 	async save(book: DomainBook): Promise<DomainBook> {
-		const saved = await this.repository.save(
-			book as unknown as InfrastructureBook,
-		);
+		const infrastructureBook = book as unknown as InfrastructureBook;
+
+		// Manually populate alternative_titles_text for FULLTEXT index
+		const titles = [infrastructureBook.title];
+		if (infrastructureBook.alternativeTitles?.length) {
+			titles.push(
+				...infrastructureBook.alternativeTitles.map((alt) => alt.title),
+			);
+		}
+		if (infrastructureBook.searchTerms?.length) {
+			titles.push(...infrastructureBook.searchTerms);
+		}
+		infrastructureBook.alternative_titles_text = titles.join(', ');
+
+		const saved = await this.repository.save(infrastructureBook);
 		return saved as unknown as DomainBook;
 	}
 
 	async update(id: string, data: Partial<DomainBook>): Promise<void> {
+		const updateData = data as unknown as DeepPartial<InfrastructureBook>;
+
+		// If title, alternativeTitles or searchTerms are being updated, we need to update alternative_titles_text
+		if (data.title || data.alternativeTitles || data.searchTerms) {
+			const existingBook = await this.repository.findOne({
+				where: { id } as FindOptionsWhere<InfrastructureBook>,
+				relations: ['alternativeTitles'],
+			});
+
+			if (existingBook) {
+				const titles = [data.title || existingBook.title];
+
+				if (data.alternativeTitles) {
+					titles.push(
+						...data.alternativeTitles.map((alt) => alt.title),
+					);
+				} else if (existingBook.alternativeTitles?.length) {
+					titles.push(
+						...existingBook.alternativeTitles.map(
+							(alt) => alt.title,
+						),
+					);
+				}
+
+				if (data.searchTerms) {
+					titles.push(...data.searchTerms);
+				} else if (existingBook.searchTerms?.length) {
+					titles.push(...existingBook.searchTerms);
+				}
+
+				updateData.alternative_titles_text = titles.join(', ');
+			}
+		}
+
 		await this.repository.update(
 			id,
-			data as unknown as DeepPartial<InfrastructureBook>,
+			updateData as QueryDeepPartialEntity<InfrastructureBook>,
 		);
 	}
 
@@ -405,35 +452,35 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 		existingBook?: {
 			id: string;
 			title: string;
-			alternativeTitle?: string[];
+			alternativeTitles?: DomainBook['alternativeTitles'];
 		};
 		conflictingBooks?: Array<{
 			id: string;
 			title: string;
-			alternativeTitle?: string[];
+			alternativeTitles?: DomainBook['alternativeTitles'];
 		}>;
 	}> {
-		const queryBuilder = this.repository.createQueryBuilder('book');
+		const queryBuilder = this.repository
+			.createQueryBuilder('book')
+			.leftJoinAndSelect('book.alternativeTitles', 'altTitles');
+
 		const allTitles = [title, ...alternativeTitles];
 
 		for (let i = 0; i < allTitles.length; i++) {
 			const titleToCheck = allTitles[i];
-			if (i === 0) {
-				queryBuilder.where(`book.title = :title${i}`, {
-					[`title${i}`]: titleToCheck,
-				});
-			} else {
-				queryBuilder.orWhere(`book.title = :title${i}`, {
-					[`title${i}`]: titleToCheck,
-				});
-			}
+			const paramName = `title${i}`;
 
-			queryBuilder.orWhere(
-				`JSON_CONTAINS(book.alternativeTitle, :jsonTitle${i})`,
-				{
-					[`jsonTitle${i}`]: JSON.stringify(titleToCheck),
-				},
-			);
+			if (i === 0) {
+				queryBuilder.where(
+					`(book.title = :${paramName} OR altTitles.title = :${paramName})`,
+					{ [paramName]: titleToCheck },
+				);
+			} else {
+				queryBuilder.orWhere(
+					`(book.title = :${paramName} OR altTitles.title = :${paramName})`,
+					{ [paramName]: titleToCheck },
+				);
+			}
 		}
 
 		const conflictingBooks = await queryBuilder.getMany();
@@ -442,7 +489,7 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 			const formattedBooks = conflictingBooks.map((book) => ({
 				id: book.id,
 				title: book.title,
-				alternativeTitle: book.alternativeTitle,
+				alternativeTitles: book.alternativeTitles,
 			}));
 
 			return {

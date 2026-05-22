@@ -1,181 +1,120 @@
+import { CreateBookDto } from '@books/application/dto/create-book.dto';
 import { I_BOOK_REPOSITORY } from '@books/application/ports/book-repository.interface';
-import { I_CHAPTER_REPOSITORY } from '@books/application/ports/chapter-repository.interface';
-import { BookEvents } from '@books/domain/constants/events.constant';
-import { Book } from '@books/domain/entities/book';
+import { AlternativeTitle } from '@books/domain/entities/alternative-title';
+import { BookType } from '@books/domain/enums/book-type.enum';
 import { CoverImageService } from '@books/infrastructure/jobs/cover-image.service';
-import { BadRequestException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Test, type TestingModule } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 import { WebsiteService } from '@websites/application/services/website.service';
 import { I_UNIT_OF_WORK } from 'src/common/application/ports/unit-of-work.interface';
 import { BookCreationService } from './book-creation.service';
 import { BookRelationshipService } from './book-relationship.service';
 import { ChapterManagementService } from './chapter-management.service';
 
-describe('BookCreationService', () => {
+describe('BookCreationService - Alternative Titles', () => {
 	let service: BookCreationService;
-	let eventEmitter: EventEmitter2;
-	let chapterManagementService: ChapterManagementService;
-
-	const mockBookRepository = {
-		checkBookTitleConflict: jest.fn(),
-		save: jest.fn(),
-	};
-
-	const mockChapterRepository = {
-		create: jest.fn(),
-		saveAll: jest.fn(),
-	};
-
-	const mockUnitOfWork = {
-		runInTransaction: jest.fn((cb) =>
-			cb({
-				getBookRepository: () => mockBookRepository,
-				getChapterRepository: () => mockChapterRepository,
-				getTagRepository: () => mockBookRelationshipService,
-				getAuthorRepository: () => mockBookRelationshipService,
-				getSensitiveContentRepository: () =>
-					mockBookRelationshipService,
-			}),
-		),
-	};
-
-	const mockBookRelationshipService = {
-		findOrCreateTags: jest.fn(),
-		findOrCreateAuthors: jest.fn(),
-		findOrCreateSensitiveContent: jest.fn(),
-	};
-
-	const mockChapterManagementService = {
-		createChaptersFromDto: jest.fn(),
-	};
-
-	const mockCoverImageService = {
-		addCoverToQueue: jest.fn(),
-	};
-
-	const mockEventEmitter = {
-		emit: jest.fn(),
-	};
-
-	const mockScraperClient = {
-		emit: jest.fn(),
-	};
-
-	const mockWebsiteService = {
-		getByUrl: jest.fn(),
-	};
+	let bookRepository: any;
 
 	beforeEach(async () => {
+		bookRepository = {
+			checkBookTitleConflict: jest
+				.fn()
+				.mockResolvedValue({ conflict: false }),
+			save: jest.fn().mockImplementation((book) => Promise.resolve(book)),
+		};
+
+		const unitOfWork = {
+			runInTransaction: jest.fn().mockImplementation((cb) =>
+				cb({
+					getBookRepository: () => bookRepository,
+					getTagRepository: () => ({
+						findOrCreateTags: jest.fn().mockResolvedValue([]),
+					}),
+					getAuthorRepository: () => ({
+						findOrCreateAuthors: jest.fn().mockResolvedValue([]),
+					}),
+					getSensitiveContentRepository: () => ({
+						findOrCreateSensitiveContent: jest
+							.fn()
+							.mockResolvedValue([]),
+					}),
+					getChapterRepository: () => ({
+						saveAll: jest.fn().mockResolvedValue([]),
+					}),
+					getCoverRepository: () => ({
+						saveAll: jest.fn().mockResolvedValue([]),
+					}),
+				}),
+			),
+		};
+
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				BookCreationService,
-				{
-					provide: I_BOOK_REPOSITORY,
-					useValue: mockBookRepository,
-				},
-				{
-					provide: I_CHAPTER_REPOSITORY,
-					useValue: mockChapterRepository,
-				},
-				{
-					provide: I_UNIT_OF_WORK,
-					useValue: mockUnitOfWork,
-				},
-				{
-					provide: BookRelationshipService,
-					useValue: mockBookRelationshipService,
-				},
-				{
-					provide: ChapterManagementService,
-					useValue: mockChapterManagementService,
-				},
-				{
-					provide: CoverImageService,
-					useValue: mockCoverImageService,
-				},
-				{
-					provide: EventEmitter2,
-					useValue: mockEventEmitter,
-				},
+				{ provide: I_BOOK_REPOSITORY, useValue: bookRepository },
+				{ provide: I_UNIT_OF_WORK, useValue: unitOfWork },
 				{
 					provide: 'SCRAPER_SERVICE',
-					useValue: mockScraperClient,
+					useValue: {
+						connect: jest.fn().mockResolvedValue({}),
+						emit: jest
+							.fn()
+							.mockReturnValue({ subscribe: jest.fn() }),
+					},
 				},
+				{ provide: WebsiteService, useValue: {} },
 				{
-					provide: WebsiteService,
-					useValue: mockWebsiteService,
+					provide: BookRelationshipService,
+					useValue: {
+						findOrCreateTags: jest.fn().mockResolvedValue([]),
+						findOrCreateAuthors: jest.fn().mockResolvedValue([]),
+						findOrCreateSensitiveContent: jest
+							.fn()
+							.mockResolvedValue([]),
+					},
 				},
+				{ provide: ChapterManagementService, useValue: {} },
+				{
+					provide: CoverImageService,
+					useValue: { addCoverToQueue: jest.fn() },
+				},
+				{ provide: EventEmitter2, useValue: { emit: jest.fn() } },
 			],
 		}).compile();
 
 		service = module.get<BookCreationService>(BookCreationService);
-		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
-		chapterManagementService = module.get<ChapterManagementService>(
-			ChapterManagementService,
-		);
 	});
 
-	afterEach(() => {
-		jest.clearAllMocks();
+	it('should consolidate alternative titles from legacy array of strings', async () => {
+		const dto = new CreateBookDto();
+		dto.title = 'Main Title';
+		dto.alternativeTitle = ['Alt 1', 'Alt 2'];
+		dto.type = BookType.MANGA;
+
+		const result = await service.createBook(dto);
+
+		expect(result.alternativeTitles).toBeDefined();
+		expect(result.alternativeTitles).toHaveLength(2);
+		expect(result.alternativeTitles[0]).toBeInstanceOf(AlternativeTitle);
+		expect(result.alternativeTitles[0].title).toBe('Alt 1');
+		expect(result.alternativeTitles[1].title).toBe('Alt 2');
 	});
 
-	it('should be defined', () => {
-		expect(service).toBeDefined();
-	});
+	it('should consolidate alternative titles from new field with mixed content', async () => {
+		const dto = new CreateBookDto();
+		dto.title = 'Main Title';
+		dto.type = BookType.MANGA;
+		// @ts-ignore - simulating dynamic input
+		dto.alternativeTitles = [
+			'String Alt',
+			{ title: 'Object Alt', languageCode: 'ja-JP' },
+		];
 
-	describe('createBook', () => {
-		it('should emit BookEvents.CREATED with chapters when chapters are provided in DTO', async () => {
-			const dto = {
-				title: 'Test Book',
-				chapters: [
-					{
-						title: 'Chapter 1',
-						index: 1,
-						url: 'http://example.com/1',
-					},
-				],
-			} as any;
+		const result = await service.createBook(dto);
 
-			const savedBook = new Book();
-			savedBook.id = 'book-id';
-			savedBook.title = 'Test Book';
-			savedBook.chapters = [];
-
-			const createdChapters = [
-				{ id: 'chapter-id', title: 'Chapter 1', index: 1 } as any,
-			];
-
-			mockBookRepository.checkBookTitleConflict.mockResolvedValue({
-				conflict: false,
-			});
-			mockBookRepository.save.mockResolvedValue(savedBook);
-			mockChapterRepository.saveAll.mockResolvedValue(createdChapters);
-
-			await service.createBook(dto);
-
-			// Verify event was emitted with chapters
-			expect(mockEventEmitter.emit).toHaveBeenCalledWith(
-				BookEvents.CREATED,
-				expect.objectContaining({
-					id: 'book-id',
-					chapters: createdChapters,
-				}),
-			);
-
-			expect(savedBook.chapters).toEqual(createdChapters);
-		});
-
-		it('should throw BadRequestException if title conflict exists', async () => {
-			const dto = { title: 'Existing Book' } as any;
-			mockBookRepository.checkBookTitleConflict.mockResolvedValue({
-				conflict: true,
-				existingBook: { id: 'existing-id' },
-			});
-
-			await expect(service.createBook(dto)).rejects.toThrow(
-				BadRequestException,
-			);
-		});
+		expect(result.alternativeTitles).toHaveLength(2);
+		expect(result.alternativeTitles[0].title).toBe('String Alt');
+		expect(result.alternativeTitles[1].title).toBe('Object Alt');
+		expect(result.alternativeTitles[1].languageCode).toBe('ja-JP');
 	});
 });

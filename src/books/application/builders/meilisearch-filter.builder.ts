@@ -6,6 +6,8 @@ import { AccessContext } from '@books/domain/types/criteria.types';
  * Converte as opções de busca e o contexto de acesso em uma string de filtro compatível com o Meilisearch.
  */
 export class MeilisearchFilterBuilder {
+	private constructor() {}
+
 	/**
 	 * Constrói a string de filtro combinando critérios de busca e políticas de segurança.
 	 */

@@ -1,3 +1,4 @@
+import { AlternativeTitle } from '@books/domain/entities/alternative-title';
 import { Author } from '@books/domain/entities/author';
 import { Book } from '@books/domain/entities/book';
 import { Chapter } from '@books/domain/entities/chapter';
@@ -13,12 +14,13 @@ import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
  */
 type BookBuilderData = Omit<
 	Partial<Book>,
-	'tags' | 'authors' | 'chapters' | 'covers'
+	'tags' | 'authors' | 'chapters' | 'covers' | 'alternativeTitles'
 > & {
 	tags?: Tag[];
 	authors?: Author[];
 	chapters?: Chapter[];
 	covers?: Cover[];
+	alternativeTitles?: AlternativeTitle[];
 };
 
 /**
@@ -38,9 +40,10 @@ export class BookBuilder {
 			authors: [],
 			sensitiveContent: [],
 			covers: [],
-			alternativeTitle: [],
+			alternativeTitles: [],
 			searchTerms: [],
 			originalUrl: [],
+			originalLanguageCode: null,
 		};
 	}
 
@@ -55,19 +58,27 @@ export class BookBuilder {
 	/**
 	 * Define títulos alternativos
 	 */
-	withAlternativeTitles(titles: string[]): this {
-		this.book.alternativeTitle = titles;
+	withAlternativeTitles(titles: AlternativeTitle[]): this {
+		this.book.alternativeTitles = titles;
 		return this;
 	}
 
 	/**
 	 * Adiciona um título alternativo
 	 */
-	addAlternativeTitle(title: string): this {
-		if (!this.book.alternativeTitle) {
-			this.book.alternativeTitle = [];
+	addAlternativeTitle(title: AlternativeTitle): this {
+		if (!this.book.alternativeTitles) {
+			this.book.alternativeTitles = [];
 		}
-		this.book.alternativeTitle.push(title);
+		this.book.alternativeTitles.push(title);
+		return this;
+	}
+
+	/**
+	 * Define o código do idioma original (BCP 47)
+	 */
+	withOriginalLanguageCode(code: string | null): this {
+		this.book.originalLanguageCode = code;
 		return this;
 	}
 
@@ -284,9 +295,10 @@ export class BookBuilder {
 			authors: [],
 			sensitiveContent: [],
 			covers: [],
-			alternativeTitle: [],
+			alternativeTitles: [],
 			searchTerms: [],
 			originalUrl: [],
+			originalLanguageCode: null,
 		};
 		return this;
 	}

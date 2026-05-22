@@ -5,7 +5,13 @@ import { Page as InfrastructurePage } from '@books/infrastructure/database/entit
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ImageMetadata } from '@src/common/domain/value-objects/image-metadata.vo';
-import { DeepPartial, FindOptionsWhere, In, Repository } from 'typeorm';
+import {
+	DeepPartial,
+	FindOptionsWhere,
+	In,
+	QueryDeepPartialEntity,
+	Repository,
+} from 'typeorm';
 
 @Injectable()
 export class TypeOrmPageRepositoryAdapter implements IPageRepository {
@@ -81,7 +87,7 @@ export class TypeOrmPageRepositoryAdapter implements IPageRepository {
 	): Promise<void> {
 		await this.repository.update(
 			criteria as unknown as FindOptionsWhere<InfrastructurePage>,
-			data as unknown as InfrastructurePage,
+			data as QueryDeepPartialEntity<InfrastructurePage>,
 		);
 	}
 

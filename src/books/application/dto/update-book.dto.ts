@@ -1,14 +1,16 @@
 import { BookType } from '@books/domain/enums/book-type.enum';
 import { NormalizeUrl } from '@common/decorators/normalize-url.decorator';
 import { ApiPropertyOptional, OmitType, PartialType } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
 	IsEnum,
 	IsOptional,
 	IsString,
 	IsUrl,
+	MaxLength,
 	ValidateNested,
 } from 'class-validator';
+import { AlternativeTitleDto } from './alternative-title.dto';
 import { CreateAuthorDto } from './create-author.dto';
 import { CreateBookDto } from './create-book.dto';
 
@@ -17,13 +19,34 @@ export class UpdateBookDto extends PartialType(
 ) {
 	@ApiPropertyOptional({
 		description: 'Alternative titles for the book',
-		example: ['ワンピース', 'Wan Pīsu'],
-		type: [String],
+		type: [AlternativeTitleDto],
 		isArray: true,
 	})
 	@IsOptional()
+	@ValidateNested({ each: true })
+	@Type(() => AlternativeTitleDto)
+	alternativeTitles?: AlternativeTitleDto[] = undefined;
+
+	@ApiPropertyOptional({
+		description: 'Legacy field for alternative titles (string array)',
+		example: ['ワンピース', 'Wan Pīsu'],
+		type: [String],
+		isArray: true,
+		deprecated: true,
+	})
+	@IsOptional()
 	@IsString({ each: true })
-	alternativeTitle?: string[] = undefined;
+	alternativeTitle?: string[];
+
+	@ApiPropertyOptional({
+		description: 'Original language code (BCP 47)',
+		example: 'ja-JP',
+		maxLength: 10,
+	})
+	@IsOptional()
+	@IsString()
+	@MaxLength(10)
+	originalLanguageCode?: string;
 
 	@ApiPropertyOptional({
 		description:

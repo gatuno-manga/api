@@ -1,4 +1,5 @@
 import { extname } from 'node:path';
+import { AlternativeTitleDto } from '@books/application/dto/alternative-title.dto';
 import { OrderCoversDto } from '@books/application/dto/order-covers.dto';
 import { ScrapeCoverDto } from '@books/application/dto/scrape-cover.dto';
 import { UpdateBookDto } from '@books/application/dto/update-book.dto';
@@ -12,6 +13,7 @@ import {
 	ICoverRepository,
 	I_COVER_REPOSITORY,
 } from '@books/application/ports/cover-repository.interface';
+import { AlternativeTitle } from '@books/domain/entities/alternative-title';
 import { Book } from '@books/domain/entities/book';
 import { Cover } from '@books/domain/entities/cover';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
@@ -59,8 +61,6 @@ export class BookUpdateService {
 
 		const scalarUpdates: Partial<Book> = {};
 		if (dto.title !== undefined) scalarUpdates.title = dto.title;
-		if (dto.alternativeTitle !== undefined)
-			scalarUpdates.alternativeTitle = dto.alternativeTitle;
 		if (dto.searchTerms !== undefined)
 			scalarUpdates.searchTerms = dto.searchTerms;
 		if (dto.originalUrl !== undefined)
@@ -70,9 +70,58 @@ export class BookUpdateService {
 		if (dto.publication !== undefined)
 			scalarUpdates.publication = dto.publication;
 		if (dto.type !== undefined) scalarUpdates.type = dto.type;
+		if (dto.originalLanguageCode !== undefined)
+			scalarUpdates.originalLanguageCode = dto.originalLanguageCode;
 
 		if (Object.keys(scalarUpdates).length > 0) {
 			await this.bookRepository.update(id, scalarUpdates);
+		}
+
+		// Consolidate alternative titles from all possible fields
+		if (
+			dto.alternativeTitles !== undefined ||
+			dto.alternativeTitle !== undefined
+		) {
+			const consolidatedAltTitles: AlternativeTitle[] = [];
+
+			// 1. Process new field 'alternativeTitles'
+			if (dto.alternativeTitles?.length) {
+				for (const alt of dto.alternativeTitles) {
+					const isString = typeof alt === 'string';
+					const title = isString
+						? (alt as string)
+						: (alt as AlternativeTitleDto).title;
+					const languageCode = isString
+						? null
+						: (alt as AlternativeTitleDto).languageCode;
+
+					if (title) {
+						consolidatedAltTitles.push(
+							new AlternativeTitle(title, languageCode || null),
+						);
+					}
+				}
+			}
+
+			// 2. Process legacy field 'alternativeTitle'
+			if (dto.alternativeTitle?.length) {
+				for (const title of dto.alternativeTitle) {
+					if (
+						title &&
+						!consolidatedAltTitles.some((t) => t.title === title)
+					) {
+						consolidatedAltTitles.push(
+							new AlternativeTitle(title, null),
+						);
+					}
+				}
+			}
+
+			const bookForAlt = await this.findBookWith(id, [
+				'alternativeTitles',
+			]);
+			bookForAlt.alternativeTitles = consolidatedAltTitles;
+			await this.bookRepository.save(bookForAlt);
 		}
 
 		if (dto.tags !== undefined) {

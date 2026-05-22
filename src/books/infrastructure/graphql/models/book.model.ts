@@ -40,6 +40,15 @@ export class CoverModel {
 	metadata?: ImageMetadataModel;
 }
 
+@ObjectType('AlternativeTitle')
+export class AlternativeTitleModel {
+	@Field()
+	title: string;
+
+	@Field({ nullable: true })
+	languageCode?: string;
+}
+
 @ObjectType('Book')
 export class BookModel {
 	@Field(() => ID)
@@ -48,8 +57,11 @@ export class BookModel {
 	@Field()
 	title: string;
 
-	@Field(() => [String], { nullable: 'items' })
-	alternativeTitle: string[];
+	@Field(() => [AlternativeTitleModel], { nullable: 'items' })
+	alternativeTitles: AlternativeTitleModel[];
+
+	@Field(() => String, { nullable: true })
+	originalLanguageCode?: string;
 
 	@Field(() => [AuthorModel], { nullable: 'itemsAndList' })
 	authors: AuthorModel[];

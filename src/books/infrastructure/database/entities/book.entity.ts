@@ -15,6 +15,7 @@ import {
 	Relation,
 	UpdateDateColumn,
 } from 'typeorm';
+import { AlternativeTitle } from './alternative-title.entity';
 import { Author } from './author.entity';
 import { Chapter } from './chapter.entity';
 import { Cover } from './cover.entity';
@@ -45,11 +46,12 @@ export class Book {
 	)
 	covers: Relation<Cover[]>;
 
-	@Column({
-		type: 'json',
-		nullable: true,
-	})
-	alternativeTitle: string[];
+	@OneToMany(
+		() => AlternativeTitle,
+		(altTitle) => altTitle.book,
+		{ cascade: true },
+	)
+	alternativeTitles: Relation<AlternativeTitle[]>;
 
 	@Column({
 		type: 'json',
@@ -97,6 +99,13 @@ export class Book {
 		default: false,
 	})
 	autoUpdate: boolean;
+
+	@Column({
+		type: 'varchar',
+		length: 10,
+		nullable: true,
+	})
+	originalLanguageCode: string | null;
 
 	/**
 	 * Formatos de exportação disponíveis para este livro

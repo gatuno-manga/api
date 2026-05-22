@@ -1,3 +1,4 @@
+import { AlternativeTitleDto } from '@books/application/dto/alternative-title.dto';
 import { CreateBookDto } from '@books/application/dto/create-book.dto';
 import { CreateChapterDto } from '@books/application/dto/create-chapter.dto';
 import {
@@ -5,6 +6,7 @@ import {
 	I_BOOK_REPOSITORY,
 } from '@books/application/ports/book-repository.interface';
 import { BookEvents } from '@books/domain/constants/events.constant';
+import { AlternativeTitle } from '@books/domain/entities/alternative-title';
 import { Book } from '@books/domain/entities/book';
 import { Chapter } from '@books/domain/entities/chapter';
 import { Cover } from '@books/domain/entities/cover';
@@ -124,9 +126,49 @@ export class BookCreationService implements OnModuleInit {
 	}
 
 	async createBook(dto: CreateBookDto): Promise<Book> {
+		// Consolidate alternative titles from all possible fields
+		const consolidatedAltTitles: AlternativeTitle[] = [];
+
+		// 1. Process new field 'alternativeTitles' (objects or strings)
+		if (dto.alternativeTitles?.length) {
+			for (const alt of dto.alternativeTitles) {
+				const isString = typeof alt === 'string';
+				const title = isString
+					? (alt as string)
+					: (alt as AlternativeTitleDto).title;
+				const languageCode = isString
+					? null
+					: (alt as AlternativeTitleDto).languageCode;
+
+				if (title) {
+					consolidatedAltTitles.push(
+						new AlternativeTitle(title, languageCode || null),
+					);
+				}
+			}
+		}
+
+		// 2. Process legacy field 'alternativeTitle' (strings)
+		if (dto.alternativeTitle?.length) {
+			for (const title of dto.alternativeTitle) {
+				if (
+					title &&
+					!consolidatedAltTitles.some((t) => t.title === title)
+				) {
+					consolidatedAltTitles.push(
+						new AlternativeTitle(title, null),
+					);
+				}
+			}
+		}
+
+		const alternativeTitlesStrings = consolidatedAltTitles.map(
+			(alt) => alt.title,
+		);
+
 		const conflictCheck = await this.bookRepository.checkBookTitleConflict(
 			dto.title,
-			dto.alternativeTitle || [],
+			alternativeTitlesStrings,
 		);
 
 		if (conflictCheck.conflict && !dto.ignoreConflict) {
@@ -170,11 +212,12 @@ export class BookCreationService implements OnModuleInit {
 			Object.assign(book, {
 				title: dto.title,
 				originalUrl: dto.originalUrl,
-				alternativeTitle: dto.alternativeTitle,
+				alternativeTitles: consolidatedAltTitles,
 				searchTerms: dto.searchTerms,
 				description: dto.description,
 				publication: dto.publication,
 				type: dto.type,
+				originalLanguageCode: dto.originalLanguageCode,
 				sensitiveContent,
 				tags,
 				authors,
