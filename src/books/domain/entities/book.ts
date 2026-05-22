@@ -12,6 +12,7 @@ export class Book {
 	title: string;
 	covers: Cover[];
 	alternativeTitle: string[];
+	searchTerms: string[];
 	type: BookType;
 	sensitiveContent: SensitiveContent[];
 	originalUrl: string[];

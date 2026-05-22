@@ -26,6 +26,17 @@ export class UpdateBookDto extends PartialType(
 	alternativeTitle?: string[] = undefined;
 
 	@ApiPropertyOptional({
+		description:
+			'Custom search terms or synonyms (e.g., "hxh" for Hunter x Hunter)',
+		example: ['hxh', 'h x h'],
+		type: [String],
+		isArray: true,
+	})
+	@IsOptional()
+	@IsString({ each: true })
+	searchTerms?: string[] = undefined;
+
+	@ApiPropertyOptional({
 		description: 'Type of book (Manga, Manhwa, Manhua, Book, or Other)',
 		example: BookType.MANGA,
 		enum: BookType,

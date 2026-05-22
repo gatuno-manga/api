@@ -39,6 +39,7 @@ export class BookBuilder {
 			sensitiveContent: [],
 			covers: [],
 			alternativeTitle: [],
+			searchTerms: [],
 			originalUrl: [],
 		};
 	}
@@ -67,6 +68,25 @@ export class BookBuilder {
 			this.book.alternativeTitle = [];
 		}
 		this.book.alternativeTitle.push(title);
+		return this;
+	}
+
+	/**
+	 * Define termos de busca (sinônimos)
+	 */
+	withSearchTerms(terms: string[]): this {
+		this.book.searchTerms = terms;
+		return this;
+	}
+
+	/**
+	 * Adiciona um termo de busca (sinônimo)
+	 */
+	addSearchTerm(term: string): this {
+		if (!this.book.searchTerms) {
+			this.book.searchTerms = [];
+		}
+		this.book.searchTerms.push(term);
 		return this;
 	}
 
@@ -265,6 +285,7 @@ export class BookBuilder {
 			sensitiveContent: [],
 			covers: [],
 			alternativeTitle: [],
+			searchTerms: [],
 			originalUrl: [],
 		};
 		return this;

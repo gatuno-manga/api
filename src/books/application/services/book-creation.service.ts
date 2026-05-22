@@ -171,6 +171,7 @@ export class BookCreationService implements OnModuleInit {
 				title: dto.title,
 				originalUrl: dto.originalUrl,
 				alternativeTitle: dto.alternativeTitle,
+				searchTerms: dto.searchTerms,
 				description: dto.description,
 				publication: dto.publication,
 				type: dto.type,

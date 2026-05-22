@@ -39,6 +39,17 @@ export class CreateBookDto {
 	alternativeTitle?: string[] = [];
 
 	@ApiPropertyOptional({
+		description:
+			'Custom search terms or synonyms (e.g., "hxh" for Hunter x Hunter)',
+		example: ['hxh', 'h x h'],
+		type: [String],
+		isArray: true,
+	})
+	@IsOptional()
+	@IsString({ each: true })
+	searchTerms?: string[] = [];
+
+	@ApiPropertyOptional({
 		description: 'Type of book (Manga, Manhwa, Manhua, Book, or Other)',
 		example: BookType.MANGA,
 		enum: BookType,

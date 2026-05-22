@@ -61,6 +61,8 @@ export class BookUpdateService {
 		if (dto.title !== undefined) scalarUpdates.title = dto.title;
 		if (dto.alternativeTitle !== undefined)
 			scalarUpdates.alternativeTitle = dto.alternativeTitle;
+		if (dto.searchTerms !== undefined)
+			scalarUpdates.searchTerms = dto.searchTerms;
 		if (dto.originalUrl !== undefined)
 			scalarUpdates.originalUrl = dto.originalUrl;
 		if (dto.description !== undefined)

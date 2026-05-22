@@ -52,6 +52,12 @@ export class Book {
 	alternativeTitle: string[];
 
 	@Column({
+		type: 'json',
+		nullable: true,
+	})
+	searchTerms: string[];
+
+	@Column({
 		type: 'enum',
 		enum: BookType,
 		default: BookType.BOOK,
