@@ -44,15 +44,20 @@ export class MeilisearchIndexInitService implements OnApplicationBootstrap {
 				'publication',
 				'authors',
 				'tags',
+				'tagIds',
+				'sensitiveContentIds',
+				'maxSensitiveWeight',
 				'sites',
 			],
 			searchableAttributes: [
 				'title',
+				'alternativeTitle',
 				'description',
 				'authors',
 				'tags',
 				'sites',
 			],
+			sortableAttributes: ['createdAt', 'publication'],
 			rankingRules: [
 				'words',
 				'typo',
@@ -60,7 +65,6 @@ export class MeilisearchIndexInitService implements OnApplicationBootstrap {
 				'attribute',
 				'sort',
 				'exactness',
-				'publication:desc',
 			],
 		});
 

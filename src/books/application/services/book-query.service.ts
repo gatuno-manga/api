@@ -37,6 +37,7 @@ import {
 	ForbiddenException,
 	Inject,
 	Injectable,
+	Logger,
 	NotFoundException,
 } from '@nestjs/common';
 import { Job, Queue } from 'bullmq';
@@ -47,6 +48,9 @@ import { MetadataPageDto } from 'src/common/pagination/metadata-page.dto';
 import { PageDto } from 'src/common/pagination/page.dto';
 import { MediaUrlService } from 'src/common/services/media-url.service';
 import { AdminUsersService } from 'src/users/application/use-cases/admin-users.service';
+import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants';
+import { Meilisearch } from 'meilisearch';
+import { MeilisearchFilterBuilder } from '../builders/meilisearch-filter.builder';
 import { SensitiveContentService } from './sensitive-content.service';
 
 interface RawChapterItem {
@@ -71,6 +75,8 @@ type BookListItem = Omit<Book, 'covers'> & {
 
 @Injectable()
 export class BookQueryService {
+	private readonly logger = new Logger(BookQueryService.name);
+
 	constructor(
 		@Inject(I_BOOK_REPOSITORY)
 		private readonly bookRepository: IBookRepository,
@@ -95,6 +101,8 @@ export class BookQueryService {
 		@InjectQueue('fix-chapter-queue')
 		private readonly fixChapterQueue: Queue<{ chapterId: string }>,
 		private readonly adminUsersService: AdminUsersService,
+		@Inject(MEILI_CLIENT)
+		private readonly meiliClient: Meilisearch,
 	) {}
 
 	private async ensureUserCanAccessBook(
@@ -134,6 +142,64 @@ export class BookQueryService {
 				baseMaxWeightSensitiveContent: maxWeightSensitiveContent,
 			});
 
+		// CAMINHO 1: Busca via Meilisearch (quando há termo de pesquisa)
+		if (options.search?.trim()) {
+			try {
+				const filter = MeilisearchFilterBuilder.build(
+					options,
+					accessContext,
+				);
+				const limit = options.limit || 20;
+				const offset = (options.page - 1) * limit;
+
+				// Determina ordenação
+				const sort: string[] = [];
+				if (options.orderBy) {
+					sort.push(`${options.orderBy}:${options.order || 'desc'}`);
+				}
+
+				const searchResult = await this.meiliClient
+					.index('books')
+					.search(options.search, {
+						limit,
+						offset,
+						filter,
+						sort: sort.length > 0 ? sort : undefined,
+						attributesToRetrieve: ['id'],
+					});
+
+				const ids = searchResult.hits.map((hit) => hit.id as string);
+				const total = searchResult.estimatedTotalHits || 0;
+
+				const books =
+					await this.bookRepository.findByIdsPreservingOrder(ids);
+
+				const data = books.map((b) => {
+					const selectedCover = b.covers?.[0] || null;
+					return {
+						...b,
+						cover: this.mediaUrlService.resolveUrl(
+							selectedCover?.url || null,
+							StorageBucket.BOOKS,
+						),
+						coverMetadata: selectedCover?.metadata || null,
+					} as BookListItem;
+				});
+
+				const metadata = new MetadataPageDto();
+				metadata.total = total;
+				metadata.page = options.page;
+				metadata.lastPage = Math.ceil(total / limit);
+
+				return new PageDto(data, metadata);
+			} catch (error) {
+				this.logger.error(
+					`Meilisearch query failed, falling back to MySQL: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			}
+		}
+
+		// CAMINHO 2: Navegação via MySQL (Catálogo ou Fallback)
 		const [books, total] = await this.bookRepository.findWithFilters(
 			options,
 			accessContext,

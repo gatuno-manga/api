@@ -32,6 +32,7 @@ export interface IBookRepository {
 		filterStrategies: FilterStrategy[],
 	): Promise<Book | null>;
 	findAllInProcess(): Promise<Book[]>;
+	findByIdsPreservingOrder(ids: string[]): Promise<Book[]>;
 	checkBookTitleConflict(
 		title: string,
 		alternativeTitles: string[],

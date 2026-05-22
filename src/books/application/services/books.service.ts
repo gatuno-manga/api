@@ -57,7 +57,7 @@ export class BooksService {
 		this.filterStrategies = [
 			new IdFilterStrategy(),
 			new TypeFilterStrategy(),
-			new SearchFilterStrategy(this.meiliClient),
+			new SearchFilterStrategy(),
 			new TagsFilterStrategy(),
 			new ExcludeTagsFilterStrategy(),
 			new PublicationFilterStrategy(),

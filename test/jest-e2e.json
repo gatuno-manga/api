@@ -28,6 +28,7 @@
 		"^@metrics/(.*)$": "<rootDir>/../src/metrics/$1",
 		"^@pages/(.*)$": "<rootDir>/../src/pages/$1",
 		"^@scraping/(.*)$": "<rootDir>/../src/scraping/$1",
-		"^@users/(.*)$": "<rootDir>/../src/users/$1"
+		"^@users/(.*)$": "<rootDir>/../src/users/$1",
+		"^@websites/(.*)$": "<rootDir>/../src/websites/$1"
 	}
 }
