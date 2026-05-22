@@ -127,7 +127,6 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 				},
 				uploadTarget: {
 					bucket: StorageBucket.PROCESSING,
-					pathPrefix: `${chapter.id}`,
 				},
 			};
 

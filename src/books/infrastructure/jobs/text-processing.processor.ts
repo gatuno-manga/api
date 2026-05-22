@@ -91,7 +91,6 @@ export class TextProcessingProcessor
 				urls: externalUrls,
 				uploadTarget: {
 					bucket: StorageBucket.PROCESSING,
-					pathPrefix: `mirrored/${source.toLowerCase()}/${entityId}`,
 				},
 			};
 

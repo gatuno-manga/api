@@ -162,7 +162,6 @@ export class BookContentUpdateService implements OnModuleInit {
 					bookInfoExtractScript: websiteConfig.bookInfoExtractScript,
 					uploadTarget: {
 						bucket: StorageBucket.PROCESSING,
-						pathPrefix: `${jobId.slice(-2)}/${jobId}`,
 					},
 				};
 

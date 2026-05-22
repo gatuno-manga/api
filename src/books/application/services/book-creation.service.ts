@@ -97,7 +97,6 @@ export class BookCreationService implements OnModuleInit {
 			newBookExtractScript: websiteConfig.newBookExtractScript,
 			uploadTarget: {
 				bucket: StorageBucket.PROCESSING,
-				pathPrefix: `${jobId.slice(-2)}/${jobId}`,
 			},
 		};
 

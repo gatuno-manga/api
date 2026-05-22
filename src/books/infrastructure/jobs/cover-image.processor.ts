@@ -134,7 +134,6 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 				})),
 				uploadTarget: {
 					bucket: StorageBucket.PROCESSING,
-					pathPrefix: 'capas',
 				},
 			};
 
