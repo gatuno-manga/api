@@ -4,6 +4,7 @@ import { AuthModule } from '@auth/auth.module';
 import { Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { Partitioners } from 'kafkajs';
 import { I_WEBSITE_REPOSITORY } from './application/ports/website-repository.interface';
 import { WebsiteService } from './application/services/website.service';
 import { TypeOrmWebsiteRepositoryAdapter } from './infrastructure/database/adapters/typeorm-website-repository.adapter';
@@ -38,6 +39,9 @@ import { WebsiteController } from './infrastructure/http/controllers/website.con
 						},
 						consumer: {
 							groupId: 'scraper-consumer',
+						},
+						producer: {
+							createPartitioner: Partitioners.LegacyPartitioner,
 						},
 					},
 				}),
