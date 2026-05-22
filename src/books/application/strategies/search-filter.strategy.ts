@@ -13,77 +13,39 @@ import { FilterStrategy } from './filter-strategy.interface';
 export class SearchFilterStrategy implements FilterStrategy {
 	private readonly logger = new Logger(SearchFilterStrategy.name);
 
-	constructor(private readonly meiliClient?: Meilisearch) {}
-
 	canApply(options: BookPageOptionsDto): boolean {
 		const terms = this.normalizeTerms(options.search ?? '');
-		const hasSearch = terms.length > 0;
-		const hasSites = !!(options.sites && options.sites.length > 0);
-		return hasSearch || hasSites;
+		return terms.length > 0;
 	}
 
 	async apply(
 		queryBuilder: SelectQueryBuilder<Book>,
 		options: BookPageOptionsDto,
 	): Promise<void> {
-		if (this.meiliClient) {
-			try {
-				const filter: string[] = [];
-
-				if (options.sites && options.sites.length > 0) {
-					const sitesFilter = options.sites
-						.map((site) => `sites = "${site}"`)
-						.join(' OR ');
-					filter.push(`(${sitesFilter})`);
-				}
-
-				const meiliFilter =
-					filter.length > 0 ? filter.join(' AND ') : undefined;
-				const query = options.search || '';
-
-				const searchResult = await this.meiliClient
-					.index('books')
-					.search(query, {
-						limit: 100,
-						filter: meiliFilter,
-						attributesToRetrieve: ['id'],
-					});
-
-				const ids = searchResult.hits.map((hit) => hit.id as string);
-
-				if (ids.length > 0) {
-					queryBuilder.andWhere('book.id IN (:...ids)', { ids });
-					const escapedIds = ids.map((id) => `'${id}'`).join(',');
-					queryBuilder.addOrderBy(`FIELD(book.id, ${escapedIds})`);
-					return;
-				}
-
-				// Se o Meilisearch não retornou nada, forçamos resultado vazio
-				queryBuilder.andWhere('1 = 0');
-				return;
-			} catch (error) {
-				this.logger.error(
-					`Meilisearch search error: ${error instanceof Error ? error.message : String(error)}`,
-				);
-			}
-		}
-
-		// Fallback Logic (Existing MySQL Fulltext Search)
 		const terms = this.normalizeTerms(options.search ?? '');
+		if (terms.length === 0) return;
+
 		const booleanQuery = this.buildBooleanQuery(terms);
 		const likeSearch = `%${(options.search ?? '').trim()}%`;
 
-		const params: Record<string, string> = { booleanQuery, likeSearch };
-		terms.forEach((term, idx) => {
-			params[`soundex_${idx}`] = term;
-		});
+		const params: Record<string, string | number> = {
+			booleanQuery,
+			likeSearch,
+		};
 
+		// 1. Cláusula FULLTEXT (Principal)
 		const fulltextClause = `MATCH(${FULLTEXT_COLUMNS}) AGAINST(:booleanQuery IN BOOLEAN MODE)`;
 
-		const soundexClauses = terms.map(
-			(_, idx) => `book.title SOUNDS LIKE :soundex_${idx}`,
-		);
+		// 2. Cláusula SOUNDS LIKE (Apenas para termos curtos para evitar lentidão)
+		const soundexClauses: string[] = [];
+		if (terms.length > 0 && terms.length <= 3) {
+			for (let i = 0; i < terms.length; i++) {
+				params[`soundex_${i}`] = terms[i];
+				soundexClauses.push(`book.title SOUNDS LIKE :soundex_${i}`);
+			}
+		}
 
+		// 3. Cláusula LIKE (Fallback para campos JSON não indexados em FT)
 		const likeClauses = LIKE_FALLBACK_COLUMNS.map(
 			(col) => `${col} LIKE :likeSearch`,
 		);

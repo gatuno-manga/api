@@ -378,6 +378,25 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 		return books as unknown as DomainBook[];
 	}
 
+	async findByIdsPreservingOrder(ids: string[]): Promise<DomainBook[]> {
+		if (ids.length === 0) return [];
+
+		const escapedIds = ids.map((id) => `'${id}'`).join(',');
+		const books = await this.repository
+			.createQueryBuilder('book')
+			.leftJoinAndSelect(
+				'book.covers',
+				'covers',
+				'covers.selected = :selected',
+				{ selected: true },
+			)
+			.where('book.id IN (:...ids)', { ids })
+			.orderBy(`FIELD(book.id, ${escapedIds})`)
+			.getMany();
+
+		return books as unknown as DomainBook[];
+	}
+
 	async checkBookTitleConflict(
 		title: string,
 		alternativeTitles: string[] = [],
