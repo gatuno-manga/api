@@ -55,8 +55,8 @@ export class User {
 	@Column({ type: 'varchar', length: 10, default: 'pt-BR' })
 	preferredLanguage: string;
 
-	@Column({ type: 'json', default: {} })
-	preferences: Record<string, unknown>;
+	@Column({ type: 'json', nullable: true })
+	preferences: Record<string, unknown> = {};
 
 	@ManyToMany(() => Role, { eager: true })
 	@JoinTable({ name: 'users_roles' })
