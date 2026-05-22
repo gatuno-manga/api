@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
 	IsInt,
+	IsObject,
 	IsOptional,
 	IsString,
 	Max,
@@ -41,4 +42,22 @@ export class UpdateUserDto {
 	@Min(0)
 	@Max(99)
 	maxWeightSensitiveContent?: number;
+
+	@ApiPropertyOptional({
+		description: 'User preferred language (BCP 47)',
+		example: 'pt-BR',
+		maxLength: 10,
+	})
+	@IsOptional()
+	@IsString()
+	@MaxLength(10)
+	preferredLanguage?: string;
+
+	@ApiPropertyOptional({
+		description: 'User settings and preferences in JSON format',
+		example: { theme: 'dark' },
+	})
+	@IsOptional()
+	@IsObject()
+	preferences?: Record<string, unknown>;
 }

@@ -52,6 +52,12 @@ export class User {
 	@Column({ type: 'varchar', length: 255, nullable: true })
 	suspensionReason: string | null;
 
+	@Column({ type: 'varchar', length: 10, default: 'pt-BR' })
+	preferredLanguage: string;
+
+	@Column({ type: 'json', default: {} })
+	preferences: Record<string, unknown>;
+
 	@ManyToMany(() => Role, { eager: true })
 	@JoinTable({ name: 'users_roles' })
 	roles: Role[];

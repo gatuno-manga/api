@@ -11,6 +11,8 @@ export class User {
 	isBanned: boolean;
 	suspendedUntil: Date | null;
 	suspensionReason: string | null;
+	preferredLanguage: string;
+	preferences: Record<string, unknown>;
 	createdAt: Date;
 	updatedAt: Date;
 }

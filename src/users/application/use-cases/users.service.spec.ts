@@ -20,6 +20,7 @@ describe('UsersService', () => {
 		create: jest.fn(),
 		update: jest.fn(),
 		delete: jest.fn(),
+		merge: jest.fn(),
 	};
 
 	const mockRoleRepository = {
@@ -109,7 +110,26 @@ describe('UsersService', () => {
 		expect(userRepository).toBeDefined();
 	});
 
-	it('should have roleRepository injected', () => {
-		expect(roleRepository).toBeDefined();
+	it('should update user preferences successfully', async () => {
+		const userId = 'user-1';
+		const updateDto = { preferences: { theme: 'dark', language: 'pt' } };
+		const existingUser = { id: userId, userName: 'john' } as User;
+		const updatedUser = { ...existingUser, ...updateDto } as User;
+
+		mockUserRepository.findOne.mockResolvedValue(existingUser);
+		mockUserRepository.save.mockResolvedValue(updatedUser);
+
+		// Repository.merge mock (manual simulation for the test)
+		jest.spyOn(userRepository, 'merge').mockImplementation(
+			(entity: any, dto: any) => ({ ...entity, ...dto }) as any,
+		);
+
+		const result = await service.updateUser(updateDto as any, userId);
+
+		expect(userRepository.findOne).toHaveBeenCalledWith({
+			where: { id: userId },
+		});
+		expect(userRepository.save).toHaveBeenCalled();
+		expect(result.preferences).toEqual(updateDto.preferences);
 	});
 });
