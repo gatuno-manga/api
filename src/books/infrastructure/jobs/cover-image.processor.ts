@@ -34,10 +34,16 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 		super();
 	}
 
-	async onModuleInit() {
+	onModuleInit() {
 		this.worker.concurrency =
 			this.configService.queueConcurrency.coverImage;
-		await this.scraperClient.connect();
+
+		// Conecta em background para não bloquear o bootstrap da API
+		this.scraperClient.connect().catch((error) => {
+			this.logger.error(
+				`[CoverImageProcessor] Falha ao conectar ao Scraper Kafka em background: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		});
 	}
 
 	@OnWorkerEvent('active')

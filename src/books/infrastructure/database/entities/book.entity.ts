@@ -27,7 +27,7 @@ import { Tag } from './tags.entity';
 @Index(['scrapingStatus'])
 @Index(['createdAt'])
 @Index(['deletedAt'])
-@Index(['title', 'description'], { fulltext: true })
+@Index(['title', 'description', 'alternative_titles_text'], { fulltext: true })
 @Check(
 	`"publication" IS NULL OR ("publication" >= 1980 AND "publication" <= ${new Date().getFullYear() + 2})`,
 )
@@ -126,6 +126,19 @@ export class Book {
 	)
 	@JoinTable()
 	authors: Relation<Author[]>;
+
+	/**
+	 * Coluna virtual (populada via triggers no MySQL) para busca FULLTEXT.
+	 * Contém os títulos alternativos limpos de caracteres JSON.
+	 */
+	@Column({
+		type: 'text',
+		select: false,
+		insert: false,
+		update: false,
+		nullable: true,
+	})
+	alternative_titles_text: string;
 
 	@CreateDateColumn()
 	createdAt: Date;

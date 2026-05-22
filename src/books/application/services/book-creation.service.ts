@@ -47,8 +47,13 @@ export class BookCreationService implements OnModuleInit {
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
-	async onModuleInit() {
-		await this.scraperClient.connect();
+	onModuleInit() {
+		// Conecta em background para não bloquear o bootstrap da API
+		this.scraperClient.connect().catch((error) => {
+			this.logger.error(
+				`[BookCreationService] Falha ao conectar ao Scraper Kafka em background: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		});
 	}
 
 	async autoCreateBook(url: string): Promise<{ jobId: string }> {

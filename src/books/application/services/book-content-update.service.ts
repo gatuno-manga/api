@@ -60,8 +60,13 @@ export class BookContentUpdateService implements OnModuleInit {
 		private readonly redisService: RedisService,
 	) {}
 
-	async onModuleInit() {
-		await this.scraperClient.connect();
+	onModuleInit() {
+		// Conecta em background para não bloquear o bootstrap da API
+		this.scraperClient.connect().catch((error) => {
+			this.logger.error(
+				`[BookContentUpdateService] Falha ao conectar ao Scraper Kafka em background: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		});
 	}
 
 	async performUpdate(bookId: string): Promise<BookContentUpdateResult> {
