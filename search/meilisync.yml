@@ -23,6 +23,7 @@ sync:
   - table: authors
     index: authors
     full: true
+    sql: "SELECT * FROM authors_search_view WHERE id = :id"
   - table: tags
     index: tags
     full: true
