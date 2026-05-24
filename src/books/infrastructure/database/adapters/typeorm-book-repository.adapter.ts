@@ -136,6 +136,29 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 			}
 		}
 
+		// Clean up transient properties and relations from updateData
+		// These properties are handled separately or are virtual/transient
+		const propertiesToRemove = [
+			'description',
+			'tags',
+			'authors',
+			'sensitiveContent',
+			'covers',
+			'alternativeTitles',
+			'localizedDescriptions',
+			'chapters',
+		];
+
+		for (const prop of propertiesToRemove) {
+			if (prop in (updateData as Record<string, unknown>)) {
+				delete (updateData as Record<string, unknown>)[prop];
+			}
+		}
+
+		if (Object.keys(updateData as Record<string, unknown>).length === 0) {
+			return;
+		}
+
 		await this.repository.update(
 			id,
 			updateData as Parameters<
