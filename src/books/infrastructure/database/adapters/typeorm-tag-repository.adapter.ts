@@ -6,7 +6,13 @@ import { Book as InfrastructureBook } from '@books/infrastructure/database/entit
 import { Tag as InfrastructureTag } from '@books/infrastructure/database/entities/tags.entity';
 import { Injectable, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, FindOptionsWhere, In, Repository } from 'typeorm';
+import {
+	Brackets,
+	EntityManager,
+	FindOptionsWhere,
+	In,
+	Repository,
+} from 'typeorm';
 
 interface RawTagResult {
 	tag_id: string;
@@ -214,9 +220,139 @@ export class TypeOrmTagRepositoryAdapter implements ITagRepository {
 
 		const d = options as Record<string, unknown>;
 		if (d.search) {
-			queryBuilder.where('tag.name LIKE :search', {
+			queryBuilder.andWhere('tag.name LIKE :search', {
 				search: `%${d.search as string}%`,
 			});
+		}
+
+		// Apply maxWeight filter: restrict tags that ONLY appear in books above the maxWeight
+		// That is: A tag is valid if it has 0 books, OR it has at least one book where ALL sensitive content is <= maxWeight
+		if (_maxWeight !== undefined && _maxWeight < 99) {
+			queryBuilder.andWhere(
+				new Brackets((qb) => {
+					// 1. Tag is not used in any book
+					const noBooksSubQuery = queryBuilder
+						.subQuery()
+						.select('1')
+						.from('books_tags_tags', 'bt')
+						.where('bt.tagsId = tag.id');
+					qb.where(`NOT EXISTS ${noBooksSubQuery.getQuery()}`);
+
+					// 2. Tag has at least one valid book
+					const validBookSubQuery = queryBuilder
+						.subQuery()
+						.select('1')
+						.from('books_tags_tags', 'bt2')
+						.innerJoin('books', 'b', 'b.id = bt2.booksId')
+						.where('bt2.tagsId = tag.id')
+						.andWhere((qb2) => {
+							const heavyContentSubQuery = qb2
+								.subQuery()
+								.select('1')
+								.from(
+									'books_sensitive_content_sensitive_content',
+									'bsc',
+								)
+								.innerJoin(
+									'sensitive_content',
+									'sc',
+									'sc.id = bsc.sensitiveContentId',
+								)
+								.where('bsc.booksId = b.id')
+								.andWhere('sc.weight > :maxWeight');
+							return `NOT EXISTS ${heavyContentSubQuery.getQuery()}`;
+						});
+					qb.orWhere(`EXISTS ${validBookSubQuery.getQuery()}`);
+				}),
+			);
+			queryBuilder.setParameter('maxWeight', _maxWeight);
+		}
+
+		// Apply options.sensitiveContent filter
+		if (options.sensitiveContent && options.sensitiveContent.length > 0) {
+			const safeTriggerValues = ['safe', '0'];
+			const isSafeRequested = options.sensitiveContent.some((val) =>
+				safeTriggerValues.includes(val.toLowerCase()),
+			);
+			const realTags = options.sensitiveContent.filter(
+				(val) => !safeTriggerValues.includes(val.toLowerCase()),
+			);
+
+			queryBuilder.andWhere(
+				new Brackets((qb) => {
+					let conditionStarted = false;
+
+					if (realTags.length > 0) {
+						const paramName = `sc_tags_${Math.random()
+							.toString(36)
+							.substring(7)}`;
+
+						// Verificar se os valores em realTags são UUIDs
+						const hasUuids = realTags.some((str) =>
+							/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+								str,
+							),
+						);
+
+						const hasTagsSubQuery = queryBuilder
+							.subQuery()
+							.select('1')
+							.from('books_tags_tags', 'bt3')
+							.innerJoin(
+								'books_sensitive_content_sensitive_content',
+								'bsc3',
+								'bsc3.booksId = bt3.booksId',
+							);
+
+						if (hasUuids) {
+							hasTagsSubQuery
+								.where('bt3.tagsId = tag.id')
+								.andWhere(
+									`bsc3.sensitiveContentId IN (:...${paramName})`,
+								);
+						} else {
+							hasTagsSubQuery
+								.innerJoin(
+									'sensitive_content',
+									'sc3',
+									'sc3.id = bsc3.sensitiveContentId',
+								)
+								.where('bt3.tagsId = tag.id')
+								.andWhere(`sc3.name IN (:...${paramName})`);
+						}
+
+						qb.where(`EXISTS ${hasTagsSubQuery.getQuery()}`);
+						queryBuilder.setParameter(paramName, realTags);
+						conditionStarted = true;
+					}
+
+					if (isSafeRequested) {
+						const safeBookSubQuery = queryBuilder
+							.subQuery()
+							.select('1')
+							.from('books_tags_tags', 'bt4')
+							.innerJoin('books', 'b4', 'b4.id = bt4.booksId')
+							.where('bt4.tagsId = tag.id')
+							.andWhere((qb4) => {
+								const anyContentSubQuery = qb4
+									.subQuery()
+									.select('1')
+									.from(
+										'books_sensitive_content_sensitive_content',
+										'bsc4',
+									)
+									.where('bsc4.booksId = b4.id');
+								return `NOT EXISTS ${anyContentSubQuery.getQuery()}`;
+							});
+
+						if (conditionStarted) {
+							qb.orWhere(`EXISTS ${safeBookSubQuery.getQuery()}`);
+						} else {
+							qb.where(`EXISTS ${safeBookSubQuery.getQuery()}`);
+						}
+					}
+				}),
+			);
 		}
 
 		if (d.limit) {
