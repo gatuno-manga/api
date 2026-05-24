@@ -47,6 +47,10 @@ export class WebauthnService {
 		return `webauthn:authenticate:challenge:${userId}`;
 	}
 
+	private authenticationChallengeStringKey(challenge: string): string {
+		return `webauthn:authenticate:challenge_str:${challenge}`;
+	}
+
 	private normalizeTransports(
 		transports?: string[] | null,
 	): SupportedTransport[] {
@@ -182,35 +186,55 @@ export class WebauthnService {
 		};
 	}
 
-	async beginAuthentication(email: string) {
-		const user = await this.userRepository.findOne({
-			where: { email },
-		});
-		if (!user) {
-			throw new UnauthorizedException('User not found');
+	async beginAuthentication(email?: string) {
+		if (email) {
+			const user = await this.userRepository.findOne({
+				where: { email },
+			});
+			if (!user) {
+				throw new UnauthorizedException('User not found');
+			}
+
+			const credentials = await this.credentialRepository.find({
+				where: { userId: user.id },
+			});
+			if (credentials.length === 0) {
+				throw new BadRequestException(
+					'User has no registered passkeys',
+				);
+			}
+
+			const options = await generateAuthenticationOptions({
+				rpID: this.configService.webauthnRpId,
+				timeout: this.configService.webauthnChallengeTtlMs,
+				userVerification: 'preferred',
+				allowCredentials: credentials.map((credential) => ({
+					id: credential.credentialId,
+					transports:
+						this.normalizeTransports(credential.transports) ||
+						undefined,
+				})),
+			});
+
+			await this.cacheManager.set(
+				this.authenticationChallengeKey(user.id),
+				options.challenge,
+				this.configService.webauthnChallengeTtlMs,
+			);
+
+			return options;
 		}
 
-		const credentials = await this.credentialRepository.find({
-			where: { userId: user.id },
-		});
-		if (credentials.length === 0) {
-			throw new BadRequestException('User has no registered passkeys');
-		}
-
+		// Nameless flow (no email provided)
 		const options = await generateAuthenticationOptions({
 			rpID: this.configService.webauthnRpId,
 			timeout: this.configService.webauthnChallengeTtlMs,
 			userVerification: 'preferred',
-			allowCredentials: credentials.map((credential) => ({
-				id: credential.credentialId,
-				transports:
-					this.normalizeTransports(credential.transports) ||
-					undefined,
-			})),
+			// allowCredentials is omitted to allow any discoverable credential
 		});
 
 		await this.cacheManager.set(
-			this.authenticationChallengeKey(user.id),
+			this.authenticationChallengeStringKey(options.challenge),
 			options.challenge,
 			this.configService.webauthnChallengeTtlMs,
 		);
@@ -219,32 +243,72 @@ export class WebauthnService {
 	}
 
 	async verifyAuthentication(
-		email: string,
+		email: string | undefined,
 		response: Record<string, unknown>,
 	): Promise<User> {
-		const user = await this.userRepository.findOne({
-			where: { email },
-			relations: ['roles'],
-		});
-		if (!user) {
-			throw new UnauthorizedException('User not found');
-		}
-
 		const responseCredentialId = response.id;
 		if (typeof responseCredentialId !== 'string') {
 			throw new BadRequestException('Invalid passkey response');
 		}
 
+		// Identify user by credentialId (allows nameless login)
 		const credential = await this.credentialRepository.findOne({
-			where: { userId: user.id, credentialId: responseCredentialId },
+			where: { credentialId: responseCredentialId },
+			relations: ['user', 'user.roles'],
 		});
-		if (!credential) {
-			throw new UnauthorizedException('Passkey not found for this user');
+
+		if (!credential || !credential.user) {
+			throw new UnauthorizedException('Passkey not found or invalid');
 		}
 
-		const challengeKey = this.authenticationChallengeKey(user.id);
-		const expectedChallenge =
-			await this.cacheManager.get<string>(challengeKey);
+		// If email was provided, verify it matches the credential's owner
+		if (email && credential.user.email !== email) {
+			throw new UnauthorizedException(
+				'Passkey does not belong to this email',
+			);
+		}
+
+		const user = credential.user;
+
+		// Find expected challenge
+		let expectedChallenge: string | undefined;
+
+		// 1. Try challenge extracted from clientDataJSON (Nameless flow)
+		const responseData = response.response as Record<string, unknown>;
+		if (typeof responseData?.clientDataJSON === 'string') {
+			try {
+				const clientData = JSON.parse(
+					Buffer.from(
+						responseData.clientDataJSON,
+						'base64url',
+					).toString('utf8'),
+				);
+				const challenge = clientData.challenge;
+				if (typeof challenge === 'string') {
+					expectedChallenge = await this.cacheManager.get<string>(
+						this.authenticationChallengeStringKey(challenge),
+					);
+					if (expectedChallenge) {
+						await this.cacheManager.del(
+							this.authenticationChallengeStringKey(challenge),
+						);
+					}
+				}
+			} catch (e) {
+				// Ignore parsing errors, fallback to userId challenge
+			}
+		}
+
+		// 2. Fallback to userId challenge (Legacy flow)
+		if (!expectedChallenge) {
+			const challengeKey = this.authenticationChallengeKey(user.id);
+			expectedChallenge =
+				await this.cacheManager.get<string>(challengeKey);
+			if (expectedChallenge) {
+				await this.cacheManager.del(challengeKey);
+			}
+		}
+
 		if (!expectedChallenge) {
 			throw new UnauthorizedException(
 				'Passkey authentication challenge expired. Try again.',
@@ -276,7 +340,6 @@ export class WebauthnService {
 		credential.counter = verification.authenticationInfo.newCounter;
 		credential.lastUsedAt = new Date();
 		await this.credentialRepository.save(credential);
-		await this.cacheManager.del(challengeKey);
 
 		return user;
 	}
