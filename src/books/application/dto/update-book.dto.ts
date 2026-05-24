@@ -1,13 +1,14 @@
 import { BookType } from '@books/domain/enums/book-type.enum';
 import { NormalizeUrl } from '@common/decorators/normalize-url.decorator';
+import { SUPPORTED_LANGUAGE_CODES } from '@common/domain/constants/languages.constant';
 import { ApiPropertyOptional, OmitType, PartialType } from '@nestjs/swagger';
-import { Transform, Type } from 'class-transformer';
+import { Type } from 'class-transformer';
 import {
 	IsEnum,
+	IsIn,
 	IsOptional,
 	IsString,
 	IsUrl,
-	MaxLength,
 	ValidateNested,
 } from 'class-validator';
 import { AlternativeTitleDto } from './alternative-title.dto';
@@ -42,11 +43,11 @@ export class UpdateBookDto extends PartialType(
 	@ApiPropertyOptional({
 		description: 'Original language code (BCP 47)',
 		example: 'ja-JP',
-		maxLength: 10,
+		enum: SUPPORTED_LANGUAGE_CODES,
 	})
 	@IsOptional()
 	@IsString()
-	@MaxLength(10)
+	@IsIn(SUPPORTED_LANGUAGE_CODES)
 	originalLanguageCode?: string;
 
 	@ApiPropertyOptional({

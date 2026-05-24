@@ -1,6 +1,8 @@
+import { SUPPORTED_LANGUAGE_CODES } from '@common/domain/constants/languages.constant';
 import { ApiProperty } from '@nestjs/swagger';
 import {
 	IsArray,
+	IsIn,
 	IsInt,
 	IsOptional,
 	IsString,
@@ -45,9 +47,11 @@ export class CurrentUserDto {
 		description: 'User preferred language for content',
 		example: 'pt-BR',
 		required: false,
+		enum: SUPPORTED_LANGUAGE_CODES,
 	})
 	@IsString()
 	@IsOptional()
+	@IsIn(SUPPORTED_LANGUAGE_CODES)
 	preferredLanguage?: string;
 
 	@ApiProperty({

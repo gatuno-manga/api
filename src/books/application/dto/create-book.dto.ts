@@ -1,17 +1,18 @@
 import { BookType } from '@books/domain/enums/book-type.enum';
 import { NormalizeUrl } from '@common/decorators/normalize-url.decorator';
+import { SUPPORTED_LANGUAGE_CODES } from '@common/domain/constants/languages.constant';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
 	IsBoolean,
 	IsEnum,
+	IsIn,
 	IsNumber,
 	IsOptional,
 	IsPositive,
 	IsString,
 	IsUrl,
 	Max,
-	MaxLength,
 	Min,
 	ValidateNested,
 } from 'class-validator';
@@ -55,11 +56,11 @@ export class CreateBookDto {
 	@ApiPropertyOptional({
 		description: 'Original language code (BCP 47)',
 		example: 'ja-JP',
-		maxLength: 10,
+		enum: SUPPORTED_LANGUAGE_CODES,
 	})
 	@IsOptional()
 	@IsString()
-	@MaxLength(10)
+	@IsIn(SUPPORTED_LANGUAGE_CODES)
 	originalLanguageCode?: string;
 
 	@ApiPropertyOptional({

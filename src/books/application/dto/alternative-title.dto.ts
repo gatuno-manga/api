@@ -1,5 +1,6 @@
+import { SUPPORTED_LANGUAGE_CODES } from '@common/domain/constants/languages.constant';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class AlternativeTitleDto {
 	@ApiProperty({
@@ -14,11 +15,11 @@ export class AlternativeTitleDto {
 	@ApiPropertyOptional({
 		description: 'BCP 47 language code',
 		example: 'ja-JP',
-		maxLength: 10,
+		enum: SUPPORTED_LANGUAGE_CODES,
 	})
 	@IsOptional()
 	@IsString()
-	@MaxLength(10)
+	@IsIn(SUPPORTED_LANGUAGE_CODES)
 	languageCode?: string;
 
 	@ApiPropertyOptional({
