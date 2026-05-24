@@ -51,6 +51,7 @@ import { PageDto } from 'src/common/pagination/page.dto';
 import { MediaUrlService } from 'src/common/services/media-url.service';
 import { AdminUsersService } from 'src/users/application/use-cases/admin-users.service';
 import { MeilisearchFilterBuilder } from '../builders/meilisearch-filter.builder';
+import { resolveLocalizedField } from '../utils/localization.utils';
 import { SensitiveContentService } from './sensitive-content.service';
 
 interface RawChapterItem {
@@ -130,11 +131,55 @@ export class BookQueryService {
 		}
 	}
 
+	/**
+	 * Mapeia e resolve campos localizados para um livro
+	 */
+	private mapBookLocalizations(book: Book, targetLang?: string): Book {
+		const lang = targetLang || 'pt-BR';
+
+		// 1. Resolver Título
+		const bestTitle = resolveLocalizedField(
+			book.alternativeTitles,
+			lang,
+			book.originalLanguageCode,
+		);
+		if (bestTitle) {
+			book.title = bestTitle.title;
+		}
+
+		// 2. Resolver Descrição
+		const bestDesc = resolveLocalizedField(
+			book.localizedDescriptions,
+			lang,
+			book.originalLanguageCode,
+		);
+		if (bestDesc) {
+			book.description = bestDesc.description;
+		}
+
+		// 3. Resolver Biografia dos Autores
+		if (book.authors) {
+			for (const author of book.authors) {
+				const bestBio = resolveLocalizedField(
+					author.localizedBiographies,
+					lang,
+					null,
+				);
+				if (bestBio) {
+					author.biography = bestBio.biography;
+				}
+			}
+		}
+
+		return book;
+	}
+
 	async getAllBooks(
 		options: BookPageOptionsDto,
 		maxWeightSensitiveContent: number,
 		userId: string | undefined,
 		filterStrategies: FilterStrategy[],
+		targetLang?: string,
 	): Promise<PageDto<BookListItem> | CursorPageDto<BookListItem>> {
 		const accessContext =
 			await this.adminUsersService.evaluateListAccessContext({
@@ -175,9 +220,13 @@ export class BookQueryService {
 					await this.bookRepository.findByIdsPreservingOrder(ids);
 
 				const data = books.map((b) => {
-					const selectedCover = b.covers?.[0] || null;
+					const mappedBook = this.mapBookLocalizations(
+						b,
+						targetLang || options.lang,
+					);
+					const selectedCover = mappedBook.covers?.[0] || null;
 					return {
-						...b,
+						...mappedBook,
 						cover: this.mediaUrlService.resolveUrl(
 							selectedCover?.url || null,
 							StorageBucket.BOOKS,
@@ -206,9 +255,13 @@ export class BookQueryService {
 			filterStrategies,
 		);
 		const data = books.map((b) => {
-			const selectedCover = b.covers?.[0] || null;
+			const mappedBook = this.mapBookLocalizations(
+				b,
+				targetLang || options.lang,
+			);
+			const selectedCover = mappedBook.covers?.[0] || null;
 			return {
-				...b,
+				...mappedBook,
 				cover: this.mediaUrlService.resolveUrl(
 					selectedCover?.url || null,
 					StorageBucket.BOOKS,
@@ -238,6 +291,7 @@ export class BookQueryService {
 		maxWeightSensitiveContent: number,
 		userId: string | undefined,
 		filterStrategies: FilterStrategy[],
+		targetLang?: string,
 	): Promise<{ id: string }> {
 		const accessContext =
 			await this.adminUsersService.evaluateListAccessContext({
@@ -259,6 +313,7 @@ export class BookQueryService {
 		maxWeightSensitiveContent = 0,
 		userId?: string,
 		forceMaster = false,
+		targetLang?: string,
 	) {
 		const book = await this.bookRepository.findByIdWithDetails(
 			id,
@@ -272,7 +327,9 @@ export class BookQueryService {
 			userId,
 		);
 
-		const { covers, ...rest } = book;
+		const mappedBook = this.mapBookLocalizations(book, targetLang);
+
+		const { covers, ...rest } = mappedBook;
 		const selectedCover = covers?.[0] || null;
 
 		return {
@@ -391,12 +448,20 @@ export class BookQueryService {
 		return book.covers;
 	}
 
-	async getInfos(id: string, maxWeightSensitiveContent = 0, userId?: string) {
+	async getInfos(
+		id: string,
+		maxWeightSensitiveContent = 0,
+		userId?: string,
+		targetLang?: string,
+	) {
 		const book = await this.bookRepository.findById(id, [
 			'sensitiveContent',
 			'tags',
 			'authors',
 			'covers',
+			'localizedDescriptions',
+			'alternativeTitles',
+			'authors.localizedBiographies',
 		]);
 		if (!book) throw new NotFoundException('Book not found');
 
@@ -406,9 +471,11 @@ export class BookQueryService {
 			userId,
 		);
 
-		if (book.covers) {
-			book.covers.sort((a, b) => a.index - b.index);
-			for (const cover of book.covers) {
+		const mappedBook = this.mapBookLocalizations(book, targetLang);
+
+		if (mappedBook.covers) {
+			mappedBook.covers.sort((a, b) => a.index - b.index);
+			for (const cover of mappedBook.covers) {
 				cover.url = this.mediaUrlService.resolveUrl(
 					cover.url,
 					StorageBucket.BOOKS,
@@ -416,7 +483,7 @@ export class BookQueryService {
 			}
 		}
 
-		return book;
+		return mappedBook;
 	}
 
 	async verifyBook(idBook: string) {

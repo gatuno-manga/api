@@ -8,6 +8,7 @@ import {
 import { BookEvents } from '@books/domain/constants/events.constant';
 import { AlternativeTitle } from '@books/domain/entities/alternative-title';
 import { Book } from '@books/domain/entities/book';
+import { BookDescription } from '@books/domain/entities/book-description';
 import { Chapter } from '@books/domain/entities/chapter';
 import { Cover } from '@books/domain/entities/cover';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
@@ -139,10 +140,13 @@ export class BookCreationService implements OnModuleInit {
 				const languageCode = isString
 					? null
 					: (alt as AlternativeTitleDto).languageCode;
+				const rank = isString
+					? 0
+					: ((alt as AlternativeTitleDto).rank ?? 0);
 
 				if (title) {
 					consolidatedAltTitles.push(
-						new AlternativeTitle(title, languageCode || null),
+						new AlternativeTitle(title, languageCode || null, rank),
 					);
 				}
 			}
@@ -156,9 +160,38 @@ export class BookCreationService implements OnModuleInit {
 					!consolidatedAltTitles.some((t) => t.title === title)
 				) {
 					consolidatedAltTitles.push(
-						new AlternativeTitle(title, null),
+						new AlternativeTitle(title, null, 0),
 					);
 				}
+			}
+		}
+
+		// 3. Consolidate localized descriptions
+		const consolidatedDescriptions: BookDescription[] = [];
+		if (dto.localizedDescriptions?.length) {
+			for (const item of dto.localizedDescriptions) {
+				consolidatedDescriptions.push(
+					new BookDescription(
+						item.description,
+						item.languageCode,
+						item.rank ?? 0,
+					),
+				);
+			}
+		}
+
+		if (dto.description) {
+			const lang = dto.originalLanguageCode || 'pt-BR';
+			if (
+				!consolidatedDescriptions.some(
+					(d) =>
+						d.languageCode === lang &&
+						d.description === dto.description,
+				)
+			) {
+				consolidatedDescriptions.push(
+					new BookDescription(dto.description, lang, 0),
+				);
 			}
 		}
 
@@ -173,7 +206,7 @@ export class BookCreationService implements OnModuleInit {
 
 		if (conflictCheck.conflict && !dto.ignoreConflict) {
 			throw new BadRequestException({
-				message: `Já existe um livro com o título "${dto.title}" ou com um dos títulos alternativos. Se deseja cadastrar mesmo assim, defina o campo 'validator' como true.`,
+				message: `Já existe um livro com o título "${dto.title}" ou com um dos títulos alternativos. Se deseja cadastrar mesmo assim, defina o campo 'validator' as true.`,
 				conflictingBook: conflictCheck.existingBook,
 			});
 		}
@@ -213,6 +246,7 @@ export class BookCreationService implements OnModuleInit {
 				title: dto.title,
 				originalUrl: dto.originalUrl,
 				alternativeTitles: consolidatedAltTitles,
+				localizedDescriptions: consolidatedDescriptions,
 				searchTerms: dto.searchTerms,
 				description: dto.description,
 				publication: dto.publication,

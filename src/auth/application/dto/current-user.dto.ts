@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsInt, IsString, IsUUID, Min } from 'class-validator';
+import {
+	IsArray,
+	IsInt,
+	IsOptional,
+	IsString,
+	IsUUID,
+	Min,
+} from 'class-validator';
 
 export class CurrentUserDto {
 	@ApiProperty({
@@ -33,6 +40,15 @@ export class CurrentUserDto {
 	@IsInt()
 	@Min(0)
 	maxWeightSensitiveContent: number;
+
+	@ApiProperty({
+		description: 'User preferred language for content',
+		example: 'pt-BR',
+		required: false,
+	})
+	@IsString()
+	@IsOptional()
+	preferredLanguage?: string;
 
 	@ApiProperty({
 		description: 'Current logical session identifier',

@@ -15,7 +15,6 @@ import {
 	DeepPartial,
 	EntityManager,
 	FindOptionsWhere,
-	QueryDeepPartialEntity,
 	Repository,
 } from 'typeorm';
 
@@ -61,7 +60,16 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 		const book = await queryBuilder
 			.leftJoinAndSelect('book.tags', 'tags')
 			.leftJoinAndSelect('book.authors', 'authors')
+			.leftJoinAndSelect(
+				'authors.localizedBiographies',
+				'localizedBiographies',
+			)
 			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
+			.leftJoinAndSelect(
+				'book.localizedDescriptions',
+				'localizedDescriptions',
+			)
+			.leftJoinAndSelect('book.alternativeTitles', 'alternativeTitles')
 			.leftJoinAndSelect(
 				'book.covers',
 				'covers',
@@ -130,7 +138,9 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 
 		await this.repository.update(
 			id,
-			updateData as QueryDeepPartialEntity<InfrastructureBook>,
+			updateData as Parameters<
+				Repository<InfrastructureBook>['update']
+			>[1],
 		);
 	}
 
@@ -180,13 +190,19 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 
 		const queryBuilder = this.repository.createQueryBuilder('book');
 
-		// 1. Join covers (only selected)
-		queryBuilder.leftJoinAndSelect(
-			'book.covers',
-			'covers',
-			'covers.selected = :selected',
-			{ selected: true },
-		);
+		// 1. Join covers and multi-language relations
+		queryBuilder
+			.leftJoinAndSelect(
+				'book.covers',
+				'covers',
+				'covers.selected = :selected',
+				{ selected: true },
+			)
+			.leftJoinAndSelect(
+				'book.localizedDescriptions',
+				'localizedDescriptions',
+			)
+			.leftJoinAndSelect('book.alternativeTitles', 'alternativeTitles');
 
 		// 2. Apply Access Policy Filters
 		if (accessContext.blockedAll) {
@@ -437,6 +453,11 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 				'covers.selected = :selected',
 				{ selected: true },
 			)
+			.leftJoinAndSelect(
+				'book.localizedDescriptions',
+				'localizedDescriptions',
+			)
+			.leftJoinAndSelect('book.alternativeTitles', 'alternativeTitles')
 			.where('book.id IN (:...ids)', { ids })
 			.orderBy(`FIELD(book.id, ${escapedIds})`)
 			.getMany();

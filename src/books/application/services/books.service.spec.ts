@@ -243,6 +243,7 @@ describe('BooksService', () => {
 				maxWeight,
 				undefined,
 				expect.any(Array),
+				undefined,
 			);
 			expect(result).toEqual(mockResult);
 		});
@@ -261,6 +262,7 @@ describe('BooksService', () => {
 				0,
 				undefined,
 				expect.any(Array),
+				undefined,
 			);
 		});
 	});
@@ -279,6 +281,7 @@ describe('BooksService', () => {
 				maxWeight,
 				undefined,
 				false,
+				undefined,
 			);
 			expect(result).toEqual(mockBook);
 		});

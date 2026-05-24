@@ -108,6 +108,11 @@ export class BookFilterInput {
 	@IsString({ each: true })
 	sites?: string[];
 
+	@Field({ nullable: true })
+	@IsOptional()
+	@IsString()
+	lang?: string;
+
 	@Field(() => BookOrderField, {
 		nullable: true,
 		defaultValue: BookOrderField.CREATED_AT,

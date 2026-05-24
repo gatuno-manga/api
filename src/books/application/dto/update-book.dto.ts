@@ -13,6 +13,7 @@ import {
 import { AlternativeTitleDto } from './alternative-title.dto';
 import { CreateAuthorDto } from './create-author.dto';
 import { CreateBookDto } from './create-book.dto';
+import { LocalizedDescriptionDto } from './localized-description.dto';
 
 export class UpdateBookDto extends PartialType(
 	OmitType(CreateBookDto, ['chapters', 'ignoreConflict'] as const),
@@ -47,6 +48,16 @@ export class UpdateBookDto extends PartialType(
 	@IsString()
 	@MaxLength(10)
 	originalLanguageCode?: string;
+
+	@ApiPropertyOptional({
+		description: 'Localized descriptions for the book',
+		type: [LocalizedDescriptionDto],
+		isArray: true,
+	})
+	@IsOptional()
+	@ValidateNested({ each: true })
+	@Type(() => LocalizedDescriptionDto)
+	localizedDescriptions?: LocalizedDescriptionDto[];
 
 	@ApiPropertyOptional({
 		description:
@@ -89,6 +100,18 @@ export class UpdateBookDto extends PartialType(
 	@NormalizeUrl()
 	@IsUrl({}, { each: true })
 	originalUrl?: string[] = undefined;
+
+	@ApiPropertyOptional({
+		description:
+			'Book description or synopsis (Legacy - will be mapped to localizedDescriptions)',
+		example:
+			'A story about a young pirate who dreams of becoming the Pirate King',
+		maxLength: 5000,
+		deprecated: true,
+	})
+	@IsOptional()
+	@IsString()
+	description?: string;
 
 	@ApiPropertyOptional({
 		description: 'Array of tag names for the book',

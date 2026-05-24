@@ -40,6 +40,7 @@ import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-ca
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 import { PageDto } from 'src/common/pagination/page.dto';
 import { MediaUrlService } from 'src/common/services/media-url.service';
+import { resolveLocalizedField } from '../../../application/utils/localization.utils';
 
 @Resolver(() => BookModel)
 export class BookResolver {
@@ -85,10 +86,13 @@ export class BookResolver {
 			Object.assign(options, { limit: filter.limit ?? 20 });
 		}
 
+		const targetLang = filter?.lang || user?.preferredLanguage;
+
 		const result = await this.booksService.getAllBooks(
 			options,
 			user?.maxWeightSensitiveContent ?? 0,
 			user?.userId,
+			targetLang,
 		);
 
 		const mappedData = result.data.map((book) => ({
@@ -116,12 +120,16 @@ export class BookResolver {
 	@CacheTTL(300)
 	async getBook(
 		@Args('id', { type: () => ID }) id: string,
+		@Args('lang', { type: () => String, nullable: true }) lang?: string,
 		@GqlCurrentUser() user?: CurrentUserDto,
 	) {
+		const targetLang = lang || user?.preferredLanguage;
 		const book = await this.booksService.getOne(
 			id,
 			user?.maxWeightSensitiveContent ?? 0,
 			user?.userId,
+			false,
+			targetLang,
 		);
 
 		if (!book) return null;
@@ -132,11 +140,29 @@ export class BookResolver {
 	}
 
 	@ResolveField(() => [AuthorModel], { name: 'authors' })
-	async getBookAuthors(@Parent() book: BookModel): Promise<AuthorModel[]> {
+	async getBookAuthors(
+		@Parent() book: BookModel,
+		@Args('lang', { type: () => String, nullable: true }) lang?: string,
+		@GqlCurrentUser() user?: CurrentUserDto,
+	): Promise<AuthorModel[]> {
 		const authors = await this.dataLoaderService.authorsLoader.load(
 			book.id,
 		);
-		return authors as AuthorModel[];
+
+		const targetLang = lang || user?.preferredLanguage;
+
+		// Note: Since DataLoader might share results, we need to map them here
+		return authors.map((author) => {
+			const bestBio = resolveLocalizedField(
+				author.localizedBiographies,
+				targetLang,
+				null,
+			);
+			return {
+				...author,
+				biography: bestBio?.biography || author.biography,
+			};
+		}) as AuthorModel[];
 	}
 
 	@ResolveField(() => [TagModel], { name: 'tags' })

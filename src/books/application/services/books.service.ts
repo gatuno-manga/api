@@ -138,6 +138,7 @@ export class BooksService {
 		options: BookPageOptionsDto,
 		maxWeightSensitiveContent = 0,
 		userId?: string,
+		targetLang?: string,
 	): Promise<
 		| PageDto<
 				Omit<Book, 'covers'> & {
@@ -157,6 +158,7 @@ export class BooksService {
 			maxWeightSensitiveContent,
 			userId,
 			this.filterStrategies,
+			targetLang,
 		);
 	}
 
@@ -164,12 +166,14 @@ export class BooksService {
 		options: BookPageOptionsDto,
 		maxWeightSensitiveContent = 0,
 		userId?: string,
+		targetLang?: string,
 	): Promise<{ id: string }> {
 		return this.bookQueryService.getRandomBook(
 			options,
 			maxWeightSensitiveContent,
 			userId,
 			this.filterStrategies,
+			targetLang,
 		);
 	}
 
@@ -178,12 +182,14 @@ export class BooksService {
 		maxWeightSensitiveContent = 0,
 		userId?: string,
 		forceMaster = false,
+		targetLang?: string,
 	) {
 		return this.bookQueryService.getOne(
 			id,
 			maxWeightSensitiveContent,
 			userId,
 			forceMaster,
+			targetLang,
 		);
 	}
 
@@ -213,11 +219,17 @@ export class BooksService {
 		);
 	}
 
-	async getInfos(id: string, maxWeightSensitiveContent = 0, userId?: string) {
+	async getInfos(
+		id: string,
+		maxWeightSensitiveContent = 0,
+		userId?: string,
+		targetLang?: string,
+	) {
 		return this.bookQueryService.getInfos(
 			id,
 			maxWeightSensitiveContent,
 			userId,
+			targetLang,
 		);
 	}
 

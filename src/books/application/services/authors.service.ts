@@ -11,6 +11,7 @@ import {
 import { Author } from '@books/domain/entities/author';
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Meilisearch } from 'meilisearch';
+import { resolveLocalizedField } from '../utils/localization.utils';
 import { SensitiveContentService } from './sensitive-content.service';
 
 @Injectable()
@@ -25,7 +26,28 @@ export class AuthorsService {
 		@Inject(MEILI_CLIENT) private readonly meiliClient: Meilisearch,
 	) {}
 
-	async search(query: string): Promise<Author[]> {
+	/**
+	 * Mapeia e resolve campos localizados para um autor
+	 */
+	private mapAuthorLocalizations(
+		author: Author,
+		targetLang?: string,
+	): Author {
+		const lang = targetLang || 'pt-BR';
+
+		const bestBio = resolveLocalizedField(
+			author.localizedBiographies,
+			lang,
+			null,
+		);
+		if (bestBio) {
+			author.biography = bestBio.biography;
+		}
+
+		return author;
+	}
+
+	async search(query: string, targetLang?: string): Promise<Author[]> {
 		try {
 			const result = await this.meiliClient
 				.index('authors')
@@ -33,18 +55,28 @@ export class AuthorsService {
 					limit: 20,
 				});
 
-			return result.hits.map((hit) => ({
-				id: hit.id as string,
-				name: hit.name as string,
-				biography: hit.biography as string,
-				createdAt: new Date((hit.createdAt as number) * 1000),
-				updatedAt: new Date((hit.updatedAt as number) * 1000),
-			})) as unknown as Author[];
+			// Note: Search from Meilisearch might need full fetching for localizedBiographies
+			// if we want to resolve it here. For simplicity, we'll map what's in the hit
+			// or fetch from repo if needed. For now, just map hits.
+			return result.hits.map((hit) => {
+				const author = {
+					id: hit.id as string,
+					name: hit.name as string,
+					biography: hit.biography as string,
+					localizedBiographies:
+						(hit.localizedBiographies as Record<
+							string,
+							unknown
+						>[]) || [],
+					createdAt: new Date((hit.createdAt as number) * 1000),
+					updatedAt: new Date((hit.updatedAt as number) * 1000),
+				} as unknown as Author;
+				return this.mapAuthorLocalizations(author, targetLang);
+			});
 		} catch (error: unknown) {
 			this.logger.error(
 				`Error searching authors in Meilisearch: ${error instanceof Error ? error.message : String(error)}`,
 			);
-			// Fallback ou lista vazia
 			return [];
 		}
 	}
@@ -52,22 +84,25 @@ export class AuthorsService {
 	async get(
 		options: AuthorsOptions,
 		maxWeightSensitiveContent = 99,
+		targetLang?: string,
 	): Promise<Author[]> {
-		return this.authorsRepository.findWithFilters(
+		const authors = await this.authorsRepository.findWithFilters(
 			options,
 			maxWeightSensitiveContent,
 		);
+		return authors.map((a) => this.mapAuthorLocalizations(a, targetLang));
 	}
 
 	async getAll(
 		options: AuthorsOptions,
 		maxWeightSensitiveContent = 99,
+		targetLang?: string,
 	): Promise<Author[]> {
 		const allSensitiveContent = await this.sensitiveContentService.getAll(
 			maxWeightSensitiveContent,
 		);
 		options.sensitiveContent = allSensitiveContent.map((sc) => sc.name);
-		return this.get(options, maxWeightSensitiveContent);
+		return this.get(options, maxWeightSensitiveContent, targetLang);
 	}
 
 	async mergeAuthors(id: string, _copy: string[]) {

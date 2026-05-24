@@ -1,6 +1,7 @@
 import { AlternativeTitle } from '@books/domain/entities/alternative-title';
 import { Author } from '@books/domain/entities/author';
 import { Book } from '@books/domain/entities/book';
+import { BookDescription } from '@books/domain/entities/book-description';
 import { Chapter } from '@books/domain/entities/chapter';
 import { Cover } from '@books/domain/entities/cover';
 import { SensitiveContent } from '@books/domain/entities/sensitive-content';
@@ -14,13 +15,19 @@ import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
  */
 type BookBuilderData = Omit<
 	Partial<Book>,
-	'tags' | 'authors' | 'chapters' | 'covers' | 'alternativeTitles'
+	| 'tags'
+	| 'authors'
+	| 'chapters'
+	| 'covers'
+	| 'alternativeTitles'
+	| 'localizedDescriptions'
 > & {
 	tags?: Tag[];
 	authors?: Author[];
 	chapters?: Chapter[];
 	covers?: Cover[];
 	alternativeTitles?: AlternativeTitle[];
+	localizedDescriptions?: BookDescription[];
 };
 
 /**
@@ -41,6 +48,7 @@ export class BookBuilder {
 			sensitiveContent: [],
 			covers: [],
 			alternativeTitles: [],
+			localizedDescriptions: [],
 			searchTerms: [],
 			originalUrl: [],
 			originalLanguageCode: null,
@@ -79,6 +87,25 @@ export class BookBuilder {
 	 */
 	withOriginalLanguageCode(code: string | null): this {
 		this.book.originalLanguageCode = code;
+		return this;
+	}
+
+	/**
+	 * Define descrições localizadas
+	 */
+	withLocalizedDescriptions(descriptions: BookDescription[]): this {
+		this.book.localizedDescriptions = descriptions;
+		return this;
+	}
+
+	/**
+	 * Adiciona uma descrição localizada
+	 */
+	addLocalizedDescription(description: BookDescription): this {
+		if (!this.book.localizedDescriptions) {
+			this.book.localizedDescriptions = [];
+		}
+		this.book.localizedDescriptions.push(description);
 		return this;
 	}
 
@@ -296,6 +323,7 @@ export class BookBuilder {
 			sensitiveContent: [],
 			covers: [],
 			alternativeTitles: [],
+			localizedDescriptions: [],
 			searchTerms: [],
 			originalUrl: [],
 			originalLanguageCode: null,

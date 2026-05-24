@@ -19,6 +19,7 @@ import { AlternativeTitleDto } from './alternative-title.dto';
 import { CoverBookDto } from './cover-book.dto';
 import { CreateAuthorDto } from './create-author.dto';
 import { CreateChapterDto } from './create-chapter.dto';
+import { LocalizedDescriptionDto } from './localized-description.dto';
 import { transformCoverBookLegacyFormat } from './transformers/cover-book.transformer';
 
 export class CreateBookDto {
@@ -60,6 +61,16 @@ export class CreateBookDto {
 	@IsString()
 	@MaxLength(10)
 	originalLanguageCode?: string;
+
+	@ApiPropertyOptional({
+		description: 'Localized descriptions for the book',
+		type: [LocalizedDescriptionDto],
+		isArray: true,
+	})
+	@IsOptional()
+	@ValidateNested({ each: true })
+	@Type(() => LocalizedDescriptionDto)
+	localizedDescriptions?: LocalizedDescriptionDto[];
 
 	@ApiPropertyOptional({
 		description:
@@ -105,10 +116,12 @@ export class CreateBookDto {
 	originalUrl?: string[] = [];
 
 	@ApiPropertyOptional({
-		description: 'Book description or synopsis',
+		description:
+			'Book description or synopsis (Legacy - will be mapped to localizedDescriptions)',
 		example:
 			'A story about a young pirate who dreams of becoming the Pirate King',
 		maxLength: 5000,
+		deprecated: true,
 	})
 	@IsOptional()
 	@IsString()

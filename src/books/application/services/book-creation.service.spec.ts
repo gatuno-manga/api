@@ -104,11 +104,10 @@ describe('BookCreationService - Alternative Titles', () => {
 		const dto = new CreateBookDto();
 		dto.title = 'Main Title';
 		dto.type = BookType.MANGA;
-		// @ts-ignore - simulating dynamic input
 		dto.alternativeTitles = [
 			'String Alt',
 			{ title: 'Object Alt', languageCode: 'ja-JP' },
-		];
+		] as any;
 
 		const result = await service.createBook(dto);
 

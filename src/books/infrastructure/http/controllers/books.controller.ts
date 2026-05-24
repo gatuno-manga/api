@@ -42,12 +42,15 @@ export class BooksController {
 	@UseGuards(OptionalAuthGuard)
 	getAllBooks(
 		@Query() pageOptions: BookPageOptionsDto,
+		@Query('lang') queryLang?: string,
 		@CurrentUser() user?: CurrentUserDto,
 	) {
+		const targetLang = queryLang || user?.preferredLanguage;
 		return this.booksService.getAllBooks(
 			pageOptions,
 			user?.maxWeightSensitiveContent,
 			user?.userId,
+			targetLang,
 		);
 	}
 
@@ -59,12 +62,15 @@ export class BooksController {
 	@UseGuards(OptionalAuthGuard)
 	getRandomBook(
 		@Query() options: BookPageOptionsDto,
+		@Query('lang') queryLang?: string,
 		@CurrentUser() user?: CurrentUserDto,
 	) {
+		const targetLang = queryLang || user?.preferredLanguage;
 		return this.booksService.getRandomBook(
 			options,
 			user?.maxWeightSensitiveContent,
 			user?.userId,
+			targetLang,
 		);
 	}
 
@@ -90,11 +96,18 @@ export class BooksController {
 	@CacheTTL(1800)
 	@ApiDocsGetBook()
 	@UseGuards(OptionalAuthGuard)
-	getBook(@Param('idBook') id: string, @CurrentUser() user?: CurrentUserDto) {
+	getBook(
+		@Param('idBook') id: string,
+		@Query('lang') queryLang?: string,
+		@CurrentUser() user?: CurrentUserDto,
+	) {
+		const targetLang = queryLang || user?.preferredLanguage;
 		return this.booksService.getOne(
 			id,
 			user?.maxWeightSensitiveContent,
 			user?.userId,
+			false,
+			targetLang,
 		);
 	}
 
@@ -161,12 +174,15 @@ export class BooksController {
 	@UseGuards(OptionalAuthGuard)
 	getBookInfos(
 		@Param('idBook') id: string,
+		@Query('lang') queryLang?: string,
 		@CurrentUser() user?: CurrentUserDto,
 	) {
+		const targetLang = queryLang || user?.preferredLanguage;
 		return this.booksService.getInfos(
 			id,
 			user?.maxWeightSensitiveContent,
 			user?.userId,
+			targetLang,
 		);
 	}
 }

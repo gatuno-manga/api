@@ -1,25 +1,22 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsInt, IsOptional, IsString, MaxLength } from 'class-validator';
 
-export class AlternativeTitleDto {
+export class LocalizedDescriptionDto {
 	@ApiProperty({
-		description: 'Alternative title',
-		example: 'ワンピース',
-		maxLength: 500,
+		description: 'The description content',
+		example: 'A story about pirates...',
 	})
 	@IsString()
-	@MaxLength(500)
-	title: string;
+	description: string;
 
-	@ApiPropertyOptional({
+	@ApiProperty({
 		description: 'BCP 47 language code',
-		example: 'ja-JP',
+		example: 'en-US',
 		maxLength: 10,
 	})
-	@IsOptional()
 	@IsString()
 	@MaxLength(10)
-	languageCode?: string;
+	languageCode: string;
 
 	@ApiPropertyOptional({
 		description: 'Sorting rank (higher is prioritized)',

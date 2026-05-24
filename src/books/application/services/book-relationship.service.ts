@@ -12,6 +12,7 @@ import {
 	I_TAG_REPOSITORY,
 } from '@books/application/ports/tag-repository.interface';
 import { Author } from '@books/domain/entities/author';
+import { AuthorBiography } from '@books/domain/entities/author-biography';
 import { SensitiveContent } from '@books/domain/entities/sensitive-content';
 import { Tag } from '@books/domain/entities/tag';
 import { Inject, Injectable, Logger } from '@nestjs/common';
@@ -116,7 +117,37 @@ export class BookRelationshipService {
 				try {
 					const author = new Author();
 					author.name = dto.name;
-					author.biography = dto.biography ?? null;
+
+					// Consolidate localized biographies
+					const consolidatedBios: AuthorBiography[] = [];
+					if (dto.localizedBiographies?.length) {
+						for (const item of dto.localizedBiographies) {
+							consolidatedBios.push(
+								new AuthorBiography(
+									item.biography,
+									item.languageCode,
+									item.rank ?? 0,
+								),
+							);
+						}
+					}
+
+					if (dto.biography) {
+						if (
+							!consolidatedBios.some(
+								(b) =>
+									b.languageCode === 'pt-BR' &&
+									b.biography === dto.biography,
+							)
+						) {
+							consolidatedBios.push(
+								new AuthorBiography(dto.biography, 'pt-BR', 0),
+							);
+						}
+					}
+
+					author.localizedBiographies = consolidatedBios;
+
 					const saved = await authorRepo.save(author);
 					this.logger.debug(`Autor criado: ${dto.name}`);
 					byName.set(dto.name, saved);

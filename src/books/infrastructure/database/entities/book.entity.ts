@@ -17,6 +17,7 @@ import {
 } from 'typeorm';
 import { AlternativeTitle } from './alternative-title.entity';
 import { Author } from './author.entity';
+import { BookDescription } from './book-description.entity';
 import { Chapter } from './chapter.entity';
 import { Cover } from './cover.entity';
 import { SensitiveContent } from './sensitive-content.entity';
@@ -28,7 +29,7 @@ import { Tag } from './tags.entity';
 @Index(['scrapingStatus'])
 @Index(['createdAt'])
 @Index(['deletedAt'])
-@Index(['title', 'description', 'alternative_titles_text'], { fulltext: true })
+@Index(['title', 'alternative_titles_text'], { fulltext: true })
 @Check(
 	`"publication" IS NULL OR ("publication" >= 1980 AND "publication" <= ${new Date().getFullYear() + 2})`,
 )
@@ -53,6 +54,13 @@ export class Book {
 	)
 	alternativeTitles: Relation<AlternativeTitle[]>;
 
+	@OneToMany(
+		() => BookDescription,
+		(desc) => desc.book,
+		{ cascade: true },
+	)
+	localizedDescriptions: Relation<BookDescription[]>;
+
 	@Column({
 		type: 'json',
 		nullable: true,
@@ -76,11 +84,7 @@ export class Book {
 	})
 	originalUrl: string[];
 
-	@Column({
-		type: 'text',
-		nullable: true,
-	})
-	description: string;
+	description: string; // Transient property for legacy mapping
 
 	@Column({
 		nullable: true,

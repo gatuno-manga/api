@@ -15,6 +15,7 @@ import {
 } from '@books/application/ports/cover-repository.interface';
 import { AlternativeTitle } from '@books/domain/entities/alternative-title';
 import { Book } from '@books/domain/entities/book';
+import { BookDescription } from '@books/domain/entities/book-description';
 import { Cover } from '@books/domain/entities/cover';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { CoverImageService } from '@books/infrastructure/jobs/cover-image.service';
@@ -77,14 +78,14 @@ export class BookUpdateService {
 			await this.bookRepository.update(id, scalarUpdates);
 		}
 
-		// Consolidate alternative titles from all possible fields
+		// 1. Consolidate alternative titles from all possible fields
 		if (
 			dto.alternativeTitles !== undefined ||
 			dto.alternativeTitle !== undefined
 		) {
 			const consolidatedAltTitles: AlternativeTitle[] = [];
 
-			// 1. Process new field 'alternativeTitles'
+			// Process new field 'alternativeTitles'
 			if (dto.alternativeTitles?.length) {
 				for (const alt of dto.alternativeTitles) {
 					const isString = typeof alt === 'string';
@@ -94,16 +95,23 @@ export class BookUpdateService {
 					const languageCode = isString
 						? null
 						: (alt as AlternativeTitleDto).languageCode;
+					const rank = isString
+						? 0
+						: ((alt as AlternativeTitleDto).rank ?? 0);
 
 					if (title) {
 						consolidatedAltTitles.push(
-							new AlternativeTitle(title, languageCode || null),
+							new AlternativeTitle(
+								title,
+								languageCode || null,
+								rank,
+							),
 						);
 					}
 				}
 			}
 
-			// 2. Process legacy field 'alternativeTitle'
+			// Process legacy field 'alternativeTitle'
 			if (dto.alternativeTitle?.length) {
 				for (const title of dto.alternativeTitle) {
 					if (
@@ -111,7 +119,7 @@ export class BookUpdateService {
 						!consolidatedAltTitles.some((t) => t.title === title)
 					) {
 						consolidatedAltTitles.push(
-							new AlternativeTitle(title, null),
+							new AlternativeTitle(title, null, 0),
 						);
 					}
 				}
@@ -122,6 +130,51 @@ export class BookUpdateService {
 			]);
 			bookForAlt.alternativeTitles = consolidatedAltTitles;
 			await this.bookRepository.save(bookForAlt);
+		}
+
+		// 2. Consolidate localized descriptions
+		if (
+			dto.localizedDescriptions !== undefined ||
+			dto.description !== undefined
+		) {
+			const consolidatedDescriptions: BookDescription[] = [];
+
+			if (dto.localizedDescriptions?.length) {
+				for (const item of dto.localizedDescriptions) {
+					consolidatedDescriptions.push(
+						new BookDescription(
+							item.description,
+							item.languageCode,
+							item.rank ?? 0,
+						),
+					);
+				}
+			}
+
+			if (dto.description) {
+				const bookForLang = await this.bookRepository.findById(id);
+				const lang =
+					dto.originalLanguageCode ||
+					bookForLang?.originalLanguageCode ||
+					'pt-BR';
+				if (
+					!consolidatedDescriptions.some(
+						(d) =>
+							d.languageCode === lang &&
+							d.description === dto.description,
+					)
+				) {
+					consolidatedDescriptions.push(
+						new BookDescription(dto.description, lang, 0),
+					);
+				}
+			}
+
+			const bookForDesc = await this.findBookWith(id, [
+				'localizedDescriptions',
+			]);
+			bookForDesc.localizedDescriptions = consolidatedDescriptions;
+			await this.bookRepository.save(bookForDesc);
 		}
 
 		if (dto.tags !== undefined) {
