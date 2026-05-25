@@ -67,6 +67,12 @@ export class MeilisearchIndexInitService implements OnApplicationBootstrap {
 				'sort',
 				'exactness',
 			],
+			typoTolerance: {
+				minWordSizeForTypos: {
+					oneTypo: 3,
+					twoTypos: 7,
+				},
+			},
 		});
 
 		this.logger.log('  → "books" index settings updated');

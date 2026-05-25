@@ -30,7 +30,7 @@ describe('MeilisearchFilterBuilder', () => {
 			'(sites = "hiper.cool" OR sites = "manganato.com")',
 		);
 		expect(filter).toContain('(tagIds = "tag-1" AND tagIds = "tag-2")');
-		expect(filter).toContain('maxSensitiveWeight <= 2');
+		expect(filter).toContain('NOT maxSensitiveWeight > 2');
 		expect(filter).toContain('(tagIds != "forbidden-tag")');
 	});
 
@@ -55,7 +55,7 @@ describe('MeilisearchFilterBuilder', () => {
 
 		const filter = MeilisearchFilterBuilder.build(options, accessContext);
 
-		expect(filter).toContain('maxSensitiveWeight <= 5');
+		expect(filter).toContain('NOT maxSensitiveWeight > 5');
 		expect(filter).toContain('(id != "book-1" AND id != "book-2")');
 		expect(filter).toContain('(sensitiveContentIds != "sc-1")');
 	});

@@ -19,7 +19,12 @@ export class MeilisearchFilterBuilder {
 
 		// 1. Filtros Básicos (Opções do Usuário)
 		if (options.type) {
-			filters.push(`type = "${options.type}"`);
+			if (Array.isArray(options.type)) {
+				const typeFilters = options.type.map((t) => `type = "${t}"`);
+				filters.push(`(${typeFilters.join(' OR ')})`);
+			} else {
+				filters.push(`type = "${options.type}"`);
+			}
 		}
 
 		if (options.sites && options.sites.length > 0) {
@@ -49,8 +54,10 @@ export class MeilisearchFilterBuilder {
 		}
 
 		// Peso de Conteúdo Sensível
+		// Usamos 'NOT field > value' para incluir documentos onde o campo está faltando (considerados seguros)
+		// e apenas filtrar aqueles que explicitamente excedem o peso permitido.
 		filters.push(
-			`maxSensitiveWeight <= ${accessContext.effectiveMaxWeightSensitiveContent}`,
+			`NOT maxSensitiveWeight > ${accessContext.effectiveMaxWeightSensitiveContent}`,
 		);
 
 		// Livros negados

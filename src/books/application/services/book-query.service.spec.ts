@@ -89,6 +89,22 @@ describe('BookQueryService (Search Optimization)', () => {
 		expect(result.data[0].id).toBe('book-1');
 	});
 
+	it('should format sort direction as lowercase for Meilisearch', async () => {
+		const options = new BookPageOptionsDto();
+		options.search = 'Solo';
+		options.orderBy = 'createdAt' as any;
+		options.order = 'DESC' as any;
+
+		await service.getAllBooks(options, 0, 'user-1', []);
+
+		expect(meiliClient.index('books').search).toHaveBeenCalledWith(
+			'Solo',
+			expect.objectContaining({
+				sort: ['createdAt:desc'],
+			}),
+		);
+	});
+
 	it('should NOT use Meilisearch when no search term is provided', async () => {
 		const options = new BookPageOptionsDto();
 		options.search = undefined;

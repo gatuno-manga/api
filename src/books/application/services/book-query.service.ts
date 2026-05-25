@@ -200,7 +200,9 @@ export class BookQueryService {
 				// Determina ordenação
 				const sort: string[] = [];
 				if (options.orderBy) {
-					sort.push(`${options.orderBy}:${options.order || 'desc'}`);
+					sort.push(
+						`${options.orderBy}:${(options.order || 'desc').toLowerCase()}`,
+					);
 				}
 
 				const searchResult = await this.meiliClient
