@@ -97,7 +97,7 @@ export class WebauthnService {
 			timeout: this.configService.webauthnChallengeTtlMs,
 			attestationType: 'none',
 			authenticatorSelection: {
-				residentKey: 'preferred',
+				residentKey: 'required',
 				userVerification: 'preferred',
 			},
 			excludeCredentials: existingCredentials.map((credential) => ({
