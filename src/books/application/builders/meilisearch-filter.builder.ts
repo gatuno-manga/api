@@ -20,10 +20,12 @@ export class MeilisearchFilterBuilder {
 		// 1. Filtros Básicos (Opções do Usuário)
 		if (options.type) {
 			if (Array.isArray(options.type)) {
-				const typeFilters = options.type.map((t) => `type = "${t}"`);
+				const typeFilters = options.type.map(
+					(t) => `type = "${String(t)}"`,
+				);
 				filters.push(`(${typeFilters.join(' OR ')})`);
 			} else {
-				filters.push(`type = "${options.type}"`);
+				filters.push(`type = "${String(options.type)}"`);
 			}
 		}
 

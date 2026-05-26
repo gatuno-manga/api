@@ -1,4 +1,5 @@
 import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants';
+import { MeilisearchFilterBuilder } from '@books/application/builders/meilisearch-filter.builder';
 import { BookChaptersCursorOptionsDto } from '@books/application/dto/book-chapters-cursor-options.dto';
 import {
 	BookChapterCursorItemDto,
@@ -31,6 +32,7 @@ import {
 	I_TAG_REPOSITORY,
 } from '@books/application/ports/tag-repository.interface';
 import { FilterStrategy } from '@books/application/strategies';
+import { resolveLocalizedField } from '@books/application/utils/localization.utils';
 import { Book } from '@books/domain/entities/book';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -50,8 +52,6 @@ import { MetadataPageDto } from 'src/common/pagination/metadata-page.dto';
 import { PageDto } from 'src/common/pagination/page.dto';
 import { MediaUrlService } from 'src/common/services/media-url.service';
 import { AdminUsersService } from 'src/users/application/use-cases/admin-users.service';
-import { MeilisearchFilterBuilder } from '../builders/meilisearch-filter.builder';
-import { resolveLocalizedField } from '../utils/localization.utils';
 import { SensitiveContentService } from './sensitive-content.service';
 
 interface RawChapterItem {
@@ -293,7 +293,7 @@ export class BookQueryService {
 		maxWeightSensitiveContent: number,
 		userId: string | undefined,
 		filterStrategies: FilterStrategy[],
-		targetLang?: string,
+		_targetLang?: string,
 	): Promise<{ id: string }> {
 		const accessContext =
 			await this.adminUsersService.evaluateListAccessContext({

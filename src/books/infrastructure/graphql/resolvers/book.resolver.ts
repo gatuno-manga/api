@@ -7,6 +7,7 @@ import { BooksService } from '@books/application/services/books.service';
 import { ChapterCommentsService } from '@books/application/services/chapter-comments.service';
 import { ChapterService } from '@books/application/services/chapter.service';
 import { TagsService } from '@books/application/services/tags.service';
+import { resolveLocalizedField } from '@books/application/utils/localization.utils';
 import { BookFilterInput } from '@books/infrastructure/graphql/models/book-filter.input';
 import {
 	AuthorModel,
@@ -40,7 +41,6 @@ import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-ca
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 import { PageDto } from 'src/common/pagination/page.dto';
 import { MediaUrlService } from 'src/common/services/media-url.service';
-import { resolveLocalizedField } from '../../../application/utils/localization.utils';
 
 @Resolver(() => BookModel)
 export class BookResolver {

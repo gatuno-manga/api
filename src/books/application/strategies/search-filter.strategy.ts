@@ -6,7 +6,6 @@ import {
 } from '@books/domain/constants/search.constants';
 import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { Logger } from '@nestjs/common';
-import { Meilisearch } from 'meilisearch';
 import { SelectQueryBuilder } from 'typeorm';
 import { FilterStrategy } from './filter-strategy.interface';
 
@@ -18,10 +17,10 @@ export class SearchFilterStrategy implements FilterStrategy {
 		return terms.length > 0;
 	}
 
-	async apply(
+	apply(
 		queryBuilder: SelectQueryBuilder<Book>,
 		options: BookPageOptionsDto,
-	): Promise<void> {
+	): void {
 		const terms = this.normalizeTerms(options.search ?? '');
 		if (terms.length === 0) return;
 

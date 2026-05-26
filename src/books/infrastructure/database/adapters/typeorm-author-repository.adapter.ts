@@ -10,7 +10,6 @@ import { EntityManager, FindOptionsWhere, In, Repository } from 'typeorm';
 
 interface RawAuthorResult {
 	author_id: string;
-	author_name: string;
 	book_id: string;
 }
 
@@ -255,7 +254,7 @@ export class TypeOrmAuthorRepositoryAdapter implements IAuthorRepository {
 			.innerJoin('author.books', 'book')
 			.select(['author.id', 'book.id'])
 			.where('book.id IN (:...bookIds)', { bookIds })
-			.getRawMany();
+			.getRawMany<RawAuthorResult>();
 
 		const result: (DomainAuthor & { bookId: string })[] = [];
 		for (const rel of relations) {

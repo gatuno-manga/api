@@ -24,7 +24,9 @@ export class AlternativeTitle {
 	@ManyToOne(
 		() => Book,
 		(book) => book.alternativeTitles,
-		{ onDelete: 'CASCADE' },
+		{
+			onDelete: 'CASCADE',
+		},
 	)
 	book: Relation<Book>;
 }

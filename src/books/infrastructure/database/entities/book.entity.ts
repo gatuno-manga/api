@@ -50,7 +50,9 @@ export class Book {
 	@OneToMany(
 		() => AlternativeTitle,
 		(altTitle) => altTitle.book,
-		{ cascade: true },
+		{
+			cascade: true,
+		},
 	)
 	alternativeTitles: Relation<AlternativeTitle[]>;
 

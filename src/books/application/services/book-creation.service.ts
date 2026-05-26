@@ -1,4 +1,3 @@
-import { AlternativeTitleDto } from '@books/application/dto/alternative-title.dto';
 import { CreateBookDto } from '@books/application/dto/create-book.dto';
 import { CreateChapterDto } from '@books/application/dto/create-chapter.dto';
 import {
@@ -134,15 +133,9 @@ export class BookCreationService implements OnModuleInit {
 		if (dto.alternativeTitles?.length) {
 			for (const alt of dto.alternativeTitles) {
 				const isString = typeof alt === 'string';
-				const title = isString
-					? (alt as string)
-					: (alt as AlternativeTitleDto).title;
-				const languageCode = isString
-					? null
-					: (alt as AlternativeTitleDto).languageCode;
-				const rank = isString
-					? 0
-					: ((alt as AlternativeTitleDto).rank ?? 0);
+				const title = isString ? (alt as string) : alt.title;
+				const languageCode = isString ? null : alt.languageCode;
+				const rank = isString ? 0 : (alt.rank ?? 0);
 
 				if (title) {
 					consolidatedAltTitles.push(

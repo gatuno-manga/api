@@ -8,10 +8,10 @@ import {
 	IBookRepository,
 	I_BOOK_REPOSITORY,
 } from '@books/application/ports/book-repository.interface';
+import { resolveLocalizedField } from '@books/application/utils/localization.utils';
 import { Author } from '@books/domain/entities/author';
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Meilisearch } from 'meilisearch';
-import { resolveLocalizedField } from '../utils/localization.utils';
 import { SensitiveContentService } from './sensitive-content.service';
 
 @Injectable()

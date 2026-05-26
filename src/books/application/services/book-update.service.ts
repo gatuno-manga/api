@@ -1,5 +1,4 @@
 import { extname } from 'node:path';
-import { AlternativeTitleDto } from '@books/application/dto/alternative-title.dto';
 import { OrderCoversDto } from '@books/application/dto/order-covers.dto';
 import { ScrapeCoverDto } from '@books/application/dto/scrape-cover.dto';
 import { UpdateBookDto } from '@books/application/dto/update-book.dto';
@@ -89,15 +88,9 @@ export class BookUpdateService {
 			if (dto.alternativeTitles?.length) {
 				for (const alt of dto.alternativeTitles) {
 					const isString = typeof alt === 'string';
-					const title = isString
-						? (alt as string)
-						: (alt as AlternativeTitleDto).title;
-					const languageCode = isString
-						? null
-						: (alt as AlternativeTitleDto).languageCode;
-					const rank = isString
-						? 0
-						: ((alt as AlternativeTitleDto).rank ?? 0);
+					const title = isString ? (alt as string) : alt.title;
+					const languageCode = isString ? null : alt.languageCode;
+					const rank = isString ? 0 : (alt.rank ?? 0);
 
 					if (title) {
 						consolidatedAltTitles.push(

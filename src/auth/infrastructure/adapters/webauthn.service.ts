@@ -282,7 +282,7 @@ export class WebauthnService {
 						responseData.clientDataJSON,
 						'base64url',
 					).toString('utf8'),
-				);
+				) as Record<string, unknown>;
 				const challenge = clientData.challenge;
 				if (typeof challenge === 'string') {
 					expectedChallenge = await this.cacheManager.get<string>(
@@ -294,7 +294,7 @@ export class WebauthnService {
 						);
 					}
 				}
-			} catch (e) {
+			} catch (_e) {
 				// Ignore parsing errors, fallback to userId challenge
 			}
 		}

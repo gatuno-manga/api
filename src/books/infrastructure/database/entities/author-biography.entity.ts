@@ -28,7 +28,9 @@ export class AuthorBiography {
 	@ManyToOne(
 		() => Author,
 		(author) => author.localizedBiographies,
-		{ onDelete: 'CASCADE' },
+		{
+			onDelete: 'CASCADE',
+		},
 	)
 	@JoinColumn({ name: 'authorId' })
 	author: Relation<Author>;
