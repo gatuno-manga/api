@@ -67,6 +67,8 @@ export class UserResourcesMapper {
 				user.profileBanner?.path || null,
 				StorageBucket.USERS,
 			),
+			preferredLanguage: user.preferredLanguage,
+			preferences: user.preferences,
 			createdAt: user.createdAt,
 			updatedAt: user.updatedAt,
 		};

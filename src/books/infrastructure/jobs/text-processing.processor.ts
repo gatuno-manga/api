@@ -35,8 +35,13 @@ export class TextProcessingProcessor
 		super();
 	}
 
-	async onModuleInit() {
-		await this.scraperClient.connect();
+	onModuleInit() {
+		// Conecta em background para não bloquear o bootstrap da API
+		this.scraperClient.connect().catch((error) => {
+			this.logger.error(
+				`[TextProcessingProcessor] Falha ao conectar ao Scraper Kafka em background: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		});
 	}
 
 	async process(job: Job<QueueTextProcessingDto>): Promise<void> {
@@ -91,7 +96,6 @@ export class TextProcessingProcessor
 				urls: externalUrls,
 				uploadTarget: {
 					bucket: StorageBucket.PROCESSING,
-					pathPrefix: `mirrored/${source.toLowerCase()}/${entityId}`,
 				},
 			};
 

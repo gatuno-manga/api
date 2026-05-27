@@ -60,7 +60,16 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 		const book = await queryBuilder
 			.leftJoinAndSelect('book.tags', 'tags')
 			.leftJoinAndSelect('book.authors', 'authors')
+			.leftJoinAndSelect(
+				'authors.localizedBiographies',
+				'localizedBiographies',
+			)
 			.leftJoinAndSelect('book.sensitiveContent', 'sensitiveContent')
+			.leftJoinAndSelect(
+				'book.localizedDescriptions',
+				'localizedDescriptions',
+			)
+			.leftJoinAndSelect('book.alternativeTitles', 'alternativeTitles')
 			.leftJoinAndSelect(
 				'book.covers',
 				'covers',
@@ -74,16 +83,87 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 	}
 
 	async save(book: DomainBook): Promise<DomainBook> {
-		const saved = await this.repository.save(
-			book as unknown as InfrastructureBook,
-		);
+		const infrastructureBook = book as unknown as InfrastructureBook;
+
+		// Manually populate alternative_titles_text for FULLTEXT index
+		const titles = [infrastructureBook.title];
+		if (infrastructureBook.alternativeTitles?.length) {
+			titles.push(
+				...infrastructureBook.alternativeTitles.map((alt) => alt.title),
+			);
+		}
+		if (infrastructureBook.searchTerms?.length) {
+			titles.push(...infrastructureBook.searchTerms);
+		}
+		infrastructureBook.alternative_titles_text = titles.join(', ');
+
+		const saved = await this.repository.save(infrastructureBook);
 		return saved as unknown as DomainBook;
 	}
 
 	async update(id: string, data: Partial<DomainBook>): Promise<void> {
+		const updateData = data as unknown as DeepPartial<InfrastructureBook>;
+
+		// If title, alternativeTitles or searchTerms are being updated, we need to update alternative_titles_text
+		if (data.title || data.alternativeTitles || data.searchTerms) {
+			const existingBook = await this.repository.findOne({
+				where: { id } as FindOptionsWhere<InfrastructureBook>,
+				relations: ['alternativeTitles'],
+			});
+
+			if (existingBook) {
+				const titles = [data.title || existingBook.title];
+
+				if (data.alternativeTitles) {
+					titles.push(
+						...data.alternativeTitles.map((alt) => alt.title),
+					);
+				} else if (existingBook.alternativeTitles?.length) {
+					titles.push(
+						...existingBook.alternativeTitles.map(
+							(alt) => alt.title,
+						),
+					);
+				}
+
+				if (data.searchTerms) {
+					titles.push(...data.searchTerms);
+				} else if (existingBook.searchTerms?.length) {
+					titles.push(...existingBook.searchTerms);
+				}
+
+				updateData.alternative_titles_text = titles.join(', ');
+			}
+		}
+
+		// Clean up transient properties and relations from updateData
+		// These properties are handled separately or are virtual/transient
+		const propertiesToRemove = [
+			'description',
+			'tags',
+			'authors',
+			'sensitiveContent',
+			'covers',
+			'alternativeTitles',
+			'localizedDescriptions',
+			'chapters',
+		];
+
+		for (const prop of propertiesToRemove) {
+			if (prop in (updateData as Record<string, unknown>)) {
+				delete (updateData as Record<string, unknown>)[prop];
+			}
+		}
+
+		if (Object.keys(updateData as Record<string, unknown>).length === 0) {
+			return;
+		}
+
 		await this.repository.update(
 			id,
-			data as unknown as DeepPartial<InfrastructureBook>,
+			updateData as Parameters<
+				Repository<InfrastructureBook>['update']
+			>[1],
 		);
 	}
 
@@ -133,13 +213,19 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 
 		const queryBuilder = this.repository.createQueryBuilder('book');
 
-		// 1. Join covers (only selected)
-		queryBuilder.leftJoinAndSelect(
-			'book.covers',
-			'covers',
-			'covers.selected = :selected',
-			{ selected: true },
-		);
+		// 1. Join covers and multi-language relations
+		queryBuilder
+			.leftJoinAndSelect(
+				'book.covers',
+				'covers',
+				'covers.selected = :selected',
+				{ selected: true },
+			)
+			.leftJoinAndSelect(
+				'book.localizedDescriptions',
+				'localizedDescriptions',
+			)
+			.leftJoinAndSelect('book.alternativeTitles', 'alternativeTitles');
 
 		// 2. Apply Access Policy Filters
 		if (accessContext.blockedAll) {
@@ -378,6 +464,30 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 		return books as unknown as DomainBook[];
 	}
 
+	async findByIdsPreservingOrder(ids: string[]): Promise<DomainBook[]> {
+		if (ids.length === 0) return [];
+
+		const escapedIds = ids.map((id) => `'${id}'`).join(',');
+		const books = await this.repository
+			.createQueryBuilder('book')
+			.leftJoinAndSelect(
+				'book.covers',
+				'covers',
+				'covers.selected = :selected',
+				{ selected: true },
+			)
+			.leftJoinAndSelect(
+				'book.localizedDescriptions',
+				'localizedDescriptions',
+			)
+			.leftJoinAndSelect('book.alternativeTitles', 'alternativeTitles')
+			.where('book.id IN (:...ids)', { ids })
+			.orderBy(`FIELD(book.id, ${escapedIds})`)
+			.getMany();
+
+		return books as unknown as DomainBook[];
+	}
+
 	async checkBookTitleConflict(
 		title: string,
 		alternativeTitles: string[] = [],
@@ -386,35 +496,35 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 		existingBook?: {
 			id: string;
 			title: string;
-			alternativeTitle?: string[];
+			alternativeTitles?: DomainBook['alternativeTitles'];
 		};
 		conflictingBooks?: Array<{
 			id: string;
 			title: string;
-			alternativeTitle?: string[];
+			alternativeTitles?: DomainBook['alternativeTitles'];
 		}>;
 	}> {
-		const queryBuilder = this.repository.createQueryBuilder('book');
+		const queryBuilder = this.repository
+			.createQueryBuilder('book')
+			.leftJoinAndSelect('book.alternativeTitles', 'altTitles');
+
 		const allTitles = [title, ...alternativeTitles];
 
 		for (let i = 0; i < allTitles.length; i++) {
 			const titleToCheck = allTitles[i];
-			if (i === 0) {
-				queryBuilder.where(`book.title = :title${i}`, {
-					[`title${i}`]: titleToCheck,
-				});
-			} else {
-				queryBuilder.orWhere(`book.title = :title${i}`, {
-					[`title${i}`]: titleToCheck,
-				});
-			}
+			const paramName = `title${i}`;
 
-			queryBuilder.orWhere(
-				`JSON_CONTAINS(book.alternativeTitle, :jsonTitle${i})`,
-				{
-					[`jsonTitle${i}`]: JSON.stringify(titleToCheck),
-				},
-			);
+			if (i === 0) {
+				queryBuilder.where(
+					`(book.title = :${paramName} OR altTitles.title = :${paramName})`,
+					{ [paramName]: titleToCheck },
+				);
+			} else {
+				queryBuilder.orWhere(
+					`(book.title = :${paramName} OR altTitles.title = :${paramName})`,
+					{ [paramName]: titleToCheck },
+				);
+			}
 		}
 
 		const conflictingBooks = await queryBuilder.getMany();
@@ -423,7 +533,7 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 			const formattedBooks = conflictingBooks.map((book) => ({
 				id: book.id,
 				title: book.title,
-				alternativeTitle: book.alternativeTitle,
+				alternativeTitles: book.alternativeTitles,
 			}));
 
 			return {

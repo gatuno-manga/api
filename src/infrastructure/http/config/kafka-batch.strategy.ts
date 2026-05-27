@@ -27,8 +27,12 @@ export class KafkaBatchStrategy
 			`[KafkaBatchStrategy] Padrões detectados: ${registeredPatterns.join(', ')}`,
 		);
 
-		// Garantir que os tópicos existam antes de assinar
-		await this.ensureTopicsExist(registeredPatterns);
+		// Garantir que os tópicos existam antes de assinar em background para não travar o bootstrap
+		this.ensureTopicsExist(registeredPatterns).catch((error) => {
+			this.logger.error(
+				`[KafkaBatchStrategy] Erro em background ao verificar/criar tópicos: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		});
 
 		for (const pattern of registeredPatterns) {
 			this.logger.log(
@@ -42,57 +46,66 @@ export class KafkaBatchStrategy
 		}
 
 		this.logger.log(
-			'[KafkaBatchStrategy] Kafka Consumer iniciando loop (run)...',
+			'[KafkaBatchStrategy] Kafka Consumer iniciando loop (run) em background...',
 		);
-		await consumer.run({
-			...this.options?.run,
-			eachBatch: async (batchData) => {
-				const topic = batchData.batch.topic;
 
-				// Tenta buscar o handler pelo nome do tópico
-				let handler = this.getHandlerByPattern(topic);
+		// Executa o run em background para não bloquear o startup do NestJS
+		consumer
+			.run({
+				...this.options?.run,
+				eachBatch: async (batchData) => {
+					const topic = batchData.batch.topic;
 
-				if (!handler) {
-					// Fallback: tenta buscar por pattern stringificado (padrão NestJS para alguns transports)
-					const stringifiedPattern = JSON.stringify({
-						pattern: topic,
-					});
-					handler = this.getHandlerByPattern(stringifiedPattern);
-				}
+					// Tenta buscar o handler pelo nome do tópico
+					let handler = this.getHandlerByPattern(topic);
 
-				this.logger.debug(
-					`[KafkaBatchStrategy] Recebido lote de ${batchData.batch.messages.length} mensagens para o tópico: ${topic}`,
+					if (!handler) {
+						// Fallback: tenta buscar por pattern stringificado (padrão NestJS para alguns transports)
+						const stringifiedPattern = JSON.stringify({
+							pattern: topic,
+						});
+						handler = this.getHandlerByPattern(stringifiedPattern);
+					}
+
+					this.logger.debug(
+						`[KafkaBatchStrategy] Recebido lote de ${batchData.batch.messages.length} mensagens para o tópico: ${topic}`,
+					);
+
+					if (!handler) {
+						this.logger.warn(
+							`[KafkaBatchStrategy] Nenhum handler encontrado para o tópico: ${topic}`,
+						);
+						return;
+					}
+
+					try {
+						// Chamada do handler com as mensagens e contexto adicional
+						// Envolvemos as funções em arrow functions acessando via objeto pai para evitar o erro 'unbound-method'
+						await handler(batchData.batch.messages, {
+							batch: batchData.batch,
+							resolveOffset: (offset: string) =>
+								batchData.resolveOffset(offset),
+							heartbeat: () => batchData.heartbeat(),
+							commitOffsetsIfNecessary: () =>
+								batchData.commitOffsetsIfNecessary(),
+							topic,
+							partition: batchData.batch.partition,
+						});
+					} catch (error: unknown) {
+						this.logger.error(
+							`[KafkaBatchStrategy] Erro ao processar lote no tópico ${topic}: ${error instanceof Error ? error.message : String(error)}`,
+							error instanceof Error ? error.stack : undefined,
+						);
+						throw error;
+					}
+				},
+			})
+			.catch((error) => {
+				this.logger.error(
+					`[KafkaBatchStrategy] Erro fatal no loop do consumidor Kafka: ${error instanceof Error ? error.message : String(error)}`,
+					error instanceof Error ? error.stack : undefined,
 				);
-
-				if (!handler) {
-					this.logger.warn(
-						`[KafkaBatchStrategy] Nenhum handler encontrado para o tópico: ${topic}`,
-					);
-					return;
-				}
-
-				try {
-					// Chamada do handler com as mensagens e contexto adicional
-					// Envolvemos as funções em arrow functions acessando via objeto pai para evitar o erro 'unbound-method'
-					await handler(batchData.batch.messages, {
-						batch: batchData.batch,
-						resolveOffset: (offset: string) =>
-							batchData.resolveOffset(offset),
-						heartbeat: () => batchData.heartbeat(),
-						commitOffsetsIfNecessary: () =>
-							batchData.commitOffsetsIfNecessary(),
-						topic,
-						partition: batchData.batch.partition,
-					});
-				} catch (error: unknown) {
-					this.logger.error(
-						`[KafkaBatchStrategy] Erro ao processar lote no tópico ${topic}: ${error instanceof Error ? error.message : String(error)}`,
-						error instanceof Error ? error.stack : undefined,
-					);
-					throw error;
-				}
-			},
-		});
+			});
 	}
 
 	private async ensureTopicsExist(topics: string[]) {

@@ -44,15 +44,21 @@ export class MeilisearchIndexInitService implements OnApplicationBootstrap {
 				'publication',
 				'authors',
 				'tags',
+				'tagIds',
+				'sensitiveContentIds',
+				'maxSensitiveWeight',
 				'sites',
+				'originalLanguageCode',
 			],
 			searchableAttributes: [
 				'title',
+				'alternativeTitles',
 				'description',
 				'authors',
 				'tags',
 				'sites',
 			],
+			sortableAttributes: ['createdAt', 'publication'],
 			rankingRules: [
 				'words',
 				'typo',
@@ -60,8 +66,13 @@ export class MeilisearchIndexInitService implements OnApplicationBootstrap {
 				'attribute',
 				'sort',
 				'exactness',
-				'publication:desc',
 			],
+			typoTolerance: {
+				minWordSizeForTypos: {
+					oneTypo: 3,
+					twoTypos: 7,
+				},
+			},
 		});
 
 		this.logger.log('  → "books" index settings updated');

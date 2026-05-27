@@ -10,7 +10,6 @@ import { EntityManager, FindOptionsWhere, In, Repository } from 'typeorm';
 
 interface RawAuthorResult {
 	author_id: string;
-	author_name: string;
 	book_id: string;
 }
 
@@ -234,23 +233,44 @@ export class TypeOrmAuthorRepositoryAdapter implements IAuthorRepository {
 	async findByBookIds(
 		bookIds: string[],
 	): Promise<(DomainAuthor & { bookId: string })[]> {
-		const results = await this.repository
+		if (bookIds.length === 0) return [];
+
+		// 1. Get all authors and their biographies for these books
+		const authors = await this.repository
+			.createQueryBuilder('author')
+			.leftJoinAndSelect(
+				'author.localizedBiographies',
+				'localizedBiographies',
+			)
+			.innerJoin('author.books', 'book')
+			.select(['author', 'localizedBiographies', 'book.id'])
+			.where('book.id IN (:...bookIds)', { bookIds })
+			.getMany();
+
+		// 2. Since getMany doesn't expose the many-to-many book.id link per instance in a way we can use,
+		// we fetch the raw mapping separately or use getRawMany.
+		const relations = await this.repository
 			.createQueryBuilder('author')
 			.innerJoin('author.books', 'book')
-			.select(['author.id', 'author.name', 'book.id'])
+			.select(['author.id', 'book.id'])
 			.where('book.id IN (:...bookIds)', { bookIds })
 			.getRawMany<RawAuthorResult>();
 
-		return results.map((r) => {
-			const domainAuthor = new DomainAuthor();
-			domainAuthor.id = r.author_id;
-			domainAuthor.name = r.author_name;
-			const extendedAuthor = domainAuthor as unknown as DomainAuthor & {
-				bookId: string;
-			};
-			extendedAuthor.bookId = r.book_id;
-			return extendedAuthor;
-		});
+		const result: (DomainAuthor & { bookId: string })[] = [];
+		for (const rel of relations) {
+			const author = authors.find((a) => a.id === rel.author_id);
+			if (author) {
+				const domainAuthor = new DomainAuthor();
+				Object.assign(domainAuthor, author);
+				const extended = domainAuthor as unknown as DomainAuthor & {
+					bookId: string;
+				};
+				extended.bookId = rel.book_id;
+				result.push(extended);
+			}
+		}
+
+		return result;
 	}
 
 	async count(criteria?: AuthorCriteria): Promise<number> {

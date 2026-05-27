@@ -1,3 +1,5 @@
+import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants';
+import { MeilisearchFilterBuilder } from '@books/application/builders/meilisearch-filter.builder';
 import { BookChaptersCursorOptionsDto } from '@books/application/dto/book-chapters-cursor-options.dto';
 import {
 	BookChapterCursorItemDto,
@@ -30,6 +32,7 @@ import {
 	I_TAG_REPOSITORY,
 } from '@books/application/ports/tag-repository.interface';
 import { FilterStrategy } from '@books/application/strategies';
+import { resolveLocalizedField } from '@books/application/utils/localization.utils';
 import { Book } from '@books/domain/entities/book';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -37,9 +40,11 @@ import {
 	ForbiddenException,
 	Inject,
 	Injectable,
+	Logger,
 	NotFoundException,
 } from '@nestjs/common';
 import { Job, Queue } from 'bullmq';
+import { Meilisearch } from 'meilisearch';
 import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
 import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
@@ -71,6 +76,8 @@ type BookListItem = Omit<Book, 'covers'> & {
 
 @Injectable()
 export class BookQueryService {
+	private readonly logger = new Logger(BookQueryService.name);
+
 	constructor(
 		@Inject(I_BOOK_REPOSITORY)
 		private readonly bookRepository: IBookRepository,
@@ -95,6 +102,8 @@ export class BookQueryService {
 		@InjectQueue('fix-chapter-queue')
 		private readonly fixChapterQueue: Queue<{ chapterId: string }>,
 		private readonly adminUsersService: AdminUsersService,
+		@Inject(MEILI_CLIENT)
+		private readonly meiliClient: Meilisearch,
 	) {}
 
 	private async ensureUserCanAccessBook(
@@ -122,11 +131,55 @@ export class BookQueryService {
 		}
 	}
 
+	/**
+	 * Mapeia e resolve campos localizados para um livro
+	 */
+	private mapBookLocalizations(book: Book, targetLang?: string): Book {
+		const lang = targetLang || 'pt-BR';
+
+		// 1. Resolver Título
+		const bestTitle = resolveLocalizedField(
+			book.alternativeTitles,
+			lang,
+			book.originalLanguageCode,
+		);
+		if (bestTitle) {
+			book.title = bestTitle.title;
+		}
+
+		// 2. Resolver Descrição
+		const bestDesc = resolveLocalizedField(
+			book.localizedDescriptions,
+			lang,
+			book.originalLanguageCode,
+		);
+		if (bestDesc) {
+			book.description = bestDesc.description;
+		}
+
+		// 3. Resolver Biografia dos Autores
+		if (book.authors) {
+			for (const author of book.authors) {
+				const bestBio = resolveLocalizedField(
+					author.localizedBiographies,
+					lang,
+					null,
+				);
+				if (bestBio) {
+					author.biography = bestBio.biography;
+				}
+			}
+		}
+
+		return book;
+	}
+
 	async getAllBooks(
 		options: BookPageOptionsDto,
 		maxWeightSensitiveContent: number,
 		userId: string | undefined,
 		filterStrategies: FilterStrategy[],
+		targetLang?: string,
 	): Promise<PageDto<BookListItem> | CursorPageDto<BookListItem>> {
 		const accessContext =
 			await this.adminUsersService.evaluateListAccessContext({
@@ -134,15 +187,83 @@ export class BookQueryService {
 				baseMaxWeightSensitiveContent: maxWeightSensitiveContent,
 			});
 
+		// CAMINHO 1: Busca via Meilisearch (quando há termo de pesquisa)
+		if (options.search?.trim()) {
+			try {
+				const filter = MeilisearchFilterBuilder.build(
+					options,
+					accessContext,
+				);
+				const limit = options.limit || 20;
+				const offset = (options.page - 1) * limit;
+
+				// Determina ordenação
+				const sort: string[] = [];
+				if (options.orderBy) {
+					sort.push(
+						`${options.orderBy}:${(options.order || 'desc').toLowerCase()}`,
+					);
+				}
+
+				const searchResult = await this.meiliClient
+					.index('books')
+					.search(options.search, {
+						limit,
+						offset,
+						filter,
+						sort: sort.length > 0 ? sort : undefined,
+						attributesToRetrieve: ['id'],
+					});
+
+				const ids = searchResult.hits.map((hit) => hit.id as string);
+				const total = searchResult.estimatedTotalHits || 0;
+
+				const books =
+					await this.bookRepository.findByIdsPreservingOrder(ids);
+
+				const data = books.map((b) => {
+					const mappedBook = this.mapBookLocalizations(
+						b,
+						targetLang || options.lang,
+					);
+					const selectedCover = mappedBook.covers?.[0] || null;
+					return {
+						...mappedBook,
+						cover: this.mediaUrlService.resolveUrl(
+							selectedCover?.url || null,
+							StorageBucket.BOOKS,
+						),
+						coverMetadata: selectedCover?.metadata || null,
+					} as BookListItem;
+				});
+
+				const metadata = new MetadataPageDto();
+				metadata.total = total;
+				metadata.page = options.page;
+				metadata.lastPage = Math.ceil(total / limit);
+
+				return new PageDto(data, metadata);
+			} catch (error) {
+				this.logger.error(
+					`Meilisearch query failed, falling back to MySQL: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			}
+		}
+
+		// CAMINHO 2: Navegação via MySQL (Catálogo ou Fallback)
 		const [books, total] = await this.bookRepository.findWithFilters(
 			options,
 			accessContext,
 			filterStrategies,
 		);
 		const data = books.map((b) => {
-			const selectedCover = b.covers?.[0] || null;
+			const mappedBook = this.mapBookLocalizations(
+				b,
+				targetLang || options.lang,
+			);
+			const selectedCover = mappedBook.covers?.[0] || null;
 			return {
-				...b,
+				...mappedBook,
 				cover: this.mediaUrlService.resolveUrl(
 					selectedCover?.url || null,
 					StorageBucket.BOOKS,
@@ -172,6 +293,7 @@ export class BookQueryService {
 		maxWeightSensitiveContent: number,
 		userId: string | undefined,
 		filterStrategies: FilterStrategy[],
+		_targetLang?: string,
 	): Promise<{ id: string }> {
 		const accessContext =
 			await this.adminUsersService.evaluateListAccessContext({
@@ -193,6 +315,7 @@ export class BookQueryService {
 		maxWeightSensitiveContent = 0,
 		userId?: string,
 		forceMaster = false,
+		targetLang?: string,
 	) {
 		const book = await this.bookRepository.findByIdWithDetails(
 			id,
@@ -206,7 +329,9 @@ export class BookQueryService {
 			userId,
 		);
 
-		const { covers, ...rest } = book;
+		const mappedBook = this.mapBookLocalizations(book, targetLang);
+
+		const { covers, ...rest } = mappedBook;
 		const selectedCover = covers?.[0] || null;
 
 		return {
@@ -325,12 +450,20 @@ export class BookQueryService {
 		return book.covers;
 	}
 
-	async getInfos(id: string, maxWeightSensitiveContent = 0, userId?: string) {
+	async getInfos(
+		id: string,
+		maxWeightSensitiveContent = 0,
+		userId?: string,
+		targetLang?: string,
+	) {
 		const book = await this.bookRepository.findById(id, [
 			'sensitiveContent',
 			'tags',
 			'authors',
 			'covers',
+			'localizedDescriptions',
+			'alternativeTitles',
+			'authors.localizedBiographies',
 		]);
 		if (!book) throw new NotFoundException('Book not found');
 
@@ -340,9 +473,11 @@ export class BookQueryService {
 			userId,
 		);
 
-		if (book.covers) {
-			book.covers.sort((a, b) => a.index - b.index);
-			for (const cover of book.covers) {
+		const mappedBook = this.mapBookLocalizations(book, targetLang);
+
+		if (mappedBook.covers) {
+			mappedBook.covers.sort((a, b) => a.index - b.index);
+			for (const cover of mappedBook.covers) {
 				cover.url = this.mediaUrlService.resolveUrl(
 					cover.url,
 					StorageBucket.BOOKS,
@@ -350,7 +485,7 @@ export class BookQueryService {
 			}
 		}
 
-		return book;
+		return mappedBook;
 	}
 
 	async verifyBook(idBook: string) {

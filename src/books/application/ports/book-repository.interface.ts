@@ -1,5 +1,6 @@
 import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
 import { FilterStrategy } from '@books/application/strategies';
+import { AlternativeTitle } from '@books/domain/entities/alternative-title';
 import { Book } from '@books/domain/entities/book';
 import {
 	AccessContext,
@@ -32,6 +33,7 @@ export interface IBookRepository {
 		filterStrategies: FilterStrategy[],
 	): Promise<Book | null>;
 	findAllInProcess(): Promise<Book[]>;
+	findByIdsPreservingOrder(ids: string[]): Promise<Book[]>;
 	checkBookTitleConflict(
 		title: string,
 		alternativeTitles: string[],
@@ -40,12 +42,12 @@ export interface IBookRepository {
 		existingBook?: {
 			id: string;
 			title: string;
-			alternativeTitle?: string[];
+			alternativeTitles?: AlternativeTitle[];
 		};
 		conflictingBooks?: Array<{
 			id: string;
 			title: string;
-			alternativeTitle?: string[];
+			alternativeTitles?: AlternativeTitle[];
 		}>;
 	}>;
 }

@@ -15,7 +15,9 @@ import {
 	Relation,
 	UpdateDateColumn,
 } from 'typeorm';
+import { AlternativeTitle } from './alternative-title.entity';
 import { Author } from './author.entity';
+import { BookDescription } from './book-description.entity';
 import { Chapter } from './chapter.entity';
 import { Cover } from './cover.entity';
 import { SensitiveContent } from './sensitive-content.entity';
@@ -27,7 +29,7 @@ import { Tag } from './tags.entity';
 @Index(['scrapingStatus'])
 @Index(['createdAt'])
 @Index(['deletedAt'])
-@Index(['title', 'description'], { fulltext: true })
+@Index(['title', 'alternative_titles_text'], { fulltext: true })
 @Check(
 	`"publication" IS NULL OR ("publication" >= 1980 AND "publication" <= ${new Date().getFullYear() + 2})`,
 )
@@ -45,11 +47,27 @@ export class Book {
 	)
 	covers: Relation<Cover[]>;
 
+	@OneToMany(
+		() => AlternativeTitle,
+		(altTitle) => altTitle.book,
+		{
+			cascade: true,
+		},
+	)
+	alternativeTitles: Relation<AlternativeTitle[]>;
+
+	@OneToMany(
+		() => BookDescription,
+		(desc) => desc.book,
+		{ cascade: true },
+	)
+	localizedDescriptions: Relation<BookDescription[]>;
+
 	@Column({
 		type: 'json',
 		nullable: true,
 	})
-	alternativeTitle: string[];
+	searchTerms: string[];
 
 	@Column({
 		type: 'enum',
@@ -68,11 +86,7 @@ export class Book {
 	})
 	originalUrl: string[];
 
-	@Column({
-		type: 'text',
-		nullable: true,
-	})
-	description: string;
+	description: string; // Transient property for legacy mapping
 
 	@Column({
 		nullable: true,
@@ -91,6 +105,13 @@ export class Book {
 		default: false,
 	})
 	autoUpdate: boolean;
+
+	@Column({
+		type: 'varchar',
+		length: 10,
+		nullable: true,
+	})
+	originalLanguageCode: string | null;
 
 	/**
 	 * Formatos de exportação disponíveis para este livro
@@ -126,6 +147,19 @@ export class Book {
 	)
 	@JoinTable()
 	authors: Relation<Author[]>;
+
+	/**
+	 * Coluna virtual (populada via triggers no MySQL) para busca FULLTEXT.
+	 * Contém os títulos alternativos limpos de caracteres JSON.
+	 */
+	@Column({
+		type: 'text',
+		select: false,
+		insert: false,
+		update: false,
+		nullable: true,
+	})
+	alternative_titles_text: string;
 
 	@CreateDateColumn()
 	createdAt: Date;

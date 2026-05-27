@@ -81,7 +81,7 @@ export class TypeOrmPageRepositoryAdapter implements IPageRepository {
 	): Promise<void> {
 		await this.repository.update(
 			criteria as unknown as FindOptionsWhere<InfrastructurePage>,
-			data as unknown as InfrastructurePage,
+			data as Parameters<Repository<InfrastructurePage>['update']>[1],
 		);
 	}
 

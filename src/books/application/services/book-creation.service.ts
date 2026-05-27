@@ -5,7 +5,9 @@ import {
 	I_BOOK_REPOSITORY,
 } from '@books/application/ports/book-repository.interface';
 import { BookEvents } from '@books/domain/constants/events.constant';
+import { AlternativeTitle } from '@books/domain/entities/alternative-title';
 import { Book } from '@books/domain/entities/book';
+import { BookDescription } from '@books/domain/entities/book-description';
 import { Chapter } from '@books/domain/entities/chapter';
 import { Cover } from '@books/domain/entities/cover';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
@@ -47,8 +49,13 @@ export class BookCreationService implements OnModuleInit {
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
-	async onModuleInit() {
-		await this.scraperClient.connect();
+	onModuleInit() {
+		// Conecta em background para não bloquear o bootstrap da API
+		this.scraperClient.connect().catch((error) => {
+			this.logger.error(
+				`[BookCreationService] Falha ao conectar ao Scraper Kafka em background: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		});
 	}
 
 	async autoCreateBook(url: string): Promise<{ jobId: string }> {
@@ -97,7 +104,6 @@ export class BookCreationService implements OnModuleInit {
 			newBookExtractScript: websiteConfig.newBookExtractScript,
 			uploadTarget: {
 				bucket: StorageBucket.PROCESSING,
-				pathPrefix: `${jobId.slice(-2)}/${jobId}`,
 			},
 		};
 
@@ -120,14 +126,80 @@ export class BookCreationService implements OnModuleInit {
 	}
 
 	async createBook(dto: CreateBookDto): Promise<Book> {
+		// Consolidate alternative titles from all possible fields
+		const consolidatedAltTitles: AlternativeTitle[] = [];
+
+		// 1. Process new field 'alternativeTitles' (objects or strings)
+		if (dto.alternativeTitles?.length) {
+			for (const alt of dto.alternativeTitles) {
+				const isString = typeof alt === 'string';
+				const title = isString ? (alt as string) : alt.title;
+				const languageCode = isString ? null : alt.languageCode;
+				const rank = isString ? 0 : (alt.rank ?? 0);
+
+				if (title) {
+					consolidatedAltTitles.push(
+						new AlternativeTitle(title, languageCode || null, rank),
+					);
+				}
+			}
+		}
+
+		// 2. Process legacy field 'alternativeTitle' (strings)
+		if (dto.alternativeTitle?.length) {
+			for (const title of dto.alternativeTitle) {
+				if (
+					title &&
+					!consolidatedAltTitles.some((t) => t.title === title)
+				) {
+					consolidatedAltTitles.push(
+						new AlternativeTitle(title, null, 0),
+					);
+				}
+			}
+		}
+
+		// 3. Consolidate localized descriptions
+		const consolidatedDescriptions: BookDescription[] = [];
+		if (dto.localizedDescriptions?.length) {
+			for (const item of dto.localizedDescriptions) {
+				consolidatedDescriptions.push(
+					new BookDescription(
+						item.description,
+						item.languageCode,
+						item.rank ?? 0,
+					),
+				);
+			}
+		}
+
+		if (dto.description) {
+			const lang = dto.originalLanguageCode || 'pt-BR';
+			if (
+				!consolidatedDescriptions.some(
+					(d) =>
+						d.languageCode === lang &&
+						d.description === dto.description,
+				)
+			) {
+				consolidatedDescriptions.push(
+					new BookDescription(dto.description, lang, 0),
+				);
+			}
+		}
+
+		const alternativeTitlesStrings = consolidatedAltTitles.map(
+			(alt) => alt.title,
+		);
+
 		const conflictCheck = await this.bookRepository.checkBookTitleConflict(
 			dto.title,
-			dto.alternativeTitle || [],
+			alternativeTitlesStrings,
 		);
 
 		if (conflictCheck.conflict && !dto.ignoreConflict) {
 			throw new BadRequestException({
-				message: `Já existe um livro com o título "${dto.title}" ou com um dos títulos alternativos. Se deseja cadastrar mesmo assim, defina o campo 'validator' como true.`,
+				message: `Já existe um livro com o título "${dto.title}" ou com um dos títulos alternativos. Se deseja cadastrar mesmo assim, defina o campo 'validator' as true.`,
 				conflictingBook: conflictCheck.existingBook,
 			});
 		}
@@ -166,10 +238,13 @@ export class BookCreationService implements OnModuleInit {
 			Object.assign(book, {
 				title: dto.title,
 				originalUrl: dto.originalUrl,
-				alternativeTitle: dto.alternativeTitle,
+				alternativeTitles: consolidatedAltTitles,
+				localizedDescriptions: consolidatedDescriptions,
+				searchTerms: dto.searchTerms,
 				description: dto.description,
 				publication: dto.publication,
 				type: dto.type,
+				originalLanguageCode: dto.originalLanguageCode,
 				sensitiveContent,
 				tags,
 				authors,

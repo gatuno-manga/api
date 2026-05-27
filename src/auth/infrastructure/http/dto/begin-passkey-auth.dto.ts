@@ -1,11 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail } from 'class-validator';
+import { IsEmail, IsOptional } from 'class-validator';
 
 export class BeginPasskeyAuthDto {
 	@ApiProperty({
-		description: 'User email used to resolve allowed passkeys',
+		description:
+			'User email used to resolve allowed passkeys (optional for nameless login)',
 		example: 'user@example.com',
+		required: false,
 	})
+	@IsOptional()
 	@IsEmail()
-	email: string;
+	email?: string;
 }

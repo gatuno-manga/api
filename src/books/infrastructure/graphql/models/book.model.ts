@@ -14,6 +14,12 @@ export class AuthorModel {
 
 	@Field()
 	name: string;
+
+	@Field(() => [LocalizedBiographyModel], { nullable: 'items' })
+	localizedBiographies: LocalizedBiographyModel[];
+
+	@Field({ nullable: true })
+	biography?: string;
 }
 
 @ObjectType('Tag')
@@ -23,6 +29,30 @@ export class TagModel {
 
 	@Field()
 	name: string;
+}
+
+@ObjectType('LocalizedDescription')
+export class LocalizedDescriptionModel {
+	@Field()
+	description: string;
+
+	@Field()
+	languageCode: string;
+
+	@Field(() => Int)
+	rank: number;
+}
+
+@ObjectType('LocalizedBiography')
+export class LocalizedBiographyModel {
+	@Field()
+	biography: string;
+
+	@Field()
+	languageCode: string;
+
+	@Field(() => Int)
+	rank: number;
 }
 
 @ObjectType('Cover')
@@ -40,6 +70,18 @@ export class CoverModel {
 	metadata?: ImageMetadataModel;
 }
 
+@ObjectType('AlternativeTitle')
+export class AlternativeTitleModel {
+	@Field()
+	title: string;
+
+	@Field({ nullable: true })
+	languageCode?: string;
+
+	@Field(() => Int)
+	rank: number;
+}
+
 @ObjectType('Book')
 export class BookModel {
 	@Field(() => ID)
@@ -48,8 +90,14 @@ export class BookModel {
 	@Field()
 	title: string;
 
-	@Field(() => [String], { nullable: 'items' })
-	alternativeTitle: string[];
+	@Field(() => [AlternativeTitleModel], { nullable: 'items' })
+	alternativeTitles: AlternativeTitleModel[];
+
+	@Field(() => [LocalizedDescriptionModel], { nullable: 'items' })
+	localizedDescriptions: LocalizedDescriptionModel[];
+
+	@Field(() => String, { nullable: true })
+	originalLanguageCode?: string;
 
 	@Field(() => [AuthorModel], { nullable: 'itemsAndList' })
 	authors: AuthorModel[];

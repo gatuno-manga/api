@@ -1,4 +1,5 @@
 import { Field, ID, Int, ObjectType } from '@nestjs/graphql';
+import { GraphQLJSON } from 'graphql-type-json';
 
 @ObjectType('UserImage')
 export class UserImageModel {
@@ -64,6 +65,12 @@ export class UserModel {
 
 	@Field(() => String, { nullable: true })
 	suspensionReason?: string | null;
+
+	@Field(() => String, { defaultValue: 'pt-BR' })
+	preferredLanguage: string;
+
+	@Field(() => GraphQLJSON, { nullable: true })
+	preferences?: Record<string, unknown>;
 
 	@Field(() => [RoleModel], { nullable: 'itemsAndList' })
 	roles?: RoleModel[];

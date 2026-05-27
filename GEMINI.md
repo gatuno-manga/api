@@ -68,7 +68,16 @@ Whenever writing or modifying the behavior of classes and methods (especially in
 * **Strict typing:** Make full use of TypeScript features. Avoid `any` at all costs.
 
 ---
-## 4. Validation and Scripts
+## 5. Image & Storage Mandates (Staging vs Final)
+* **Image URL Generation:** Image URLs are dynamically resolved via `MediaUrlService`.
+* **Path Prefix Prohibited:** You MUST NOT use the `pathPrefix` property in `uploadTarget` payloads sent to the Go scraper microservice via Kafka.
+  * The Go microservice intrinsically handles the `shard/uuid.webp` format.
+  * Adding a `pathPrefix` (e.g., `capas/`, `${chapter.id}/`) results in invalid, nested paths that break the frontend.
+* **Storage Buckets:** Always use the `StorageBucket` enum to reference buckets (`BOOKS`, `USERS`, `PROCESSING`).
+* **Staging Logic:** Any path starting with `processing/` indicates the image is still in the temporary bucket and will be automatically handled by `MediaUrlService`.
+
+---
+## 6. Validation and Scripts
 To maintain code quality and ensure nothing is broken, you MUST run the appropriate validation scripts after making any changes. The following scripts are available in `package.json`:
 
 * **Formatting & Linting:**

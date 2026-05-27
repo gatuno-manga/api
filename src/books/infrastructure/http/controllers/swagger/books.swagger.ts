@@ -70,10 +70,22 @@ export function ApiDocsCheckBookTitle() {
 								example: '550e8400-e29b-41d4-a716-446655440000',
 							},
 							title: { type: 'string', example: 'One Piece' },
-							alternativeTitle: {
+							alternativeTitles: {
 								type: 'array',
-								items: { type: 'string' },
-								example: ['ワンピース', 'Wan Pīsu'],
+								items: {
+									type: 'object',
+									properties: {
+										title: {
+											type: 'string',
+											example: 'ワンピース',
+										},
+										languageCode: {
+											type: 'string',
+											example: 'ja-JP',
+											nullable: true,
+										},
+									},
+								},
 							},
 						},
 					},
@@ -89,10 +101,22 @@ export function ApiDocsCheckBookTitle() {
 										'550e8400-e29b-41d4-a716-446655440000',
 								},
 								title: { type: 'string', example: 'One Piece' },
-								alternativeTitle: {
+								alternativeTitles: {
 									type: 'array',
-									items: { type: 'string' },
-									example: ['ワンピース', 'Wan Pīsu'],
+									items: {
+										type: 'object',
+										properties: {
+											title: {
+												type: 'string',
+												example: 'ワンピース',
+											},
+											languageCode: {
+												type: 'string',
+												example: 'ja-JP',
+												nullable: true,
+											},
+										},
+									},
 								},
 							},
 						},

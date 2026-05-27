@@ -160,6 +160,15 @@ export class BookPageOptionsDto extends PageOptionsDto {
 	sites?: string[] = [];
 
 	@ApiPropertyOptional({
+		description:
+			'Target language for localized fields (title, description)',
+		example: 'en-US',
+	})
+	@IsOptional()
+	@IsString()
+	lang?: string;
+
+	@ApiPropertyOptional({
 		description: 'Field to order results by',
 		example: BookOrderField.CREATED_AT,
 		enum: BookOrderField,

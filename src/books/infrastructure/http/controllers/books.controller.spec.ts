@@ -70,22 +70,27 @@ describe('BooksController', () => {
 				pageOptions,
 				undefined,
 				undefined,
+				undefined,
 			);
 			expect(result).toEqual(mockResult);
 		});
 
 		it('should pass user maxWeightSensitiveContent when user is provided', async () => {
 			const pageOptions = { page: 1, take: 10 } as any;
-			const user = { maxWeightSensitiveContent: 5 } as any;
+			const user = {
+				maxWeightSensitiveContent: 5,
+				preferredLanguage: 'en',
+			} as any;
 			const mockResult = { data: [], meta: {} };
 			mockBooksService.getAllBooks.mockResolvedValue(mockResult);
 
-			await controller.getAllBooks(pageOptions, user);
+			await controller.getAllBooks(pageOptions, undefined, user);
 
 			expect(booksService.getAllBooks).toHaveBeenCalledWith(
 				pageOptions,
 				5,
 				undefined,
+				'en',
 			);
 		});
 	});
@@ -100,6 +105,7 @@ describe('BooksController', () => {
 
 			expect(booksService.getRandomBook).toHaveBeenCalledWith(
 				options,
+				undefined,
 				undefined,
 				undefined,
 			);
@@ -152,18 +158,29 @@ describe('BooksController', () => {
 				id,
 				undefined,
 				undefined,
+				false,
+				undefined,
 			);
 			expect(result).toEqual(mockBook);
 		});
 
 		it('should pass maxWeightSensitiveContent when user is provided', async () => {
 			const id = 'test-id';
-			const user = { maxWeightSensitiveContent: 5 } as any;
+			const user = {
+				maxWeightSensitiveContent: 5,
+				preferredLanguage: 'en',
+			} as any;
 			mockBooksService.getOne.mockResolvedValue({});
 
-			await controller.getBook(id, user);
+			await controller.getBook(id, undefined, user);
 
-			expect(booksService.getOne).toHaveBeenCalledWith(id, 5, undefined);
+			expect(booksService.getOne).toHaveBeenCalledWith(
+				id,
+				5,
+				undefined,
+				false,
+				'en',
+			);
 		});
 	});
 
@@ -236,6 +253,7 @@ describe('BooksController', () => {
 
 			expect(booksService.getInfos).toHaveBeenCalledWith(
 				id,
+				undefined,
 				undefined,
 				undefined,
 			);

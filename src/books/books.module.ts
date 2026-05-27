@@ -51,7 +51,9 @@ import { TypeOrmPageRepositoryAdapter } from './infrastructure/database/adapters
 import { TypeOrmSensitiveContentRepositoryAdapter } from './infrastructure/database/adapters/typeorm-sensitive-content-repository.adapter';
 import { TypeOrmTagRepositoryAdapter } from './infrastructure/database/adapters/typeorm-tag-repository.adapter';
 import { TypeOrmUnitOfWorkAdapter } from './infrastructure/database/adapters/typeorm-unit-of-work.adapter';
+import { AuthorBiography } from './infrastructure/database/entities/author-biography.entity';
 import { Author } from './infrastructure/database/entities/author.entity';
+import { BookDescription } from './infrastructure/database/entities/book-description.entity';
 import { BookRelationship } from './infrastructure/database/entities/book-relationship.entity';
 import { Book } from './infrastructure/database/entities/book.entity';
 import { ChapterComment } from './infrastructure/database/entities/chapter-comment.entity';
@@ -117,9 +119,11 @@ import { ContentUploadedListener } from './infrastructure/notifiers/content-uplo
 			User,
 			Tag,
 			Author,
+			AuthorBiography,
 			ChapterRead,
 			SensitiveContent,
 			Cover,
+			BookDescription,
 		]),
 		AuthModule,
 		BullModule.registerQueue(

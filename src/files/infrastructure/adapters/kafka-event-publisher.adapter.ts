@@ -33,11 +33,6 @@ export class KafkaEventPublisherAdapter
 				connectionTimeout: 10000,
 				authenticationTimeout: 10000,
 			},
-			consumer: {
-				groupId: 'gatuno-api-publisher-group',
-				allowAutoTopicCreation: true,
-				metadataMaxAge: 3000,
-			},
 			producer: {
 				createPartitioner: Partitioners.LegacyPartitioner,
 				allowAutoTopicCreation: true,
@@ -45,8 +40,13 @@ export class KafkaEventPublisherAdapter
 		});
 	}
 
-	async onModuleInit() {
-		await this.client.connect();
+	onModuleInit() {
+		// Conecta em background para não bloquear o bootstrap da API
+		this.client.connect().catch((error) => {
+			this.logger.error(
+				`[KafkaEventPublisherAdapter] Falha ao conectar ao Kafka em background: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		});
 	}
 
 	async onModuleDestroy() {

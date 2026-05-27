@@ -1,7 +1,9 @@
 import { BookType } from '@books/domain/enums/book-type.enum';
 import { ExportFormat } from '@books/domain/enums/export-format.enum';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
+import { AlternativeTitle } from './alternative-title';
 import { Author } from './author';
+import { BookDescription } from './book-description';
 import { Chapter } from './chapter';
 import { Cover } from './cover';
 import { SensitiveContent } from './sensitive-content';
@@ -11,11 +13,13 @@ export class Book {
 	id: string;
 	title: string;
 	covers: Cover[];
-	alternativeTitle: string[];
+	alternativeTitles: AlternativeTitle[];
+	localizedDescriptions: BookDescription[];
+	searchTerms: string[];
 	type: BookType;
 	sensitiveContent: SensitiveContent[];
 	originalUrl: string[];
-	description: string | null;
+	description: string | null; // Keep for legacy return mapping
 	publication: number | null;
 	scrapingStatus: ScrapingStatus;
 	autoUpdate: boolean;
@@ -23,6 +27,7 @@ export class Book {
 	chapters: Chapter[];
 	tags: Tag[];
 	authors: Author[];
+	originalLanguageCode: string | null;
 	createdAt: Date;
 	updatedAt: Date;
 	deletedAt: Date | null;

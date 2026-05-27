@@ -35,11 +35,14 @@ export class AuthorsController {
 	@ApiDocsGetAll()
 	getAll(
 		@Query() options: AuthorsOptions,
+		@Query('lang') queryLang?: string,
 		@CurrentUser() user?: CurrentUserDto,
 	) {
+		const targetLang = queryLang || user?.preferredLanguage;
 		return this.authorsService.getAll(
 			options,
 			user?.maxWeightSensitiveContent,
+			targetLang,
 		);
 	}
 

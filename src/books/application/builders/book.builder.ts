@@ -1,5 +1,7 @@
+import { AlternativeTitle } from '@books/domain/entities/alternative-title';
 import { Author } from '@books/domain/entities/author';
 import { Book } from '@books/domain/entities/book';
+import { BookDescription } from '@books/domain/entities/book-description';
 import { Chapter } from '@books/domain/entities/chapter';
 import { Cover } from '@books/domain/entities/cover';
 import { SensitiveContent } from '@books/domain/entities/sensitive-content';
@@ -13,12 +15,19 @@ import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
  */
 type BookBuilderData = Omit<
 	Partial<Book>,
-	'tags' | 'authors' | 'chapters' | 'covers'
+	| 'tags'
+	| 'authors'
+	| 'chapters'
+	| 'covers'
+	| 'alternativeTitles'
+	| 'localizedDescriptions'
 > & {
 	tags?: Tag[];
 	authors?: Author[];
 	chapters?: Chapter[];
 	covers?: Cover[];
+	alternativeTitles?: AlternativeTitle[];
+	localizedDescriptions?: BookDescription[];
 };
 
 /**
@@ -38,8 +47,11 @@ export class BookBuilder {
 			authors: [],
 			sensitiveContent: [],
 			covers: [],
-			alternativeTitle: [],
+			alternativeTitles: [],
+			localizedDescriptions: [],
+			searchTerms: [],
 			originalUrl: [],
+			originalLanguageCode: null,
 		};
 	}
 
@@ -54,19 +66,65 @@ export class BookBuilder {
 	/**
 	 * Define títulos alternativos
 	 */
-	withAlternativeTitles(titles: string[]): this {
-		this.book.alternativeTitle = titles;
+	withAlternativeTitles(titles: AlternativeTitle[]): this {
+		this.book.alternativeTitles = titles;
 		return this;
 	}
 
 	/**
 	 * Adiciona um título alternativo
 	 */
-	addAlternativeTitle(title: string): this {
-		if (!this.book.alternativeTitle) {
-			this.book.alternativeTitle = [];
+	addAlternativeTitle(title: AlternativeTitle): this {
+		if (!this.book.alternativeTitles) {
+			this.book.alternativeTitles = [];
 		}
-		this.book.alternativeTitle.push(title);
+		this.book.alternativeTitles.push(title);
+		return this;
+	}
+
+	/**
+	 * Define o código do idioma original (BCP 47)
+	 */
+	withOriginalLanguageCode(code: string | null): this {
+		this.book.originalLanguageCode = code;
+		return this;
+	}
+
+	/**
+	 * Define descrições localizadas
+	 */
+	withLocalizedDescriptions(descriptions: BookDescription[]): this {
+		this.book.localizedDescriptions = descriptions;
+		return this;
+	}
+
+	/**
+	 * Adiciona uma descrição localizada
+	 */
+	addLocalizedDescription(description: BookDescription): this {
+		if (!this.book.localizedDescriptions) {
+			this.book.localizedDescriptions = [];
+		}
+		this.book.localizedDescriptions.push(description);
+		return this;
+	}
+
+	/**
+	 * Define termos de busca (sinônimos)
+	 */
+	withSearchTerms(terms: string[]): this {
+		this.book.searchTerms = terms;
+		return this;
+	}
+
+	/**
+	 * Adiciona um termo de busca (sinônimo)
+	 */
+	addSearchTerm(term: string): this {
+		if (!this.book.searchTerms) {
+			this.book.searchTerms = [];
+		}
+		this.book.searchTerms.push(term);
 		return this;
 	}
 
@@ -264,8 +322,11 @@ export class BookBuilder {
 			authors: [],
 			sensitiveContent: [],
 			covers: [],
-			alternativeTitle: [],
+			alternativeTitles: [],
+			localizedDescriptions: [],
+			searchTerms: [],
 			originalUrl: [],
+			originalLanguageCode: null,
 		};
 		return this;
 	}
