@@ -114,12 +114,23 @@ export class JwtPayloadBuilder {
 
 		const maxWeightSensitiveContent = Math.max(userWeight, maxRoleWeight);
 
+		const permissionsSet = new Set<string>();
+		for (const role of user.roles) {
+			const r = role as { permissions?: { name: string }[] };
+			if (r.permissions) {
+				for (const p of r.permissions) {
+					permissionsSet.add(p.name);
+				}
+			}
+		}
+
 		return this.setSubject(user.id)
 			.setEmail(user.email)
 			.setRoles(
 				(user.roles || []).map((role: { name: string }) => role.name),
 			)
-			.setMaxWeightSensitiveContent(maxWeightSensitiveContent);
+			.setMaxWeightSensitiveContent(maxWeightSensitiveContent)
+			.setPermissions(Array.from(permissionsSet));
 	}
 
 	build(): JwtPayloadDto {

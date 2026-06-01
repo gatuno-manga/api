@@ -69,9 +69,9 @@ export class JwtPayloadDto {
 	userAgent?: string;
 
 	/**
-	 * Permissões específicas (opcional)
+	 * Permissões específicas
 	 */
-	permissions?: string[];
+	permissions: string[];
 
 	/**
 	 * Dados customizados adicionais (opcional)

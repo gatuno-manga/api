@@ -23,7 +23,6 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 	async canActivate(context: ExecutionContext) {
 		const canActivate = await super.canActivate(context);
 		if (!canActivate) {
-			this.logger.error('User is not authenticated');
 			return false;
 		}
 
@@ -37,24 +36,17 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 		}
 
 		const request = context.switchToHttp().getRequest<Request>();
+		const user = request.user as { roles?: string[] };
 
-		const authHeader = request.headers.authorization;
-		const token = authHeader?.split(' ')[1];
-		if (!token) {
-			throw new UnauthorizedException('No token provided');
+		if (!user || !user.roles) {
+			throw new UnauthorizedException('User roles not found');
 		}
 
-		const payload = this.jwtService.verify<{ roles?: string[] }>(token);
+		const userRoles: string[] = user.roles;
+		const hasRole = requiredRoles.some((role) => userRoles.includes(role));
 
-		const userRoles: string[] = payload.roles || [];
-
-		const hasRole = () =>
-			requiredRoles
-				? requiredRoles.some((role) => userRoles.includes(role))
-				: true;
-
-		if (!hasRole()) {
-			throw new UnauthorizedException('Insufficient permissions');
+		if (!hasRole) {
+			throw new UnauthorizedException('Insufficient roles');
 		}
 		return true;
 	}

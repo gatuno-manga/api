@@ -12,6 +12,7 @@ import { EncryptionModule } from 'src/infrastructure/encryption/encryption.modul
 import { UserResourcesMapper } from './application/mappers/user-resources.mapper';
 import { I_USER_IMAGE_REPOSITORY } from './application/ports/user-image-repository.interface';
 import { I_USER_REPOSITORY } from './application/ports/user-repository.interface';
+import { UserPermissionsService } from './application/services/user-permissions.service';
 import { HighestPageWinsStrategy } from './application/strategies/highest-page-wins.strategy';
 import { LastWriteWinsStrategy } from './application/strategies/last-write-wins.strategy';
 import { SyncStrategyResolver } from './application/strategies/sync-strategy.resolver';
@@ -34,6 +35,7 @@ import { UsersController } from './infrastructure/controllers/users.controller';
 import { TypeOrmUserImageRepositoryAdapter } from './infrastructure/database/adapters/typeorm-user-image-repository.adapter';
 import { TypeOrmUserRepositoryAdapter } from './infrastructure/database/adapters/typeorm-user-repository.adapter';
 import { AccessPolicy } from './infrastructure/database/entities/access-policy.entity';
+import { Permission } from './infrastructure/database/entities/permission.entity';
 import { ReadingProgress } from './infrastructure/database/entities/reading-progress.entity';
 import { Role } from './infrastructure/database/entities/role.entity';
 import { UserGroup } from './infrastructure/database/entities/user-group.entity';
@@ -55,6 +57,7 @@ import { ReadingProgressNotifier } from './infrastructure/notifiers/reading-prog
 			User,
 			UserImage,
 			Role,
+			Permission,
 			Book,
 			ReadingProgress,
 			SavedPage,
@@ -85,6 +88,7 @@ import { ReadingProgressNotifier } from './infrastructure/notifiers/reading-prog
 		UsersService,
 		AdminUsersService,
 		ReadingProgressService,
+		UserPermissionsService,
 		ReadingProgressGateway,
 		ReadingProgressNotifier,
 		SavedPagesService,
@@ -101,6 +105,7 @@ import { ReadingProgressNotifier } from './infrastructure/notifiers/reading-prog
 		I_USER_IMAGE_REPOSITORY,
 		ReadingProgressService,
 		SavedPagesService,
+		UserPermissionsService,
 	],
 })
 export class UsersModule {}

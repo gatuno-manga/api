@@ -261,6 +261,7 @@ describe('AuthController', () => {
 				userId: '550e8400-e29b-41d4-a716-446655440000',
 				username: 'admin',
 				roles: ['admin'],
+				permissions: [],
 				maxWeightSensitiveContent: 99,
 			};
 			const responsePayload = {
@@ -398,6 +399,7 @@ describe('AuthController', () => {
 			userId: '550e8400-e29b-41d4-a716-446655440000',
 			username: 'user',
 			roles: ['user'],
+			permissions: [],
 			maxWeightSensitiveContent: 5,
 		};
 

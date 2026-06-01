@@ -3,6 +3,7 @@ import {
 	AuthMethod,
 	AuthRequestContext,
 	AuthRiskLevel,
+	SessionAuditEvent,
 } from '@auth/types/auth-security.types';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -13,30 +14,6 @@ import {
 } from 'src/common/pagination/cursor.utils';
 import { CustomLogger } from 'src/custom.logger';
 import { FindOptionsWhere, Repository } from 'typeorm';
-
-export type SessionAuditEvent =
-	| 'login_success'
-	| 'login_failed'
-	| 'api_key_created'
-	| 'signup_success'
-	| 'passkey_login_success'
-	| 'passkey_registration_success'
-	| 'passkey_removed'
-	| 'mfa_challenge_issued'
-	| 'mfa_verify_success'
-	| 'mfa_verify_failed'
-	| 'mfa_totp_setup_started'
-	| 'mfa_totp_setup_completed'
-	| 'mfa_totp_disabled'
-	| 'refresh_success'
-	| 'refresh_reuse_detected'
-	| 'refresh_family_revoked'
-	| 'logout_success'
-	| 'logout_all_success'
-	| 'session_revoked'
-	| 'session_revoke_others'
-	| 'passkey_auth_challenge_issued'
-	| 'passkey_registration_challenge_issued';
 
 interface SessionAuditTrackContext extends AuthRequestContext {
 	sessionId?: string | null;

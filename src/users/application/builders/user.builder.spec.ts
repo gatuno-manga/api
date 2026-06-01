@@ -31,6 +31,7 @@ describe('UserBuilder', () => {
 				id: '1',
 				name: 'USER',
 				maxWeightSensitiveContent: 5,
+				permissions: [],
 			};
 
 			const user = builder
@@ -77,11 +78,13 @@ describe('UserBuilder', () => {
 				id: '1',
 				name: 'USER',
 				maxWeightSensitiveContent: 0,
+				permissions: [],
 			};
 			const role2: Role = {
 				id: '2',
 				name: 'ADMIN',
 				maxWeightSensitiveContent: 10,
+				permissions: [],
 			};
 
 			const user = builder
@@ -101,11 +104,13 @@ describe('UserBuilder', () => {
 				id: '1',
 				name: 'USER',
 				maxWeightSensitiveContent: 0,
+				permissions: [],
 			};
 			const role2: Role = {
 				id: '2',
 				name: 'MODERATOR',
 				maxWeightSensitiveContent: 5,
+				permissions: [],
 			};
 
 			const user = builder
@@ -126,16 +131,19 @@ describe('UserBuilder', () => {
 				id: '1',
 				name: 'USER',
 				maxWeightSensitiveContent: 0,
+				permissions: [],
 			};
 			const role2: Role = {
 				id: '2',
 				name: 'MODERATOR',
 				maxWeightSensitiveContent: 5,
+				permissions: [],
 			};
 			const role3: Role = {
 				id: '3',
 				name: 'ADMIN',
 				maxWeightSensitiveContent: 10,
+				permissions: [],
 			};
 
 			const user = builder
@@ -188,6 +196,7 @@ describe('UserBuilder', () => {
 				id: '1',
 				name: 'ADMIN',
 				maxWeightSensitiveContent: 10,
+				permissions: [],
 			};
 			const user = builder.withAdminDefaults(adminRole).build();
 
@@ -302,11 +311,13 @@ describe('UserBuilder', () => {
 				id: '1',
 				name: 'ADMIN',
 				maxWeightSensitiveContent: 10,
+				permissions: [],
 			};
 			const _userRole: Role = {
 				id: '2',
 				name: 'USER',
 				maxWeightSensitiveContent: 0,
+				permissions: [],
 			};
 
 			const admin = builder

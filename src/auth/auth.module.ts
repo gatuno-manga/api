@@ -9,7 +9,11 @@ import { EncryptionModule } from 'src/infrastructure/encryption/encryption.modul
 import { LoggingModule } from 'src/infrastructure/logging/logging.module';
 import { Role } from 'src/users/infrastructure/database/entities/role.entity';
 import { User } from 'src/users/infrastructure/database/entities/user.entity';
+import { ApiKeyUseCase } from './application/use-cases/api-key.use-case';
+import { RefreshTokenUseCase } from './application/use-cases/refresh-token.use-case';
+import { RevokeSessionUseCase } from './application/use-cases/revoke-session.use-case';
 import { SignInUseCase } from './application/use-cases/sign-in.use-case';
+import { SignOutUseCase } from './application/use-cases/sign-out.use-case';
 import { SignUpUseCase } from './application/use-cases/sign-up.use-case';
 import { AuthService } from './auth.service';
 import { CreateAdminEvent } from './events/create-admin.event';
@@ -63,6 +67,10 @@ import { WsJwtGuard } from './infrastructure/framework/ws-jwt.guard';
 		AuthService,
 		SignUpUseCase,
 		SignInUseCase,
+		RefreshTokenUseCase,
+		SignOutUseCase,
+		RevokeSessionUseCase,
+		ApiKeyUseCase,
 		{
 			provide: 'UserRepositoryPort',
 			useClass: TypeOrmUserRepositoryAdapter,
@@ -85,6 +93,10 @@ import { WsJwtGuard } from './infrastructure/framework/ws-jwt.guard';
 		WsJwtGuard,
 		SignUpUseCase,
 		SignInUseCase,
+		RefreshTokenUseCase,
+		SignOutUseCase,
+		RevokeSessionUseCase,
+		ApiKeyUseCase,
 	],
 })
 export class AuthModule {}
