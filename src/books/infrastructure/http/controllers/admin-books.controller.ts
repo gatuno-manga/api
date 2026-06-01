@@ -31,8 +31,11 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
+import { Permissions } from 'src/auth/infrastructure/framework/permissions.decorator';
+import { PermissionsGuard } from 'src/auth/infrastructure/framework/permissions.guard';
 import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
+import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 import {
 	ApiDocsCheckAllBooksUpdates,
@@ -70,7 +73,7 @@ import {
 
 @ApiTags('Books Admin')
 @Controller('books')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Roles(RolesEnum.ADMIN)
 @ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 export class AdminBooksController {
@@ -82,6 +85,7 @@ export class AdminBooksController {
 	) {}
 
 	@Post()
+	@Permissions(PermissionsEnum.BOOKS_CREATE)
 	@Throttle({ medium: { limit: 30, ttl: 60000 } }) // 30 req/min
 	@ApiDocsCreateBook()
 	createBook(@Body() dto: CreateBookDto) {
@@ -275,6 +279,7 @@ export class AdminBooksController {
 	// ==================== DELETION ENDPOINTS ====================
 
 	@Delete(':idBook')
+	@Permissions(PermissionsEnum.BOOKS_DELETE)
 	@Throttle({ short: { limit: 5, ttl: 60000 } }) // 5 req/min
 	@ApiDocsDeleteBook()
 	deleteBook(@Param('idBook') idBook: string) {
