@@ -13,12 +13,14 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AdminUsersService } from '@users/application/use-cases/admin-users.service';
+import { PermissionsEnum } from '@users/domain/enums/permissions.enum';
 import { AdminChangePasswordDto } from '@users/infrastructure/http/dto/admin-change-password.dto';
 import { AdminUpdateUserDto } from '@users/infrastructure/http/dto/admin-update-user.dto';
 import { SetUserModerationDto } from '@users/infrastructure/http/dto/set-user-moderation.dto';
 import { UpdateUserRolesDto } from '@users/infrastructure/http/dto/update-user-roles.dto';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
+import { Permissions } from 'src/auth/infrastructure/framework/permissions.decorator';
 import { AdminApi } from 'src/common/swagger/auth-api.decorators';
 import {
 	ApiDocsChangePassword,
@@ -38,12 +40,14 @@ export class AdminUsersController {
 	constructor(private readonly adminUsersService: AdminUsersService) {}
 
 	@Get('search')
+	@Permissions(PermissionsEnum.USERS_SEARCH)
 	@ApiDocsSearch()
 	search(@Query('q') query: string) {
 		return this.adminUsersService.search(query);
 	}
 
 	@Get()
+	@Permissions(PermissionsEnum.USERS_VIEW)
 	@ApiDocsListUsers()
 	listUsers(
 		@Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -68,12 +72,14 @@ export class AdminUsersController {
 	}
 
 	@Get(':userId')
+	@Permissions(PermissionsEnum.USERS_VIEW)
 	@ApiDocsGetUserById()
 	getUserById(@Param('userId', ParseUUIDPipe) userId: string) {
 		return this.adminUsersService.getUserById(userId);
 	}
 
 	@Patch(':userId')
+	@Permissions(PermissionsEnum.USERS_EDIT)
 	@ApiDocsUpdateUser()
 	updateUser(
 		@Param('userId', ParseUUIDPipe) userId: string,
@@ -83,6 +89,7 @@ export class AdminUsersController {
 	}
 
 	@Patch(':userId/roles')
+	@Permissions(PermissionsEnum.USERS_ROLES_EDIT)
 	@ApiDocsUpdateUserRoles()
 	updateUserRoles(
 		@Param('userId', ParseUUIDPipe) userId: string,
@@ -97,6 +104,7 @@ export class AdminUsersController {
 	}
 
 	@Patch(':userId/password')
+	@Permissions(PermissionsEnum.USERS_PASSWORD_EDIT)
 	@ApiDocsChangePassword()
 	changePassword(
 		@Param('userId', ParseUUIDPipe) userId: string,
@@ -109,6 +117,7 @@ export class AdminUsersController {
 	}
 
 	@Patch(':userId/moderation')
+	@Permissions(PermissionsEnum.USERS_MODERATION)
 	@ApiDocsSetModeration()
 	setModeration(
 		@Param('userId', ParseUUIDPipe) userId: string,
@@ -123,6 +132,7 @@ export class AdminUsersController {
 	}
 
 	@Delete(':userId')
+	@Permissions(PermissionsEnum.USERS_DELETE)
 	@ApiDocsDeleteUser()
 	deleteUser(
 		@Param('userId', ParseUUIDPipe) userId: string,

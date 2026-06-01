@@ -5,10 +5,12 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { AccessPolicyEffectEnum } from '@users/domain/enums/access-policy-effect.enum';
 import { AccessPolicyScopeEnum } from '@users/domain/enums/access-policy-scope.enum';
 import { AccessPolicy } from '@users/infrastructure/database/entities/access-policy.entity';
+import { Permission } from '@users/infrastructure/database/entities/permission.entity';
 import { Role } from '@users/infrastructure/database/entities/role.entity';
 import { UserGroup } from '@users/infrastructure/database/entities/user-group.entity';
 import { User } from '@users/infrastructure/database/entities/user.entity';
 import { Repository } from 'typeorm';
+import { UserPermissionsService } from '../services/user-permissions.service';
 import { AdminUsersService } from './admin-users.service';
 
 describe('AdminUsersService', () => {
@@ -65,6 +67,22 @@ describe('AdminUsersService', () => {
 						create: jest.fn(),
 						save: jest.fn(),
 						createQueryBuilder: jest.fn(),
+					},
+				},
+				{
+					provide: getRepositoryToken(Permission),
+					useValue: {
+						find: jest.fn(),
+						findOne: jest.fn(),
+						create: jest.fn(),
+						save: jest.fn(),
+					},
+				},
+				{
+					provide: UserPermissionsService,
+					useValue: {
+						invalidateCache: jest.fn(),
+						invalidateAllCache: jest.fn(),
 					},
 				},
 				{

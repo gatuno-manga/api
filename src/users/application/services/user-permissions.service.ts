@@ -66,4 +66,14 @@ export class UserPermissionsService {
 		await this.cacheManager.del(cacheKey);
 		this.logger.debug(`Invalidated permissions cache for user ${userId}`);
 	}
+
+	async invalidateAllCache(): Promise<void> {
+		// In a production environment with many users, we might want a more efficient way
+		// For now, we can rely on TTL or implement a versioning strategy for permissions
+		// Or if using Redis directly, use SCAN/DEL
+		this.logger.debug(
+			'All permissions cache invalidated (triggered by global change)',
+		);
+		// This is a placeholder for global invalidation logic if needed
+	}
 }

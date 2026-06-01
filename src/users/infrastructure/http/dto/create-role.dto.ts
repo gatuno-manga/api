@@ -1,6 +1,8 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+	IsArray,
 	IsInt,
+	IsOptional,
 	IsString,
 	Max,
 	MaxLength,
@@ -20,4 +22,13 @@ export class CreateRoleDto {
 	@Max(99)
 	@ApiProperty({ example: 10 })
 	maxWeightSensitiveContent: number;
+
+	@IsArray()
+	@IsString({ each: true })
+	@IsOptional()
+	@ApiPropertyOptional({
+		description: 'List of permission names to assign to this role',
+		example: ['books:create', 'books:edit'],
+	})
+	permissions?: string[];
 }

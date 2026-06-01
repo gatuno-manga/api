@@ -45,6 +45,7 @@ import { ReadingProgressGateway } from './infrastructure/gateways/reading-progre
 import { UserImageResolver } from './infrastructure/graphql/resolvers/user-image.resolver';
 import { UserResolver } from './infrastructure/graphql/resolvers/user.resolver';
 import { ReadingProgressNotifier } from './infrastructure/notifiers/reading-progress.notifier';
+import { RbacSeederService } from './infrastructure/seeding/rbac-seeder.service';
 
 @Module({
 	imports: [
@@ -89,6 +90,7 @@ import { ReadingProgressNotifier } from './infrastructure/notifiers/reading-prog
 		AdminUsersService,
 		ReadingProgressService,
 		UserPermissionsService,
+		RbacSeederService,
 		ReadingProgressGateway,
 		ReadingProgressNotifier,
 		SavedPagesService,
