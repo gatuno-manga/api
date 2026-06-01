@@ -12,6 +12,9 @@ mc alias set myrustfs http://rustfs:9000 "${RUSTFS_ACCESS_KEY:-rustfsadmin}" "${
 # Lista de buckets vinda do ambiente ou padrão seguro
 BUCKETS="${RUSTFS_BUCKETS_LIST:-books users processing system}"
 
+# Controle de política estrita de Referer (desativado por padrão em dev para evitar problemas de CORS em downloads)
+STRICT_REFERER="${RUSTFS_STRICT_REFERER:-false}"
+
 # Constrói as URLs baseadas nos novos componentes de ambiente
 APP_URL="${APP_SCHEME:-http}://${APP_HOST:-localhost:4200}"
 API_URL="${API_SCHEME:-http}://${API_HOST:-localhost:3000}"
@@ -31,7 +34,6 @@ for BUCKET in $BUCKETS; do
   mc mb myrustfs/"$BUCKET" || true
 
   # Verifica se o bucket deve ser público
-  # Se RUSTFS_PUBLIC_BUCKETS contiver o nome do bucket, aplicamos a política
   IS_PUBLIC=false
   for PUB_BUCKET in $RUSTFS_PUBLIC_BUCKETS; do
     if [ "$PUB_BUCKET" = "$BUCKET" ]; then
@@ -41,32 +43,31 @@ for BUCKET in $BUCKETS; do
   done
 
   if [ "$IS_PUBLIC" = "true" ]; then
-    echo "    -> Definindo como PÚBLICO com restrição de Referer"
     
-    # Tenta encontrar referers específicos para este bucket (ex: RUSTFS_REFERERS_BOOKS)
-    # Converte nome do bucket para maiúsculo e substitui hífens por underscores
-    UPPER_BUCKET=$(echo "$BUCKET" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
-    VAR_NAME="RUSTFS_REFERERS_$UPPER_BUCKET"
-    BUCKET_SPECIFIC_REFERERS=$(eval echo "\$$VAR_NAME")
-    
-    CURRENT_REFERERS_JSON=""
-    
-    if [ -n "$BUCKET_SPECIFIC_REFERERS" ]; then
-      echo "    -> Usando referers específicos para $BUCKET"
-      for url in $(echo "$BUCKET_SPECIFIC_REFERERS" | tr ',' ' '); do
-        if [ -z "$CURRENT_REFERERS_JSON" ]; then
-          CURRENT_REFERERS_JSON="\"$url/*\""
-        else
-          CURRENT_REFERERS_JSON="$CURRENT_REFERERS_JSON, \"$url/*\""
-        fi
-      done
-    else
-      echo "    -> Usando referers padrão"
-      CURRENT_REFERERS_JSON="\"${APP_URL}/*\", \"${API_URL}/*\" ${EXTRA_REFERERS_JSON}"
-    fi
+    if [ "$STRICT_REFERER" = "true" ]; then
+      echo "    -> Definindo como PÚBLICO (Com restrição STRICT de Referer)"
+      # Lógica de Referer estrito
+      UPPER_BUCKET=$(echo "$BUCKET" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
+      VAR_NAME="RUSTFS_REFERERS_$UPPER_BUCKET"
+      BUCKET_SPECIFIC_REFERERS=$(eval echo "\$$VAR_NAME")
+      
+      CURRENT_REFERERS_JSON=""
+      
+      if [ -n "$BUCKET_SPECIFIC_REFERERS" ]; then
+        echo "    -> Usando referers específicos para $BUCKET"
+        for url in $(echo "$BUCKET_SPECIFIC_REFERERS" | tr ',' ' '); do
+          if [ -z "$CURRENT_REFERERS_JSON" ]; then
+            CURRENT_REFERERS_JSON="\"$url/*\""
+          else
+            CURRENT_REFERERS_JSON="$CURRENT_REFERERS_JSON, \"$url/*\""
+          fi
+        done
+      else
+        echo "    -> Usando referers padrão"
+        CURRENT_REFERERS_JSON="\"${APP_URL}/*\", \"${API_URL}/*\" ${EXTRA_REFERERS_JSON}"
+      fi
 
-    # Cria o arquivo de política temporário
-    cat <<EOF > /tmp/policy.json
+      cat <<EOF > /tmp/policy.json
 {
   "Version": "2012-10-17",
   "Statement": [
@@ -86,6 +87,24 @@ for BUCKET in $BUCKETS; do
   ]
 }
 EOF
+    else
+      echo "    -> Definindo como PÚBLICO (Leitura aberta, gerenciado via CORS)"
+      # Política pública sem restrição de Referer (Ideal para download via fetch/JS)
+      cat <<EOF > /tmp/policy.json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": ["s3:GetObject"],
+      "Resource": ["arn:aws:s3:::$BUCKET/*"]
+    }
+  ]
+}
+EOF
+    fi
+
     # Aplica a política ao bucket
     mc anonymous set-json /tmp/policy.json myrustfs/"$BUCKET"
   else
