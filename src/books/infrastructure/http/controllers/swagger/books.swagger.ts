@@ -240,3 +240,31 @@ export function ApiDocsGetBookInfos() {
 		ApiResponse(COMMON_RESPONSES.TOO_MANY_REQUESTS),
 	);
 }
+
+export function ApiDocsGetOfflineSync() {
+	return applyDecorators(
+		ApiOperation({
+			summary: 'Sincronização offline de capítulos',
+			description:
+				'Retorna capítulos e páginas (incluindo deltas se updatedSince for informado) para sincronização offline.',
+		}),
+		ApiParam({
+			name: 'idBook',
+			description: 'Identificador único do livro',
+			example: '550e8400-e29b-41d4-a716-446655440000',
+		}),
+		ApiQuery({
+			name: 'updatedSince',
+			required: false,
+			description:
+				'Data da última sincronização para buscar apenas o que mudou (ISO-8601)',
+			example: '2023-01-01T00:00:00Z',
+		}),
+		ApiResponse({
+			status: 200,
+			description: 'Dados de sincronização retornados com sucesso',
+		}),
+		ApiResponse(COMMON_RESPONSES.NOT_FOUND),
+		ApiResponse(COMMON_RESPONSES.TOO_MANY_REQUESTS),
+	);
+}

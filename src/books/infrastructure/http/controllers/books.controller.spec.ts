@@ -12,6 +12,7 @@ describe('BooksController', () => {
 		getRandomBook: jest.fn(),
 		getOne: jest.fn(),
 		getChapters: jest.fn(),
+		getOfflineSyncData: jest.fn(),
 		getCovers: jest.fn(),
 		getInfos: jest.fn(),
 		getBookRelationships: jest.fn(),
@@ -283,6 +284,26 @@ describe('BooksController', () => {
 				query,
 				5,
 				'user-1',
+			);
+			expect(result).toEqual(mockResult);
+		});
+	});
+
+	describe('getOfflineSync', () => {
+		it('should call booksService.getOfflineSyncData with id and query', async () => {
+			const id = 'book-id';
+			const date = new Date();
+			const query = { updatedSince: date };
+			const mockResult = [{ id: '1', title: 'Chapter 1' }];
+			mockBooksService.getOfflineSyncData = jest
+				.fn()
+				.mockResolvedValue(mockResult);
+
+			const result = await controller.getOfflineSync(id, query);
+
+			expect(booksService.getOfflineSyncData).toHaveBeenCalledWith(
+				id,
+				date,
 			);
 			expect(result).toEqual(mockResult);
 		});

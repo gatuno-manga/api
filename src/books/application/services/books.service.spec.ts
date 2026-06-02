@@ -12,6 +12,7 @@ import { BookRelationshipService } from './book-relationship.service';
 import { BookUpdateService } from './book-update.service';
 import { BooksService } from './books.service';
 import { ChapterManagementService } from './chapter-management.service';
+import { ChapterService } from './chapter.service';
 
 describe('BooksService', () => {
 	let service: BooksService;
@@ -78,6 +79,10 @@ describe('BooksService', () => {
 		listRelationships: jest.fn(),
 	};
 
+	const mockChapterService = {
+		// Mock methods if necessary
+	};
+
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -127,6 +132,10 @@ describe('BooksService', () => {
 				{
 					provide: ChapterManagementService,
 					useValue: mockChapterManagementService,
+				},
+				{
+					provide: ChapterService,
+					useValue: mockChapterService,
 				},
 				{
 					provide: BookRelationshipService,

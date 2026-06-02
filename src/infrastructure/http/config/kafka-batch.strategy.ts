@@ -27,12 +27,8 @@ export class KafkaBatchStrategy
 			`[KafkaBatchStrategy] Padrões detectados: ${registeredPatterns.join(', ')}`,
 		);
 
-		// Garantir que os tópicos existam antes de assinar em background para não travar o bootstrap
-		this.ensureTopicsExist(registeredPatterns).catch((error) => {
-			this.logger.error(
-				`[KafkaBatchStrategy] Erro em background ao verificar/criar tópicos: ${error instanceof Error ? error.message : String(error)}`,
-			);
-		});
+		// Garantir que os tópicos existam antes de assinar para não ocorrer erro de tópico inexistente
+		await this.ensureTopicsExist(registeredPatterns);
 
 		for (const pattern of registeredPatterns) {
 			this.logger.log(

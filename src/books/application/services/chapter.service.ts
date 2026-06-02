@@ -8,7 +8,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
 import { MediaUrlService } from 'src/common/services/media-url.service';
-import { In, Repository } from 'typeorm';
+import { Brackets, In, Repository } from 'typeorm';
 
 interface ChapterIndexRaw {
 	max: string | number | null;
@@ -304,6 +304,45 @@ export class ChapterService {
 
 		if (chapters.length === 0) return [];
 
+		return this.mapChaptersForSync(chapters);
+	}
+
+	/**
+	 * Sincronização offline (Delta Sync): Retorna capítulos e páginas modificados desde uma data.
+	 */
+	async getOfflineSyncData(idBook: string, updatedSince?: Date) {
+		const qb = this.chapterRepository
+			.createQueryBuilder('chapter')
+			.leftJoinAndSelect('chapter.pages', 'pages')
+			.leftJoinAndSelect('chapter.book', 'book')
+			.where('chapter.bookId = :idBook', { idBook })
+			.withDeleted();
+
+		if (updatedSince) {
+			qb.andWhere(
+				new Brackets((innerQb) => {
+					innerQb
+						.where('chapter.updatedAt >= :updatedSince', {
+							updatedSince,
+						})
+						.orWhere('chapter.deletedAt >= :updatedSince', {
+							updatedSince,
+						});
+				}),
+			);
+		}
+
+		const chapters = await qb.getMany();
+
+		if (chapters.length === 0) return [];
+
+		return this.mapChaptersForSync(chapters);
+	}
+
+	/**
+	 * Mapeia capítulos para o formato de sincronização, resolvendo URLs e navegação.
+	 */
+	private async mapChaptersForSync(chapters: Chapter[]) {
 		// Agrupa capítulos por livro para calcular anterior/próximo eficientemente
 		const bookIds = [...new Set(chapters.map((c) => c.book.id))];
 
@@ -340,6 +379,7 @@ export class ChapterService {
 
 			const baseResponse = {
 				...chapterWithoutBook,
+				deleted: !!chapter.deletedAt,
 				previous: previousChapter?.id,
 				next: nextChapter?.id,
 				bookId: book.id,
@@ -358,7 +398,7 @@ export class ChapterService {
 						: undefined,
 			};
 
-			// Converte caminhos para URLs completas
+			// Converte caminhos para URLs completas e adiciona flag de deletado
 			if (
 				chapter.contentType === ContentType.IMAGE &&
 				baseResponse.pages
@@ -368,6 +408,8 @@ export class ChapterService {
 						page.path,
 						StorageBucket.BOOKS,
 					);
+					// @ts-expect-error - Propriedade virtual para o front
+					page.deleted = !!page.deletedAt;
 				}
 			}
 

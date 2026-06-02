@@ -35,6 +35,7 @@ import { BookQueryService } from './book-query.service';
 import { BookRelationshipService } from './book-relationship.service';
 import { BookUpdateService } from './book-update.service';
 import { ChapterManagementService } from './chapter-management.service';
+import { ChapterService } from './chapter.service';
 
 /**
  * BooksService refatorado - agora atua como orquestrador (Facade)
@@ -50,6 +51,7 @@ export class BooksService {
 		private readonly bookUpdateService: BookUpdateService,
 		private readonly bookQueryService: BookQueryService,
 		private readonly chapterManagementService: ChapterManagementService,
+		private readonly chapterService: ChapterService,
 		private readonly bookRelationshipService: BookRelationshipService,
 		private readonly bookBookRelationshipService: BookBookRelationshipService,
 		@Inject(MEILI_CLIENT) private readonly meiliClient: Meilisearch,
@@ -205,6 +207,10 @@ export class BooksService {
 			userid,
 			maxWeightSensitiveContent,
 		);
+	}
+
+	async getOfflineSyncData(idBook: string, updatedSince?: Date) {
+		return this.chapterService.getOfflineSyncData(idBook, updatedSince);
 	}
 
 	async getCovers(

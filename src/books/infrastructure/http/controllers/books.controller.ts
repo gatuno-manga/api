@@ -2,6 +2,7 @@ import { BookChaptersCursorOptionsDto } from '@books/application/dto/book-chapte
 import { BookChaptersCursorPageDto } from '@books/application/dto/book-chapters-cursor-page.dto';
 import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
 import { BookRelationshipsQueryDto } from '@books/application/dto/book-relationships-query.dto';
+import { OfflineSyncQueryDto } from '@books/application/dto/offline-sync-query.dto';
 import { BooksService } from '@books/application/services/books.service';
 import { CacheTTL } from '@nestjs/cache-manager';
 import {
@@ -26,6 +27,7 @@ import {
 	ApiDocsGetBookCovers,
 	ApiDocsGetBookInfos,
 	ApiDocsGetBookRelationships,
+	ApiDocsGetOfflineSync,
 	ApiDocsGetRandomBook,
 } from './swagger/books.swagger';
 
@@ -128,6 +130,19 @@ export class BooksController {
 			user?.userId,
 			user?.maxWeightSensitiveContent,
 		);
+	}
+
+	@Get(':idBook/offline-sync')
+	@Throttle({ long: { limit: 100, ttl: 60000 } })
+	@UseInterceptors(UserAwareCacheInterceptor)
+	@CacheTTL(300)
+	@ApiDocsGetOfflineSync()
+	@UseGuards(OptionalAuthGuard)
+	getOfflineSync(
+		@Param('idBook') idBook: string,
+		@Query() query: OfflineSyncQueryDto,
+	) {
+		return this.booksService.getOfflineSyncData(idBook, query.updatedSince);
 	}
 
 	@Get(':idBook/covers')

@@ -281,8 +281,8 @@ services:
     environment:
       - MEILI_MASTER_KEY=${MEILI_MASTER_KEY}
       - MEILI_HOST=http://meilisearch:7700
-      - DB_HOST=database-master
-      - DB_PORT=${DB_PORT:-3306}
+       - DB_HOST=proxysql
+      - DB_PORT=${DB_PORT:-6033}
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASS}
       - DB_NAME=${DB_NAME}
@@ -293,7 +293,7 @@ services:
     command: >
       sh -c "python3 /meilisync/patch.py && python3 -c \"import os, sys; print(os.path.expandvars(sys.stdin.read()))\" < /meilisync/config.yml > /tmp/config.yml && meilisync -c /tmp/config.yml start"
     depends_on:
-      database-master:
+      proxysql:
         condition: service_healthy
       meilisearch:
         condition: service_healthy
