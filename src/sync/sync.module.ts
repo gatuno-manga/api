@@ -10,7 +10,7 @@ import { SyncController } from './infrastructure/http/sync.controller';
 	imports: [
 		forwardRef(() => UsersModule),
 		forwardRef(() => BooksModule),
-		AuthModule,
+		forwardRef(() => AuthModule),
 	],
 	controllers: [SyncController],
 	providers: [ProcessSyncUseCase, SyncResolver],

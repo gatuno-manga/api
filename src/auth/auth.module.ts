@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -9,6 +9,7 @@ import { EncryptionModule } from 'src/infrastructure/encryption/encryption.modul
 import { LoggingModule } from 'src/infrastructure/logging/logging.module';
 import { Role } from 'src/users/infrastructure/database/entities/role.entity';
 import { User } from 'src/users/infrastructure/database/entities/user.entity';
+import { RbacModule } from 'src/users/rbac.module';
 import { ApiKeyUseCase } from './application/use-cases/api-key.use-case';
 import { RefreshTokenUseCase } from './application/use-cases/refresh-token.use-case';
 import { RevokeSessionUseCase } from './application/use-cases/revoke-session.use-case';
@@ -41,6 +42,7 @@ import { WsJwtGuard } from './infrastructure/framework/ws-jwt.guard';
 		LoggingModule,
 		AppConfigModule,
 		PassportModule,
+		RbacModule,
 		TypeOrmModule.forFeature([
 			User,
 			Role,
@@ -91,6 +93,7 @@ import { WsJwtGuard } from './infrastructure/framework/ws-jwt.guard';
 		JwtStrategy,
 		JwtAuthGuard,
 		WsJwtGuard,
+		RbacModule,
 		SignUpUseCase,
 		SignInUseCase,
 		RefreshTokenUseCase,

@@ -12,6 +12,7 @@ import { BookRelationshipService } from './book-relationship.service';
 import { BookUpdateService } from './book-update.service';
 import { BooksService } from './books.service';
 import { ChapterManagementService } from './chapter-management.service';
+import { ChapterService } from './chapter.service';
 
 describe('BooksService', () => {
 	let service: BooksService;
@@ -64,6 +65,10 @@ describe('BooksService', () => {
 		addChapter: jest.fn(),
 		updateChapter: jest.fn(),
 		deleteChapter: jest.fn(),
+	};
+
+	const mockChapterService = {
+		getOfflineSyncData: jest.fn(),
 	};
 
 	const mockBookRelationshipService = {
@@ -127,6 +132,10 @@ describe('BooksService', () => {
 				{
 					provide: ChapterManagementService,
 					useValue: mockChapterManagementService,
+				},
+				{
+					provide: ChapterService,
+					useValue: mockChapterService,
 				},
 				{
 					provide: BookRelationshipService,

@@ -1,5 +1,5 @@
 import { CollectionsModule } from '@/collections/collections.module';
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from 'src/auth/auth.module';
 import { Book } from 'src/books/infrastructure/database/entities/book.entity';
@@ -12,7 +12,6 @@ import { EncryptionModule } from 'src/infrastructure/encryption/encryption.modul
 import { UserResourcesMapper } from './application/mappers/user-resources.mapper';
 import { I_USER_IMAGE_REPOSITORY } from './application/ports/user-image-repository.interface';
 import { I_USER_REPOSITORY } from './application/ports/user-repository.interface';
-import { UserPermissionsService } from './application/services/user-permissions.service';
 import { HighestPageWinsStrategy } from './application/strategies/highest-page-wins.strategy';
 import { LastWriteWinsStrategy } from './application/strategies/last-write-wins.strategy';
 import { SyncStrategyResolver } from './application/strategies/sync-strategy.resolver';
@@ -46,14 +45,16 @@ import { UserImageResolver } from './infrastructure/graphql/resolvers/user-image
 import { UserResolver } from './infrastructure/graphql/resolvers/user.resolver';
 import { ReadingProgressNotifier } from './infrastructure/notifiers/reading-progress.notifier';
 import { RbacSeederService } from './infrastructure/seeding/rbac-seeder.service';
+import { RbacModule } from './rbac.module';
 
 @Module({
 	imports: [
-		AuthModule,
+		forwardRef(() => AuthModule),
 		AppConfigModule,
 		EncryptionModule,
-		FilesModule,
-		CollectionsModule,
+		forwardRef(() => FilesModule),
+		forwardRef(() => CollectionsModule),
+		RbacModule,
 		TypeOrmModule.forFeature([
 			User,
 			UserImage,
@@ -89,7 +90,6 @@ import { RbacSeederService } from './infrastructure/seeding/rbac-seeder.service'
 		UsersService,
 		AdminUsersService,
 		ReadingProgressService,
-		UserPermissionsService,
 		RbacSeederService,
 		ReadingProgressGateway,
 		ReadingProgressNotifier,
@@ -107,7 +107,7 @@ import { RbacSeederService } from './infrastructure/seeding/rbac-seeder.service'
 		I_USER_IMAGE_REPOSITORY,
 		ReadingProgressService,
 		SavedPagesService,
-		UserPermissionsService,
+		RbacModule,
 	],
 })
 export class UsersModule {}

@@ -10,6 +10,7 @@ import { UpdateChapterDto } from '@books/application/dto/update-chapter.dto';
 import { UpdateCoverDto } from '@books/application/dto/update-cover.dto';
 import { UploadCoverDto } from '@books/application/dto/upload-cover.dto';
 import { BookDeletionService } from '@books/application/services/book-deletion.service';
+import { BookUploadService } from '@books/application/services/book-upload.service';
 import { BooksService } from '@books/application/services/books.service';
 import { ChapterManagementService } from '@books/application/services/chapter-management.service';
 import { BookUpdateScheduler } from '@books/infrastructure/jobs/book-update.scheduler';
@@ -31,12 +32,11 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
-import { Permissions } from 'src/auth/infrastructure/framework/permissions.decorator';
-import { PermissionsGuard } from 'src/auth/infrastructure/framework/permissions.guard';
-import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
+import { AdminApi } from 'src/common/swagger/auth-api.decorators';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
+import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
+import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
 import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
-import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 import {
 	ApiDocsCheckAllBooksUpdates,
 	ApiDocsCheckBookUpdates,
@@ -71,15 +71,28 @@ import {
 	ApiDocsVerifyBook,
 } from './swagger/admin-books.swagger';
 
+const IMAGE_FILE_FILTER = (
+	_req: unknown,
+	file: Express.Multer.File,
+	callback: (error: Error | null, acceptFile: boolean) => void,
+) => {
+	if (!file.mimetype.match(/^image\//)) {
+		return callback(
+			new BadRequestException('Only image files are allowed'),
+			false,
+		);
+	}
+	callback(null, true);
+};
+
 @ApiTags('Books Admin')
 @Controller('books')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
-@Roles(RolesEnum.ADMIN)
-@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
+@AdminApi()
 export class AdminBooksController {
 	constructor(
 		private readonly booksService: BooksService,
 		private readonly chapterManagementService: ChapterManagementService,
+		private readonly bookUploadService: BookUploadService,
 		private readonly bookDeletionService: BookDeletionService,
 		private readonly bookUpdateScheduler: BookUpdateScheduler,
 	) {}
@@ -93,6 +106,7 @@ export class AdminBooksController {
 	}
 
 	@Post('auto-create')
+	@Permissions(PermissionsEnum.BOOKS_CREATE)
 	@Throttle({ short: { limit: 10, ttl: 60000 } }) // 10 req/min
 	async autoCreateBook(@Body('url') url: string) {
 		if (!url) {
@@ -102,24 +116,28 @@ export class AdminBooksController {
 	}
 
 	@Patch(':idBook/fix')
+	@Permissions(PermissionsEnum.BOOKS_MAINTENANCE)
 	@ApiDocsFixBook()
 	fixBook(@Param('idBook') idBook: string) {
 		return this.booksService.fixBook(idBook);
 	}
 
 	@Get(':idBook/verify')
+	@Permissions(PermissionsEnum.BOOKS_MAINTENANCE)
 	@ApiDocsVerifyBook()
 	verifyBook(@Param('idBook') idBook: string) {
 		return this.booksService.verifyBook(idBook);
 	}
 
 	@Patch(':idBook/reset')
+	@Permissions(PermissionsEnum.BOOKS_MAINTENANCE)
 	@ApiDocsResetBook()
 	resetBook(@Param('idBook') idBook: string) {
 		return this.booksService.resetBook(idBook);
 	}
 
 	@Post(':idBook/check-updates')
+	@Permissions(PermissionsEnum.BOOKS_MANUAL_UPDATE)
 	@ApiDocsCheckBookUpdates()
 	async checkBookUpdates(@Param('idBook') idBook: string) {
 		await this.bookUpdateScheduler.forceUpdateBook(idBook);
@@ -127,6 +145,7 @@ export class AdminBooksController {
 	}
 
 	@Post('check-all-updates')
+	@Permissions(PermissionsEnum.BOOKS_MANUAL_UPDATE)
 	@ApiDocsCheckAllBooksUpdates()
 	async checkAllBooksUpdates() {
 		await this.bookUpdateScheduler.forceUpdateAllBooks();
@@ -134,6 +153,7 @@ export class AdminBooksController {
 	}
 
 	@Patch(':idBook/auto-update')
+	@Permissions(PermissionsEnum.BOOKS_EDIT)
 	@ApiDocsToggleAutoUpdate()
 	async toggleAutoUpdate(
 		@Param('idBook') idBook: string,
@@ -143,6 +163,7 @@ export class AdminBooksController {
 	}
 
 	@Patch(':idBook/chapters')
+	@Permissions(PermissionsEnum.CHAPTERS_MANAGE)
 	@ApiDocsUpdateChaptersBatch()
 	updateChapter(
 		@Param('idBook') idBook: string,
@@ -152,6 +173,7 @@ export class AdminBooksController {
 	}
 
 	@Patch(':idBook/chapters/order')
+	@Permissions(PermissionsEnum.CHAPTERS_MANAGE)
 	@ApiDocsOrderChapters()
 	orderChapters(
 		@Param('idBook') idBook: string,
@@ -161,12 +183,14 @@ export class AdminBooksController {
 	}
 
 	@Patch(':idBook')
+	@Permissions(PermissionsEnum.BOOKS_EDIT)
 	@ApiDocsUpdateBook()
 	updateBook(@Param('idBook') id: string, @Body() dto: UpdateBookDto) {
 		return this.booksService.updateBook(id, dto);
 	}
 
 	@Patch(':idBook/covers/:idCover/selected')
+	@Permissions(PermissionsEnum.BOOKS_EDIT)
 	@ApiDocsSelectCover()
 	selectCover(
 		@Param('idBook') idBook: string,
@@ -176,6 +200,7 @@ export class AdminBooksController {
 	}
 
 	@Patch(':idBook/covers/order')
+	@Permissions(PermissionsEnum.BOOKS_EDIT)
 	@ApiDocsOrderCovers()
 	orderCovers(
 		@Param('idBook') idBook: string,
@@ -185,6 +210,7 @@ export class AdminBooksController {
 	}
 
 	@Patch(':idBook/covers/:idCover/fix')
+	@Permissions(PermissionsEnum.BOOKS_MAINTENANCE)
 	@ApiDocsFixCover()
 	fixCover(
 		@Param('idBook') idBook: string,
@@ -194,12 +220,14 @@ export class AdminBooksController {
 	}
 
 	@Patch(':idBook/covers/fix')
+	@Permissions(PermissionsEnum.BOOKS_MAINTENANCE)
 	@ApiDocsFixBookCovers()
 	fixBookCovers(@Param('idBook') idBook: string) {
 		return this.booksService.fixBookCovers(idBook);
 	}
 
 	@Patch(':idBook/covers/:idCover')
+	@Permissions(PermissionsEnum.BOOKS_EDIT)
 	@ApiDocsUpdateCover()
 	updateCover(
 		@Param('idBook') idBook: string,
@@ -210,7 +238,13 @@ export class AdminBooksController {
 	}
 
 	@Post(':idBook/covers/manual')
-	@UseInterceptors(FileInterceptor('file'))
+	@Permissions(PermissionsEnum.BOOKS_UPLOAD)
+	@UseInterceptors(
+		FileInterceptor('file', {
+			limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+			fileFilter: IMAGE_FILE_FILTER,
+		}),
+	)
 	@ApiDocsUploadCoverManual()
 	async uploadCoverManual(
 		@Param('idBook') idBook: string,
@@ -224,6 +258,7 @@ export class AdminBooksController {
 	}
 
 	@Post(':idBook/covers/scrape')
+	@Permissions(PermissionsEnum.BOOKS_UPLOAD)
 	@ApiDocsScrapeCover()
 	async scrapeCover(
 		@Param('idBook') idBook: string,
@@ -233,6 +268,7 @@ export class AdminBooksController {
 	}
 
 	@Post(':idBook/chapters/manual')
+	@Permissions(PermissionsEnum.CHAPTERS_MANAGE)
 	@ApiDocsCreateManualChapter()
 	createManualChapter(
 		@Param('idBook') idBook: string,
@@ -242,6 +278,7 @@ export class AdminBooksController {
 	}
 
 	@Post(':idBook/chapters/manual-with-content')
+	@Permissions(PermissionsEnum.CHAPTERS_MANAGE)
 	@Throttle({ medium: { limit: 30, ttl: 60000 } }) // 30 req/min
 	@ApiDocsCreateManualChapterWithContent()
 	createManualChapterWithContent(
@@ -254,10 +291,12 @@ export class AdminBooksController {
 		);
 	}
 
-	@Post('batch/chapters')
+	@Post(':idBook/batch/chapters')
+	@Permissions(PermissionsEnum.CHAPTERS_MANAGE)
 	@Throttle({ short: { limit: 5, ttl: 60000 } }) // 5 req/min
 	@ApiDocsCreateChaptersInBatch()
 	createChaptersInBatch(
+		@Param('idBook') idBook: string,
 		@Body(
 			new ParseArrayPipe({
 				items: CreateChapterBatchItemDto,
@@ -267,13 +306,7 @@ export class AdminBooksController {
 		)
 		dto: CreateChapterBatchItemDto[],
 	) {
-		if (dto.length > 100) {
-			throw new BadRequestException(
-				'Limite máximo por lote é 100 capítulos',
-			);
-		}
-
-		return this.chapterManagementService.createManualChaptersInBatch(dto);
+		return this.chapterManagementService.createChaptersBatch(idBook, dto);
 	}
 
 	// ==================== DELETION ENDPOINTS ====================
@@ -287,6 +320,7 @@ export class AdminBooksController {
 	}
 
 	@Delete('batch/books')
+	@Permissions(PermissionsEnum.BOOKS_DELETE)
 	@Throttle({ short: { limit: 2, ttl: 60000 } }) // 2 req/min
 	@ApiDocsDeleteBooksInBatch()
 	deleteBooksInBatch(@Body('bookIds') bookIds: string[]) {
@@ -294,6 +328,7 @@ export class AdminBooksController {
 	}
 
 	@Delete('chapters/:idChapter')
+	@Permissions(PermissionsEnum.CHAPTERS_MANAGE)
 	@Throttle({ short: { limit: 10, ttl: 60000 } }) // 10 req/min
 	@ApiDocsDeleteChapter()
 	deleteChapter(@Param('idChapter') idChapter: string) {
@@ -301,6 +336,7 @@ export class AdminBooksController {
 	}
 
 	@Delete('batch/chapters')
+	@Permissions(PermissionsEnum.CHAPTERS_MANAGE)
 	@Throttle({ short: { limit: 5, ttl: 60000 } }) // 5 req/min
 	@ApiDocsDeleteChaptersInBatch()
 	deleteChaptersInBatch(@Body('chapterIds') chapterIds: string[]) {
@@ -308,6 +344,7 @@ export class AdminBooksController {
 	}
 
 	@Delete(':idBook/covers/:idCover')
+	@Permissions(PermissionsEnum.BOOKS_EDIT)
 	@Throttle({ medium: { limit: 20, ttl: 60000 } }) // 20 req/min
 	@ApiDocsDeleteCover()
 	deleteCover(
@@ -318,6 +355,7 @@ export class AdminBooksController {
 	}
 
 	@Delete('batch/covers')
+	@Permissions(PermissionsEnum.BOOKS_EDIT)
 	@Throttle({ short: { limit: 5, ttl: 60000 } }) // 5 req/min
 	@ApiDocsDeleteCoversInBatch()
 	deleteCoversInBatch(@Body('coverIds') coverIds: string[]) {
@@ -325,6 +363,7 @@ export class AdminBooksController {
 	}
 
 	@Delete('chapters/:idChapter/pages')
+	@Permissions(PermissionsEnum.CHAPTERS_MANAGE)
 	@Throttle({ medium: { limit: 20, ttl: 60000 } }) // 20 req/min
 	@ApiDocsDeletePages()
 	deletePages(
@@ -337,24 +376,28 @@ export class AdminBooksController {
 	// ==================== LIST DELETED ITEMS ====================
 
 	@Get('deleted/books')
+	@Permissions(PermissionsEnum.BOOKS_VIEW_INTERNAL)
 	@ApiDocsListDeletedBooks()
 	listDeletedBooks() {
 		return this.bookDeletionService.listDeletedBooks();
 	}
 
 	@Get('deleted/chapters')
+	@Permissions(PermissionsEnum.CHAPTERS_VIEW_INTERNAL)
 	@ApiDocsListDeletedChapters()
 	listDeletedChapters() {
 		return this.bookDeletionService.listDeletedChapters();
 	}
 
 	@Get('deleted/covers')
+	@Permissions(PermissionsEnum.BOOKS_VIEW_INTERNAL)
 	@ApiDocsListDeletedCovers()
 	listDeletedCovers() {
 		return this.bookDeletionService.listDeletedCovers();
 	}
 
 	@Get('deleted/pages')
+	@Permissions(PermissionsEnum.CHAPTERS_VIEW_INTERNAL)
 	@ApiDocsListDeletedPages()
 	listDeletedPages() {
 		return this.bookDeletionService.listDeletedPages();

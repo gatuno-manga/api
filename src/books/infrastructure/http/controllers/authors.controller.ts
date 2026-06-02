@@ -19,6 +19,9 @@ import { OptionalAuthGuard } from 'src/auth/infrastructure/framework/optional-au
 import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
 import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-cache.interceptor';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
+import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
+import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
+import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 import { ApiDocsGetAll, ApiDocsMergeAuthors } from './swagger/authors.swagger';
 
@@ -31,7 +34,8 @@ export class AuthorsController {
 	@Throttle({ long: { limit: 100, ttl: 60000 } })
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(1800)
-	@UseGuards(OptionalAuthGuard)
+	@UseGuards(OptionalAuthGuard, PermissionsGuard)
+	@Permissions(PermissionsEnum.AUTHORS_VIEW)
 	@ApiDocsGetAll()
 	getAll(
 		@Query() options: AuthorsOptions,
@@ -48,8 +52,9 @@ export class AuthorsController {
 
 	@Patch(':authorId/merge')
 	@Throttle({ medium: { limit: 10, ttl: 60000 } })
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, PermissionsGuard)
 	@Roles(RolesEnum.ADMIN)
+	@Permissions(PermissionsEnum.BOOKS_MAINTENANCE)
 	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 	@ApiDocsMergeAuthors()
 	mergeAuthors(@Param('authorId') authorId: string, @Query() dto: string[]) {

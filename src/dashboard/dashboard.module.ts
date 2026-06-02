@@ -5,9 +5,10 @@ import { Chapter } from '@books/infrastructure/database/entities/chapter.entity'
 import { Page } from '@books/infrastructure/database/entities/page.entity';
 import { SensitiveContent } from '@books/infrastructure/database/entities/sensitive-content.entity';
 import { Tag } from '@books/infrastructure/database/entities/tags.entity';
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '@users/infrastructure/database/entities/user.entity';
+import { UsersModule } from '@users/users.module';
 import { GetDashboardOverviewUseCase } from './application/use-cases/get-dashboard-overview.use-case';
 import { DashboardController } from './infrastructure/controllers/dashboard.controller';
 import { TypeOrmDashboardAdapter } from './infrastructure/database/adapters/typeorm-dashboard.adapter';
@@ -23,7 +24,8 @@ import { TypeOrmDashboardAdapter } from './infrastructure/database/adapters/type
 			Author,
 			SensitiveContent,
 		]),
-		AuthModule,
+		forwardRef(() => AuthModule),
+		UsersModule,
 	],
 	controllers: [DashboardController],
 	providers: [

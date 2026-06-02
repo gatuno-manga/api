@@ -1,6 +1,7 @@
 import { AuthModule } from '@auth/auth.module';
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { UsersModule } from '@users/users.module';
 import { I_BOOK_REQUEST_REPOSITORY } from './application/ports/book-request.repository';
 import { BookRequestsService } from './application/use-cases/book-requests.service';
 import { AdminBookRequestsController } from './infrastructure/controllers/admin-book-requests.controller';
@@ -9,7 +10,11 @@ import { TypeOrmBookRequestRepository } from './infrastructure/database/adapters
 import { BookRequestEntity } from './infrastructure/database/entities/book-request.entity';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([BookRequestEntity]), AuthModule],
+	imports: [
+		TypeOrmModule.forFeature([BookRequestEntity]),
+		forwardRef(() => AuthModule),
+		forwardRef(() => UsersModule),
+	],
 	providers: [
 		BookRequestsService,
 		{

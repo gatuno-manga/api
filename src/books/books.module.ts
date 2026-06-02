@@ -5,7 +5,7 @@ import { FilesModule } from '@files/files.module';
 import { LoggingModule } from '@logging/logging.module';
 import { MetricsModule } from '@metrics/metrics.module';
 import { BullModule } from '@nestjs/bullmq';
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '@users/infrastructure/database/entities/user.entity';
@@ -109,7 +109,7 @@ import { ContentUploadedListener } from './infrastructure/notifiers/content-uplo
 		RedisModule,
 		ScheduleModule.forRoot(),
 		DownloadModule,
-		UsersModule,
+		forwardRef(() => UsersModule),
 		TypeOrmModule.forFeature([
 			Book,
 			BookRelationship,
@@ -125,7 +125,7 @@ import { ContentUploadedListener } from './infrastructure/notifiers/content-uplo
 			Cover,
 			BookDescription,
 		]),
-		AuthModule,
+		forwardRef(() => AuthModule),
 		BullModule.registerQueue(
 			{
 				name: 'chapter-scraping',

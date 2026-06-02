@@ -1,45 +1,54 @@
 export enum PermissionsEnum {
-	// ADMIN - General & System
-	ADMIN_PANEL_ACCESS = 'admin:panel',
-	SYSTEM_MANAGE = 'admin:system:manage',
-	FILES_MANAGE = 'admin:files:manage',
-	AUTH_MIGRATION_VIEW = 'admin:auth:migration:view',
+	// General & System
+	INTERNAL_PANEL_ACCESS = 'internal:panel',
+	SYSTEM_MANAGE = 'system:config:manage',
+	FILES_MANAGE = 'system:files:manage',
+	AUTH_MIGRATION_VIEW = 'system:auth:migration:view',
 
-	// ADMIN - Users Management
-	USERS_VIEW = 'admin:users:view',
-	USERS_SEARCH = 'admin:users:search',
-	USERS_EDIT = 'admin:users:edit',
-	USERS_DELETE = 'admin:users:delete',
-	USERS_ROLES_EDIT = 'admin:users:roles:edit',
-	USERS_PASSWORD_EDIT = 'admin:users:password:edit',
-	USERS_MODERATION = 'admin:users:moderation',
+	// Users Management
+	USERS_VIEW = 'internal:users:view',
+	USERS_SEARCH = 'internal:users:search',
+	USERS_EDIT = 'internal:users:edit',
+	USERS_DELETE = 'internal:users:delete',
+	USERS_ROLES_EDIT = 'internal:users:roles:edit',
+	USERS_PASSWORD_EDIT = 'internal:users:password:edit',
+	USERS_MODERATION = 'mod:users:manage',
 
-	// ADMIN - RBAC & Policies
-	ROLES_VIEW = 'admin:roles:view',
-	ROLES_MANAGE = 'admin:roles:manage',
-	GROUPS_VIEW = 'admin:groups:view',
-	GROUPS_MANAGE = 'admin:groups:manage',
-	ACCESS_POLICIES_VIEW = 'admin:access-policies:view',
-	ACCESS_POLICIES_MANAGE = 'admin:access-policies:manage',
+	// RBAC & Policies
+	ROLES_VIEW = 'internal:roles:view',
+	ROLES_MANAGE = 'internal:roles:manage',
+	GROUPS_VIEW = 'internal:groups:view',
+	GROUPS_MANAGE = 'internal:groups:manage',
+	ACCESS_POLICIES_VIEW = 'internal:access-policies:view',
+	ACCESS_POLICIES_MANAGE = 'internal:access-policies:manage',
 
-	// ADMIN - Books Management
-	BOOKS_VIEW_ADMIN = 'admin:books:view',
-	BOOKS_CREATE = 'admin:books:create',
-	BOOKS_EDIT = 'admin:books:edit',
-	BOOKS_DELETE = 'admin:books:delete',
-	BOOKS_UPLOAD = 'admin:books:upload',
-	BOOKS_MAINTENANCE = 'admin:books:maintenance',
-	BOOKS_RELATIONSHIPS_MANAGE = 'admin:books:relationships:manage',
-	BOOKS_DASHBOARD_VIEW = 'admin:books:dashboard:view',
+	// Books Management
+	BOOKS_VIEW_INTERNAL = 'internal:books:view',
+	BOOKS_CREATE = 'internal:books:create',
+	BOOKS_EDIT = 'internal:books:edit',
+	BOOKS_DELETE = 'internal:books:delete',
+	BOOKS_UPLOAD = 'internal:books:upload',
+	BOOKS_MAINTENANCE = 'internal:books:maintenance',
+	BOOKS_MANUAL_UPDATE = 'internal:books:update:manual',
+	BOOKS_RELATIONSHIPS_MANAGE = 'internal:books:relationships:manage',
+	BOOKS_DASHBOARD_VIEW = 'internal:books:dashboard:view',
 
-	// ADMIN - Book Requests
-	BOOK_REQUESTS_VIEW_ADMIN = 'admin:book-requests:view',
-	BOOK_REQUESTS_MANAGE = 'admin:book-requests:manage',
+	// Chapter Management
+	CHAPTERS_VIEW_INTERNAL = 'internal:chapters:view',
+	CHAPTERS_MANAGE = 'internal:chapters:manage',
 
-	// ADMIN - Websites
-	WEBSITES_MANAGE_ADMIN = 'admin:websites:manage',
+	// Book Requests
+	BOOK_REQUESTS_VIEW_INTERNAL = 'internal:book-requests:view',
+	BOOK_REQUESTS_MANAGE = 'internal:book-requests:manage',
 
-	// REGULAR USER - Books & Content
+	// Websites
+	WEBSITES_MANAGE_INTERNAL = 'internal:websites:manage',
+
+	// Sensitive Content
+	SENSITIVE_CONTENT_MANAGE = 'internal:sensitive-content:manage',
+	SENSITIVE_CONTENT_VIEW = 'internal:sensitive-content:view',
+
+	// Books & Content (Public/User)
 	BOOKS_VIEW = 'books:view',
 	AUTHORS_VIEW = 'authors:view',
 	TAGS_VIEW = 'tags:view',
@@ -48,12 +57,16 @@ export enum PermissionsEnum {
 	CHAPTER_COMMENTS_CREATE = 'chapters:comments:create',
 	CHAPTER_COMMENTS_MANAGE_OWN = 'chapters:comments:manage:own',
 
-	// REGULAR USER - Personal Data
+	// Personal Data & Sync
 	COLLECTIONS_VIEW = 'collections:view',
 	COLLECTIONS_MANAGE = 'collections:manage',
 	BOOK_REQUESTS_CREATE = 'book-requests:create',
 	BOOK_REQUESTS_VIEW_OWN = 'book-requests:view:own',
+	READING_PROGRESS_MANAGE = 'reading-progress:manage',
+	SAVED_PAGES_MANAGE = 'saved-pages:manage',
+	INTERACTIONS_MANAGE = 'interactions:manage',
+	SYNC_ALL = 'sync:all',
 
-	// REGULAR USER - Websites
+	// Websites (Public/User)
 	WEBSITES_VIEW = 'websites:view',
 }

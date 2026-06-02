@@ -13,6 +13,9 @@ import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
+import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
+import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
+import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 import {
 	ApiDocsCheckIntegrity,
@@ -25,13 +28,14 @@ import {
 
 @ApiTags('Admin - File Cleanup')
 @Controller('admin/files')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Roles(RolesEnum.ADMIN)
 @ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 export class FileCleanupController {
 	constructor(private readonly fileCleanupService: FileCleanupService) {}
 
 	@Get('orphans/scan')
+	@Permissions(PermissionsEnum.FILES_MANAGE)
 	@Throttle({ medium: { limit: 10, ttl: 60000 } })
 	@ApiDocsScanOrphans() // 10 req/min
 	async scanOrphans() {
@@ -50,6 +54,7 @@ export class FileCleanupController {
 	}
 
 	@Delete('orphans/cleanup')
+	@Permissions(PermissionsEnum.FILES_MANAGE)
 	@Throttle({ short: { limit: 2, ttl: 60000 } })
 	@ApiDocsCleanupOrphans() // 2 req/min
 	async cleanupOrphans(
@@ -60,6 +65,7 @@ export class FileCleanupController {
 	}
 
 	@Delete('orphans/cleanup-immediate')
+	@Permissions(PermissionsEnum.FILES_MANAGE)
 	@Throttle({ short: { limit: 1, ttl: 300000 } })
 	@ApiDocsCleanupOrphansImmediate() // 1 req/5min
 	async cleanupOrphansImmediate() {
@@ -67,6 +73,7 @@ export class FileCleanupController {
 	}
 
 	@Get('integrity/check')
+	@Permissions(PermissionsEnum.FILES_MANAGE)
 	@Throttle({ medium: { limit: 10, ttl: 60000 } })
 	@ApiDocsCheckIntegrity() // 10 req/min
 	async checkIntegrity() {
@@ -87,6 +94,7 @@ export class FileCleanupController {
 	}
 
 	@Delete('old-deleted/cleanup')
+	@Permissions(PermissionsEnum.FILES_MANAGE)
 	@Throttle({ short: { limit: 1, ttl: 300000 } })
 	@ApiDocsCleanupOldDeletedFiles() // 1 req/5min
 	async cleanupOldDeletedFiles() {
@@ -94,6 +102,7 @@ export class FileCleanupController {
 	}
 
 	@Get('stats')
+	@Permissions(PermissionsEnum.FILES_MANAGE)
 	@Throttle({ long: { limit: 100, ttl: 60000 } })
 	@ApiDocsGetStorageStats() // 100 req/min
 	async getStorageStats() {

@@ -19,6 +19,9 @@ import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
 import { OptionalAuthGuard } from 'src/auth/infrastructure/framework/optional-auth.guard';
 import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-cache.interceptor';
+import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
+import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
+import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 import {
 	ApiDocsCheckBookTitle,
 	ApiDocsGetAllBooks,
@@ -33,10 +36,12 @@ import {
 
 @ApiTags('Books')
 @Controller('books')
+@UseGuards(PermissionsGuard)
 export class BooksController {
 	constructor(private readonly booksService: BooksService) {}
 
 	@Get()
+	@Permissions(PermissionsEnum.BOOKS_VIEW)
 	@Throttle({ long: { limit: 100, ttl: 60000 } })
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(180)
@@ -57,6 +62,7 @@ export class BooksController {
 	}
 
 	@Get('random')
+	@Permissions(PermissionsEnum.BOOKS_VIEW)
 	@Throttle({ long: { limit: 100, ttl: 60000 } })
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(60)
@@ -93,6 +99,7 @@ export class BooksController {
 	}
 
 	@Get(':idBook')
+	@Permissions(PermissionsEnum.BOOKS_VIEW)
 	@Throttle({ long: { limit: 200, ttl: 60000 } })
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(1800)
@@ -114,6 +121,7 @@ export class BooksController {
 	}
 
 	@Get(':idBook/chapters')
+	@Permissions(PermissionsEnum.CHAPTERS_VIEW)
 	@Throttle({ long: { limit: 200, ttl: 60000 } })
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(600)
@@ -133,6 +141,7 @@ export class BooksController {
 	}
 
 	@Get(':idBook/offline-sync')
+	@Permissions(PermissionsEnum.SYNC_ALL)
 	@Throttle({ long: { limit: 100, ttl: 60000 } })
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(300)
@@ -146,6 +155,7 @@ export class BooksController {
 	}
 
 	@Get(':idBook/covers')
+	@Permissions(PermissionsEnum.BOOKS_VIEW)
 	@Throttle({ long: { limit: 200, ttl: 60000 } })
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(3600)
@@ -163,6 +173,7 @@ export class BooksController {
 	}
 
 	@Get(':idBook/relationships')
+	@Permissions(PermissionsEnum.BOOKS_VIEW)
 	@Throttle({ long: { limit: 200, ttl: 60000 } })
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(600)
@@ -182,6 +193,7 @@ export class BooksController {
 	}
 
 	@Get(':idBook/infos')
+	@Permissions(PermissionsEnum.BOOKS_VIEW)
 	@Throttle({ long: { limit: 200, ttl: 60000 } })
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(1800)

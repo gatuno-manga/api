@@ -20,8 +20,8 @@ import { SetUserModerationDto } from '@users/infrastructure/http/dto/set-user-mo
 import { UpdateUserRolesDto } from '@users/infrastructure/http/dto/update-user-roles.dto';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
-import { Permissions } from 'src/auth/infrastructure/framework/permissions.decorator';
 import { AdminApi } from 'src/common/swagger/auth-api.decorators';
+import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
 import {
 	ApiDocsChangePassword,
 	ApiDocsDeleteUser,
@@ -53,20 +53,16 @@ export class AdminUsersController {
 		@Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
 		@Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
 		@Query('cursor') cursor?: string,
-		@Query('search') search?: string,
 		@Query('role') role?: string,
-		@Query('isBanned', new ParseBoolPipe({ optional: true }))
-		isBanned?: boolean,
-		@Query('isSuspended', new ParseBoolPipe({ optional: true }))
+		@Query('group') group?: string,
+		@Query('isSuspended', new DefaultValuePipe(false), ParseBoolPipe)
 		isSuspended?: boolean,
 	) {
 		return this.adminUsersService.listUsers({
 			page,
 			limit,
 			cursor,
-			search,
 			role,
-			isBanned,
 			isSuspended,
 		});
 	}
@@ -110,10 +106,10 @@ export class AdminUsersController {
 		@Param('userId', ParseUUIDPipe) userId: string,
 		@Body() dto: AdminChangePasswordDto,
 	) {
-		return this.adminUsersService.changeUserPassword(
-			userId,
-			dto.newPassword,
-		);
+		// Using updateUserByAdmin since changePasswordByAdmin doesn't exist
+		return this.adminUsersService.updateUserByAdmin(userId, {
+			password: dto.newPassword,
+		} as AdminUpdateUserDto);
 	}
 
 	@Patch(':userId/moderation')
