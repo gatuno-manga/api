@@ -9,6 +9,7 @@ import {
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
+import { MediaUrlService } from 'src/common/services/media-url.service';
 import { AdminUsersService } from 'src/users/application/use-cases/admin-users.service';
 import {
 	BookBookRelationshipService,
@@ -35,6 +36,14 @@ describe('BookBookRelationshipService', () => {
 		evaluateAccessForBook: jest.fn(),
 	} as unknown as jest.Mocked<AdminUsersService>;
 
+	const mockMediaUrlService = {
+		resolveUrl: jest
+			.fn()
+			.mockImplementation((url) =>
+				url ? `https://media.gatuno.local/${url}` : null,
+			),
+	} as unknown as jest.Mocked<MediaUrlService>;
+
 	beforeEach(async () => {
 		jest.clearAllMocks();
 
@@ -52,6 +61,10 @@ describe('BookBookRelationshipService', () => {
 				{
 					provide: AdminUsersService,
 					useValue: mockAdminUsersService,
+				},
+				{
+					provide: MediaUrlService,
+					useValue: mockMediaUrlService,
 				},
 			],
 		}).compile();

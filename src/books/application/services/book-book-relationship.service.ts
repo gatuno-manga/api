@@ -22,11 +22,14 @@ import {
 	Injectable,
 	NotFoundException,
 } from '@nestjs/common';
+import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
+import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 import {
 	decodeCursorPayload,
 	encodeCursorPayload,
 } from 'src/common/pagination/cursor.utils';
+import { MediaUrlService } from 'src/common/services/media-url.service';
 import { AdminUsersService } from 'src/users/application/use-cases/admin-users.service';
 
 export type RelatedBookItem = {
@@ -36,11 +39,15 @@ export type RelatedBookItem = {
 	order: number | null;
 	metadata: BookRelationshipMetadata | null;
 	direction: 'incoming' | 'outgoing';
-	relatedBook: Book;
+	relatedBook: Omit<Book, 'covers'> & {
+		cover: string | null;
+		coverMetadata: ImageMetadata | null;
+	};
 	createdAt: Date;
 };
 
 type BookRelationshipsCursorPayload = {
+	relationType?: string;
 	order: number | null;
 	createdAt: string;
 	id: string;
@@ -56,6 +63,7 @@ export class BookBookRelationshipService {
 		@Inject(I_BOOK_REPOSITORY)
 		private readonly bookRepository: IBookRepository,
 		private readonly adminUsersService: AdminUsersService,
+		private readonly mediaUrlService: MediaUrlService,
 	) {}
 
 	async createRelationship(
@@ -176,9 +184,24 @@ export class BookBookRelationshipService {
 
 		let items: RelatedBookItem[] = relationships.map((rel) => {
 			const isSource = rel.sourceBookId === idBook;
-			const relatedBook = isSource ? rel.targetBook : rel.sourceBook;
+			const relatedBookSource = isSource
+				? rel.targetBook
+				: rel.sourceBook;
 			const direction =
 				rel.isBidirectional || isSource ? 'outgoing' : 'incoming';
+
+			const selectedCover =
+				relatedBookSource.covers?.find((c) => c.selected) ||
+				relatedBookSource.covers?.[0] ||
+				null;
+			const relatedBook = {
+				...relatedBookSource,
+				cover: this.mediaUrlService.resolveUrl(
+					selectedCover?.url || null,
+					StorageBucket.BOOKS,
+				),
+				coverMetadata: selectedCover?.metadata || null,
+			};
 
 			return {
 				relationId: rel.id,
@@ -230,8 +253,17 @@ export class BookBookRelationshipService {
 			}
 		}
 
-		// Sort items: order (ASC, nulls last), then createdAt (DESC), then id (DESC)
+		// Sort items: type (if requested), order (ASC, nulls last), then createdAt (DESC), then id (DESC)
 		filteredItems.sort((a, b) => {
+			if (query.sortByType) {
+				const typeCompare = a.relationType.localeCompare(
+					b.relationType,
+				);
+				if (typeCompare !== 0) {
+					return typeCompare;
+				}
+			}
+
 			const orderA = a.order ?? this.relationshipNullOrderValue;
 			const orderB = b.order ?? this.relationshipNullOrderValue;
 
@@ -258,6 +290,7 @@ export class BookBookRelationshipService {
 				);
 
 			if (decodedCursor) {
+				const cursorType = decodedCursor.relationType;
 				const cursorOrder =
 					decodedCursor.order ?? this.relationshipNullOrderValue;
 				const cursorCreatedAt = new Date(
@@ -265,6 +298,13 @@ export class BookBookRelationshipService {
 				).getTime();
 
 				const startIndex = filteredItems.findIndex((item) => {
+					if (query.sortByType && cursorType) {
+						const typeCompare =
+							item.relationType.localeCompare(cursorType);
+						if (typeCompare > 0) return true;
+						if (typeCompare < 0) return false;
+					}
+
 					const itemOrder =
 						item.order ?? this.relationshipNullOrderValue;
 					const itemCreatedAt = item.createdAt.getTime();
@@ -289,6 +329,9 @@ export class BookBookRelationshipService {
 				const nextCursor =
 					hasNextPage && lastItem
 						? encodeCursorPayload({
+								...(query.sortByType && {
+									relationType: lastItem.relationType,
+								}),
 								order: lastItem.order,
 								createdAt: lastItem.createdAt.toISOString(),
 								id: lastItem.relationId,

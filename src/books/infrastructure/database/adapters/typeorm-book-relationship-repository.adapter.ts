@@ -28,10 +28,13 @@ export class TypeOrmBookRelationshipRepositoryAdapter
 	async save(
 		relationship: DomainBookRelationship,
 	): Promise<DomainBookRelationship> {
-		const saved = await this.repository.save(
+		const entity = this.repository.create(
 			relationship as unknown as InfrastructureBookRelationship,
 		);
-		return saved as unknown as DomainBookRelationship;
+		const saved = await this.repository.save(entity);
+		const result = new DomainBookRelationship();
+		Object.assign(result, saved);
+		return result;
 	}
 
 	async findOneBy(
@@ -63,10 +66,12 @@ export class TypeOrmBookRelationshipRepositoryAdapter
 				sourceBook: {
 					tags: true,
 					sensitiveContent: true,
+					covers: true,
 				},
 				targetBook: {
 					tags: true,
 					sensitiveContent: true,
+					covers: true,
 				},
 			},
 		});

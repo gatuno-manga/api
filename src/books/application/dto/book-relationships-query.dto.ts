@@ -1,7 +1,15 @@
 import { BookRelationType } from '@books/domain/enums/book-relation-type.enum';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import {
+	IsBoolean,
+	IsEnum,
+	IsInt,
+	IsOptional,
+	IsString,
+	Max,
+	Min,
+} from 'class-validator';
 import { ToArray } from 'src/common/pagination/decorator/to-array.decorator';
 
 export class BookRelationshipsQueryDto {
@@ -50,4 +58,15 @@ export class BookRelationshipsQueryDto {
 	@IsInt()
 	@Min(0)
 	offset?: number = 0;
+
+	@ApiPropertyOptional({
+		description:
+			'Agrupar resultados por tipo de relação ordenando primeiro pelo tipo',
+		example: true,
+		default: false,
+	})
+	@IsOptional()
+	@Transform(({ value }) => value === 'true' || value === true)
+	@IsBoolean()
+	sortByType?: boolean = false;
 }
