@@ -244,7 +244,7 @@ export class AppConfigService {
 
 	/** 0 = unlimited sessions */
 	get maxSessionsPerUser(): number {
-		return this.config.get<number>('MAX_SESSIONS_PER_USER') ?? 0;
+		return this.config.get<number>('MAX_SESSIONS_PER_USER') ?? 5;
 	}
 
 	get bookUpdate() {

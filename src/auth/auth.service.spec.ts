@@ -106,7 +106,7 @@ describe('AuthService', () => {
 		const mockTokenStore = {
 			getValidTokens: jest.fn(),
 			saveTokens: jest.fn(),
-			addToken: jest.fn(),
+			addToken: jest.fn().mockResolvedValue([]),
 			removeAllTokens: jest.fn(),
 			removeTokenByJti: jest.fn(),
 			removeTokensByJtis: jest.fn(),

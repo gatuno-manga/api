@@ -511,7 +511,7 @@ export class AuthService {
 		const hashedToken = await this.dataEncryption.encrypt(
 			tokens.refreshToken,
 		);
-		await this.tokenStore.addToken(
+		const evictedSessionIds = await this.tokenStore.addToken(
 			user.id,
 			{
 				hash: hashedToken,
@@ -522,6 +522,16 @@ export class AuthService {
 			},
 			options?.existingTokens,
 		);
+
+		if (evictedSessionIds.length > 0) {
+			for (const evictedId of evictedSessionIds) {
+				await this.sessionManagement.revokeSessionById(
+					user.id,
+					evictedId,
+					'session_limit_exceeded',
+				);
+			}
+		}
 
 		if (options?.rotation?.previousRefreshTokenJti) {
 			await this.sessionManagement.rotateSessionToken({
