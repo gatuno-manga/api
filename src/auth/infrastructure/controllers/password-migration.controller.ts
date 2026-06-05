@@ -1,11 +1,9 @@
 import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
-import { Roles } from '@auth/infrastructure/framework/roles.decorator';
 import { Controller, Get, Logger, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { PasswordEncryption } from 'src/infrastructure/encryption/password-encryption.provider';
 import { PasswordMigrationService } from 'src/infrastructure/encryption/password-migration.service';
-import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 
 import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
 import { Permissions } from 'src/users/domain/decorators/permissions.decorator';

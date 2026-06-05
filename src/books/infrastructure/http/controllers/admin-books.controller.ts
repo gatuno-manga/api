@@ -25,16 +25,12 @@ import {
 	Patch,
 	Post,
 	UploadedFile,
-	UseGuards,
 	UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { AdminApi } from 'src/common/swagger/auth-api.decorators';
-import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
-import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
 import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
 import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 import {

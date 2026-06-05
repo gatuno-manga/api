@@ -8,6 +8,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { UserPermissionsService } from '@users/application/services/user-permissions.service';
 import { AccessPolicyEffectEnum } from '@users/domain/enums/access-policy-effect.enum';
 import { AccessPolicyScopeEnum } from '@users/domain/enums/access-policy-scope.enum';
 import { RolesEnum } from '@users/domain/enums/roles.enum';
@@ -31,7 +32,6 @@ import {
 	encodeCursorPayload,
 } from 'src/common/pagination/cursor.utils';
 import { Brackets, In, Repository } from 'typeorm';
-import { UserPermissionsService } from '../services/user-permissions.service';
 
 type AdminUsersCursorPayload = {
 	createdAt: string;

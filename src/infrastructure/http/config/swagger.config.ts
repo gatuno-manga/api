@@ -42,12 +42,15 @@ export function configureSwagger(app: INestApplication) {
 	for (const pathItem of Object.values(document.paths)) {
 		for (const operation of Object.values(pathItem)) {
 			// biome-ignore lint/suspicious/noExplicitAny: Swagger extension properties are not statically typed
-			const swaggerOp = operation as any;
-			if (swaggerOp['x-permissions']?.length > 0) {
-				const perms = swaggerOp['x-permissions'].join(', ');
+			const swaggerOp = operation as Record<string, unknown>;
+			const permissions = swaggerOp['x-permissions'] as
+				| string[]
+				| undefined;
+			if (permissions && permissions.length > 0) {
+				const perms = permissions.join(', ');
 				const permText = `\n\n**🛡️ Permissões Exigidas:** \`${perms}\``;
 				swaggerOp.description =
-					(swaggerOp.description || '') + permText;
+					((swaggerOp.description as string) || '') + permText;
 			}
 		}
 	}

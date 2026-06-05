@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Cache } from 'cache-manager';
 import { Role } from 'src/users/infrastructure/database/entities/role.entity';
 import { User } from 'src/users/infrastructure/database/entities/user.entity';
-import { In, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class UserPermissionsService {
@@ -92,7 +92,7 @@ export class UserPermissionsService {
 	}
 
 	async invalidateAllCache(): Promise<void> {
-		// In a production environment with many users, we might want a more efficient way
+		//  a production environment with many users, we might want a more efficient way
 		// For now, we can rely on TTL or implement a versioning strategy for permissions
 		// Or if using Redis directly, use SCAN/DEL
 		this.logger.debug(

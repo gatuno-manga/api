@@ -1,17 +1,6 @@
 import { RejectBookRequestDto } from '@/book-requests/application/dto/reject-book-request.dto';
 import { BookRequestsService } from '@/book-requests/application/use-cases/book-requests.service';
-import {
-	Body,
-	Controller,
-	Delete,
-	Get,
-	Param,
-	ParseUUIDPipe,
-	Patch,
-	Post,
-	Res,
-	UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';

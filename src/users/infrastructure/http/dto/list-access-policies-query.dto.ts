@@ -2,7 +2,6 @@ import { AccessPolicyEffectEnum } from '@users/domain/enums/access-policy-effect
 import { AccessPolicyScopeEnum } from '@users/domain/enums/access-policy-scope.enum';
 import { Type } from 'class-transformer';
 import {
-	IsBoolean,
 	IsEnum,
 	IsInt,
 	IsOptional,

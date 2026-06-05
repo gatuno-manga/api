@@ -174,7 +174,7 @@ export class MarkdownDownloadStrategy implements DownloadStrategy {
 				// Remove outras tags
 				.replace(/<[^>]+>/g, '')
 				// Limpa espaços extras
-				.replace(/\n{3,}/g, '\n\n')
+				.replace(/\n{3 }/g, '\n\n')
 				.trim()
 		);
 	}

@@ -3,17 +3,11 @@ import { SessionAuditService } from '@auth/infrastructure/adapters/session-audit
 import { SessionManagementService } from '@auth/infrastructure/adapters/session-management.service';
 import { TokenStoreService } from '@auth/infrastructure/adapters/token-store.service';
 import {
-	AuthFlowResult,
 	AuthRequestContext,
 	GenerateTokensOptions,
 	SuccessfulAuthResult,
 } from '@auth/types/auth-security.types';
-import {
-	Inject,
-	Injectable,
-	Logger,
-	UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataEncryptionProvider } from 'src/infrastructure/encryption/data-encryption.provider';

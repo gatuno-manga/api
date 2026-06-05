@@ -408,7 +408,7 @@ export class ChapterService {
 						page.path,
 						StorageBucket.BOOKS,
 					);
-					// @ts-ignore - Propriedade virtual para o front
+					// @ts-expect-error - Propriedade virtual para o front
 					page.deleted = !!page.deletedAt;
 				}
 			}

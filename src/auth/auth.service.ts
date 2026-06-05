@@ -1,14 +1,12 @@
-import { randomBytes } from 'node:crypto';
 import {
 	BadRequestException,
 	Injectable,
 	Logger,
-	NotFoundException,
 	UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import ms from 'ms';
+
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { DataEncryptionProvider } from 'src/infrastructure/encryption/data-encryption.provider';
 import { PasswordEncryption } from 'src/infrastructure/encryption/password-encryption.provider';
@@ -18,7 +16,6 @@ import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import { Repository } from 'typeorm';
 import { v7 as uuidv7 } from 'uuid';
 import { JwtPayloadBuilder } from './application/builders/jwt-payload.builder';
-import { StoredTokenDto } from './application/dto/stored-token.dto';
 import { UserAuthData } from './application/ports/user-repository.port';
 import { ApiKeyUseCase } from './application/use-cases/api-key.use-case';
 import { RefreshTokenUseCase } from './application/use-cases/refresh-token.use-case';
@@ -41,7 +38,6 @@ import {
 	SessionAuditEvent,
 	SuccessfulAuthResult,
 	TokenRotationInput,
-	isPendingMfaResult,
 } from './types/auth-security.types';
 
 interface MfaChallengePayload {

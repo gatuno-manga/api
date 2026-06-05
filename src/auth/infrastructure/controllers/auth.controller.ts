@@ -5,7 +5,6 @@ import { WebauthnService } from '@auth/infrastructure/adapters/webauthn.service'
 import { CurrentUser } from '@auth/infrastructure/framework/current-user.decorator';
 import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
 import { RefreshTokenGuard } from '@auth/infrastructure/framework/jwt-refresh.guard';
-import { Roles } from '@auth/infrastructure/framework/roles.decorator';
 import { BeginPasskeyAuthDto } from '@auth/infrastructure/http/dto/begin-passkey-auth.dto';
 import { CreateLoginApiKeyDto } from '@auth/infrastructure/http/dto/create-login-api-key.dto';
 import { ListAuthAuditQueryDto } from '@auth/infrastructure/http/dto/list-auth-audit-query.dto';
@@ -44,7 +43,6 @@ import { AppConfigService } from 'src/infrastructure/app-config/app-config.servi
 import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
 import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
 import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
-import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 import {
 	ApiDocsBeginPasskeyRegistration,
 	ApiDocsBeginTotpSetup,
