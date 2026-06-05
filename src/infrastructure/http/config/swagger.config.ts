@@ -38,6 +38,20 @@ export function configureSwagger(app: INestApplication) {
 			methodKey,
 	});
 
+	// Anexa as permissões exigidas na descrição do Swagger
+	for (const pathItem of Object.values(document.paths)) {
+		for (const operation of Object.values(pathItem)) {
+			// biome-ignore lint/suspicious/noExplicitAny: Swagger extension properties are not statically typed
+			const swaggerOp = operation as any;
+			if (swaggerOp['x-permissions']?.length > 0) {
+				const perms = swaggerOp['x-permissions'].join(', ');
+				const permText = `\n\n**🛡️ Permissões Exigidas:** \`${perms}\``;
+				swaggerOp.description =
+					(swaggerOp.description || '') + permText;
+			}
+		}
+	}
+
 	SwaggerModule.setup('api/docs', app, document, {
 		swaggerOptions: {
 			persistAuthorization: true,
