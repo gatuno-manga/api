@@ -213,6 +213,7 @@ export class AuthService {
 		return this.userRepository
 			.createQueryBuilder('user')
 			.leftJoinAndSelect('user.roles', 'role')
+			.leftJoinAndSelect('role.permissions', 'permission')
 			.addSelect('user.password')
 			.where('user.id = :id', { id: userId })
 			.getOne();
@@ -359,7 +360,7 @@ export class AuthService {
 
 		const user = await this.userRepository.findOne({
 			where: { id: payload.sub },
-			relations: ['roles'],
+			relations: ['roles', 'roles.permissions'],
 		});
 		if (!user) {
 			throw new UnauthorizedException('User not found');

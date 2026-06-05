@@ -22,7 +22,7 @@ export class TypeOrmUserRepositoryAdapter implements UserRepositoryPort {
 	async findByEmail(email: EmailVO): Promise<UserAuthData | null> {
 		const user = await this.userRepository.findOne({
 			where: { email: email.value },
-			relations: ['roles'],
+			relations: ['roles', 'roles.permissions'],
 		});
 		return user ? this.toDomain(user) : null;
 	}
@@ -31,6 +31,7 @@ export class TypeOrmUserRepositoryAdapter implements UserRepositoryPort {
 		const user = await this.userRepository
 			.createQueryBuilder('user')
 			.leftJoinAndSelect('user.roles', 'role')
+			.leftJoinAndSelect('role.permissions', 'permission')
 			.addSelect('user.password')
 			.where('user.email = :email', { email: email.value })
 			.getOne();
@@ -41,6 +42,7 @@ export class TypeOrmUserRepositoryAdapter implements UserRepositoryPort {
 	async save(input: UserSaveInput): Promise<UserAuthData> {
 		const role = await this.roleRepository.findOne({
 			where: { name: input.roleName },
+			relations: ['permissions'],
 		});
 
 		if (!role) {
@@ -72,6 +74,7 @@ export class TypeOrmUserRepositoryAdapter implements UserRepositoryPort {
 			roles: user.roles?.map((r) => ({
 				name: r.name,
 				maxWeightSensitiveContent: r.maxWeightSensitiveContent,
+				permissions: r.permissions?.map((p) => ({ name: p.name })),
 			})),
 		};
 	}
