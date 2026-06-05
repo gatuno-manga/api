@@ -71,7 +71,6 @@ export class JwtPayloadDto {
 	/**
 	 * Permissões específicas
 	 */
-	permissions: string[];
 
 	/**
 	 * Dados customizados adicionais (opcional)

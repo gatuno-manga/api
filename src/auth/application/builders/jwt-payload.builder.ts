@@ -60,19 +60,6 @@ export class JwtPayloadBuilder {
 		return this;
 	}
 
-	setPermissions(permissions: string[]): this {
-		this.payload.permissions = permissions;
-		return this;
-	}
-
-	addPermission(permission: string): this {
-		if (!this.payload.permissions) {
-			this.payload.permissions = [];
-		}
-		this.payload.permissions.push(permission);
-		return this;
-	}
-
 	setCustomClaims(customClaims: Record<string, unknown>): this {
 		this.payload.customClaims = customClaims;
 		return this;
@@ -114,23 +101,12 @@ export class JwtPayloadBuilder {
 
 		const maxWeightSensitiveContent = Math.max(userWeight, maxRoleWeight);
 
-		const permissionsSet = new Set<string>();
-		for (const role of user.roles) {
-			const r = role as { permissions?: { name: string }[] };
-			if (r.permissions) {
-				for (const p of r.permissions) {
-					permissionsSet.add(p.name);
-				}
-			}
-		}
-
 		return this.setSubject(user.id)
 			.setEmail(user.email)
 			.setRoles(
 				(user.roles || []).map((role: { name: string }) => role.name),
 			)
-			.setMaxWeightSensitiveContent(maxWeightSensitiveContent)
-			.setPermissions(Array.from(permissionsSet));
+			.setMaxWeightSensitiveContent(maxWeightSensitiveContent);
 	}
 
 	build(): JwtPayloadDto {

@@ -1,6 +1,7 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { UserResourcesMapper } from '@users/application/mappers/user-resources.mapper';
+import { UserPermissionsService } from '@users/application/services/user-permissions.service';
 import { Role } from '@users/infrastructure/database/entities/role.entity';
 import { UserImage } from '@users/infrastructure/database/entities/user-image.entity';
 import { User } from '@users/infrastructure/database/entities/user.entity';
@@ -61,6 +62,10 @@ describe('UsersService', () => {
 		toPublicUserProfile: jest.fn(),
 	};
 
+	const mockUserPermissionsService = {
+		getPermissions: jest.fn(),
+	};
+
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -88,6 +93,10 @@ describe('UsersService', () => {
 				{
 					provide: UserResourcesMapper,
 					useValue: mockUserResourcesMapper,
+				},
+				{
+					provide: UserPermissionsService,
+					useValue: mockUserPermissionsService,
 				},
 			],
 		}).compile();

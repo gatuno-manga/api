@@ -34,16 +34,6 @@ export class PayloadAuthDto {
 	roles: string[];
 
 	@ApiProperty({
-		description: 'User permissions',
-		example: ['books:read', 'books:create'],
-		type: [String],
-		isArray: true,
-	})
-	@IsArray()
-	@IsString({ each: true })
-	permissions: string[];
-
-	@ApiProperty({
 		description: 'Maximum weight for sensitive content filtering',
 		example: 5,
 	})
