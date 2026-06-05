@@ -41,6 +41,10 @@ export enum PermissionsEnum {
 	BOOK_REQUESTS_VIEW_INTERNAL = 'internal:book-requests:view',
 	BOOK_REQUESTS_MANAGE = 'internal:book-requests:manage',
 
+	// Scraper
+	SCRAPER_MANUAL = 'internal:scraper:manual',
+	SCRAPER_AUTO = 'internal:scraper:auto',
+
 	// Websites
 	WEBSITES_MANAGE_INTERNAL = 'internal:websites:manage',
 
@@ -50,6 +54,7 @@ export enum PermissionsEnum {
 
 	// Books & Content (Public/User)
 	BOOKS_VIEW = 'books:view',
+	BOOKS_DOWNLOAD = 'books:download',
 	AUTHORS_VIEW = 'authors:view',
 	TAGS_VIEW = 'tags:view',
 	CHAPTERS_VIEW = 'chapters:view',

@@ -106,7 +106,7 @@ export class AdminBooksController {
 	}
 
 	@Post('auto-create')
-	@Permissions(PermissionsEnum.BOOKS_CREATE)
+	@Permissions(PermissionsEnum.SCRAPER_MANUAL)
 	@Throttle({ short: { limit: 10, ttl: 60000 } }) // 10 req/min
 	async autoCreateBook(@Body('url') url: string) {
 		if (!url) {
@@ -137,7 +137,7 @@ export class AdminBooksController {
 	}
 
 	@Post(':idBook/check-updates')
-	@Permissions(PermissionsEnum.BOOKS_MANUAL_UPDATE)
+	@Permissions(PermissionsEnum.SCRAPER_MANUAL)
 	@ApiDocsCheckBookUpdates()
 	async checkBookUpdates(@Param('idBook') idBook: string) {
 		await this.bookUpdateScheduler.forceUpdateBook(idBook);
@@ -145,7 +145,7 @@ export class AdminBooksController {
 	}
 
 	@Post('check-all-updates')
-	@Permissions(PermissionsEnum.BOOKS_MANUAL_UPDATE)
+	@Permissions(PermissionsEnum.SCRAPER_AUTO)
 	@ApiDocsCheckAllBooksUpdates()
 	async checkAllBooksUpdates() {
 		await this.bookUpdateScheduler.forceUpdateAllBooks();
@@ -258,7 +258,7 @@ export class AdminBooksController {
 	}
 
 	@Post(':idBook/covers/scrape')
-	@Permissions(PermissionsEnum.BOOKS_UPLOAD)
+	@Permissions(PermissionsEnum.SCRAPER_MANUAL)
 	@ApiDocsScrapeCover()
 	async scrapeCover(
 		@Param('idBook') idBook: string,

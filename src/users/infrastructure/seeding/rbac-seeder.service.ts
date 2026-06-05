@@ -68,7 +68,10 @@ export class RbacSeederService {
 			{
 				name: RolesEnum.USER,
 				maxWeight: 0,
-				permissionFilter: (p: string) => !p.startsWith('admin:'), // No admin permissions
+				permissionFilter: (p: string) =>
+					!p.startsWith('internal:') &&
+					!p.startsWith('system:') &&
+					!p.startsWith('mod:'),
 			},
 			{
 				name: RolesEnum.GUEST,
@@ -76,6 +79,7 @@ export class RbacSeederService {
 				permissionFilter: (p: string) =>
 					[
 						PermissionsEnum.BOOKS_VIEW,
+						PermissionsEnum.BOOKS_DOWNLOAD,
 						PermissionsEnum.AUTHORS_VIEW,
 						PermissionsEnum.TAGS_VIEW,
 						PermissionsEnum.CHAPTERS_VIEW,

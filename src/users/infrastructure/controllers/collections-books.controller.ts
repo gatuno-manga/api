@@ -19,6 +19,9 @@ import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.deco
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { DataEnvelopeInterceptor } from 'src/common/interceptors/data-envelope.interceptor';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
+import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
+import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
+import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 import {
 	ApiDocsAddBookToCollection,
 	ApiDocsCreateCollectionBook,
@@ -32,7 +35,7 @@ import {
 
 @ApiTags('Collections')
 @Controller('users/me/collections')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @UseInterceptors(DataEnvelopeInterceptor)
 @ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 export class CollectionsBooksController {
@@ -41,18 +44,21 @@ export class CollectionsBooksController {
 	) {}
 
 	@Get()
+	@Permissions(PermissionsEnum.COLLECTIONS_VIEW)
 	@ApiDocsGetCollectionBooks()
 	async getCollectionBooks(@CurrentUser() user: CurrentUserDto) {
 		return this.collectionsBooksService.getCollections(user.userId);
 	}
 
 	@Get('names')
+	@Permissions(PermissionsEnum.COLLECTIONS_VIEW)
 	@ApiDocsGetNameCollectionBooks()
 	async getNameCollectionBooks(@CurrentUser() user: CurrentUserDto) {
 		return this.collectionsBooksService.getNameCollectionBooks(user.userId);
 	}
 
 	@Get(':idCollection')
+	@Permissions(PermissionsEnum.COLLECTIONS_VIEW)
 	@ApiDocsGetCollectionById()
 	async getCollectionById(
 		@Param('idCollection') idCollection: string,
@@ -65,6 +71,7 @@ export class CollectionsBooksController {
 	}
 
 	@Post()
+	@Permissions(PermissionsEnum.COLLECTIONS_MANAGE)
 	@ApiDocsCreateCollectionBook()
 	async createCollectionBook(
 		@Body() dto: CreateCollectionBookDto,
@@ -77,6 +84,7 @@ export class CollectionsBooksController {
 	}
 
 	@Post(':idCollection/books')
+	@Permissions(PermissionsEnum.COLLECTIONS_MANAGE)
 	@ApiDocsAddBookToCollection()
 	async addBookToCollection(
 		@Body() dto: AddBookCollectionDto,
@@ -91,6 +99,7 @@ export class CollectionsBooksController {
 	}
 
 	@Delete(':idCollection/books/:idBook')
+	@Permissions(PermissionsEnum.COLLECTIONS_MANAGE)
 	@ApiDocsRemoveBookFromCollection()
 	async removeBookFromCollection(
 		@Param('idCollection') idCollection: string,
@@ -105,6 +114,7 @@ export class CollectionsBooksController {
 	}
 
 	@Delete(':idCollection')
+	@Permissions(PermissionsEnum.COLLECTIONS_MANAGE)
 	@ApiDocsDeleteCollection()
 	async deleteCollection(
 		@Param('idCollection') idCollection: string,
@@ -117,6 +127,7 @@ export class CollectionsBooksController {
 	}
 
 	@Patch(':idCollection/visibility')
+	@Permissions(PermissionsEnum.COLLECTIONS_MANAGE)
 	@ApiDocsUpdateVisibility()
 	async updateVisibility(
 		@Param('idCollection') idCollection: string,

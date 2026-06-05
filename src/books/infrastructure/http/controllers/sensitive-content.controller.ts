@@ -45,7 +45,8 @@ export class SensitiveContentController {
 	@Throttle({ long: { limit: 100, ttl: 60000 } })
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(3600)
-	@UseGuards(OptionalAuthGuard)
+	@UseGuards(OptionalAuthGuard, PermissionsGuard)
+	@Permissions(PermissionsEnum.BOOKS_VIEW)
 	@ApiDocsGetAll()
 	getAll(@CurrentUser() user?: CurrentUserDto) {
 		return this.sensitiveContentService.getAll(
