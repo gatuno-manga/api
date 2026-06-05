@@ -83,6 +83,7 @@ export class CollectionsController {
 	}
 
 	@Post(':id/share')
+	@Permissions(PermissionsEnum.COLLECTIONS_MANAGE)
 	@ApiDocsShare()
 	async share(
 		@CurrentUser() user: CurrentUserDto,

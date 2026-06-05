@@ -7,10 +7,14 @@ import { PasswordEncryption } from 'src/infrastructure/encryption/password-encry
 import { PasswordMigrationService } from 'src/infrastructure/encryption/password-migration.service';
 import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 
+import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
+import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
+import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
+
 @ApiTags('Auth Password Migration')
 @Controller('auth/password-migration')
-@UseGuards(JwtAuthGuard)
-@Roles(RolesEnum.ADMIN)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@Permissions(PermissionsEnum.AUTH_MIGRATION_VIEW)
 @ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 export class PasswordMigrationController {
 	private readonly logger = new Logger(PasswordMigrationController.name);

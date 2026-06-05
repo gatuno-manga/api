@@ -85,6 +85,7 @@ export class RbacSeederService {
 						PermissionsEnum.CHAPTERS_VIEW,
 						PermissionsEnum.CHAPTER_COMMENTS_VIEW,
 						PermissionsEnum.WEBSITES_VIEW,
+						PermissionsEnum.PROFILE_VIEW,
 					].includes(p as PermissionsEnum),
 			},
 		];

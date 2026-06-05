@@ -63,6 +63,8 @@ export enum PermissionsEnum {
 	CHAPTER_COMMENTS_MANAGE_OWN = 'chapters:comments:manage:own',
 
 	// Personal Data & Sync
+	PROFILE_VIEW = 'profile:view',
+	PROFILE_MANAGE = 'profile:manage',
 	COLLECTIONS_VIEW = 'collections:view',
 	COLLECTIONS_MANAGE = 'collections:manage',
 	BOOK_REQUESTS_CREATE = 'book-requests:create',

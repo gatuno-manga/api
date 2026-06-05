@@ -41,6 +41,9 @@ import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
+import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
+import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
+import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 import {
 	ApiDocsBeginPasskeyRegistration,
@@ -268,8 +271,8 @@ export class AuthController {
 	@Post('api-keys')
 	@Throttle({ short: { limit: 5, ttl: 60000 } })
 	@ApiDocsCreateLoginApiKey()
-	@UseGuards(JwtAuthGuard)
-	@Roles(RolesEnum.ADMIN)
+	@UseGuards(JwtAuthGuard, PermissionsGuard)
+	@Permissions(PermissionsEnum.SYSTEM_MANAGE)
 	async createLoginApiKey(
 		@CurrentUser() user: CurrentUserDto,
 		@Body() body: CreateLoginApiKeyDto,

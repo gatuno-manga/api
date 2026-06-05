@@ -7,10 +7,14 @@ import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 import { ApiDocsBackfill } from './swagger/image-backfill.swagger';
 
+import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
+import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
+import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
+
 @ApiTags('Admin - Image Backfill')
 @Controller('admin/images')
-@UseGuards(JwtAuthGuard)
-@Roles(RolesEnum.ADMIN)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@Permissions(PermissionsEnum.FILES_MANAGE)
 @ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 export class ImageBackfillController {
 	constructor(

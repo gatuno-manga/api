@@ -34,14 +34,14 @@ export class UserPublicResourcesController {
 	) {}
 
 	@Get('profile')
-	@Permissions(PermissionsEnum.BOOKS_VIEW)
+	@Permissions(PermissionsEnum.PROFILE_VIEW)
 	@ApiDocsGetPublicProfile()
 	async getPublicProfile(@Param('userId', ParseUUIDPipe) userId: string) {
 		return this.usersService.getPublicUserProfile(userId);
 	}
 
 	@Get('collections')
-	@Permissions(PermissionsEnum.BOOKS_VIEW)
+	@Permissions(PermissionsEnum.PROFILE_VIEW)
 	@ApiDocsGetPublicCollections()
 	async getPublicCollections(@Param('userId', ParseUUIDPipe) userId: string) {
 		const collections =
@@ -50,14 +50,14 @@ export class UserPublicResourcesController {
 	}
 
 	@Get('saved-pages')
-	@Permissions(PermissionsEnum.BOOKS_VIEW)
+	@Permissions(PermissionsEnum.PROFILE_VIEW)
 	@ApiDocsGetPublicSavedPages()
 	async getPublicSavedPages(@Param('userId', ParseUUIDPipe) userId: string) {
 		return this.savedPagesService.getPublicSavedPages(userId);
 	}
 
 	@Get('books/:bookId/saved-pages')
-	@Permissions(PermissionsEnum.BOOKS_VIEW)
+	@Permissions(PermissionsEnum.PROFILE_VIEW)
 	@ApiDocsGetPublicSavedPagesByBook()
 	async getPublicSavedPagesByBook(
 		@Param('userId', ParseUUIDPipe) userId: string,

@@ -69,7 +69,7 @@ export class ChapterController {
 		return this.chapterService.resetAllChapters(body);
 	}
 
-	@Get('/:idChapter/read/')
+	@Post('/:idChapter/read/')
 	@Permissions(PermissionsEnum.READING_PROGRESS_MANAGE)
 	@Throttle({ medium: { limit: 50, ttl: 60000 } })
 	@AuthenticatedApi()

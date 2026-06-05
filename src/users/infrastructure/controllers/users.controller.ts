@@ -31,14 +31,14 @@ export class UsersController {
 	constructor(private readonly usersService: UsersService) {}
 
 	@Get('me')
-	@Permissions(PermissionsEnum.BOOKS_VIEW)
+	@Permissions(PermissionsEnum.PROFILE_VIEW)
 	@ApiDocsGetCurrentUser()
 	async getCurrentUser(@CurrentUser() user: CurrentUserDto) {
 		return this.usersService.getCurrentUser(user.userId);
 	}
 
 	@Patch()
-	@Permissions(PermissionsEnum.BOOKS_VIEW)
+	@Permissions(PermissionsEnum.PROFILE_MANAGE)
 	@ApiDocsUpdateUser()
 	async updateUser(
 		@Body() dto: UpdateUserDto,
@@ -48,7 +48,7 @@ export class UsersController {
 	}
 
 	@Patch('me/avatar')
-	@Permissions(PermissionsEnum.BOOKS_VIEW)
+	@Permissions(PermissionsEnum.PROFILE_MANAGE)
 	@ApiDocsUploadAvatar()
 	@UseInterceptors(
 		FileInterceptor('file', {
@@ -66,7 +66,7 @@ export class UsersController {
 	}
 
 	@Patch('me/banner')
-	@Permissions(PermissionsEnum.BOOKS_VIEW)
+	@Permissions(PermissionsEnum.PROFILE_MANAGE)
 	@ApiDocsUploadBanner()
 	@UseInterceptors(
 		FileInterceptor('file', {

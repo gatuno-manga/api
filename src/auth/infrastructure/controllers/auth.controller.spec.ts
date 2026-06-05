@@ -6,6 +6,7 @@ import { RefreshTokenGuard } from '@auth/infrastructure/framework/jwt-refresh.gu
 import { UnauthorizedException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { Request, Response } from 'express';
+import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
 import { AuthController } from './auth.controller';
 
 describe('AuthController', () => {
@@ -72,6 +73,8 @@ describe('AuthController', () => {
 			.overrideGuard(JwtAuthGuard)
 			.useValue(mockGuard)
 			.overrideGuard(RefreshTokenGuard)
+			.useValue(mockGuard)
+			.overrideGuard(PermissionsGuard)
 			.useValue(mockGuard)
 			.compile();
 
