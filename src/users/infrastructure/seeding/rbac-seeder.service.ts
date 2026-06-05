@@ -70,6 +70,19 @@ export class RbacSeederService {
 				maxWeight: 0,
 				permissionFilter: (p: string) => !p.startsWith('admin:'), // No admin permissions
 			},
+			{
+				name: RolesEnum.GUEST,
+				maxWeight: 0,
+				permissionFilter: (p: string) =>
+					[
+						PermissionsEnum.BOOKS_VIEW,
+						PermissionsEnum.AUTHORS_VIEW,
+						PermissionsEnum.TAGS_VIEW,
+						PermissionsEnum.CHAPTERS_VIEW,
+						PermissionsEnum.CHAPTER_COMMENTS_VIEW,
+						PermissionsEnum.WEBSITES_VIEW,
+					].includes(p as PermissionsEnum),
+			},
 		];
 
 		for (const roleData of rolesToSeed) {

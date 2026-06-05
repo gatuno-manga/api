@@ -23,6 +23,10 @@ export class UserPermissionsService {
 		return `user-permissions:${userId}`;
 	}
 
+	private getGuestCacheKey(): string {
+		return 'role-permissions:guest';
+	}
+
 	async getPermissions(userId: string): Promise<string[]> {
 		const cacheKey = this.getCacheKey(userId);
 		const cachedPermissions =
@@ -61,6 +65,26 @@ export class UserPermissionsService {
 		return Array.from(permissionsSet);
 	}
 
+	async getGuestPermissions(): Promise<string[]> {
+		const cacheKey = this.getGuestCacheKey();
+		const cachedPermissions =
+			await this.cacheManager.get<string[]>(cacheKey);
+
+		if (cachedPermissions) {
+			return cachedPermissions;
+		}
+
+		const guestRole = await this.roleRepository.findOne({
+			where: { name: 'guest' },
+			relations: ['permissions'],
+		});
+
+		const permissions = guestRole?.permissions?.map((p) => p.name) || [];
+		await this.cacheManager.set(cacheKey, permissions, this.CACHE_TTL);
+
+		return permissions;
+	}
+
 	async invalidateCache(userId: string): Promise<void> {
 		const cacheKey = this.getCacheKey(userId);
 		await this.cacheManager.del(cacheKey);
@@ -74,6 +98,6 @@ export class UserPermissionsService {
 		this.logger.debug(
 			'All permissions cache invalidated (triggered by global change)',
 		);
-		// This is a placeholder for global invalidation logic if needed
+		await this.cacheManager.del(this.getGuestCacheKey());
 	}
 }

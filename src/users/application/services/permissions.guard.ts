@@ -29,13 +29,17 @@ export class PermissionsGuard implements CanActivate {
 		const request = context.switchToHttp().getRequest();
 		const user = request.user as CurrentUserDto;
 
-		if (!user || !user.userId) {
-			return false;
-		}
+		let userPermissions: string[];
 
-		// Use UserPermissionsService which implements caching
-		const userPermissions =
-			await this.userPermissionsService.getPermissions(user.userId);
+		if (!user || !user.userId) {
+			userPermissions =
+				await this.userPermissionsService.getGuestPermissions();
+		} else {
+			// Use UserPermissionsService which implements caching
+			userPermissions = await this.userPermissionsService.getPermissions(
+				user.userId,
+			);
+		}
 
 		const hasPermission = requiredPermissions.every((permission) =>
 			userPermissions.includes(permission),

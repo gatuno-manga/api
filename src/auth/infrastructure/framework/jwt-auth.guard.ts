@@ -1,5 +1,6 @@
 import {
 	ExecutionContext,
+	ForbiddenException,
 	Injectable,
 	Logger,
 	UnauthorizedException,
@@ -46,7 +47,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 		const hasRole = requiredRoles.some((role) => userRoles.includes(role));
 
 		if (!hasRole) {
-			throw new UnauthorizedException('Insufficient roles');
+			throw new ForbiddenException('Insufficient roles');
 		}
 		return true;
 	}
