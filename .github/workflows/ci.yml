@@ -11,41 +11,39 @@ on:
       - developer
   workflow_dispatch:
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  check-changes:
+  pre_job:
     runs-on: ubuntu-latest
     outputs:
-      backend: ${{ steps.filter.outputs.backend == 'true' || github.event_name == 'workflow_dispatch' }}
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v5
         with:
-          filters: |
-            backend:
-              - 'src/**'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'Dockerfile.prod'
-              - '.swcrc'
-              - 'nest-cli.json'
-              - 'tsconfig.json'
-              - 'tsconfig.build.json'
-              - '.github/workflows/ci.yml'
+          concurrent_skipping: 'never'
+          skip_after_successful_duplicate: 'true'
+          do_not_skip: '["pull_request", "workflow_dispatch", "schedule"]'
 
   ci:
-    needs: check-changes
-    if: needs.check-changes.outputs.backend == 'true'
+    needs: pre_job
+    if: needs.pre_job.outputs.should_skip != 'true'
     uses: gatuno-manga/workflows/.github/workflows/node-ci.yml@main
     with:
       node_version: '24.11.1'
-      cache_dependency_path: ./package-lock.json
+      lint_command: "npm run lint:biome"
+      test_command: "npm run test"
 
   build-and-publish:
-    needs: [check-changes, ci]
+    needs: [pre_job, ci]
     if: |
-      needs.check-changes.outputs.backend == 'true' &&
-      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      always() &&
+      !cancelled() &&
+      (needs.ci.result == 'success' || needs.ci.result == 'skipped') &&
+      github.event_name == 'push' &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/developer')
     uses: gatuno-manga/workflows/.github/workflows/registry.yml@main
     with:
@@ -55,3 +53,28 @@ jobs:
       dockerfile_path: Dockerfile.prod
       runner_labels_json: '["self-hosted","linux","x64"]'
     secrets: inherit
+
+  release:
+    needs: build-and-publish
+    if: |
+      github.event_name == 'push' && 
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/developer')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.11.1'
+          cache: 'npm'
+      - run: npm ci
+      - name: Semantic Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release
