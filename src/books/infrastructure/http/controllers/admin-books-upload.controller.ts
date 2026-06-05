@@ -21,6 +21,8 @@ import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { AdminApi } from 'src/common/swagger/auth-api.decorators';
+import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
+import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 import {
 	ApiDocsReplaceCoverImage,
 	ApiDocsUploadChapterDocument,
@@ -51,6 +53,7 @@ export class AdminBooksUploadController {
 	constructor(private readonly bookUploadService: BookUploadService) {}
 
 	@Patch(':idBook/covers/:idCover/image')
+	@Permissions(PermissionsEnum.BOOKS_UPLOAD)
 	@Throttle({ short: { limit: 10, ttl: 60000 } }) // 10 req/min
 	@UseInterceptors(
 		FileInterceptor('file', {
@@ -79,6 +82,7 @@ export class AdminBooksUploadController {
 	// ==================== UPLOAD ENDPOINTS ====================
 
 	@Post(':idBook/covers/upload')
+	@Permissions(PermissionsEnum.BOOKS_UPLOAD)
 	@Throttle({ short: { limit: 10, ttl: 60000 } }) // 10 req/min
 	@UseInterceptors(
 		FileInterceptor('file', {
@@ -99,6 +103,7 @@ export class AdminBooksUploadController {
 	}
 
 	@Post(':idBook/covers/upload-multiple')
+	@Permissions(PermissionsEnum.BOOKS_UPLOAD)
 	@Throttle({ short: { limit: 3, ttl: 60000 } }) // 3 req/min
 	@UseInterceptors(
 		FilesInterceptor('files', 10, {
@@ -118,6 +123,7 @@ export class AdminBooksUploadController {
 	}
 
 	@Post('chapters/:idChapter/pages/upload')
+	@Permissions(PermissionsEnum.CHAPTERS_MANAGE)
 	@Throttle({ short: { limit: 2, ttl: 60000 } }) // 2 req/min - até 100 arquivos por vez
 	@UseInterceptors(
 		FilesInterceptor('pages', 100, {
@@ -174,6 +180,7 @@ export class AdminBooksUploadController {
 	// ==================== UPLOAD DE DOCUMENTOS (PDF/EPUB) ====================
 
 	@Post('chapters/:idChapter/document')
+	@Permissions(PermissionsEnum.CHAPTERS_MANAGE)
 	@Throttle({ short: { limit: 5, ttl: 60000 } }) // 5 req/min
 	@UseInterceptors(
 		FileInterceptor('file', {
@@ -211,6 +218,7 @@ export class AdminBooksUploadController {
 	// ==================== UPLOAD DE CONTEÚDO TEXTUAL ====================
 
 	@Post('chapters/:idChapter/content')
+	@Permissions(PermissionsEnum.CHAPTERS_MANAGE)
 	@Throttle({ short: { limit: 10, ttl: 60000 } })
 	@ApiDocsUploadChapterTextContent() // 10 req/min
 	uploadChapterTextContent(

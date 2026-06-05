@@ -1,5 +1,6 @@
 import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
 import { Test, type TestingModule } from '@nestjs/testing';
+import { PermissionsGuard } from '@users/application/services/permissions.guard';
 import { UsersService } from '@users/application/use-cases/users.service';
 import { UsersController } from './users.controller';
 
@@ -29,6 +30,8 @@ describe('UsersController', () => {
 			],
 		})
 			.overrideGuard(JwtAuthGuard)
+			.useValue(mockGuard)
+			.overrideGuard(PermissionsGuard)
 			.useValue(mockGuard)
 			.compile();
 

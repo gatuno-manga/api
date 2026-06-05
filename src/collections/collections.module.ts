@@ -1,8 +1,9 @@
 import { AuthModule } from '@auth/auth.module';
 import { Book } from '@books/infrastructure/database/entities/book.entity';
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '@users/infrastructure/database/entities/user.entity';
+import { UsersModule } from '@users/users.module';
 import { AddBookToCollectionUseCase } from './application/use-cases/add-book-to-collection.use-case';
 import { CreateCollectionUseCase } from './application/use-cases/create-collection.use-case';
 import { GetPublicCollectionsUseCase } from './application/use-cases/get-public-collections.use-case';
@@ -14,7 +15,8 @@ import { TypeOrmCollectionRepository } from './infrastructure/database/repositor
 
 @Module({
 	imports: [
-		AuthModule,
+		forwardRef(() => AuthModule),
+		forwardRef(() => UsersModule),
 		TypeOrmModule.forFeature([CollectionEntity, User, Book]),
 	],
 	controllers: [CollectionsController],

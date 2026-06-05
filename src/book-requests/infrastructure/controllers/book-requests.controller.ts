@@ -6,6 +6,9 @@ import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
+import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
+import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
+import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 import { mapBookRequestToResponseDtoList } from './book-request-http.mapper';
 import {
 	ApiDocsCreate,
@@ -14,12 +17,13 @@ import {
 
 @ApiTags('Book Requests')
 @Controller('book-requests')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 export class BookRequestsController {
 	constructor(private readonly bookRequestsService: BookRequestsService) {}
 
 	@Post()
+	@Permissions(PermissionsEnum.BOOK_REQUESTS_CREATE)
 	@ApiDocsCreate()
 	async create(
 		@Body() dto: CreateBookRequestDto,
@@ -30,6 +34,7 @@ export class BookRequestsController {
 	}
 
 	@Get('me')
+	@Permissions(PermissionsEnum.BOOK_REQUESTS_VIEW_OWN)
 	@ApiDocsListMyRequests()
 	async listMyRequests(@CurrentUser() user: CurrentUserDto) {
 		const requests = await this.bookRequestsService.listMyRequests(

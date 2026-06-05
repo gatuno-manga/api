@@ -20,6 +20,9 @@ import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
 import { OptionalAuthGuard } from 'src/auth/infrastructure/framework/optional-auth.guard';
 import { AuthenticatedApi } from 'src/common/swagger/auth-api.decorators';
+import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
+import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
+import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 import {
 	ApiDocsCreateComment,
 	ApiDocsCreateReply,
@@ -36,7 +39,8 @@ export class ChapterCommentsController {
 	) {}
 
 	@Get()
-	@UseGuards(OptionalAuthGuard)
+	@UseGuards(OptionalAuthGuard, PermissionsGuard)
+	@Permissions(PermissionsEnum.CHAPTER_COMMENTS_VIEW)
 	@Throttle({ medium: { limit: 50, ttl: 60000 } })
 	@ApiDocsListChapterComments()
 	listChapterComments(
@@ -53,6 +57,8 @@ export class ChapterCommentsController {
 
 	@Post()
 	@AuthenticatedApi()
+	@UseGuards(PermissionsGuard)
+	@Permissions(PermissionsEnum.CHAPTER_COMMENTS_CREATE)
 	@Throttle({ medium: { limit: 20, ttl: 60000 } })
 	@ApiDocsCreateComment()
 	createComment(
@@ -65,6 +71,8 @@ export class ChapterCommentsController {
 
 	@Post(':parentId/replies')
 	@AuthenticatedApi()
+	@UseGuards(PermissionsGuard)
+	@Permissions(PermissionsEnum.CHAPTER_COMMENTS_CREATE)
 	@Throttle({ medium: { limit: 20, ttl: 60000 } })
 	@ApiDocsCreateReply()
 	createReply(
@@ -83,6 +91,8 @@ export class ChapterCommentsController {
 
 	@Patch(':commentId')
 	@AuthenticatedApi()
+	@UseGuards(PermissionsGuard)
+	@Permissions(PermissionsEnum.CHAPTER_COMMENTS_MANAGE_OWN)
 	@Throttle({ medium: { limit: 20, ttl: 60000 } })
 	@ApiDocsUpdateComment()
 	updateComment(
@@ -101,6 +111,8 @@ export class ChapterCommentsController {
 
 	@Delete(':commentId')
 	@AuthenticatedApi()
+	@UseGuards(PermissionsGuard)
+	@Permissions(PermissionsEnum.CHAPTER_COMMENTS_MANAGE_OWN)
 	@Throttle({ medium: { limit: 20, ttl: 60000 } })
 	@ApiDocsDeleteComment()
 	deleteComment(

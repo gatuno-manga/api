@@ -47,13 +47,14 @@ export class UserResourcesMapper {
 		return savedPages.map((savedPage) => this.toSavedPage(savedPage));
 	}
 
-	toUserProfile(user: User) {
+	toUserProfile(user: User, permissions?: string[]) {
 		return {
 			id: user.id,
 			userName: user.userName,
 			name: user.name,
 			email: user.email,
 			roles: user.roles,
+			permissions: permissions || [],
 			maxWeightSensitiveContent: user.maxWeightSensitiveContent,
 			profileImagePath: user.profilePicture?.path || null,
 			profileImageMetadata: user.profilePicture?.metadata || null,

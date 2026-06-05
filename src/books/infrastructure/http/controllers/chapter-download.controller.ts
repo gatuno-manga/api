@@ -15,11 +15,14 @@ import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
+import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
+import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
+import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 import { ApiDocsDownloadChapter } from './swagger/chapter-download.swagger';
 
 @ApiTags('Downloads')
 @Controller('chapters')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 export class ChapterDownloadController {
 	private readonly logger = new Logger(ChapterDownloadController.name);
@@ -27,6 +30,7 @@ export class ChapterDownloadController {
 	constructor(private readonly downloadService: DownloadService) {}
 
 	@Get(':idChapter/download')
+	@Permissions(PermissionsEnum.BOOKS_DOWNLOAD)
 	@Throttle({ default: { limit: 5, ttl: 60000 } })
 	@ApiDocsDownloadChapter()
 	async downloadChapter(

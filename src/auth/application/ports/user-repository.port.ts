@@ -6,7 +6,11 @@ export interface UserAuthData {
 	password?: string;
 	userName: string;
 	maxWeightSensitiveContent: number;
-	roles?: { name: string; maxWeightSensitiveContent: number }[];
+	roles?: {
+		name: string;
+		maxWeightSensitiveContent: number;
+		permissions?: { name: string }[];
+	}[];
 }
 
 export interface UserSaveInput {

@@ -44,6 +44,12 @@ export class AdminUpdateUserDto {
 
 	@IsOptional()
 	@IsString()
+	@MinLength(8)
+	@ApiPropertyOptional({ example: 'MyNewP@ssw0rd' })
+	password?: string;
+
+	@IsOptional()
+	@IsString()
 	@MaxLength(255)
 	@ApiPropertyOptional({ example: 'Suspensao manual por moderacao' })
 	suspensionReason?: string;

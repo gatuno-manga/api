@@ -1,31 +1,51 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
 import { AccessPolicyEffectEnum } from '@users/domain/enums/access-policy-effect.enum';
 import { AccessPolicyScopeEnum } from '@users/domain/enums/access-policy-scope.enum';
-import { IsBooleanString, IsEnum, IsOptional, IsUUID } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+	IsEnum,
+	IsInt,
+	IsOptional,
+	IsString,
+	IsUUID,
+	Max,
+	Min,
+} from 'class-validator';
 
 export class ListAccessPoliciesQueryDto {
 	@IsOptional()
+	@Type(() => Number)
+	@IsInt()
+	@Min(1)
+	page?: number = 1;
+
+	@IsOptional()
+	@Type(() => Number)
+	@IsInt()
+	@Min(1)
+	@Max(100)
+	limit?: number = 20;
+
+	@IsOptional()
+	@IsString()
+	search?: string;
+
+	@IsOptional()
 	@IsEnum(AccessPolicyEffectEnum)
-	@ApiPropertyOptional({ enum: AccessPolicyEffectEnum })
 	effect?: AccessPolicyEffectEnum;
 
 	@IsOptional()
 	@IsEnum(AccessPolicyScopeEnum)
-	@ApiPropertyOptional({ enum: AccessPolicyScopeEnum })
 	scope?: AccessPolicyScopeEnum;
 
 	@IsOptional()
-	@IsUUID('all')
-	@ApiPropertyOptional()
+	@IsUUID()
 	targetUserId?: string;
 
 	@IsOptional()
-	@IsUUID('all')
-	@ApiPropertyOptional()
+	@IsUUID()
 	targetGroupId?: string;
 
 	@IsOptional()
-	@IsBooleanString()
-	@ApiPropertyOptional({ example: 'true' })
+	@IsString()
 	isActive?: string;
 }

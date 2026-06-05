@@ -67,6 +67,10 @@ describe('BooksService', () => {
 		deleteChapter: jest.fn(),
 	};
 
+	const mockChapterService = {
+		getOfflineSyncData: jest.fn(),
+	};
+
 	const mockBookRelationshipService = {
 		addTags: jest.fn(),
 		addAuthors: jest.fn(),
@@ -77,10 +81,6 @@ describe('BooksService', () => {
 		updateRelationship: jest.fn(),
 		deleteRelationship: jest.fn(),
 		listRelationships: jest.fn(),
-	};
-
-	const mockChapterService = {
-		// Mock methods if necessary
 	};
 
 	beforeEach(async () => {

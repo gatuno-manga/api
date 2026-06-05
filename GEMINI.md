@@ -99,3 +99,10 @@ To maintain code quality and ensure nothing is broken, you MUST run the appropri
   * `npm run start:debug` - Starts the application in debug mode.
 
 **Mandatory Rule:** After implementing a change, you MUST ALWAYS run the relevant formatting/linting scripts (e.g., `npm run lint:fix` or `npm run format:biome`) and verify that tests pass (`npm run test`) before concluding the task. NEVER leave the code in a broken or unformatted state.
+
+---
+## 7. RBAC & Security Mandates
+* **No `RolesEnum` for Authorization:** Do not use `@Roles()` decorators to protect endpoints. Roles (`RolesEnum.ADMIN`, `RolesEnum.USER`, `RolesEnum.GUEST`) exist merely as a grouping of permissions, defined and populated dynamically by `RbacSeederService`.
+* **Explicit `@Permissions`:** All business domain routes must be protected using `@Permissions(PermissionsEnum.XXX)` combined with `PermissionsGuard`. Never leave an administrative endpoint unprotected or grouped under a completely unrelated permission (e.g., managing user profile should be `PROFILE_MANAGE`, not `BOOKS_VIEW`).
+* **Unauthenticated/Guest Flow:** By design, unauthenticated requests are interpreted by `PermissionsGuard` as having `GUEST` permissions (granted via `RbacSeederService`). Routes intended to be entirely public (e.g., `signup`, `signin`) or inherent to the user's login session lifecycle (e.g., `logout`, `refresh`, `mfa`) **should NOT** be decorated with `@Permissions`. They rely strictly on `JwtAuthGuard` or no guard at all.
+* **Granular Profile Permissions:** Operations affecting a user's own data must use `PROFILE_VIEW` and `PROFILE_MANAGE`. `BOOKS_VIEW` should never be reused outside the scope of content visualization.
