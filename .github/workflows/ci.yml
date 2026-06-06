@@ -61,7 +61,7 @@ jobs:
       !cancelled() &&
       needs.build-and-publish.result == 'success' &&
       github.event_name == 'push' && 
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/developer')
+      github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
