@@ -57,6 +57,9 @@ jobs:
   release:
     needs: build-and-publish
     if: |
+      always() &&
+      !cancelled() &&
+      needs.build-and-publish.result == 'success' &&
       github.event_name == 'push' && 
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/developer')
     runs-on: ubuntu-latest
