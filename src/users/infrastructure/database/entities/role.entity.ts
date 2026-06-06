@@ -1,4 +1,11 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+	Column,
+	Entity,
+	JoinTable,
+	ManyToMany,
+	PrimaryGeneratedColumn,
+} from 'typeorm';
+import { Permission } from './permission.entity';
 
 @Entity('roles')
 export class Role {
@@ -10,4 +17,8 @@ export class Role {
 
 	@Column({ default: 0 })
 	maxWeightSensitiveContent: number;
+
+	@ManyToMany(() => Permission)
+	@JoinTable({ name: 'roles_permissions' })
+	permissions: Permission[];
 }

@@ -14,6 +14,8 @@ import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
 import { DataEnvelopeInterceptor } from 'src/common/interceptors/data-envelope.interceptor';
 import { AuthenticatedApi } from 'src/common/swagger/auth-api.decorators';
+import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
+import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 import {
 	ApiDocsGetCurrentUser,
 	ApiDocsUpdateUser,
@@ -29,12 +31,14 @@ export class UsersController {
 	constructor(private readonly usersService: UsersService) {}
 
 	@Get('me')
+	@Permissions(PermissionsEnum.PROFILE_VIEW)
 	@ApiDocsGetCurrentUser()
 	async getCurrentUser(@CurrentUser() user: CurrentUserDto) {
 		return this.usersService.getCurrentUser(user.userId);
 	}
 
 	@Patch()
+	@Permissions(PermissionsEnum.PROFILE_MANAGE)
 	@ApiDocsUpdateUser()
 	async updateUser(
 		@Body() dto: UpdateUserDto,
@@ -44,6 +48,7 @@ export class UsersController {
 	}
 
 	@Patch('me/avatar')
+	@Permissions(PermissionsEnum.PROFILE_MANAGE)
 	@ApiDocsUploadAvatar()
 	@UseInterceptors(
 		FileInterceptor('file', {
@@ -61,6 +66,7 @@ export class UsersController {
 	}
 
 	@Patch('me/banner')
+	@Permissions(PermissionsEnum.PROFILE_MANAGE)
 	@ApiDocsUploadBanner()
 	@UseInterceptors(
 		FileInterceptor('file', {

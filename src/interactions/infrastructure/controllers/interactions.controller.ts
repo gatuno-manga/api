@@ -16,6 +16,9 @@ import {
 	UseInterceptors,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
+import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
+import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 import {
 	ApiDocsFavorite,
 	ApiDocsReview,
@@ -24,7 +27,7 @@ import {
 
 @ApiTags('Interactions')
 @Controller('books/:id')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @UseInterceptors(DataEnvelopeInterceptor)
 @ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 export class InteractionsController {
@@ -35,6 +38,7 @@ export class InteractionsController {
 	) {}
 
 	@Post('favorite')
+	@Permissions(PermissionsEnum.INTERACTIONS_MANAGE)
 	@ApiDocsFavorite()
 	async favorite(
 		@CurrentUser() user: CurrentUserDto,
@@ -44,6 +48,7 @@ export class InteractionsController {
 	}
 
 	@Post('subscribe')
+	@Permissions(PermissionsEnum.INTERACTIONS_MANAGE)
 	@ApiDocsSubscribe()
 	async subscribe(
 		@CurrentUser() user: CurrentUserDto,
@@ -53,6 +58,7 @@ export class InteractionsController {
 	}
 
 	@Post('reviews')
+	@Permissions(PermissionsEnum.INTERACTIONS_MANAGE)
 	@ApiDocsReview()
 	async review(
 		@CurrentUser() user: CurrentUserDto,

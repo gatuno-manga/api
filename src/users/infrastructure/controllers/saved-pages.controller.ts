@@ -19,6 +19,9 @@ import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.deco
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { DataEnvelopeInterceptor } from 'src/common/interceptors/data-envelope.interceptor';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
+import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
+import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
+import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 import {
 	ApiDocsCountSavedPagesByBook,
 	ApiDocsGetSavedPage,
@@ -35,13 +38,14 @@ import {
 
 @ApiTags('Saved Pages')
 @Controller('users/me/saved-pages')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 @UseInterceptors(DataEnvelopeInterceptor)
 export class SavedPagesController {
 	constructor(private readonly savedPagesService: SavedPagesService) {}
 
 	@Post()
+	@Permissions(PermissionsEnum.SAVED_PAGES_MANAGE)
 	@ApiDocsSavePage()
 	async savePage(
 		@Body() dto: CreateSavedPageDto,
@@ -51,12 +55,14 @@ export class SavedPagesController {
 	}
 
 	@Get()
+	@Permissions(PermissionsEnum.SAVED_PAGES_MANAGE)
 	@ApiDocsGetSavedPages()
 	async getSavedPages(@CurrentUser() user: CurrentUserDto) {
 		return this.savedPagesService.getSavedPages(user.userId);
 	}
 
 	@Get('book/:bookId')
+	@Permissions(PermissionsEnum.SAVED_PAGES_MANAGE)
 	@ApiDocsGetSavedPagesByBook()
 	async getSavedPagesByBook(
 		@Param('bookId') bookId: string,
@@ -66,6 +72,7 @@ export class SavedPagesController {
 	}
 
 	@Get('chapter/:chapterId')
+	@Permissions(PermissionsEnum.SAVED_PAGES_MANAGE)
 	@ApiDocsGetSavedPagesByChapter()
 	async getSavedPagesByChapter(
 		@Param('chapterId') chapterId: string,
@@ -78,6 +85,7 @@ export class SavedPagesController {
 	}
 
 	@Get('check/:pageId')
+	@Permissions(PermissionsEnum.SAVED_PAGES_MANAGE)
 	@ApiDocsIsPageSaved()
 	async isPageSaved(
 		@Param('pageId', ParseIntPipe) pageId: number,
@@ -91,6 +99,7 @@ export class SavedPagesController {
 	}
 
 	@Get('count/book/:bookId')
+	@Permissions(PermissionsEnum.SAVED_PAGES_MANAGE)
 	@ApiDocsCountSavedPagesByBook()
 	async countSavedPagesByBook(
 		@Param('bookId') bookId: string,
@@ -104,6 +113,7 @@ export class SavedPagesController {
 	}
 
 	@Get(':id')
+	@Permissions(PermissionsEnum.SAVED_PAGES_MANAGE)
 	@ApiDocsGetSavedPage()
 	async getSavedPage(
 		@Param('id') id: string,
@@ -113,6 +123,7 @@ export class SavedPagesController {
 	}
 
 	@Patch(':id')
+	@Permissions(PermissionsEnum.SAVED_PAGES_MANAGE)
 	@ApiDocsUpdateComment()
 	async updateComment(
 		@Param('id') id: string,
@@ -123,6 +134,7 @@ export class SavedPagesController {
 	}
 
 	@Delete(':id')
+	@Permissions(PermissionsEnum.SAVED_PAGES_MANAGE)
 	@ApiDocsUnsavePage()
 	async unsavePage(
 		@Param('id') id: string,
@@ -133,6 +145,7 @@ export class SavedPagesController {
 	}
 
 	@Delete('page/:pageId')
+	@Permissions(PermissionsEnum.SAVED_PAGES_MANAGE)
 	@ApiDocsUnsavePageByPageId()
 	async unsavePageByPageId(
 		@Param('pageId', ParseIntPipe) pageId: number,
@@ -143,6 +156,7 @@ export class SavedPagesController {
 	}
 
 	@Patch(':id/visibility')
+	@Permissions(PermissionsEnum.SAVED_PAGES_MANAGE)
 	@ApiDocsUpdateVisibility()
 	async updateVisibility(
 		@Param('id') id: string,

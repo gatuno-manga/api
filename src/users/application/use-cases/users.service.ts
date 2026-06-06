@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserResourcesMapper } from '@users/application/mappers/user-resources.mapper';
+import { UserPermissionsService } from '@users/application/services/user-permissions.service';
 import { RolesEnum } from '@users/domain/enums/roles.enum';
 import { Role } from '@users/infrastructure/database/entities/role.entity';
 import { UserImage } from '@users/infrastructure/database/entities/user-image.entity';
@@ -38,6 +39,7 @@ export class UsersService implements OnApplicationBootstrap {
 		readonly _dataSource: DataSource,
 		private readonly filesService: FilesService,
 		private readonly userResourcesMapper: UserResourcesMapper,
+		private readonly userPermissionsService: UserPermissionsService,
 	) {}
 
 	async onApplicationBootstrap() {
@@ -103,13 +105,17 @@ export class UsersService implements OnApplicationBootstrap {
 	async getCurrentUser(userId: string) {
 		const user = await this.userRepository.findOne({
 			where: { id: userId },
+			relations: ['roles'],
 		});
 
 		if (!user) {
 			throw new NotFoundException(`User with id ${userId} not found`);
 		}
 
-		return this.userResourcesMapper.toUserProfile(user);
+		const permissions =
+			await this.userPermissionsService.getPermissions(userId);
+
+		return this.userResourcesMapper.toUserProfile(user, permissions);
 	}
 
 	async getPublicUserProfile(userId: string) {

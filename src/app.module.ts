@@ -36,6 +36,7 @@ import { MqttModule } from './infrastructure/mqtt/mqtt.module';
 import { InteractionsModule } from './interactions/interactions.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { SyncModule } from './sync/sync.module';
+import { RbacModule } from './users/rbac.module';
 import { UsersModule } from './users/users.module';
 import { WebsitesModule } from './websites/websites.module';
 
@@ -52,6 +53,9 @@ import { WebsitesModule } from './websites/websites.module';
 		MqttModule,
 		EventEmitterModule.forRoot(),
 		ScheduleModule.forRoot(),
+		RbacModule,
+		AuthModule,
+		UsersModule,
 		CollectionsModule,
 		InteractionsModule,
 
@@ -121,8 +125,6 @@ import { WebsitesModule } from './websites/websites.module';
 			}),
 		}),
 		FilesModule,
-		AuthModule,
-		UsersModule,
 		WebsitesModule,
 		BooksModule,
 		BookRequestsModule,

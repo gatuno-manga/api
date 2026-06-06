@@ -1,9 +1,10 @@
 import { AppConfigModule } from '@app-config/app-config.module';
 import { AppConfigService } from '@app-config/app-config.service';
 import { AuthModule } from '@auth/auth.module';
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { UsersModule } from '@users/users.module';
 import { Partitioners } from 'kafkajs';
 import { I_WEBSITE_REPOSITORY } from './application/ports/website-repository.interface';
 import { WebsiteService } from './application/services/website.service';
@@ -22,7 +23,8 @@ import { WebsiteController } from './infrastructure/http/controllers/website.con
 	],
 	exports: [I_WEBSITE_REPOSITORY, WebsiteService, ClientsModule],
 	imports: [
-		AuthModule,
+		forwardRef(() => AuthModule),
+		forwardRef(() => UsersModule),
 		AppConfigModule,
 		TypeOrmModule.forFeature([Website]),
 		ClientsModule.registerAsync([

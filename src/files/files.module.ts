@@ -1,6 +1,7 @@
 import { RedisModule } from '@/infrastructure/redis/redis.module';
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { UsersModule } from '@users/users.module';
 import { AuthModule } from 'src/auth/auth.module';
 import { I_COVER_REPOSITORY } from 'src/books/application/ports/cover-repository.interface';
 import { I_PAGE_REPOSITORY } from 'src/books/application/ports/page-repository.interface';
@@ -104,7 +105,8 @@ import { FileCleanupCron } from './infrastructure/framework/file-cleanup.cron';
 	],
 	imports: [
 		AppConfigModule,
-		AuthModule,
+		forwardRef(() => AuthModule),
+		forwardRef(() => UsersModule),
 		RedisModule,
 		TypeOrmModule.forFeature([Page, Cover, Book, Chapter, User, UserImage]),
 	],

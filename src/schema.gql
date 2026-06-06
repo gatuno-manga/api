@@ -2,20 +2,30 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+type AlternativeTitle {
+	languageCode: String
+	rank: Int!
+	title: String!
+}
+
 type Author {
+	biography: String
 	id: ID!
+	localizedBiographies: [LocalizedBiography]!
 	name: String!
 }
 
 type Book {
-	alternativeTitle: [String]!
-	authors: [Author!]!
+	alternativeTitles: [AlternativeTitle]!
+	authors(lang: String): [Author!]!
 	chapters(filter: ChapterFilterInput): PaginatedChapterResponse!
 	cover: String
 	covers: [Cover!]!
 	createdAt: DateTime!
 	description: String
 	id: ID!
+	localizedDescriptions: [LocalizedDescription]!
+	originalLanguageCode: String
 	publication: Int
 	scrapingStatus: ScrapingStatus!
 	tags: [Tag!]!
@@ -30,6 +40,7 @@ input BookFilterInput {
 	cursor: String
 	excludeTags: [ID]
 	excludeTagsLogic: FilterLogic = OR
+	lang: String
 	limit: Int = 20
 	order: OrderDirection = DESC
 	orderBy: BookOrderField = CREATED_AT
@@ -153,6 +164,23 @@ type ImageMetadata {
 	width: Int!
 }
 
+"""
+The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
+"""
+scalar JSON
+
+type LocalizedBiography {
+	biography: String!
+	languageCode: String!
+	rank: Int!
+}
+
+type LocalizedDescription {
+	description: String!
+	languageCode: String!
+	rank: Int!
+}
+
 type Mutation {
 	sync(input: SyncInput!): SyncResult!
 }
@@ -206,7 +234,7 @@ type PaginatedUserResponse {
 }
 
 type Query {
-	book(id: ID!): Book
+	book(id: ID!, lang: String): Book
 	bookComments(
 		chapterId: ID!
 		limit: Int = 20
@@ -279,6 +307,8 @@ type User {
 	isBanned: Boolean!
 	maxWeightSensitiveContent: Int!
 	name: String
+	preferences: JSON
+	preferredLanguage: String!
 	profileBanner: UserImage
 	profilePicture: UserImage
 	roles: [Role]

@@ -17,6 +17,9 @@ import { WebsiteService } from '@websites/application/services/website.service';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
+import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
+import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
+import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 import {
 	ApiDocsFindAll,
@@ -28,12 +31,13 @@ import {
 
 @ApiTags('Website Scraping')
 @Controller('website')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 export class WebsiteController {
 	constructor(private readonly websiteService: WebsiteService) {}
 
 	@Post()
+	@Permissions(PermissionsEnum.WEBSITES_MANAGE_INTERNAL)
 	@Throttle({ short: { limit: 5, ttl: 300000 } }) // 5 req/5min
 	@Roles(RolesEnum.ADMIN)
 	@ApiDocsRegisterWebsite()
@@ -42,6 +46,7 @@ export class WebsiteController {
 	}
 
 	@Get()
+	@Permissions(PermissionsEnum.WEBSITES_MANAGE_INTERNAL)
 	@Roles(RolesEnum.ADMIN)
 	@ApiDocsFindAll()
 	async findAll() {
@@ -49,6 +54,7 @@ export class WebsiteController {
 	}
 
 	@Get(':id')
+	@Permissions(PermissionsEnum.WEBSITES_MANAGE_INTERNAL)
 	@Roles(RolesEnum.ADMIN)
 	@ApiDocsFindOne()
 	async findOne(@Param('id', ParseUUIDPipe) id: string) {
@@ -56,6 +62,7 @@ export class WebsiteController {
 	}
 
 	@Patch(':id')
+	@Permissions(PermissionsEnum.WEBSITES_MANAGE_INTERNAL)
 	@Throttle({ short: { limit: 10, ttl: 300000 } }) // 10 req/5min
 	@Roles(RolesEnum.ADMIN)
 	@ApiDocsUpdate()
@@ -67,6 +74,7 @@ export class WebsiteController {
 	}
 
 	@Post('test-script')
+	@Permissions(PermissionsEnum.WEBSITES_MANAGE_INTERNAL)
 	@Throttle({ short: { limit: 10, ttl: 60000 } }) // 10 req/min
 	@Roles(RolesEnum.ADMIN)
 	async testScript(
@@ -84,6 +92,7 @@ export class WebsiteController {
 	}
 
 	@Delete(':id')
+	@Permissions(PermissionsEnum.WEBSITES_MANAGE_INTERNAL)
 	@Throttle({ short: { limit: 5, ttl: 300000 } }) // 5 req/5min
 	@Roles(RolesEnum.ADMIN)
 	@ApiDocsRemove()

@@ -18,6 +18,9 @@ import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.deco
 import { OptionalAuthGuard } from 'src/auth/infrastructure/framework/optional-auth.guard';
 import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-cache.interceptor';
 import { AuthenticatedApi } from 'src/common/swagger/auth-api.decorators';
+import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
+import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
+import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 import {
 	ApiDocsGetChapter,
 	ApiDocsGetChaptersBatch,
@@ -32,10 +35,12 @@ import {
 
 @ApiTags('Chapters')
 @Controller('chapters')
+@UseGuards(PermissionsGuard)
 export class ChapterController {
 	constructor(private readonly chapterService: ChapterService) {}
 
 	@Get(':idChapter')
+	@Permissions(PermissionsEnum.CHAPTERS_VIEW)
 	@Throttle({ long: { limit: 200, ttl: 60000 } })
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(600)
@@ -49,6 +54,7 @@ export class ChapterController {
 	}
 
 	@Patch(':idChapter/reset/')
+	@Permissions(PermissionsEnum.BOOKS_MAINTENANCE)
 	@AuthenticatedApi()
 	@ApiDocsResetChapter()
 	resetChapter(@Param('idChapter') idChapter: string) {
@@ -56,13 +62,15 @@ export class ChapterController {
 	}
 
 	@Patch('/reset')
+	@Permissions(PermissionsEnum.BOOKS_MAINTENANCE)
 	@AuthenticatedApi()
 	@ApiDocsResetAllChapters()
 	resetAllChapters(@Body() body: string[]) {
 		return this.chapterService.resetAllChapters(body);
 	}
 
-	@Get('/:idChapter/read/')
+	@Post('/:idChapter/read/')
+	@Permissions(PermissionsEnum.READING_PROGRESS_MANAGE)
 	@Throttle({ medium: { limit: 50, ttl: 60000 } })
 	@AuthenticatedApi()
 	@ApiDocsMarkChapterAsRead()
@@ -74,6 +82,7 @@ export class ChapterController {
 	}
 
 	@Delete('/:idChapter/read/')
+	@Permissions(PermissionsEnum.READING_PROGRESS_MANAGE)
 	@Throttle({ medium: { limit: 50, ttl: 60000 } })
 	@AuthenticatedApi()
 	@ApiDocsMarkChapterAsUnread()
@@ -85,6 +94,7 @@ export class ChapterController {
 	}
 
 	@Post('batch/read')
+	@Permissions(PermissionsEnum.READING_PROGRESS_MANAGE)
 	@Throttle({ medium: { limit: 20, ttl: 60000 } })
 	@AuthenticatedApi()
 	@ApiDocsMarkChaptersAsRead()
@@ -96,6 +106,7 @@ export class ChapterController {
 	}
 
 	@Post('batch/unread')
+	@Permissions(PermissionsEnum.READING_PROGRESS_MANAGE)
 	@Throttle({ medium: { limit: 20, ttl: 60000 } })
 	@AuthenticatedApi()
 	@ApiDocsMarkChaptersAsUnread()
@@ -110,6 +121,7 @@ export class ChapterController {
 	}
 
 	@Get('less-pages/:pages')
+	@Permissions(PermissionsEnum.BOOKS_MAINTENANCE)
 	@AuthenticatedApi()
 	@ApiDocsGetChaptersWithLessPages()
 	getChaptersWithLessPages(@Param('pages') pages: number) {
@@ -117,6 +129,7 @@ export class ChapterController {
 	}
 
 	@Post('batch/data')
+	@Permissions(PermissionsEnum.CHAPTERS_VIEW)
 	@Throttle({ long: { limit: 100, ttl: 60000 } })
 	@ApiDocsGetChaptersBatch()
 	@UseGuards(OptionalAuthGuard)

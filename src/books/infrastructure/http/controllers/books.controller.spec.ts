@@ -1,6 +1,7 @@
 import { BooksService } from '@books/application/services/books.service';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Test, type TestingModule } from '@nestjs/testing';
+import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
 import { BooksController } from './books.controller';
 
 describe('BooksController', () => {
@@ -32,6 +33,10 @@ describe('BooksController', () => {
 		reset: jest.fn(),
 	};
 
+	const mockGuard = {
+		canActivate: jest.fn(() => true),
+	};
+
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			controllers: [BooksController],
@@ -45,7 +50,10 @@ describe('BooksController', () => {
 					useValue: mockCacheManager,
 				},
 			],
-		}).compile();
+		})
+			.overrideGuard(PermissionsGuard)
+			.useValue(mockGuard)
+			.compile();
 
 		controller = module.get<BooksController>(BooksController);
 		booksService = module.get<BooksService>(BooksService);

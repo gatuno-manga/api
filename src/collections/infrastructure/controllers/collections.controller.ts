@@ -20,6 +20,9 @@ import {
 	UseInterceptors,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
+import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
+import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 import {
 	ApiDocsAddBook,
 	ApiDocsCreate,
@@ -29,7 +32,7 @@ import {
 
 @ApiTags('Collections V2')
 @Controller('collections')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @UseInterceptors(DataEnvelopeInterceptor)
 @ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 export class CollectionsController {
@@ -41,6 +44,7 @@ export class CollectionsController {
 	) {}
 
 	@Get()
+	@Permissions(PermissionsEnum.COLLECTIONS_VIEW)
 	@ApiDocsGetMyCollections()
 	async getMyCollections(@CurrentUser() user: CurrentUserDto) {
 		const collections = await this.getUserCollectionsUseCase.execute(
@@ -50,6 +54,7 @@ export class CollectionsController {
 	}
 
 	@Post()
+	@Permissions(PermissionsEnum.COLLECTIONS_MANAGE)
 	@ApiDocsCreate()
 	async create(
 		@CurrentUser() user: CurrentUserDto,
@@ -63,6 +68,7 @@ export class CollectionsController {
 	}
 
 	@Post(':id/books')
+	@Permissions(PermissionsEnum.COLLECTIONS_MANAGE)
 	@ApiDocsAddBook()
 	async addBook(
 		@CurrentUser() user: CurrentUserDto,
@@ -77,6 +83,7 @@ export class CollectionsController {
 	}
 
 	@Post(':id/share')
+	@Permissions(PermissionsEnum.COLLECTIONS_MANAGE)
 	@ApiDocsShare()
 	async share(
 		@CurrentUser() user: CurrentUserDto,

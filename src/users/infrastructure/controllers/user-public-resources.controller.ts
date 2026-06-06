@@ -6,10 +6,15 @@ import {
 	ParseUUIDPipe,
 	UseInterceptors,
 } from '@nestjs/common';
+import { UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { SavedPagesService } from '@users/application/use-cases/saved-pages.service';
 import { UsersService } from '@users/application/use-cases/users.service';
+import { OptionalAuthGuard } from 'src/auth/infrastructure/framework/optional-auth.guard';
 import { DataEnvelopeInterceptor } from 'src/common/interceptors/data-envelope.interceptor';
+import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
+import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
+import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 import {
 	ApiDocsGetPublicCollections,
 	ApiDocsGetPublicProfile,
@@ -19,6 +24,7 @@ import {
 
 @ApiTags('Public User Resources')
 @Controller('users/:userId/public')
+@UseGuards(OptionalAuthGuard, PermissionsGuard)
 @UseInterceptors(DataEnvelopeInterceptor)
 export class UserPublicResourcesController {
 	constructor(
@@ -28,12 +34,14 @@ export class UserPublicResourcesController {
 	) {}
 
 	@Get('profile')
+	@Permissions(PermissionsEnum.PROFILE_VIEW)
 	@ApiDocsGetPublicProfile()
 	async getPublicProfile(@Param('userId', ParseUUIDPipe) userId: string) {
 		return this.usersService.getPublicUserProfile(userId);
 	}
 
 	@Get('collections')
+	@Permissions(PermissionsEnum.PROFILE_VIEW)
 	@ApiDocsGetPublicCollections()
 	async getPublicCollections(@Param('userId', ParseUUIDPipe) userId: string) {
 		const collections =
@@ -42,12 +50,14 @@ export class UserPublicResourcesController {
 	}
 
 	@Get('saved-pages')
+	@Permissions(PermissionsEnum.PROFILE_VIEW)
 	@ApiDocsGetPublicSavedPages()
 	async getPublicSavedPages(@Param('userId', ParseUUIDPipe) userId: string) {
 		return this.savedPagesService.getPublicSavedPages(userId);
 	}
 
 	@Get('books/:bookId/saved-pages')
+	@Permissions(PermissionsEnum.PROFILE_VIEW)
 	@ApiDocsGetPublicSavedPagesByBook()
 	async getPublicSavedPagesByBook(
 		@Param('userId', ParseUUIDPipe) userId: string,

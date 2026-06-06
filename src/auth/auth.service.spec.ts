@@ -8,7 +8,11 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Role } from 'src/users/infrastructure/database/entities/role.entity';
 import { User } from 'src/users/infrastructure/database/entities/user.entity';
+import { ApiKeyUseCase } from './application/use-cases/api-key.use-case';
+import { RefreshTokenUseCase } from './application/use-cases/refresh-token.use-case';
+import { RevokeSessionUseCase } from './application/use-cases/revoke-session.use-case';
 import { SignInUseCase } from './application/use-cases/sign-in.use-case';
+import { SignOutUseCase } from './application/use-cases/sign-out.use-case';
 import { SignUpUseCase } from './application/use-cases/sign-up.use-case';
 import { AuthService } from './auth.service';
 import { MfaService } from './infrastructure/adapters/mfa.service';
@@ -102,7 +106,7 @@ describe('AuthService', () => {
 		const mockTokenStore = {
 			getValidTokens: jest.fn(),
 			saveTokens: jest.fn(),
-			addToken: jest.fn(),
+			addToken: jest.fn().mockResolvedValue([]),
 			removeAllTokens: jest.fn(),
 			removeTokenByJti: jest.fn(),
 			removeTokensByJtis: jest.fn(),
@@ -199,6 +203,33 @@ describe('AuthService', () => {
 					provide: SignInUseCase,
 					useValue: {
 						execute: jest.fn(),
+					},
+				},
+				{
+					provide: RefreshTokenUseCase,
+					useValue: {
+						execute: jest.fn(),
+					},
+				},
+				{
+					provide: SignOutUseCase,
+					useValue: {
+						execute: jest.fn(),
+						executeAll: jest.fn(),
+					},
+				},
+				{
+					provide: RevokeSessionUseCase,
+					useValue: {
+						execute: jest.fn(),
+						executeOther: jest.fn(),
+					},
+				},
+				{
+					provide: ApiKeyUseCase,
+					useValue: {
+						createForAdminSelf: jest.fn(),
+						signIn: jest.fn(),
 					},
 				},
 			],
@@ -310,488 +341,121 @@ describe('AuthService', () => {
 	});
 
 	describe('createLoginApiKeyForAdminSelf', () => {
-		it('should create API key for current admin user', async () => {
+		it('should delegate to ApiKeyUseCase', async () => {
 			const userId = 'admin-id';
-			const expiresAt = new Date('2030-01-01T00:00:00.000Z');
-			userRepository.findOne.mockResolvedValue({
-				id: userId,
-				email: 'admin@example.com',
-				roles: [{ name: 'admin' }],
-			});
-			dataEncryption.encrypt.mockResolvedValue('hashed-api-key-secret');
-			loginApiKeyRepository.save.mockResolvedValue({
-				id: 'api-key-id',
-				expiresAt,
+			const resultPayload = {
+				apiKey: 'api-key.secret',
+				expiresAt: new Date(),
 				singleUse: true,
-			});
+			};
+			const apiKeyUseCase = module.get<ApiKeyUseCase>(ApiKeyUseCase);
+			jest.spyOn(apiKeyUseCase, 'createForAdminSelf').mockResolvedValue(
+				resultPayload,
+			);
 
 			const result = await service.createLoginApiKeyForAdminSelf(userId, {
 				expiresIn: '2h',
 				singleUse: true,
 			});
 
-			expect(userRepository.findOne).toHaveBeenCalledWith({
-				where: { id: userId },
-				relations: ['roles'],
-			});
-			expect(dataEncryption.encrypt).toHaveBeenCalled();
-			expect(loginApiKeyRepository.save).toHaveBeenCalledWith(
+			expect(apiKeyUseCase.createForAdminSelf).toHaveBeenCalledWith(
+				userId,
 				expect.objectContaining({
-					userId,
+					expiresIn: '2h',
 					singleUse: true,
-					createdByUserId: userId,
 				}),
 			);
-			expect(result.singleUse).toBe(true);
-			expect(result.expiresAt).toEqual(expiresAt);
-			expect(result.apiKey).toMatch(/^api-key-id\.[a-f0-9]+$/);
-			expect(sessionAudit.track).toHaveBeenCalledWith(
-				expect.objectContaining({
-					userId,
-					event: 'api_key_created',
-					success: true,
-				}),
-			);
-		});
-
-		it('should reject creation when user is not admin', async () => {
-			userRepository.findOne.mockResolvedValue({
-				id: 'user-id',
-				email: 'user@example.com',
-				roles: [{ name: 'user' }],
-			});
-
-			await expect(
-				service.createLoginApiKeyForAdminSelf('user-id'),
-			).rejects.toThrow(UnauthorizedException);
-			await expect(
-				service.createLoginApiKeyForAdminSelf('user-id'),
-			).rejects.toThrow('Only admins can create login API keys');
+			expect(result).toEqual(resultPayload);
 		});
 	});
 
 	describe('signInWithApiKey', () => {
-		it('should sign in with single-use API key and mark it as used', async () => {
-			const apiKeyRecord = {
-				id: 'api-key-id',
-				userId: 'user-1',
-				keyHash: 'stored-hash',
-				singleUse: true,
-				usedAt: null,
-				lastUsedAt: null,
-				revokedAt: null,
-				expiresAt: new Date(Date.now() + 60_000),
+		it('should delegate to ApiKeyUseCase', async () => {
+			const tokens = {
+				accessToken: 'access-token',
+				refreshToken: 'refresh-token',
+				sessionId: 'session-1',
 			};
-			const user = {
-				id: 'user-1',
-				email: 'user@example.com',
-				roles: [{ id: 'role-1', name: 'user' }],
-			};
-			loginApiKeyRepository.findOne.mockResolvedValue(apiKeyRecord);
-			dataEncryption.compare.mockResolvedValue(true);
-			userRepository.findOne.mockResolvedValue(user);
-			jwtService.signAsync
-				.mockResolvedValueOnce('access-token')
-				.mockResolvedValueOnce('refresh-token');
-			dataEncryption.encrypt.mockResolvedValue('encrypted-refresh-token');
-			tokenStore.addToken.mockResolvedValue(undefined);
-
-			const result = await service.signInWithApiKey(
-				'api-key-id.super-secret',
-				{
-					clientPlatform: 'mobile',
-				},
+			const apiKeyUseCase = module.get<ApiKeyUseCase>(ApiKeyUseCase);
+			jest.spyOn(apiKeyUseCase, 'signIn').mockResolvedValue(
+				tokens as any,
 			);
 
-			expect(result).toHaveProperty('accessToken', 'access-token');
-			expect(result).toHaveProperty('refreshToken', 'refresh-token');
-			expect(loginApiKeyRepository.save).toHaveBeenCalledWith(
-				expect.objectContaining({
-					id: 'api-key-id',
-					usedAt: expect.any(Date),
-					lastUsedAt: expect.any(Date),
-				}),
+			const result = await service.signInWithApiKey('api-key.secret');
+
+			expect(apiKeyUseCase.signIn).toHaveBeenCalledWith(
+				'api-key.secret',
+				expect.any(Object),
+				expect.any(Function),
 			);
-			expect(sessionAudit.track).toHaveBeenCalledWith(
-				expect.objectContaining({
-					event: 'login_success',
-					context: expect.objectContaining({
-						authMethod: 'api_key',
-					}),
-				}),
-			);
-		});
-
-		it('should keep usedAt null for reusable API key', async () => {
-			const apiKeyRecord = {
-				id: 'api-key-id',
-				userId: 'user-1',
-				keyHash: 'stored-hash',
-				singleUse: false,
-				usedAt: null,
-				lastUsedAt: null,
-				revokedAt: null,
-				expiresAt: new Date(Date.now() + 60_000),
-			};
-			const user = {
-				id: 'user-1',
-				email: 'user@example.com',
-				roles: [{ id: 'role-1', name: 'user' }],
-			};
-			loginApiKeyRepository.findOne.mockResolvedValue(apiKeyRecord);
-			dataEncryption.compare.mockResolvedValue(true);
-			userRepository.findOne.mockResolvedValue(user);
-			jwtService.signAsync
-				.mockResolvedValueOnce('access-token')
-				.mockResolvedValueOnce('refresh-token');
-			dataEncryption.encrypt.mockResolvedValue('encrypted-refresh-token');
-			tokenStore.addToken.mockResolvedValue(undefined);
-
-			await service.signInWithApiKey('api-key-id.reusable-secret');
-
-			expect(loginApiKeyRepository.save).toHaveBeenCalledWith(
-				expect.objectContaining({
-					id: 'api-key-id',
-					usedAt: null,
-					lastUsedAt: expect.any(Date),
-				}),
-			);
-		});
-
-		it('should reject already used single-use API key', async () => {
-			loginApiKeyRepository.findOne.mockResolvedValue({
-				id: 'api-key-id',
-				userId: 'user-1',
-				keyHash: 'stored-hash',
-				singleUse: true,
-				usedAt: new Date(),
-				lastUsedAt: new Date(),
-				revokedAt: null,
-				expiresAt: new Date(Date.now() + 60_000),
-			});
-			dataEncryption.compare.mockResolvedValue(true);
-
-			await expect(
-				service.signInWithApiKey('api-key-id.reused-secret'),
-			).rejects.toThrow('API key already used');
-			expect(tokenStore.addToken).not.toHaveBeenCalled();
-			expect(sessionAudit.track).toHaveBeenCalledWith(
-				expect.objectContaining({
-					event: 'login_failed',
-					success: false,
-					metadata: expect.objectContaining({
-						reason: 'api_key_already_used',
-					}),
-				}),
-			);
+			expect(result).toEqual(tokens);
 		});
 	});
 
 	describe('logout', () => {
-		it('should logout user successfully', async () => {
+		it('should delegate to SignOutUseCase', async () => {
 			const userId = 'user123';
 			const refreshToken = 'refresh_token';
-			const storedTokens = [
-				{
-					jti: 'refresh-jti',
-					hash: 'hashed_token',
-					expiresAt: Date.now() + 100000,
-				},
-			];
-
-			jwtService.decode.mockReturnValue({ jti: 'refresh-jti' });
-			tokenStore.getValidTokens.mockResolvedValue(storedTokens);
-			dataEncryption.compare.mockResolvedValue(true);
-			tokenStore.saveTokens.mockResolvedValue(undefined);
+			const signOutUseCase = module.get<SignOutUseCase>(SignOutUseCase);
+			jest.spyOn(signOutUseCase, 'execute').mockResolvedValue({
+				message: 'Logged out successfully',
+			});
 
 			const result = await service.logout(userId, refreshToken);
 
-			expect(tokenStore.getValidTokens).toHaveBeenCalledWith(userId);
+			expect(signOutUseCase.execute).toHaveBeenCalledWith(
+				userId,
+				refreshToken,
+				expect.any(Object),
+			);
 			expect(result).toEqual({ message: 'Logged out successfully' });
-		});
-
-		it('should throw UnauthorizedException if no refresh token provided', async () => {
-			await expect(service.logout('user123', '')).rejects.toThrow(
-				UnauthorizedException,
-			);
-			await expect(service.logout('user123', '')).rejects.toThrow(
-				'Refresh token is required',
-			);
-		});
-
-		it('should throw UnauthorizedException if no active sessions', async () => {
-			tokenStore.getValidTokens.mockResolvedValue([]);
-
-			await expect(service.logout('user123', 'token')).rejects.toThrow(
-				UnauthorizedException,
-			);
-			await expect(service.logout('user123', 'token')).rejects.toThrow(
-				'No active sessions found',
-			);
-		});
-
-		it('should throw UnauthorizedException if token not found in cache', async () => {
-			const storedTokens = [
-				{
-					jti: 'different-jti',
-					hash: 'different_hash',
-					expiresAt: Date.now() + 100000,
-				},
-			];
-			jwtService.decode.mockReturnValue({ jti: 'refresh-jti' });
-			tokenStore.getValidTokens.mockResolvedValue(storedTokens);
-			dataEncryption.compare.mockResolvedValue(false);
-
-			await expect(
-				service.logout('user123', 'invalid_token'),
-			).rejects.toThrow(UnauthorizedException);
-			await expect(
-				service.logout('user123', 'invalid_token'),
-			).rejects.toThrow('Invalid token');
-		});
-
-		it('should keep other tokens when logging out one session', async () => {
-			const userId = 'user123';
-			const storedTokens = [
-				{
-					jti: 'jti-1',
-					hash: 'token1',
-					expiresAt: Date.now() + 100000,
-				},
-				{
-					jti: 'jti-2',
-					hash: 'token2',
-					expiresAt: Date.now() + 200000,
-				},
-			];
-
-			jwtService.decode.mockReturnValue({ jti: 'jti-1' });
-			tokenStore.getValidTokens.mockResolvedValue(storedTokens);
-			dataEncryption.compare.mockResolvedValueOnce(true);
-			tokenStore.saveTokens.mockResolvedValue(undefined);
-
-			await service.logout(userId, 'refresh_token');
-
-			expect(tokenStore.saveTokens).toHaveBeenCalled();
-			const calls = tokenStore.saveTokens.mock.calls;
-			expect(calls[0][1]).toHaveLength(1);
 		});
 	});
 
 	describe('logoutAll', () => {
-		it('should logout all sessions successfully', async () => {
+		it('should delegate to SignOutUseCase', async () => {
 			const userId = 'user123';
-			const storedTokens = [
-				{
-					jti: 'jti-1',
-					hash: 'token1',
-					expiresAt: Date.now() + 100000,
-				},
-				{
-					jti: 'jti-2',
-					hash: 'token2',
-					expiresAt: Date.now() + 200000,
-				},
-			];
-
-			tokenStore.getValidTokens.mockResolvedValue(storedTokens);
-			tokenStore.removeAllTokens.mockResolvedValue(undefined);
+			const signOutUseCase = module.get<SignOutUseCase>(SignOutUseCase);
+			jest.spyOn(signOutUseCase, 'executeAll').mockResolvedValue({
+				message: 'All sessions logged out successfully',
+			});
 
 			const result = await service.logoutAll(userId);
 
-			expect(tokenStore.removeAllTokens).toHaveBeenCalledWith(userId);
+			expect(signOutUseCase.executeAll).toHaveBeenCalledWith(
+				userId,
+				expect.any(Object),
+			);
 			expect(result).toEqual({
 				message: 'All sessions logged out successfully',
 			});
 		});
-
-		it('should throw UnauthorizedException if no active sessions', async () => {
-			tokenStore.getValidTokens.mockResolvedValue([]);
-
-			await expect(service.logoutAll('user123')).rejects.toThrow(
-				UnauthorizedException,
-			);
-			await expect(service.logoutAll('user123')).rejects.toThrow(
-				'No active sessions found',
-			);
-		});
 	});
 
 	describe('refreshTokens', () => {
-		it('should refresh tokens successfully', async () => {
+		it('should delegate to RefreshTokenUseCase', async () => {
 			const userId = 'user123';
 			const oldRefreshToken = 'old_refresh_token';
-			const user = {
-				id: userId,
-				email: 'test@example.com',
-				roles: [{ id: '1', name: 'user' }],
+			const tokens = {
+				accessToken: 'new_access',
+				refreshToken: 'new_refresh',
+				sessionId: 'session-1',
 			};
-			const storedTokens = [
-				{
-					jti: 'old-jti',
-					hash: 'hashed_token',
-					expiresAt: Date.now() + 100000,
-				},
-			];
-
-			jwtService.decode.mockReturnValue({ jti: 'old-jti' });
-			tokenStore.getValidTokens.mockResolvedValue(storedTokens);
-			dataEncryption.compare.mockResolvedValue(true);
-			userRepository.findOne.mockResolvedValue(user);
-			jwtService.signAsync
-				.mockResolvedValueOnce('new_access')
-				.mockResolvedValueOnce('new_refresh');
-			jwtService.decode
-				.mockReturnValueOnce({ jti: 'old-jti' })
-				.mockReturnValueOnce({ jti: 'new-jti' });
-			dataEncryption.encrypt.mockResolvedValue('new_hashed_token');
-			tokenStore.saveTokens.mockResolvedValue(undefined);
+			const refreshTokenUseCase =
+				module.get<RefreshTokenUseCase>(RefreshTokenUseCase);
+			jest.spyOn(refreshTokenUseCase, 'execute').mockResolvedValue(
+				tokens as any,
+			);
 
 			const result = await service.refreshTokens(userId, oldRefreshToken);
 
-			expect(result).toHaveProperty('accessToken');
-			expect(result).toHaveProperty('refreshToken');
-			expect(tokenStore.addToken).toHaveBeenCalled();
-		});
-
-		it('should throw UnauthorizedException if no refresh token provided', async () => {
-			await expect(service.refreshTokens('user123', '')).rejects.toThrow(
-				UnauthorizedException,
+			expect(refreshTokenUseCase.execute).toHaveBeenCalledWith(
+				userId,
+				oldRefreshToken,
+				expect.any(Object),
+				expect.any(Function),
 			);
-			await expect(service.refreshTokens('user123', '')).rejects.toThrow(
-				'Refresh token is required',
-			);
-		});
-
-		it('should throw UnauthorizedException if no valid session found', async () => {
-			tokenStore.getValidTokens.mockResolvedValue([]);
-
-			await expect(
-				service.refreshTokens('user123', 'token'),
-			).rejects.toThrow(UnauthorizedException);
-			await expect(
-				service.refreshTokens('user123', 'token'),
-			).rejects.toThrow('No valid session found');
-		});
-
-		it('should throw UnauthorizedException if refresh token is invalid', async () => {
-			const storedTokens = [
-				{
-					jti: 'old-jti',
-					hash: 'hashed',
-					expiresAt: Date.now() + 100000,
-				},
-			];
-			jwtService.decode.mockReturnValue({ jti: 'missing-jti' });
-			tokenStore.getValidTokens.mockResolvedValue(storedTokens);
-
-			await expect(
-				service.refreshTokens('user123', 'invalid_token'),
-			).rejects.toThrow(UnauthorizedException);
-			await expect(
-				service.refreshTokens('user123', 'invalid_token'),
-			).rejects.toThrow('Refresh token reuse detected');
-		});
-
-		it('should revoke only the token family when reuse is detected with familyId', async () => {
-			const storedTokens = [
-				{
-					jti: 'old-jti',
-					hash: 'hashed',
-					expiresAt: Date.now() + 100000,
-					familyId: 'family-a',
-				},
-				{
-					jti: 'other-jti',
-					hash: 'hashed-2',
-					expiresAt: Date.now() + 100000,
-					familyId: 'family-b',
-				},
-			];
-			jwtService.decode.mockReturnValue({
-				jti: 'missing-jti',
-				familyId: 'family-a',
-			});
-			tokenStore.getValidTokens.mockResolvedValue(storedTokens);
-
-			await expect(
-				service.refreshTokens('user123', 'invalid_token'),
-			).rejects.toThrow('Refresh token reuse detected');
-
-			expect(tokenStore.revokeTokenFamily).toHaveBeenCalledWith(
-				'user123',
-				'family-a',
-				storedTokens,
-			);
-			expect(tokenStore.removeAllTokens).not.toHaveBeenCalled();
-		});
-
-		it('should throw UnauthorizedException if user not found', async () => {
-			const storedTokens = [
-				{
-					jti: 'old-jti',
-					hash: 'hashed',
-					expiresAt: Date.now() + 100000,
-				},
-			];
-			jwtService.decode.mockReturnValue({ jti: 'old-jti' });
-			tokenStore.getValidTokens.mockImplementation(() =>
-				Promise.resolve([...storedTokens]),
-			);
-			dataEncryption.compare.mockResolvedValue(true);
-			userRepository.findOne.mockResolvedValue(null);
-
-			await expect(
-				service.refreshTokens('user123', 'token'),
-			).rejects.toThrow(UnauthorizedException);
-			await expect(
-				service.refreshTokens('user123', 'token'),
-			).rejects.toThrow('User not found');
-		});
-
-		it('should remove old token and add new token', async () => {
-			const userId = 'user123';
-			const storedTokens = [
-				{
-					jti: 'old-jti',
-					hash: 'old_token',
-					expiresAt: Date.now() + 100000,
-				},
-				{
-					jti: 'other-jti',
-					hash: 'another_token',
-					expiresAt: Date.now() + 200000,
-				},
-			];
-			const user = {
-				id: userId,
-				email: 'test@example.com',
-				roles: [{ id: '1', name: 'user' }],
-			};
-
-			jwtService.decode
-				.mockReturnValueOnce({ jti: 'old-jti' })
-				.mockReturnValueOnce({ jti: 'new-jti' });
-			tokenStore.getValidTokens.mockResolvedValue(storedTokens);
-			dataEncryption.compare.mockResolvedValueOnce(true);
-			userRepository.findOne.mockResolvedValue(user);
-			jwtService.signAsync.mockResolvedValue('token');
-			dataEncryption.encrypt.mockResolvedValue('new_hashed');
-
-			await service.refreshTokens(userId, 'old_refresh');
-
-			const calls = tokenStore.addToken.mock.calls;
-			expect(calls[0][2]).toHaveLength(1); // One token remains after removing the old one
-		});
-
-		it('should reject concurrent refresh attempts when lock is held', async () => {
-			tokenStore.runWithRefreshLock.mockRejectedValueOnce(
-				new UnauthorizedException('Refresh already in progress'),
-			);
-
-			await expect(
-				service.refreshTokens('user123', 'refresh_token'),
-			).rejects.toThrow('Refresh already in progress');
+			expect(result).toEqual(tokens);
 		});
 	});
 });

@@ -1,14 +1,12 @@
-import { randomBytes } from 'node:crypto';
 import {
 	BadRequestException,
 	Injectable,
 	Logger,
-	NotFoundException,
 	UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import ms from 'ms';
+
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { DataEncryptionProvider } from 'src/infrastructure/encryption/data-encryption.provider';
 import { PasswordEncryption } from 'src/infrastructure/encryption/password-encryption.provider';
@@ -18,15 +16,15 @@ import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import { Repository } from 'typeorm';
 import { v7 as uuidv7 } from 'uuid';
 import { JwtPayloadBuilder } from './application/builders/jwt-payload.builder';
-import { StoredTokenDto } from './application/dto/stored-token.dto';
 import { UserAuthData } from './application/ports/user-repository.port';
+import { ApiKeyUseCase } from './application/use-cases/api-key.use-case';
+import { RefreshTokenUseCase } from './application/use-cases/refresh-token.use-case';
+import { RevokeSessionUseCase } from './application/use-cases/revoke-session.use-case';
 import { SignInUseCase } from './application/use-cases/sign-in.use-case';
+import { SignOutUseCase } from './application/use-cases/sign-out.use-case';
 import { SignUpUseCase } from './application/use-cases/sign-up.use-case';
 import { MfaService } from './infrastructure/adapters/mfa.service';
-import {
-	SessionAuditEvent,
-	SessionAuditService,
-} from './infrastructure/adapters/session-audit.service';
+import { SessionAuditService } from './infrastructure/adapters/session-audit.service';
 import { SessionManagementService } from './infrastructure/adapters/session-management.service';
 import { TokenStoreService } from './infrastructure/adapters/token-store.service';
 import { LoginApiKey } from './infrastructure/database/entities/login-api-key.entity';
@@ -36,35 +34,11 @@ import {
 	AuthMethod,
 	AuthRequestContext,
 	AuthRiskLevel,
+	GenerateTokensOptions,
+	SessionAuditEvent,
 	SuccessfulAuthResult,
+	TokenRotationInput,
 } from './types/auth-security.types';
-
-interface TokenRotationInput {
-	familyId?: string;
-	parentJti?: string;
-	sessionId?: string;
-}
-
-interface RefreshTokenMetadata {
-	jti: string | null;
-	familyId: string | null;
-	sessionId: string | null;
-}
-
-interface GenerateTokensOptions {
-	authMethod?: AuthMethod;
-	context?: AuthRequestContext;
-	mfaVerified?: boolean;
-	riskLevel?: AuthRiskLevel;
-	auditEvent?: SessionAuditEvent;
-	sessionId?: string;
-	rotation?: {
-		familyId?: string;
-		parentJti?: string;
-		previousRefreshTokenJti?: string | null;
-	};
-	existingTokens?: StoredTokenDto[];
-}
 
 interface MfaChallengePayload {
 	sub: string;
@@ -102,6 +76,10 @@ export class AuthService {
 		private readonly mfaService: MfaService,
 		private readonly signUpUseCase: SignUpUseCase,
 		private readonly signInUseCase: SignInUseCase,
+		private readonly refreshTokenUseCase: RefreshTokenUseCase,
+		private readonly signOutUseCase: SignOutUseCase,
+		private readonly revokeSessionUseCase: RevokeSessionUseCase,
+		private readonly apiKeyUseCase: ApiKeyUseCase,
 	) {
 		this.logger.log(
 			`🔐 Algoritmo de hashing ativo: ${this.passwordEncryption.getAlgorithm()}`,
@@ -124,75 +102,6 @@ export class AuthService {
 	private isMobileContext(context?: AuthRequestContext): boolean {
 		const platform = context?.clientPlatform?.toLowerCase().trim();
 		return ['mobile', 'flutter', 'app', 'native'].includes(platform ?? '');
-	}
-
-	private resolveLoginApiKeyTtl(expiresIn?: string): number {
-		const configuredMaxTtl = this.configService.authApiKeyMaxTtl;
-		const configuredDefaultTtl = this.configService.authApiKeyDefaultTtl;
-		const defaultTtl = Math.min(configuredDefaultTtl, configuredMaxTtl);
-
-		if (!expiresIn || expiresIn.trim().length === 0) {
-			return defaultTtl;
-		}
-
-		let parsedDuration: number | undefined;
-		try {
-			parsedDuration = ms(expiresIn.trim() as ms.StringValue);
-		} catch {
-			parsedDuration = undefined;
-		}
-
-		if (parsedDuration === undefined || parsedDuration <= 0) {
-			throw new BadRequestException('Invalid API key expiration');
-		}
-
-		if (parsedDuration > configuredMaxTtl) {
-			throw new BadRequestException(
-				`API key expiration exceeds maximum allowed value (${this.configService.security.authApiKeyMaxExpiration})`,
-			);
-		}
-
-		return parsedDuration;
-	}
-
-	private parseLoginApiKey(apiKey: string): {
-		keyId: string;
-		secret: string;
-	} {
-		const trimmedApiKey = apiKey.trim();
-		const separatorIndex = trimmedApiKey.indexOf('.');
-		if (
-			separatorIndex <= 0 ||
-			separatorIndex === trimmedApiKey.length - 1
-		) {
-			throw new UnauthorizedException('Invalid API key');
-		}
-
-		return {
-			keyId: trimmedApiKey.slice(0, separatorIndex),
-			secret: trimmedApiKey.slice(separatorIndex + 1),
-		};
-	}
-
-	private trackApiKeyLoginFailure(
-		reason: string,
-		context: AuthRequestContext,
-		metadata?: Record<string, unknown>,
-		userId?: string,
-	): void {
-		this.sessionAudit.track({
-			userId,
-			event: 'login_failed',
-			success: false,
-			context: {
-				...context,
-				authMethod: 'api_key',
-			},
-			metadata: {
-				reason,
-				...(metadata ?? {}),
-			},
-		});
 	}
 
 	async signUp(email: string, password: string, isAdmin = false) {
@@ -300,6 +209,7 @@ export class AuthService {
 		return this.userRepository
 			.createQueryBuilder('user')
 			.leftJoinAndSelect('user.roles', 'role')
+			.leftJoinAndSelect('role.permissions', 'permission')
 			.addSelect('user.password')
 			.where('user.id = :id', { id: userId })
 			.getOne();
@@ -373,61 +283,11 @@ export class AuthService {
 		const normalizedContext = this.normalizeRequestContext(
 			options?.context,
 		);
-		const user = await this.userRepository.findOne({
-			where: { id: userId },
-			relations: ['roles'],
+		return this.apiKeyUseCase.createForAdminSelf(userId, {
+			expiresIn: options?.expiresIn,
+			singleUse: options?.singleUse,
+			context: normalizedContext,
 		});
-
-		if (!user) {
-			throw new UnauthorizedException('User not found');
-		}
-
-		const isAdmin = user.roles.some((role) => role.name === 'admin');
-		if (!isAdmin) {
-			throw new UnauthorizedException(
-				'Only admins can create login API keys',
-			);
-		}
-
-		const ttl = this.resolveLoginApiKeyTtl(options?.expiresIn);
-		const expiresAt = new Date(Date.now() + ttl);
-		const keySecret = randomBytes(32).toString('hex');
-		const keyHash = await this.dataEncryption.encrypt(keySecret);
-
-		const createdApiKey = await this.loginApiKeyRepository.save(
-			this.loginApiKeyRepository.create({
-				userId,
-				keyHash,
-				singleUse: options?.singleUse ?? false,
-				expiresAt,
-				usedAt: null,
-				lastUsedAt: null,
-				revokedAt: null,
-				createdByUserId: userId,
-			}),
-		);
-
-		this.sessionAudit.track({
-			userId,
-			event: 'api_key_created',
-			success: true,
-			context: {
-				...normalizedContext,
-				authMethod: 'api_key',
-				riskLevel: 'low',
-			},
-			metadata: {
-				apiKeyId: createdApiKey.id,
-				singleUse: createdApiKey.singleUse,
-				expiresAt: createdApiKey.expiresAt.toISOString(),
-			},
-		});
-
-		return {
-			apiKey: `${createdApiKey.id}.${keySecret}`,
-			expiresAt: createdApiKey.expiresAt,
-			singleUse: createdApiKey.singleUse,
-		};
 	}
 
 	async signInWithApiKey(
@@ -435,109 +295,11 @@ export class AuthService {
 		context?: AuthRequestContext,
 	): Promise<SuccessfulAuthResult> {
 		const normalizedContext = this.normalizeRequestContext(context);
-		const { keyId, secret } = this.parseLoginApiKey(apiKey);
-		const loginApiKey = await this.loginApiKeyRepository.findOne({
-			where: { id: keyId },
-		});
-
-		if (!loginApiKey) {
-			this.trackApiKeyLoginFailure(
-				'api_key_not_found',
-				normalizedContext,
-				{
-					apiKeyId: keyId,
-				},
-			);
-			throw new UnauthorizedException('Invalid API key');
-		}
-
-		if (loginApiKey.revokedAt) {
-			this.trackApiKeyLoginFailure(
-				'api_key_revoked',
-				normalizedContext,
-				{
-					apiKeyId: keyId,
-				},
-				loginApiKey.userId,
-			);
-			throw new UnauthorizedException('Invalid API key');
-		}
-
-		if (loginApiKey.expiresAt.getTime() <= Date.now()) {
-			this.trackApiKeyLoginFailure(
-				'api_key_expired',
-				normalizedContext,
-				{
-					apiKeyId: keyId,
-				},
-				loginApiKey.userId,
-			);
-			throw new UnauthorizedException('API key expired');
-		}
-
-		const isSecretValid = await this.dataEncryption.compare(
-			loginApiKey.keyHash,
-			secret,
-		);
-		if (!isSecretValid) {
-			this.trackApiKeyLoginFailure(
-				'api_key_secret_mismatch',
-				normalizedContext,
-				{
-					apiKeyId: keyId,
-				},
-				loginApiKey.userId,
-			);
-			throw new UnauthorizedException('Invalid API key');
-		}
-
-		if (loginApiKey.singleUse && loginApiKey.usedAt) {
-			this.trackApiKeyLoginFailure(
-				'api_key_already_used',
-				normalizedContext,
-				{
-					apiKeyId: keyId,
-				},
-				loginApiKey.userId,
-			);
-			throw new UnauthorizedException('API key already used');
-		}
-
-		const user = await this.userRepository.findOne({
-			where: { id: loginApiKey.userId },
-			relations: ['roles'],
-		});
-
-		if (!user) {
-			this.trackApiKeyLoginFailure(
-				'api_key_user_not_found',
-				normalizedContext,
-				{
-					apiKeyId: keyId,
-				},
-				loginApiKey.userId,
-			);
-			throw new UnauthorizedException('User not found');
-		}
-
-		const now = new Date();
-		loginApiKey.lastUsedAt = now;
-		if (loginApiKey.singleUse) {
-			loginApiKey.usedAt = now;
-		}
-		await this.loginApiKeyRepository.save(loginApiKey);
-
-		const riskLevel = await this.resolveRiskLevel(
-			user.id,
+		return this.apiKeyUseCase.signIn(
+			apiKey,
 			normalizedContext,
+			async (user, options) => this.generateTokensForUser(user, options),
 		);
-		return this.generateTokensForUser(user, {
-			authMethod: 'api_key',
-			context: normalizedContext,
-			mfaVerified: true,
-			riskLevel,
-			auditEvent: 'login_success',
-		});
 	}
 
 	async completePasskeySignIn(
@@ -594,7 +356,7 @@ export class AuthService {
 
 		const user = await this.userRepository.findOne({
 			where: { id: payload.sub },
-			relations: ['roles'],
+			relations: ['roles', 'roles.permissions'],
 		});
 		if (!user) {
 			throw new UnauthorizedException('User not found');
@@ -749,7 +511,7 @@ export class AuthService {
 		const hashedToken = await this.dataEncryption.encrypt(
 			tokens.refreshToken,
 		);
-		await this.tokenStore.addToken(
+		const evictedSessionIds = await this.tokenStore.addToken(
 			user.id,
 			{
 				hash: hashedToken,
@@ -761,6 +523,16 @@ export class AuthService {
 			options?.existingTokens,
 		);
 
+		if (evictedSessionIds.length > 0) {
+			for (const evictedId of evictedSessionIds) {
+				await this.sessionManagement.revokeSessionById(
+					user.id,
+					evictedId,
+					'session_limit_exceeded',
+				);
+			}
+		}
+
 		if (options?.rotation?.previousRefreshTokenJti) {
 			await this.sessionManagement.rotateSessionToken({
 				userId: user.id,
@@ -771,19 +543,51 @@ export class AuthService {
 				newFamilyId: tokens.refreshTokenFamilyId,
 				context: normalizedContext,
 			});
-		} else {
-			await this.sessionManagement.createSession({
-				userId: user.id,
-				sessionId: tokens.sessionId,
-				refreshTokenJti: tokens.refreshTokenId,
-				refreshTokenFamilyId: tokens.refreshTokenFamilyId,
+			return this.finalizeTokenGeneration(
+				user,
+				tokens,
 				authMethod,
 				mfaVerified,
 				riskLevel,
-				context: normalizedContext,
-			});
+				normalizedContext,
+				options,
+			);
 		}
 
+		await this.sessionManagement.createSession({
+			userId: user.id,
+			sessionId: tokens.sessionId,
+			refreshTokenJti: tokens.refreshTokenId,
+			refreshTokenFamilyId: tokens.refreshTokenFamilyId,
+			authMethod,
+			mfaVerified,
+			riskLevel,
+			context: normalizedContext,
+		});
+
+		return this.finalizeTokenGeneration(
+			user,
+			tokens,
+			authMethod,
+			mfaVerified,
+			riskLevel,
+			normalizedContext,
+			options,
+		);
+	}
+
+	private finalizeTokenGeneration(
+		user: User | UserAuthData,
+		tokens: SuccessfulAuthResult & {
+			refreshTokenId: string;
+			refreshTokenFamilyId: string;
+		},
+		authMethod: string,
+		mfaVerified: boolean,
+		riskLevel: string,
+		normalizedContext: AuthRequestContext,
+		options?: GenerateTokensOptions,
+	): SuccessfulAuthResult {
 		const event = options?.auditEvent ?? 'login_success';
 		this.sessionAudit.track({
 			userId: user.id,
@@ -792,8 +596,8 @@ export class AuthService {
 			context: {
 				...normalizedContext,
 				sessionId: tokens.sessionId,
-				authMethod,
-				riskLevel,
+				authMethod: authMethod as AuthMethod,
+				riskLevel: riskLevel as AuthRiskLevel,
 			},
 			metadata: {
 				refreshTokenId: tokens.refreshTokenId,
@@ -809,148 +613,25 @@ export class AuthService {
 		};
 	}
 
-	private getRefreshTokenMetadata(
-		refreshToken: string,
-	): RefreshTokenMetadata {
-		const decoded = this.jwtService.decode<{
-			jti?: unknown;
-			familyId?: unknown;
-			sessionId?: unknown;
-		}>(refreshToken);
-		if (!decoded || typeof decoded !== 'object') {
-			return { jti: null, familyId: null, sessionId: null };
-		}
-
-		const tokenId = decoded.jti;
-		const familyId = decoded.familyId;
-		const sessionId = decoded.sessionId;
-
-		return {
-			jti:
-				typeof tokenId === 'string' && tokenId.length > 0
-					? tokenId
-					: null,
-			familyId:
-				typeof familyId === 'string' && familyId.length > 0
-					? familyId
-					: null,
-			sessionId:
-				typeof sessionId === 'string' && sessionId.length > 0
-					? sessionId
-					: null,
-		};
-	}
-
 	async logout(
 		userId: string,
 		refreshToken: string,
 		context?: AuthRequestContext,
 	): Promise<{ message: string }> {
-		if (!refreshToken) {
-			throw new UnauthorizedException('Refresh token is required');
-		}
-
-		const validTokens = await this.tokenStore.getValidTokens(userId);
-		if (validTokens.length === 0) {
-			this.logger.warn('No active sessions found for user', { userId });
-			throw new UnauthorizedException('No active sessions found');
-		}
-
-		const refreshTokenMeta = this.getRefreshTokenMetadata(refreshToken);
-		let indexToRemove = -1;
-
-		if (refreshTokenMeta.jti) {
-			indexToRemove = validTokens.findIndex(
-				(token) => token.jti === refreshTokenMeta.jti,
-			);
-
-			if (indexToRemove >= 0) {
-				const tokenMatch = await this.dataEncryption.compare(
-					validTokens[indexToRemove].hash,
-					refreshToken,
-				);
-
-				if (!tokenMatch) {
-					indexToRemove = -1;
-				}
-			}
-		} else {
-			for (let i = 0; i < validTokens.length; i++) {
-				if (
-					await this.dataEncryption.compare(
-						validTokens[i].hash,
-						refreshToken,
-					)
-				) {
-					indexToRemove = i;
-					break;
-				}
-			}
-		}
-
-		if (indexToRemove === -1) {
-			this.logger.error('Token not found in cache', { userId });
-			throw new UnauthorizedException('Invalid token');
-		}
-
-		const removedToken = validTokens[indexToRemove];
-		validTokens.splice(indexToRemove, 1);
-		await this.tokenStore.saveTokens(userId, validTokens);
-		await this.sessionManagement.revokeSessionByRefreshTokenJti(
+		const normalizedContext = this.normalizeRequestContext(context);
+		return this.signOutUseCase.execute(
 			userId,
-			removedToken.jti,
-			'user_logout',
+			refreshToken,
+			normalizedContext,
 		);
-
-		this.sessionAudit.track({
-			userId,
-			event: 'logout_success',
-			success: true,
-			context: {
-				...this.normalizeRequestContext(context),
-				sessionId: removedToken.sessionId ?? refreshTokenMeta.sessionId,
-			},
-			metadata: {
-				remainingSessions: validTokens.length,
-			},
-		});
-
-		this.logger.log(
-			`Token removed for user ${userId}. Remaining tokens: ${validTokens.length}`,
-		);
-
-		return { message: 'Logged out successfully' };
 	}
 
 	async logoutAll(
 		userId: string,
 		context?: AuthRequestContext,
 	): Promise<{ message: string }> {
-		const validTokens = await this.tokenStore.getValidTokens(userId);
-		if (validTokens.length === 0) {
-			this.logger.warn('No active sessions found for user', { userId });
-			throw new UnauthorizedException('No active sessions found');
-		}
-
-		await this.tokenStore.removeAllTokens(userId);
-		await this.sessionManagement.revokeAllSessions(userId, {
-			reason: 'logout_all',
-		});
-
-		this.sessionAudit.track({
-			userId,
-			event: 'logout_all_success',
-			success: true,
-			context: this.normalizeRequestContext(context),
-			metadata: {
-				revokedSessions: validTokens.length,
-			},
-		});
-
-		this.logger.log(
-			`All sessions (${validTokens.length}) logged out for user ${userId}`,
-		);
-		return { message: 'All sessions logged out successfully' };
+		const normalizedContext = this.normalizeRequestContext(context);
+		return this.signOutUseCase.executeAll(userId, normalizedContext);
 	}
 
 	async refreshTokens(
@@ -958,172 +639,14 @@ export class AuthService {
 		oldRefreshToken: string,
 		context?: AuthRequestContext,
 	): Promise<SuccessfulAuthResult> {
-		if (!oldRefreshToken) {
-			throw new UnauthorizedException('Refresh token is required');
-		}
-
 		const normalizedContext = this.normalizeRequestContext(context);
 
-		return this.tokenStore.runWithRefreshLock(userId, async () => {
-			const validTokens = await this.tokenStore.getValidTokens(userId);
-
-			if (validTokens.length === 0) {
-				this.logger.warn('No valid session found for user', { userId });
-				throw new UnauthorizedException('No valid session found');
-			}
-
-			const refreshTokenMeta =
-				this.getRefreshTokenMetadata(oldRefreshToken);
-			if (!refreshTokenMeta.jti) {
-				throw new UnauthorizedException('Invalid refresh token');
-			}
-
-			const indexToRemove = validTokens.findIndex(
-				(token) => token.jti === refreshTokenMeta.jti,
-			);
-
-			if (indexToRemove === -1) {
-				this.logger.error('Refresh token reuse detected', {
-					userId,
-					refreshTokenId: refreshTokenMeta.jti,
-					familyId: refreshTokenMeta.familyId,
-				});
-				this.sessionAudit.track({
-					userId,
-					event: 'refresh_reuse_detected',
-					success: false,
-					context: normalizedContext,
-					metadata: {
-						refreshTokenId: refreshTokenMeta.jti,
-						familyId: refreshTokenMeta.familyId,
-					},
-				});
-
-				if (refreshTokenMeta.familyId) {
-					const revokedCount =
-						await this.tokenStore.revokeTokenFamily(
-							userId,
-							refreshTokenMeta.familyId,
-							validTokens,
-						);
-					await this.sessionManagement.revokeSessionsByFamily(
-						userId,
-						refreshTokenMeta.familyId,
-						'refresh_reuse',
-					);
-					this.sessionAudit.track({
-						userId,
-						event: 'refresh_family_revoked',
-						success: true,
-						context: normalizedContext,
-						metadata: {
-							familyId: refreshTokenMeta.familyId,
-							revokedCount,
-						},
-					});
-				} else {
-					await this.tokenStore.removeAllTokens(userId);
-					await this.sessionManagement.revokeAllSessions(userId, {
-						reason: 'refresh_reuse',
-					});
-				}
-				throw new UnauthorizedException('Refresh token reuse detected');
-			}
-
-			const tokenMatch = await this.dataEncryption.compare(
-				validTokens[indexToRemove].hash,
-				oldRefreshToken,
-			);
-			if (!tokenMatch) {
-				this.logger.error('Refresh token hash mismatch detected', {
-					userId,
-					refreshTokenId: refreshTokenMeta.jti,
-					familyId: refreshTokenMeta.familyId,
-				});
-				this.sessionAudit.track({
-					userId,
-					event: 'refresh_reuse_detected',
-					success: false,
-					context: normalizedContext,
-					metadata: {
-						refreshTokenId: refreshTokenMeta.jti,
-						familyId: refreshTokenMeta.familyId,
-						reason: 'hash_mismatch',
-					},
-				});
-				if (refreshTokenMeta.familyId) {
-					const revokedCount =
-						await this.tokenStore.revokeTokenFamily(
-							userId,
-							refreshTokenMeta.familyId,
-							validTokens,
-						);
-					await this.sessionManagement.revokeSessionsByFamily(
-						userId,
-						refreshTokenMeta.familyId,
-						'refresh_reuse',
-					);
-					this.sessionAudit.track({
-						userId,
-						event: 'refresh_family_revoked',
-						success: true,
-						context: normalizedContext,
-						metadata: {
-							familyId: refreshTokenMeta.familyId,
-							revokedCount,
-						},
-					});
-				} else {
-					await this.tokenStore.removeAllTokens(userId);
-					await this.sessionManagement.revokeAllSessions(userId, {
-						reason: 'refresh_reuse',
-					});
-				}
-				throw new UnauthorizedException('Refresh token reuse detected');
-			}
-
-			const rotatedToken = validTokens[indexToRemove];
-			validTokens.splice(indexToRemove, 1);
-
-			const user = await this.userRepository.findOne({
-				where: { id: userId },
-				relations: ['roles'],
-			});
-
-			if (!user) {
-				this.logger.error('User not found during token refresh', {
-					userId,
-				});
-				throw new UnauthorizedException('User not found');
-			}
-
-			const currentFamilyId =
-				rotatedToken?.familyId ?? refreshTokenMeta.familyId ?? uuidv7();
-			const currentSessionId =
-				rotatedToken?.sessionId ??
-				refreshTokenMeta.sessionId ??
-				uuidv7();
-
-			const tokens = await this.generateTokensForUser(user, {
-				authMethod: 'password',
-				context: normalizedContext,
-				mfaVerified: false,
-				riskLevel: 'low',
-				auditEvent: 'refresh_success',
-				sessionId: currentSessionId,
-				rotation: {
-					familyId: currentFamilyId,
-					parentJti: refreshTokenMeta.jti,
-					previousRefreshTokenJti: refreshTokenMeta.jti,
-				},
-				existingTokens: validTokens,
-			});
-
-			this.logger.log(
-				`Tokens refreshed for user ${userId}. Total tokens: ${validTokens.length}`,
-			);
-			return tokens;
-		});
+		return this.refreshTokenUseCase.execute(
+			userId,
+			oldRefreshToken,
+			normalizedContext,
+			async (user, options) => this.generateTokensForUser(user, options),
+		);
 	}
 
 	async listActiveSessions(
@@ -1171,33 +694,13 @@ export class AuthService {
 		reason?: string,
 		context?: AuthRequestContext,
 	): Promise<{ message: string }> {
-		const revokedSession = await this.sessionManagement.revokeSessionById(
+		const normalizedContext = this.normalizeRequestContext(context);
+		return this.revokeSessionUseCase.execute(
 			userId,
 			sessionId,
-			reason ?? 'manual_revoke',
+			reason,
+			normalizedContext,
 		);
-		if (!revokedSession) {
-			throw new NotFoundException('Active session not found');
-		}
-
-		await this.tokenStore.removeTokenByJti(
-			userId,
-			revokedSession.refreshTokenJti,
-		);
-		this.sessionAudit.track({
-			userId,
-			event: 'session_revoked',
-			success: true,
-			context: {
-				...this.normalizeRequestContext(context),
-				sessionId,
-			},
-			metadata: {
-				reason: reason ?? 'manual_revoke',
-			},
-		});
-
-		return { message: 'Session revoked successfully' };
 	}
 
 	async revokeOtherSessions(
@@ -1205,35 +708,12 @@ export class AuthService {
 		currentSessionId?: string | null,
 		context?: AuthRequestContext,
 	): Promise<{ message: string; revokedSessions: number }> {
-		const revokedSessions = await this.sessionManagement.revokeAllSessions(
+		const normalizedContext = this.normalizeRequestContext(context);
+		return this.revokeSessionUseCase.executeOther(
 			userId,
-			{
-				exceptSessionId: currentSessionId,
-				reason: 'manual_revoke_others',
-			},
+			currentSessionId,
+			normalizedContext,
 		);
-		const revokedJtis = revokedSessions.map(
-			(session) => session.refreshTokenJti,
-		);
-		await this.tokenStore.removeTokensByJtis(userId, revokedJtis);
-
-		this.sessionAudit.track({
-			userId,
-			event: 'session_revoke_others',
-			success: true,
-			context: {
-				...this.normalizeRequestContext(context),
-				sessionId: currentSessionId ?? null,
-			},
-			metadata: {
-				revokedSessions: revokedSessions.length,
-			},
-		});
-
-		return {
-			message: 'Other sessions revoked successfully',
-			revokedSessions: revokedSessions.length,
-		};
 	}
 
 	async getAuditHistory(userId: string, query: ListAuthAuditQueryDto) {

@@ -1,5 +1,5 @@
 import { CollectionsModule } from '@/collections/collections.module';
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from 'src/auth/auth.module';
 import { Book } from 'src/books/infrastructure/database/entities/book.entity';
@@ -34,6 +34,7 @@ import { UsersController } from './infrastructure/controllers/users.controller';
 import { TypeOrmUserImageRepositoryAdapter } from './infrastructure/database/adapters/typeorm-user-image-repository.adapter';
 import { TypeOrmUserRepositoryAdapter } from './infrastructure/database/adapters/typeorm-user-repository.adapter';
 import { AccessPolicy } from './infrastructure/database/entities/access-policy.entity';
+import { Permission } from './infrastructure/database/entities/permission.entity';
 import { ReadingProgress } from './infrastructure/database/entities/reading-progress.entity';
 import { Role } from './infrastructure/database/entities/role.entity';
 import { UserGroup } from './infrastructure/database/entities/user-group.entity';
@@ -43,18 +44,22 @@ import { ReadingProgressGateway } from './infrastructure/gateways/reading-progre
 import { UserImageResolver } from './infrastructure/graphql/resolvers/user-image.resolver';
 import { UserResolver } from './infrastructure/graphql/resolvers/user.resolver';
 import { ReadingProgressNotifier } from './infrastructure/notifiers/reading-progress.notifier';
+import { RbacSeederService } from './infrastructure/seeding/rbac-seeder.service';
+import { RbacModule } from './rbac.module';
 
 @Module({
 	imports: [
-		AuthModule,
+		forwardRef(() => AuthModule),
 		AppConfigModule,
 		EncryptionModule,
-		FilesModule,
-		CollectionsModule,
+		forwardRef(() => FilesModule),
+		forwardRef(() => CollectionsModule),
+		RbacModule,
 		TypeOrmModule.forFeature([
 			User,
 			UserImage,
 			Role,
+			Permission,
 			Book,
 			ReadingProgress,
 			SavedPage,
@@ -85,6 +90,7 @@ import { ReadingProgressNotifier } from './infrastructure/notifiers/reading-prog
 		UsersService,
 		AdminUsersService,
 		ReadingProgressService,
+		RbacSeederService,
 		ReadingProgressGateway,
 		ReadingProgressNotifier,
 		SavedPagesService,
@@ -101,6 +107,7 @@ import { ReadingProgressNotifier } from './infrastructure/notifiers/reading-prog
 		I_USER_IMAGE_REPOSITORY,
 		ReadingProgressService,
 		SavedPagesService,
+		RbacModule,
 	],
 })
 export class UsersModule {}

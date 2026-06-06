@@ -111,37 +111,6 @@ describe('JwtPayloadBuilder', () => {
 			expect(payload.exp).toBe(exp);
 		});
 
-		it('should build payload with permissions', () => {
-			const payload = builder
-				.setSubject('user-123')
-				.setIssuer('login')
-				.setEmail('user@example.com')
-				.setRoles(['admin'])
-				.setMaxWeightSensitiveContent(5)
-				.setPermissions(['read:books', 'write:books', 'delete:books'])
-				.build();
-
-			expect(payload.permissions).toEqual([
-				'read:books',
-				'write:books',
-				'delete:books',
-			]);
-		});
-
-		it('should add individual permissions', () => {
-			const payload = builder
-				.setSubject('user-123')
-				.setIssuer('login')
-				.setEmail('user@example.com')
-				.setRoles(['admin'])
-				.setMaxWeightSensitiveContent(5)
-				.addPermission('read:books')
-				.addPermission('write:books')
-				.build();
-
-			expect(payload.permissions).toEqual(['read:books', 'write:books']);
-		});
-
 		it('should build payload with custom claims', () => {
 			const payload = builder
 				.setSubject('user-123')
@@ -260,13 +229,11 @@ describe('JwtPayloadBuilder', () => {
 				.fromUser(user)
 				.setIssuer('login')
 				.setSessionId('session-abc')
-				.addPermission('read:books')
 				.addCustomClaim('tenantId', 'tenant-123')
 				.build();
 
 			expect(payload.sub).toBe('user-123');
 			expect(payload.sessionId).toBe('session-abc');
-			expect(payload.permissions).toEqual(['read:books']);
 			expect(payload.customClaims).toEqual({ tenantId: 'tenant-123' });
 		});
 	});
@@ -318,9 +285,6 @@ describe('JwtPayloadBuilder', () => {
 				.setSessionId('session-xyz-789')
 				.setIpAddress('10.0.0.1')
 				.setUserAgent('Mozilla/5.0')
-				.addPermission('read:*')
-				.addPermission('write:*')
-				.addPermission('delete:*')
 				.addCustomClaim('tenantId', 'tenant-001')
 				.addCustomClaim('department', 'IT')
 				.addCustomClaim('region', 'US-West')
@@ -337,7 +301,6 @@ describe('JwtPayloadBuilder', () => {
 				sessionId: 'session-xyz-789',
 				ipAddress: '10.0.0.1',
 				userAgent: 'Mozilla/5.0',
-				permissions: ['read:*', 'write:*', 'delete:*'],
 				customClaims: {
 					tenantId: 'tenant-001',
 					department: 'IT',

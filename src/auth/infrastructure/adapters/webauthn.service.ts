@@ -254,7 +254,7 @@ export class WebauthnService {
 		// Identify user by credentialId (allows nameless login)
 		const credential = await this.credentialRepository.findOne({
 			where: { credentialId: responseCredentialId },
-			relations: ['user', 'user.roles'],
+			relations: ['user', 'user.roles', 'user.roles.permissions'],
 		});
 
 		if (!credential || !credential.user) {

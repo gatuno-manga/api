@@ -133,7 +133,7 @@ export class TokenStoreService {
 			'hash' | 'jti' | 'sessionId' | 'familyId' | 'parentJti'
 		>,
 		existingTokens?: StoredTokenDto[],
-	): Promise<void> {
+	): Promise<string[]> {
 		const tokens = existingTokens ?? (await this.getValidTokens(userId));
 		const ttl = this.configService.refreshTokenTtl;
 		const expiresAt = Date.now() + ttl;
@@ -148,9 +148,14 @@ export class TokenStoreService {
 		});
 
 		const maxSessions = this.configService.maxSessionsPerUser;
+		let evictedSessionIds: string[] = [];
+
 		if (maxSessions > 0 && tokens.length > maxSessions) {
 			tokens.sort((a, b) => a.expiresAt - b.expiresAt);
 			const removed = tokens.splice(0, tokens.length - maxSessions);
+			evictedSessionIds = removed
+				.map((t) => t.sessionId)
+				.filter((id): id is string => id !== undefined);
 			this.logger.warn(
 				`Session limit (${maxSessions}) reached for user ${userId}. Evicted ${removed.length} oldest session(s).`,
 			);
@@ -161,6 +166,8 @@ export class TokenStoreService {
 		this.logger.log(
 			`Stored refresh token for user ${userId}. Total tokens: ${tokens.length}`,
 		);
+
+		return evictedSessionIds;
 	}
 
 	async revokeTokenFamily(

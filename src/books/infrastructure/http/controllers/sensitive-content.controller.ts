@@ -22,6 +22,9 @@ import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { OptionalAuthGuard } from 'src/auth/infrastructure/framework/optional-auth.guard';
 import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-cache.interceptor';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
+import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
+import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
+import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 import {
 	ApiDocsCreate,
 	ApiDocsGetAll,
@@ -42,7 +45,8 @@ export class SensitiveContentController {
 	@Throttle({ long: { limit: 100, ttl: 60000 } })
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(3600)
-	@UseGuards(OptionalAuthGuard)
+	@UseGuards(OptionalAuthGuard, PermissionsGuard)
+	@Permissions(PermissionsEnum.BOOKS_VIEW)
 	@ApiDocsGetAll()
 	getAll(@CurrentUser() user?: CurrentUserDto) {
 		return this.sensitiveContentService.getAll(
@@ -55,7 +59,8 @@ export class SensitiveContentController {
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(3600)
 	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, PermissionsGuard)
+	@Permissions(PermissionsEnum.SENSITIVE_CONTENT_VIEW)
 	@ApiDocsGetOne()
 	getOne(@Param('id') id: string) {
 		return this.sensitiveContentService.getOne(id);
@@ -64,7 +69,8 @@ export class SensitiveContentController {
 	@Post()
 	@Throttle({ medium: { limit: 20, ttl: 60000 } })
 	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, PermissionsGuard)
+	@Permissions(PermissionsEnum.SENSITIVE_CONTENT_MANAGE)
 	@ApiDocsCreate()
 	create(@Body() dto: CreateSensitiveContentDto) {
 		return this.sensitiveContentService.create(dto);
@@ -72,7 +78,8 @@ export class SensitiveContentController {
 
 	@Put(':id')
 	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, PermissionsGuard)
+	@Permissions(PermissionsEnum.SENSITIVE_CONTENT_MANAGE)
 	@ApiDocsUpdate()
 	update(@Param('id') id: string, @Body() dto: UpdateSensitiveContentDto) {
 		return this.sensitiveContentService.update(id, dto);
@@ -80,7 +87,8 @@ export class SensitiveContentController {
 
 	@Delete(':id')
 	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, PermissionsGuard)
+	@Permissions(PermissionsEnum.SENSITIVE_CONTENT_MANAGE)
 	@ApiDocsRemove()
 	remove(@Param('id') id: string) {
 		return this.sensitiveContentService.remove(id);
@@ -88,7 +96,8 @@ export class SensitiveContentController {
 
 	@Patch(':contentId/merge')
 	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, PermissionsGuard)
+	@Permissions(PermissionsEnum.SENSITIVE_CONTENT_MANAGE)
 	@ApiDocsMergeSensitiveContent()
 	mergeSensitiveContent(
 		@Param('contentId') contentId: string,

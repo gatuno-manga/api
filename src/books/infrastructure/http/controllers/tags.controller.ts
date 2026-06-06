@@ -19,6 +19,9 @@ import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { OptionalAuthGuard } from 'src/auth/infrastructure/framework/optional-auth.guard';
 import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-cache.interceptor';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
+import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
+import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
+import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 import { ApiDocsGetAll, ApiDocsMergeTags } from './swagger/tags.swagger';
 
 @ApiTags('Tags')
@@ -32,7 +35,8 @@ export class TagsController {
 	@Throttle({ long: { limit: 100, ttl: 60000 } })
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(1800)
-	@UseGuards(OptionalAuthGuard)
+	@UseGuards(OptionalAuthGuard, PermissionsGuard)
+	@Permissions(PermissionsEnum.TAGS_VIEW)
 	@ApiDocsGetAll()
 	getAll(
 		@Query() options: TagsOptions,
@@ -43,6 +47,8 @@ export class TagsController {
 
 	@Patch(':tagId/merge')
 	@Throttle({ medium: { limit: 10, ttl: 60000 } })
+	@UseGuards(JwtAuthGuard, PermissionsGuard)
+	@Permissions(PermissionsEnum.BOOKS_MAINTENANCE)
 	@ApiDocsMergeTags()
 	mergeTags(@Param('tagId') tagId: string, @Body() dto: string[]) {
 		return this.tagsService.mergeTags(tagId, dto);

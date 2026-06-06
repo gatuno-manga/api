@@ -8,10 +8,12 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { UserPermissionsService } from '@users/application/services/user-permissions.service';
 import { AccessPolicyEffectEnum } from '@users/domain/enums/access-policy-effect.enum';
 import { AccessPolicyScopeEnum } from '@users/domain/enums/access-policy-scope.enum';
 import { RolesEnum } from '@users/domain/enums/roles.enum';
 import { AccessPolicy } from '@users/infrastructure/database/entities/access-policy.entity';
+import { Permission } from '@users/infrastructure/database/entities/permission.entity';
 import { Role } from '@users/infrastructure/database/entities/role.entity';
 import { UserGroup } from '@users/infrastructure/database/entities/user-group.entity';
 import { User } from '@users/infrastructure/database/entities/user.entity';
@@ -47,8 +49,11 @@ export class AdminUsersService {
 		private readonly groupRepository: Repository<UserGroup>,
 		@InjectRepository(AccessPolicy)
 		private readonly accessPolicyRepository: Repository<AccessPolicy>,
+		@InjectRepository(Permission)
+		private readonly permissionRepository: Repository<Permission>,
 		@Inject(MEILI_CLIENT) private readonly meiliClient: Meilisearch,
 		private readonly passwordEncryption: PasswordEncryption,
+		private readonly userPermissionsService: UserPermissionsService,
 	) {}
 
 	async search(query: string) {
@@ -251,7 +256,12 @@ export class AdminUsersService {
 		}
 
 		user.roles = roles;
-		return this.userRepository.save(user);
+		const savedUser = await this.userRepository.save(user);
+
+		// Invalidate permissions cache
+		await this.userPermissionsService.invalidateCache(targetUserId);
+
+		return savedUser;
 	}
 
 	async setUserModeration(
@@ -325,13 +335,26 @@ export class AdminUsersService {
 		if (exists) {
 			throw new ConflictException(`Role ${dto.name} already exists`);
 		}
-		const role = this.roleRepository.create(dto);
+
+		const role = this.roleRepository.create({
+			name: dto.name,
+			maxWeightSensitiveContent: dto.maxWeightSensitiveContent,
+		});
+
+		if (dto.permissions && dto.permissions.length > 0) {
+			const permissions = await this.permissionRepository.find({
+				where: { name: In(dto.permissions) },
+			});
+			role.permissions = permissions;
+		}
+
 		return this.roleRepository.save(role);
 	}
 
 	async updateRole(roleId: string, dto: UpdateRoleDto) {
 		const role = await this.roleRepository.findOne({
 			where: { id: roleId },
+			relations: ['permissions'],
 		});
 		if (!role) {
 			throw new NotFoundException(`Role with id ${roleId} not found`);
@@ -351,7 +374,19 @@ export class AdminUsersService {
 			role.maxWeightSensitiveContent = dto.maxWeightSensitiveContent;
 		}
 
-		return this.roleRepository.save(role);
+		if (dto.permissions !== undefined) {
+			const permissions = await this.permissionRepository.find({
+				where: { name: In(dto.permissions) },
+			});
+			role.permissions = permissions;
+		}
+
+		const savedRole = await this.roleRepository.save(role);
+
+		// Invalidate all permissions cache since a role change affects all users with that role
+		await this.userPermissionsService.invalidateAllCache();
+
+		return savedRole;
 	}
 
 	async listGroups() {
