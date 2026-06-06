@@ -96,18 +96,37 @@ export class RbacSeederService {
 				relations: ['permissions'],
 			});
 
+			let isNewRole = false;
+
 			if (!role) {
 				role = new Role();
 				role.name = roleData.name;
 				role.maxWeightSensitiveContent = roleData.maxWeight;
+				role.permissions = [];
+				isNewRole = true;
 			}
 
-			role.permissions = allPermissions.filter((p) =>
-				roleData.permissionFilter(p.name),
-			);
+			// Admin always gets synchronized with all permissions.
+			// Other roles only receive permissions if they are new or have none.
+			if (
+				role.name === RolesEnum.ADMIN ||
+				isNewRole ||
+				!role.permissions ||
+				role.permissions.length === 0
+			) {
+				role.permissions = allPermissions.filter((p) =>
+					roleData.permissionFilter(p.name),
+				);
 
-			await this.roleRepository.save(role);
-			this.logger.debug(`Synchronized role: ${role.name}`);
+				await this.roleRepository.save(role);
+				this.logger.debug(
+					`Synchronized permissions for role: ${role.name}`,
+				);
+			} else {
+				this.logger.debug(
+					`Role ${role.name} already has permissions, skipping sync.`,
+				);
+			}
 		}
 	}
 }
