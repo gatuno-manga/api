@@ -69,7 +69,16 @@ export class BookUpdateScheduler implements OnModuleInit {
 					deletedAt: IsNull(),
 					autoUpdate: true,
 				},
-				select: ['id', 'title', 'originalUrl', 'autoUpdate'],
+				order: {
+					lastChapterAddedAt: 'ASC', // Prioriza livros que não recebem atualização há mais tempo ou são recém-adicionados (nulos)
+				},
+				select: [
+					'id',
+					'title',
+					'originalUrl',
+					'autoUpdate',
+					'lastChapterAddedAt',
+				],
 			});
 
 			// Filtra apenas livros com URL original válida

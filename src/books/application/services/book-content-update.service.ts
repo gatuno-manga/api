@@ -261,6 +261,12 @@ export class BookContentUpdateService implements OnModuleInit {
 		if (chaptersToCreate.length > 0) {
 			createdChapters =
 				await this.chapterRepository.saveAll(chaptersToCreate);
+
+			// Atualiza a data do último capítulo adicionado
+			await this.bookRepository.update(book.id, {
+				lastChapterAddedAt: new Date(),
+			});
+
 			this.emitUpdateEvents(book, createdChapters, 0);
 		}
 

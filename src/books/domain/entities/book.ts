@@ -25,6 +25,7 @@ export class Book {
 	scrapingStatus: ScrapingStatus;
 	publicationStatus: PublicationStatus;
 	autoUpdate: boolean;
+	lastChapterAddedAt?: Date | null;
 	availableFormats: ExportFormat[] | null;
 	chapters: Chapter[];
 	tags: Tag[];

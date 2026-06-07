@@ -115,6 +115,12 @@ export class Book {
 	autoUpdate: boolean;
 
 	@Column({
+		type: 'datetime',
+		nullable: true,
+	})
+	lastChapterAddedAt: Date | null;
+
+	@Column({
 		type: 'varchar',
 		length: 10,
 		nullable: true,
