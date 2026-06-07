@@ -1,5 +1,6 @@
 import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Job } from 'bullmq';
@@ -38,7 +39,9 @@ export class FixChapterProcessor extends WorkerHost implements OnModuleInit {
 
 		if (!chapter) {
 			this.logger.warn(`Capítulo com ID ${chapterId} não encontrado.`);
-			throw new Error(`Capítulo com ID ${chapterId} não encontrado.`);
+			throw new NotFoundException(
+				`Capítulo com ID ${chapterId} não encontrado.`,
+			);
 		}
 
 		// Emite evento de início

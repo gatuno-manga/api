@@ -10,6 +10,7 @@ import {
 	FileMetadata,
 	StoragePort,
 } from '@files/application/ports/storage.port';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
@@ -140,7 +141,7 @@ export class S3StorageAdapter implements StoragePort {
 			);
 
 			if (!response.Body) {
-				throw new Error(`Empty body for file ${fileKey}`);
+				throw new BadRequestException(`Empty body for file ${fileKey}`);
 			}
 
 			const bytes = await response.Body.transformToByteArray();

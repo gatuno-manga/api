@@ -18,6 +18,7 @@ import { PublicationStatus } from '@books/domain/enums/publication-status.enum';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { CoverImageService } from '@books/infrastructure/jobs/cover-image.service';
 import { StorageBucket } from '@common/enum/storage-bucket.enum';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ClientKafka } from '@nestjs/microservices';
@@ -80,7 +81,7 @@ export class BookContentUpdateService implements OnModuleInit {
 
 		if (!book) {
 			this.logger.warn(`Book ${bookId} not found`);
-			throw new Error(`Book ${bookId} not found`);
+			throw new NotFoundException(`Book ${bookId} not found`);
 		}
 
 		return { newChapters: 0, newCovers: 0 };
@@ -95,7 +96,7 @@ export class BookContentUpdateService implements OnModuleInit {
 
 		const book = await this.bookRepository.findById(bookId, []);
 		if (!book) {
-			throw new Error(`Book ${bookId} not found`);
+			throw new NotFoundException(`Book ${bookId} not found`);
 		}
 
 		if (!book.originalUrl || book.originalUrl.length === 0) {
@@ -412,7 +413,7 @@ export class BookContentUpdateService implements OnModuleInit {
 			'force_master',
 		);
 		if (!book) {
-			throw new Error(`Book ${bookId} not found`);
+			throw new NotFoundException(`Book ${bookId} not found`);
 		}
 
 		await this.syncChapters(book, scrapedChapters);

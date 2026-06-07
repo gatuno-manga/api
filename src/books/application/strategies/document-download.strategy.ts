@@ -2,7 +2,13 @@ import { PassThrough } from 'node:stream';
 import { ContentType } from '@books/domain/enums/content-type.enum';
 import { DocumentFormat } from '@books/domain/enums/document-format.enum';
 import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
-import { Injectable, Logger, StreamableFile } from '@nestjs/common';
+import {
+	BadRequestException,
+	Injectable,
+	Logger,
+	NotFoundException,
+	StreamableFile,
+} from '@nestjs/common';
 import { FilesService } from '@src/files/application/services/files.service';
 import { DownloadStrategy } from './download.strategy';
 
@@ -56,7 +62,9 @@ export class DocumentDownloadStrategy implements DownloadStrategy {
 		);
 
 		if (documentChapters.length === 0) {
-			throw new Error('Nenhum capítulo com documento disponível');
+			throw new NotFoundException(
+				'Nenhum capítulo com documento disponível',
+			);
 		}
 
 		// Para um único capítulo, retorna o arquivo diretamente
@@ -80,7 +88,9 @@ export class DocumentDownloadStrategy implements DownloadStrategy {
 		chapter: Chapter,
 	): Promise<StreamableFile> {
 		if (!chapter.documentPath) {
-			throw new Error('Capítulo não possui documento associado');
+			throw new BadRequestException(
+				'Capítulo não possui documento associado',
+			);
 		}
 
 		try {
@@ -109,7 +119,9 @@ export class DocumentDownloadStrategy implements DownloadStrategy {
 			this.logger.error(
 				`Failed to stream document for chapter ${chapter.id}: ${errorMessage}`,
 			);
-			throw new Error(`Falha ao ler documento: ${errorMessage}`);
+			throw new BadRequestException(
+				`Falha ao ler documento: ${errorMessage}`,
+			);
 		}
 	}
 }

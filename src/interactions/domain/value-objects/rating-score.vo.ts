@@ -1,10 +1,11 @@
+import { DomainException } from '@common/domain/exceptions/domain.exception';
 export class RatingScore {
 	private constructor(private readonly value: number) {
 		if (value < 1 || value > 5) {
-			throw new Error('Rating score must be between 1 and 5');
+			throw new DomainException('Rating score must be between 1 and 5');
 		}
 		if (!Number.isInteger(value)) {
-			throw new Error('Rating score must be an integer');
+			throw new DomainException('Rating score must be an integer');
 		}
 	}
 

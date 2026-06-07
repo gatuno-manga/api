@@ -1,3 +1,4 @@
+import { DomainException } from '@common/domain/exceptions/domain.exception';
 export class BookRequestUrl {
 	private readonly value: string;
 
@@ -8,12 +9,12 @@ export class BookRequestUrl {
 
 	private validate(value: string): void {
 		if (!value || value.trim().length === 0) {
-			throw new Error('URL cannot be empty');
+			throw new DomainException('URL cannot be empty');
 		}
 		try {
 			new URL(value);
 		} catch {
-			throw new Error('Invalid URL format');
+			throw new DomainException('Invalid URL format');
 		}
 	}
 

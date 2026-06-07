@@ -1,4 +1,5 @@
 import { CollectionVisibility } from '@/collections/domain/enums/collection-visibility.enum';
+import { DomainException } from '@common/domain/exceptions/domain.exception';
 
 export class Visibility {
 	private constructor(private readonly value: CollectionVisibility) {}
@@ -6,7 +7,7 @@ export class Visibility {
 	public static create(value: string | CollectionVisibility): Visibility {
 		const visibility = value as CollectionVisibility;
 		if (!Object.values(CollectionVisibility).includes(visibility)) {
-			throw new Error(`Invalid visibility status: ${value}`);
+			throw new DomainException(`Invalid visibility status: ${value}`);
 		}
 		return new Visibility(visibility);
 	}

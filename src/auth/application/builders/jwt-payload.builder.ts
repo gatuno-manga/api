@@ -1,5 +1,6 @@
 import { JwtPayloadDto } from '@auth/application/dto/jwt-payload.dto';
 import { UserAuthData } from '@auth/application/ports/user-repository.port';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { User } from 'src/users/infrastructure/database/entities/user.entity';
 
 export class JwtPayloadBuilder {
@@ -75,7 +76,9 @@ export class JwtPayloadBuilder {
 
 	fromUser(user: User | UserAuthData): this {
 		if (!user.roles || user.roles.length === 0) {
-			throw new Error('User must have at least one role assigned');
+			throw new BadRequestException(
+				'User must have at least one role assigned',
+			);
 		}
 
 		// Calculate max weight from roles
@@ -111,19 +114,21 @@ export class JwtPayloadBuilder {
 
 	build(): JwtPayloadDto {
 		if (!this.payload.sub) {
-			throw new Error('Subject (sub) is required');
+			throw new BadRequestException('Subject (sub) is required');
 		}
 		if (!this.payload.iss) {
-			throw new Error('Issuer (iss) is required');
+			throw new BadRequestException('Issuer (iss) is required');
 		}
 		if (!this.payload.email) {
-			throw new Error('Email is required');
+			throw new BadRequestException('Email is required');
 		}
 		if (!this.payload.roles || this.payload.roles.length === 0) {
-			throw new Error('At least one role is required');
+			throw new BadRequestException('At least one role is required');
 		}
 		if (this.payload.maxWeightSensitiveContent === undefined) {
-			throw new Error('Max weight sensitive content is required');
+			throw new BadRequestException(
+				'Max weight sensitive content is required',
+			);
 		}
 
 		return this.payload as JwtPayloadDto;

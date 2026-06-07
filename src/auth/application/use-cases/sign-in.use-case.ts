@@ -8,6 +8,7 @@ import {
 	AuthFlowResult,
 	AuthRequestContext,
 } from '@auth/types/auth-security.types';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import {
 	Inject,
 	Injectable,
@@ -93,6 +94,6 @@ export class SignInUseCase {
 			return issueAuthFlow(user, 'password', context);
 		}
 
-		throw new Error('Auth flow issuer not provided');
+		throw new BadRequestException('Auth flow issuer not provided');
 	}
 }

@@ -4,6 +4,7 @@ import { Chapter } from '@books/infrastructure/database/entities/chapter.entity'
 import { Cover } from '@books/infrastructure/database/entities/cover.entity';
 import { SensitiveContent } from '@books/infrastructure/database/entities/sensitive-content.entity';
 import { Tag } from '@books/infrastructure/database/entities/tags.entity';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IAuthorRepository } from 'src/books/application/ports/author-repository.interface';
@@ -51,7 +52,7 @@ export class TypeOrmUnitOfWorkAdapter implements IUnitOfWork {
 
 	async commit(): Promise<void> {
 		if (!this.queryRunner) {
-			throw new Error('No transaction in progress');
+			throw new BadRequestException('No transaction in progress');
 		}
 		try {
 			await this.queryRunner.commitTransaction();
