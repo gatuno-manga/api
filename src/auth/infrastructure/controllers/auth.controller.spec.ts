@@ -1,4 +1,6 @@
 import { AppConfigService } from '@app-config/app-config.service';
+import { ForgotPasswordUseCase } from '@auth/application/use-cases/forgot-password.use-case';
+import { ResetPasswordUseCase } from '@auth/application/use-cases/reset-password.use-case';
 import { AuthService } from '@auth/auth.service';
 import { WebauthnService } from '@auth/infrastructure/adapters/webauthn.service';
 import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
@@ -67,6 +69,14 @@ describe('AuthController', () => {
 				{
 					provide: WebauthnService,
 					useValue: mockWebauthnService,
+				},
+				{
+					provide: ForgotPasswordUseCase,
+					useValue: { execute: jest.fn() },
+				},
+				{
+					provide: ResetPasswordUseCase,
+					useValue: { execute: jest.fn() },
 				},
 			],
 		})
