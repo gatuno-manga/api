@@ -4,6 +4,7 @@ import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppConfigModule } from 'src/infrastructure/app-config/app-config.module';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
+import { EmailModule } from 'src/infrastructure/email/email.module';
 import { DataEncryptionProvider } from 'src/infrastructure/encryption/data-encryption.provider';
 import { EncryptionModule } from 'src/infrastructure/encryption/encryption.module';
 import { LoggingModule } from 'src/infrastructure/logging/logging.module';
@@ -11,7 +12,9 @@ import { Role } from 'src/users/infrastructure/database/entities/role.entity';
 import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import { RbacModule } from 'src/users/rbac.module';
 import { ApiKeyUseCase } from './application/use-cases/api-key.use-case';
+import { ForgotPasswordUseCase } from './application/use-cases/forgot-password.use-case';
 import { RefreshTokenUseCase } from './application/use-cases/refresh-token.use-case';
+import { ResetPasswordUseCase } from './application/use-cases/reset-password.use-case';
 import { RevokeSessionUseCase } from './application/use-cases/revoke-session.use-case';
 import { SignInUseCase } from './application/use-cases/sign-in.use-case';
 import { SignOutUseCase } from './application/use-cases/sign-out.use-case';
@@ -43,6 +46,7 @@ import { WsJwtGuard } from './infrastructure/framework/ws-jwt.guard';
 		AppConfigModule,
 		PassportModule,
 		RbacModule,
+		EmailModule,
 		TypeOrmModule.forFeature([
 			User,
 			Role,
@@ -69,6 +73,8 @@ import { WsJwtGuard } from './infrastructure/framework/ws-jwt.guard';
 		AuthService,
 		SignUpUseCase,
 		SignInUseCase,
+		ForgotPasswordUseCase,
+		ResetPasswordUseCase,
 		RefreshTokenUseCase,
 		SignOutUseCase,
 		RevokeSessionUseCase,
@@ -96,6 +102,8 @@ import { WsJwtGuard } from './infrastructure/framework/ws-jwt.guard';
 		RbacModule,
 		SignUpUseCase,
 		SignInUseCase,
+		ForgotPasswordUseCase,
+		ResetPasswordUseCase,
 		RefreshTokenUseCase,
 		SignOutUseCase,
 		RevokeSessionUseCase,

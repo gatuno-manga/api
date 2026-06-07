@@ -64,6 +64,10 @@ export class TypeOrmUserRepositoryAdapter implements UserRepositoryPort {
 		return this.toDomain(user);
 	}
 
+	async updatePassword(userId: string, newHash: string): Promise<void> {
+		await this.userRepository.update(userId, { password: newHash });
+	}
+
 	private toDomain(user: User): UserAuthData {
 		return {
 			id: user.id,

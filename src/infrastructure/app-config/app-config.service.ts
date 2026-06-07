@@ -11,6 +11,7 @@ import {
 	MeiliConfig,
 	RedisConfig,
 	SecurityConfig,
+	SmtpConfig,
 } from './app-config.values';
 
 @Injectable()
@@ -347,5 +348,16 @@ export class AppConfigService {
 
 	get enableSwagger(): boolean {
 		return this.config.get<boolean>('ENABLE_SWAGGER') ?? false;
+	}
+
+	get smtp(): SmtpConfig {
+		return new SmtpConfig(
+			this.config.get<string>('SMTP_HOST') || '',
+			this.config.get<number>('SMTP_PORT') || 1025,
+			this.config.get<boolean>('SMTP_SECURE') ?? false,
+			this.config.get<string>('SMTP_USER') || '',
+			this.config.get<string>('SMTP_PASS') || '',
+			this.config.get<string>('SMTP_FROM') || 'noreply@gatuno.app',
+		);
 	}
 }

@@ -1,5 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { CurrentUserDto } from '@auth/application/dto/current-user.dto';
+import { ForgotPasswordUseCase } from '@auth/application/use-cases/forgot-password.use-case';
+import { ResetPasswordUseCase } from '@auth/application/use-cases/reset-password.use-case';
 import { AuthService } from '@auth/auth.service';
 import { WebauthnService } from '@auth/infrastructure/adapters/webauthn.service';
 import { CurrentUser } from '@auth/infrastructure/framework/current-user.decorator';
@@ -7,7 +9,9 @@ import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
 import { RefreshTokenGuard } from '@auth/infrastructure/framework/jwt-refresh.guard';
 import { BeginPasskeyAuthDto } from '@auth/infrastructure/http/dto/begin-passkey-auth.dto';
 import { CreateLoginApiKeyDto } from '@auth/infrastructure/http/dto/create-login-api-key.dto';
+import { ForgotPasswordDto } from '@auth/infrastructure/http/dto/forgot-password.dto';
 import { ListAuthAuditQueryDto } from '@auth/infrastructure/http/dto/list-auth-audit-query.dto';
+import { ResetPasswordDto } from '@auth/infrastructure/http/dto/reset-password.dto';
 import { RevokeSessionDto } from '@auth/infrastructure/http/dto/revoke-session.dto';
 import { SignInApiKeyAuthDto } from '@auth/infrastructure/http/dto/signin-api-key-auth.dto';
 import { SignInAuthDto } from '@auth/infrastructure/http/dto/signin-auth.dto';
@@ -83,6 +87,8 @@ export class AuthController {
 		private readonly authService: AuthService,
 		private readonly webauthnService: WebauthnService,
 		private readonly configService: AppConfigService,
+		private readonly forgotPasswordUseCase: ForgotPasswordUseCase,
+		private readonly resetPasswordUseCase: ResetPasswordUseCase,
 	) {}
 
 	/**
@@ -264,6 +270,30 @@ export class AuthController {
 		this.setRefreshTokenCookie(req, res, result.refreshToken);
 		this.setCsrfCookie(req, res, csrfToken);
 		return this.buildAuthResponse(req, result, csrfToken);
+	}
+
+	@Post('forgot-password')
+	@Throttle({ short: { limit: 3, ttl: 60000 } })
+	async forgotPassword(@Body() body: ForgotPasswordDto) {
+		await this.forgotPasswordUseCase.execute(body.email);
+		return {
+			message:
+				'If that email exists, a password reset link has been sent.',
+		};
+	}
+
+	@Post('reset-password')
+	@Throttle({ short: { limit: 5, ttl: 60000 } })
+	async resetPassword(@Body() body: ResetPasswordDto) {
+		await this.resetPasswordUseCase.execute(
+			body.email,
+			body.token,
+			body.newPassword,
+		);
+		return {
+			message:
+				'Password has been reset successfully. You can now log in.',
+		};
 	}
 
 	@Post('api-keys')

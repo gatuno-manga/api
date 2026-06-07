@@ -106,10 +106,10 @@ export class AdminUsersController {
 		@Param('userId', ParseUUIDPipe) userId: string,
 		@Body() dto: AdminChangePasswordDto,
 	) {
-		// Using updateUserByAdmin since changePasswordByAdmin doesn't exist
-		return this.adminUsersService.updateUserByAdmin(userId, {
-			password: dto.newPassword,
-		} as AdminUpdateUserDto);
+		return this.adminUsersService.changeUserPassword(
+			userId,
+			dto.newPassword,
+		);
 	}
 
 	@Patch(':userId/moderation')
