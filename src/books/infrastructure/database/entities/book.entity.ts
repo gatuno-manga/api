@@ -121,6 +121,18 @@ export class Book {
 	lastChapterAddedAt: Date | null;
 
 	@Column({
+		type: 'datetime',
+		nullable: true,
+	})
+	nextScrapeAt: Date | null;
+
+	@Column({
+		type: 'int',
+		default: 0,
+	})
+	completedCheckCount: number;
+
+	@Column({
 		type: 'varchar',
 		length: 10,
 		nullable: true,

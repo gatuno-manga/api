@@ -1,0 +1,2 @@
+ALTER TABLE `books` ADD COLUMN `nextScrapeAt` DATETIME NULL;
+ALTER TABLE `books` ADD COLUMN `completedCheckCount` INT NOT NULL DEFAULT 0;

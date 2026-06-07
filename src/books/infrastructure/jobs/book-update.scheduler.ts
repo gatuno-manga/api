@@ -4,7 +4,7 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CronJob } from 'cron';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
-import { IsNull, Repository } from 'typeorm';
+import { IsNull, LessThanOrEqual, Repository } from 'typeorm';
 import { BookUpdateJobService } from './book-update.service';
 
 const CRON_JOB_NAME = 'book-update-cron';
@@ -63,12 +63,20 @@ export class BookUpdateScheduler implements OnModuleInit {
 		this.logger.log('Starting scheduled book update check...');
 
 		try {
-			// Busca livros que possuem URL original, autoUpdate habilitado e não foram deletados
+			// Busca livros que possuem URL original, autoUpdate habilitado, não foram deletados e que já passou da data do próximo scrape (ou nulo)
 			const books = await this.bookRepository.find({
-				where: {
-					deletedAt: IsNull(),
-					autoUpdate: true,
-				},
+				where: [
+					{
+						deletedAt: IsNull(),
+						autoUpdate: true,
+						nextScrapeAt: LessThanOrEqual(new Date()),
+					},
+					{
+						deletedAt: IsNull(),
+						autoUpdate: true,
+						nextScrapeAt: IsNull(),
+					},
+				],
 				order: {
 					lastChapterAddedAt: 'ASC', // Prioriza livros que não recebem atualização há mais tempo ou são recém-adicionados (nulos)
 				},
