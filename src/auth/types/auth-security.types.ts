@@ -1,6 +1,6 @@
 import { StoredTokenDto } from '@auth/application/dto/stored-token.dto';
 
-export type AuthMethod = 'password' | 'passkey' | 'api_key';
+export type AuthMethod = 'password' | 'passkey' | 'api_key' | 'oauth';
 
 export type AuthRiskLevel = 'low' | 'high';
 
@@ -46,6 +46,7 @@ export type SessionAuditEvent =
 	| 'passkey_login_success'
 	| 'passkey_registration_success'
 	| 'passkey_removed'
+	| 'oauth_login_success'
 	| 'mfa_challenge_issued'
 	| 'mfa_verify_success'
 	| 'mfa_verify_failed'

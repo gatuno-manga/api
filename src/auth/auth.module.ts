@@ -4,6 +4,7 @@ import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppConfigModule } from 'src/infrastructure/app-config/app-config.module';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
+import { EmailModule } from 'src/infrastructure/email/email.module';
 import { DataEncryptionProvider } from 'src/infrastructure/encryption/data-encryption.provider';
 import { EncryptionModule } from 'src/infrastructure/encryption/encryption.module';
 import { LoggingModule } from 'src/infrastructure/logging/logging.module';
@@ -11,6 +12,7 @@ import { Role } from 'src/users/infrastructure/database/entities/role.entity';
 import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import { RbacModule } from 'src/users/rbac.module';
 import { ApiKeyUseCase } from './application/use-cases/api-key.use-case';
+import { OAuthLoginUseCase } from './application/use-cases/oauth-login.use-case';
 import { RefreshTokenUseCase } from './application/use-cases/refresh-token.use-case';
 import { RevokeSessionUseCase } from './application/use-cases/revoke-session.use-case';
 import { SignInUseCase } from './application/use-cases/sign-in.use-case';
@@ -35,6 +37,9 @@ import { JwtAuthGuard } from './infrastructure/framework/jwt-auth.guard';
 import { JwtRefreshStrategy } from './infrastructure/framework/jwt-refresh.strategy';
 import { JwtStrategy } from './infrastructure/framework/jwt.strategy';
 import { WsJwtGuard } from './infrastructure/framework/ws-jwt.guard';
+import { DiscordStrategy } from './infrastructure/strategies/discord.strategy';
+import { GithubStrategy } from './infrastructure/strategies/github.strategy';
+import { GoogleStrategy } from './infrastructure/strategies/google.strategy';
 
 @Module({
 	imports: [
@@ -43,6 +48,7 @@ import { WsJwtGuard } from './infrastructure/framework/ws-jwt.guard';
 		AppConfigModule,
 		PassportModule,
 		RbacModule,
+		EmailModule,
 		TypeOrmModule.forFeature([
 			User,
 			Role,
@@ -69,6 +75,7 @@ import { WsJwtGuard } from './infrastructure/framework/ws-jwt.guard';
 		AuthService,
 		SignUpUseCase,
 		SignInUseCase,
+
 		RefreshTokenUseCase,
 		SignOutUseCase,
 		RevokeSessionUseCase,
@@ -87,6 +94,10 @@ import { WsJwtGuard } from './infrastructure/framework/ws-jwt.guard';
 		JwtAuthGuard,
 		WsJwtGuard,
 		JwtRefreshStrategy,
+		OAuthLoginUseCase,
+		GoogleStrategy,
+		DiscordStrategy,
+		GithubStrategy,
 	],
 	exports: [
 		JwtModule,
@@ -96,10 +107,12 @@ import { WsJwtGuard } from './infrastructure/framework/ws-jwt.guard';
 		RbacModule,
 		SignUpUseCase,
 		SignInUseCase,
+
 		RefreshTokenUseCase,
 		SignOutUseCase,
 		RevokeSessionUseCase,
 		ApiKeyUseCase,
+		OAuthLoginUseCase,
 	],
 })
 export class AuthModule {}

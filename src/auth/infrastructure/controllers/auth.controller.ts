@@ -5,6 +5,11 @@ import { WebauthnService } from '@auth/infrastructure/adapters/webauthn.service'
 import { CurrentUser } from '@auth/infrastructure/framework/current-user.decorator';
 import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
 import { RefreshTokenGuard } from '@auth/infrastructure/framework/jwt-refresh.guard';
+import {
+	DiscordOauthGuard,
+	GithubOauthGuard,
+	GoogleOauthGuard,
+} from '@auth/infrastructure/framework/oauth.guards';
 import { BeginPasskeyAuthDto } from '@auth/infrastructure/http/dto/begin-passkey-auth.dto';
 import { CreateLoginApiKeyDto } from '@auth/infrastructure/http/dto/create-login-api-key.dto';
 import { ListAuthAuditQueryDto } from '@auth/infrastructure/http/dto/list-auth-audit-query.dto';
@@ -43,6 +48,7 @@ import { AppConfigService } from 'src/infrastructure/app-config/app-config.servi
 import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
 import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
 import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
+import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import {
 	ApiDocsBeginPasskeyRegistration,
 	ApiDocsBeginTotpSetup,
@@ -576,5 +582,89 @@ export class AuthController {
 		@Query() query: ListAuthAuditQueryDto,
 	) {
 		return this.authService.getAuditHistory(user.userId, query);
+	}
+
+	@Get('providers-config')
+	getProvidersConfig() {
+		return {
+			google: !!this.configService.oauth.google.clientId,
+			discord: !!this.configService.oauth.discord.clientId,
+			github: !!this.configService.oauth.github.clientId,
+		};
+	}
+
+	@Get('google')
+	@UseGuards(GoogleOauthGuard)
+	googleAuth() {}
+
+	@Get('google/callback')
+	@UseGuards(GoogleOauthGuard)
+	async googleAuthCallback(
+		@Req() req: Request,
+		@Res({ passthrough: true }) res: Response,
+	) {
+		const user = req.user as User;
+		const tokens = await this.authService.generateTokensForUser(user, {
+			authMethod: 'oauth',
+			context: this.buildRequestContext(req),
+			auditEvent: 'oauth_login_success',
+		});
+		const csrfToken = this.generateCsrfToken();
+		this.setRefreshTokenCookie(req, res, tokens.refreshToken);
+		this.setCsrfCookie(req, res, csrfToken);
+
+		res.redirect(
+			`${this.configService.appUrl}/auth/callback?access_token=${tokens.accessToken}&session_id=${tokens.sessionId}&csrf_token=${csrfToken}`,
+		);
+	}
+
+	@Get('discord')
+	@UseGuards(DiscordOauthGuard)
+	discordAuth() {}
+
+	@Get('discord/callback')
+	@UseGuards(DiscordOauthGuard)
+	async discordAuthCallback(
+		@Req() req: Request,
+		@Res({ passthrough: true }) res: Response,
+	) {
+		const user = req.user as User;
+		const tokens = await this.authService.generateTokensForUser(user, {
+			authMethod: 'oauth',
+			context: this.buildRequestContext(req),
+			auditEvent: 'oauth_login_success',
+		});
+		const csrfToken = this.generateCsrfToken();
+		this.setRefreshTokenCookie(req, res, tokens.refreshToken);
+		this.setCsrfCookie(req, res, csrfToken);
+
+		res.redirect(
+			`${this.configService.appUrl}/auth/callback?access_token=${tokens.accessToken}&session_id=${tokens.sessionId}&csrf_token=${csrfToken}`,
+		);
+	}
+
+	@Get('github')
+	@UseGuards(GithubOauthGuard)
+	githubAuth() {}
+
+	@Get('github/callback')
+	@UseGuards(GithubOauthGuard)
+	async githubAuthCallback(
+		@Req() req: Request,
+		@Res({ passthrough: true }) res: Response,
+	) {
+		const user = req.user as User;
+		const tokens = await this.authService.generateTokensForUser(user, {
+			authMethod: 'oauth',
+			context: this.buildRequestContext(req),
+			auditEvent: 'oauth_login_success',
+		});
+		const csrfToken = this.generateCsrfToken();
+		this.setRefreshTokenCookie(req, res, tokens.refreshToken);
+		this.setCsrfCookie(req, res, csrfToken);
+
+		res.redirect(
+			`${this.configService.appUrl}/auth/callback?access_token=${tokens.accessToken}&session_id=${tokens.sessionId}&csrf_token=${csrfToken}`,
+		);
 	}
 }

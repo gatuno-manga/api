@@ -24,4 +24,5 @@ export interface UserRepositoryPort {
 	findByEmail(email: EmailVO): Promise<UserAuthData | null>;
 	findCredentialsByEmail(email: EmailVO): Promise<UserAuthData | null>;
 	save(input: UserSaveInput): Promise<UserAuthData>;
+	updatePassword(userId: string, newHash: string): Promise<void>;
 }
