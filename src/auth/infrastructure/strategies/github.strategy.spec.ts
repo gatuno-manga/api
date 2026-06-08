@@ -1,6 +1,8 @@
 import { OAuthLoginUseCase } from '@auth/application/use-cases/oauth-login.use-case';
 import { UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
+import { Request } from 'express';
 import { Profile } from 'passport-github2';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
 import { GithubStrategy } from './github.strategy';
@@ -8,6 +10,7 @@ import { GithubStrategy } from './github.strategy';
 describe('GithubStrategy', () => {
 	let strategy: GithubStrategy;
 	let oauthLoginUseCase: jest.Mocked<OAuthLoginUseCase>;
+	let jwtService: jest.Mocked<JwtService>;
 
 	beforeEach(async () => {
 		const mockConfigService = {
@@ -24,6 +27,10 @@ describe('GithubStrategy', () => {
 			execute: jest.fn(),
 		};
 
+		const mockJwtService = {
+			verify: jest.fn(),
+		};
+
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				GithubStrategy,
@@ -34,6 +41,10 @@ describe('GithubStrategy', () => {
 				{
 					provide: OAuthLoginUseCase,
 					useValue: mockOAuthLoginUseCase,
+				},
+				{
+					provide: JwtService,
+					useValue: mockJwtService,
 				},
 			],
 		}).compile();
@@ -54,13 +65,20 @@ describe('GithubStrategy', () => {
 		const user = { id: 'user-id' };
 		oauthLoginUseCase.execute.mockResolvedValue(user as any);
 
-		const result = await strategy.validate('access', 'refresh', profile);
+		const req = { cookies: {} } as unknown as Request;
+		const result = await strategy.validate(
+			req,
+			'access',
+			'refresh',
+			profile,
+		);
 
 		expect(oauthLoginUseCase.execute).toHaveBeenCalledWith(
 			'github',
 			'github-123',
 			'test@example.com',
 			'Test User',
+			undefined,
 		);
 		expect(result).toEqual(user);
 	});
@@ -70,10 +88,11 @@ describe('GithubStrategy', () => {
 			id: 'github-123',
 			username: 'testuser',
 			provider: 'github',
-		} as Profile;
+		} as unknown as Profile;
 
+		const req = { cookies: {} } as unknown as Request;
 		await expect(
-			strategy.validate('access', 'refresh', profile),
+			strategy.validate(req, 'access', 'refresh', profile),
 		).rejects.toThrow(UnauthorizedException);
 	});
 });

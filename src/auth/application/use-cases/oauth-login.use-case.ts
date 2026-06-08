@@ -22,8 +22,21 @@ export class OAuthLoginUseCase {
 		providerId: string,
 		email: string,
 		name?: string,
+		existingUserId?: string,
 	): Promise<User> {
 		const idField = `${provider}Id` as keyof User;
+
+		if (existingUserId) {
+			const existingUser = await this.userRepository.findOne({
+				where: { id: existingUserId },
+				relations: ['roles', 'roles.permissions'],
+			});
+			if (existingUser) {
+				// biome-ignore lint/suspicious/noExplicitAny: Dynamic assignment of providerId
+				(existingUser as any)[idField] = providerId;
+				return this.userRepository.save(existingUser);
+			}
+		}
 
 		// 1. Tenta buscar pelo ID do provedor
 		let user = await this.userRepository.findOne({

@@ -117,4 +117,29 @@ describe('OAuthLoginUseCase', () => {
 		expect(userRepository.save).toHaveBeenCalledWith(createdUser);
 		expect(result).toEqual(savedUser);
 	});
+
+	it('should link providerId to existingUserId if provided and ignore email', async () => {
+		const loggedInUser = {
+			id: 'existing-id',
+			email: 'old@example.com',
+		} as User;
+		userRepository.findOne.mockResolvedValue(loggedInUser);
+		userRepository.save.mockResolvedValue(loggedInUser);
+
+		const result = await useCase.execute(
+			'google',
+			'google-999',
+			'new@example.com',
+			'Test User',
+			'existing-id',
+		);
+
+		expect(userRepository.findOne).toHaveBeenCalledWith({
+			where: { id: 'existing-id' },
+			relations: ['roles', 'roles.permissions'],
+		});
+		expect(loggedInUser.googleId).toBe('google-999');
+		expect(userRepository.save).toHaveBeenCalledWith(loggedInUser);
+		expect(result).toEqual(loggedInUser);
+	});
 });
