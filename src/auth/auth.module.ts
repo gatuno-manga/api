@@ -12,9 +12,8 @@ import { Role } from 'src/users/infrastructure/database/entities/role.entity';
 import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import { RbacModule } from 'src/users/rbac.module';
 import { ApiKeyUseCase } from './application/use-cases/api-key.use-case';
-import { ForgotPasswordUseCase } from './application/use-cases/forgot-password.use-case';
+import { OAuthLoginUseCase } from './application/use-cases/oauth-login.use-case';
 import { RefreshTokenUseCase } from './application/use-cases/refresh-token.use-case';
-import { ResetPasswordUseCase } from './application/use-cases/reset-password.use-case';
 import { RevokeSessionUseCase } from './application/use-cases/revoke-session.use-case';
 import { SignInUseCase } from './application/use-cases/sign-in.use-case';
 import { SignOutUseCase } from './application/use-cases/sign-out.use-case';
@@ -38,6 +37,9 @@ import { JwtAuthGuard } from './infrastructure/framework/jwt-auth.guard';
 import { JwtRefreshStrategy } from './infrastructure/framework/jwt-refresh.strategy';
 import { JwtStrategy } from './infrastructure/framework/jwt.strategy';
 import { WsJwtGuard } from './infrastructure/framework/ws-jwt.guard';
+import { DiscordStrategy } from './infrastructure/strategies/discord.strategy';
+import { GithubStrategy } from './infrastructure/strategies/github.strategy';
+import { GoogleStrategy } from './infrastructure/strategies/google.strategy';
 
 @Module({
 	imports: [
@@ -73,8 +75,7 @@ import { WsJwtGuard } from './infrastructure/framework/ws-jwt.guard';
 		AuthService,
 		SignUpUseCase,
 		SignInUseCase,
-		ForgotPasswordUseCase,
-		ResetPasswordUseCase,
+
 		RefreshTokenUseCase,
 		SignOutUseCase,
 		RevokeSessionUseCase,
@@ -93,6 +94,10 @@ import { WsJwtGuard } from './infrastructure/framework/ws-jwt.guard';
 		JwtAuthGuard,
 		WsJwtGuard,
 		JwtRefreshStrategy,
+		OAuthLoginUseCase,
+		GoogleStrategy,
+		DiscordStrategy,
+		GithubStrategy,
 	],
 	exports: [
 		JwtModule,
@@ -102,12 +107,12 @@ import { WsJwtGuard } from './infrastructure/framework/ws-jwt.guard';
 		RbacModule,
 		SignUpUseCase,
 		SignInUseCase,
-		ForgotPasswordUseCase,
-		ResetPasswordUseCase,
+
 		RefreshTokenUseCase,
 		SignOutUseCase,
 		RevokeSessionUseCase,
 		ApiKeyUseCase,
+		OAuthLoginUseCase,
 	],
 })
 export class AuthModule {}

@@ -29,8 +29,18 @@ export class User {
 
 	@Column({
 		select: false,
+		nullable: true,
 	})
-	password: string;
+	password: string | null;
+
+	@Column({ type: 'varchar', length: 255, nullable: true, unique: true })
+	googleId: string | null;
+
+	@Column({ type: 'varchar', length: 255, nullable: true, unique: true })
+	discordId: string | null;
+
+	@Column({ type: 'varchar', length: 255, nullable: true, unique: true })
+	githubId: string | null;
 
 	@Column({ default: 0 })
 	maxWeightSensitiveContent: number;
