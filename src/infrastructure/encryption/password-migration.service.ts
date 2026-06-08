@@ -45,11 +45,13 @@ export class PasswordMigrationService {
 		user: User,
 		plainPassword: string,
 	): Promise<boolean> {
-		if (!this.isLegacyHash(user.password)) {
+		if (!user.password || !this.isLegacyHash(user.password)) {
 			return false;
 		}
 
-		const oldAlgorithm = this.detectHashAlgorithm(user.password);
+		const oldAlgorithm = user.password
+			? this.detectHashAlgorithm(user.password)
+			: 'unknown';
 		const newAlgorithm = this.passwordEncryption.getAlgorithm();
 
 		this.logger.log(
@@ -84,7 +86,9 @@ export class PasswordMigrationService {
 		};
 
 		for (const user of users) {
-			const algorithm = this.detectHashAlgorithm(user.password);
+			const algorithm = user.password
+				? this.detectHashAlgorithm(user.password)
+				: 'unknown';
 			stats[algorithm] = (stats[algorithm] || 0) + 1;
 		}
 
@@ -99,7 +103,7 @@ export class PasswordMigrationService {
 		let migratedCount = 0;
 
 		for (const user of users) {
-			if (this.isLegacyHash(user.password)) {
+			if (user.password && this.isLegacyHash(user.password)) {
 				this.logger.warn(
 					`Usuário ${user.id} (${user.email}) marcado para reset de senha obrigatório`,
 				);

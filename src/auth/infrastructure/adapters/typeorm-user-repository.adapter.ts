@@ -72,7 +72,7 @@ export class TypeOrmUserRepositoryAdapter implements UserRepositoryPort {
 		return {
 			id: user.id,
 			email: user.email,
-			password: user.password,
+			password: user.password ?? undefined,
 			userName: user.userName,
 			maxWeightSensitiveContent: user.maxWeightSensitiveContent,
 			roles: user.roles?.map((r) => ({
