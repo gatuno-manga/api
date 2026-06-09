@@ -1,0 +1,20 @@
+name: gatuno-load-test
+services:
+  k6:
+    image: grafana/k6:latest
+    container_name: gatuno-k6
+    environment:
+      # Aponta para o serviço "api" rodando na rede do Docker
+      - API_URL=http://api:3000/api
+    volumes:
+      # Monta a pasta local contendo os scripts para dentro do container
+      - ./test/load:/scripts:ro
+    networks:
+      - gatuno-net
+    # Roda o script de fluxo de leitura por padrão
+    command: run /scripts/reading-flow.js
+
+networks:
+  gatuno-net:
+    external: true
+    name: gatuno_gatuno-net
