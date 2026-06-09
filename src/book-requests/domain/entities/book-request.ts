@@ -6,6 +6,7 @@ import {
 } from '@/book-requests/domain/value-objects/book-request-body.vo';
 import { BookRequestHeader } from '@/book-requests/domain/value-objects/book-request-header.vo';
 import { RejectionMessage } from '@/book-requests/domain/value-objects/rejection-message.vo';
+import { DomainException } from '@common/domain/exceptions/domain.exception';
 
 export class BookRequest {
 	constructor(
@@ -43,7 +44,7 @@ export class BookRequest {
 
 	private ensureIsPending(): void {
 		if (this.body.outcome.status !== BookRequestStatus.PENDING) {
-			throw new Error('Only pending requests can be processed');
+			throw new DomainException('Only pending requests can be processed');
 		}
 	}
 }

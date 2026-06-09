@@ -19,6 +19,7 @@ describe('BookContentUpdateService', () => {
 	const mockBookRepository = {
 		findById: jest.fn(),
 		save: jest.fn(),
+		update: jest.fn(),
 	};
 
 	const mockChapterRepository = {

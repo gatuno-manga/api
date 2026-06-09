@@ -14,9 +14,11 @@ import {
 import { Book } from '@books/domain/entities/book';
 import { Chapter } from '@books/domain/entities/chapter';
 import { Cover } from '@books/domain/entities/cover';
+import { PublicationStatus } from '@books/domain/enums/publication-status.enum';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { CoverImageService } from '@books/infrastructure/jobs/cover-image.service';
 import { StorageBucket } from '@common/enum/storage-bucket.enum';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ClientKafka } from '@nestjs/microservices';
@@ -79,7 +81,7 @@ export class BookContentUpdateService implements OnModuleInit {
 
 		if (!book) {
 			this.logger.warn(`Book ${bookId} not found`);
-			throw new Error(`Book ${bookId} not found`);
+			throw new NotFoundException(`Book ${bookId} not found`);
 		}
 
 		return { newChapters: 0, newCovers: 0 };
@@ -94,7 +96,7 @@ export class BookContentUpdateService implements OnModuleInit {
 
 		const book = await this.bookRepository.findById(bookId, []);
 		if (!book) {
-			throw new Error(`Book ${bookId} not found`);
+			throw new NotFoundException(`Book ${bookId} not found`);
 		}
 
 		if (!book.originalUrl || book.originalUrl.length === 0) {
@@ -261,6 +263,13 @@ export class BookContentUpdateService implements OnModuleInit {
 		if (chaptersToCreate.length > 0) {
 			createdChapters =
 				await this.chapterRepository.saveAll(chaptersToCreate);
+
+			// Atualiza a data do último capítulo adicionado
+			await this.bookRepository.update(book.id, {
+				lastChapterAddedAt: new Date(),
+			});
+			book.lastChapterAddedAt = new Date();
+
 			this.emitUpdateEvents(book, createdChapters, 0);
 		}
 
@@ -404,12 +413,60 @@ export class BookContentUpdateService implements OnModuleInit {
 			'force_master',
 		);
 		if (!book) {
-			throw new Error(`Book ${bookId} not found`);
+			throw new NotFoundException(`Book ${bookId} not found`);
 		}
 
 		await this.syncChapters(book, scrapedChapters);
 
 		const covers: ScrapedCover[] = scrapedCovers.map((url) => ({ url }));
 		await this.syncCovers(book, covers, book.originalUrl?.[0] || '');
+
+		await this.scheduleNextScrape(book);
+	}
+
+	private async scheduleNextScrape(book: Book): Promise<void> {
+		const now = new Date();
+		let nextScrapeAt: Date | null = new Date(now);
+		let completedCheckCount = book.completedCheckCount || 0;
+		let autoUpdate = book.autoUpdate;
+
+		if (
+			book.publicationStatus === PublicationStatus.COMPLETED ||
+			book.publicationStatus === PublicationStatus.CANCELLED
+		) {
+			if (completedCheckCount < 3) {
+				nextScrapeAt.setMonth(nextScrapeAt.getMonth() + 1);
+			} else if (completedCheckCount < 6) {
+				nextScrapeAt.setMonth(nextScrapeAt.getMonth() + 3);
+			} else {
+				nextScrapeAt = null;
+				autoUpdate = false;
+			}
+			completedCheckCount++;
+		} else {
+			const daysSinceLastChapter = book.lastChapterAddedAt
+				? (now.getTime() - book.lastChapterAddedAt.getTime()) /
+					(1000 * 60 * 60 * 24)
+				: 0;
+
+			if (daysSinceLastChapter <= 30) {
+				nextScrapeAt.setDate(nextScrapeAt.getDate() + 3);
+			} else {
+				nextScrapeAt.setDate(nextScrapeAt.getDate() + 7);
+			}
+		}
+
+		// Jitter: Adiciona distribuição aleatória ao longo do dia para evitar "clumping" (vários livros no mesmo minuto)
+		if (nextScrapeAt !== null) {
+			const randomHour = Math.floor(Math.random() * 24);
+			const randomMinute = Math.floor(Math.random() * 60);
+			nextScrapeAt.setHours(randomHour, randomMinute, 0, 0);
+		}
+
+		await this.bookRepository.update(book.id, {
+			nextScrapeAt,
+			completedCheckCount,
+			autoUpdate,
+		});
 	}
 }

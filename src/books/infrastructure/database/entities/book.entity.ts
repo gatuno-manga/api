@@ -1,5 +1,6 @@
 import { BookType } from '@books/domain/enums/book-type.enum';
 import { ExportFormat } from '@books/domain/enums/export-format.enum';
+import { PublicationStatus } from '@books/domain/enums/publication-status.enum';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import {
 	Check,
@@ -101,10 +102,35 @@ export class Book {
 	scrapingStatus: ScrapingStatus;
 
 	@Column({
+		type: 'enum',
+		enum: PublicationStatus,
+		default: PublicationStatus.ONGOING,
+	})
+	publicationStatus: PublicationStatus;
+
+	@Column({
 		type: 'boolean',
 		default: false,
 	})
 	autoUpdate: boolean;
+
+	@Column({
+		type: 'datetime',
+		nullable: true,
+	})
+	lastChapterAddedAt: Date | null;
+
+	@Column({
+		type: 'datetime',
+		nullable: true,
+	})
+	nextScrapeAt: Date | null;
+
+	@Column({
+		type: 'int',
+		default: 0,
+	})
+	completedCheckCount: number;
 
 	@Column({
 		type: 'varchar',

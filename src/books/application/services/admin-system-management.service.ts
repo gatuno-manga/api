@@ -1,4 +1,5 @@
 import { InjectQueue } from '@nestjs/bullmq';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Injectable, Logger } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { Queue } from 'bullmq';
@@ -136,7 +137,9 @@ export class AdminSystemManagementService {
 			case 'fix-chapter-queue':
 				return this.fixChapterQueue;
 			default:
-				throw new Error(`Queue ${name} not found or not manageable`);
+				throw new NotFoundException(
+					`Queue ${name} not found or not manageable`,
+				);
 		}
 	}
 }

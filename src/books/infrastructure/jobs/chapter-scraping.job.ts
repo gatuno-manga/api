@@ -1,5 +1,6 @@
 import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Job } from 'bullmq';
@@ -60,7 +61,9 @@ export class ChapterScrapingJob extends WorkerHost implements OnModuleInit {
 				this.logger.error(
 					`Capítulo com ID ${chapterId} não encontrado. Job ${job.id} falhará.`,
 				);
-				throw new Error(`Capítulo com ID ${chapterId} não encontrado.`);
+				throw new NotFoundException(
+					`Capítulo com ID ${chapterId} não encontrado.`,
+				);
 			}
 
 			await this.chapterScrapingShared.requestScrapingViaGo(chapter);

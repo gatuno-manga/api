@@ -20,7 +20,13 @@ import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { CoverImageService } from '@books/infrastructure/jobs/cover-image.service';
 import { StorageBucket } from '@common/enum/storage-bucket.enum';
 import { FilesService } from '@files/application/services/files.service';
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+	BadRequestException,
+	Inject,
+	Injectable,
+	Logger,
+	NotFoundException,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
 	IUnitOfWork,
@@ -507,7 +513,7 @@ export class BookUpdateService {
 			this.logger.warn(
 				`Cover ${idCover} for book ${idBook} has no original URL to fix`,
 			);
-			throw new Error('Cover has no original URL to fix');
+			throw new BadRequestException('Cover has no original URL to fix');
 		}
 
 		this.logger.log(

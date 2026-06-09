@@ -1,3 +1,4 @@
+import { DomainException } from '@common/domain/exceptions/domain.exception';
 export class BookRequestTitle {
 	private readonly value: string;
 
@@ -8,7 +9,7 @@ export class BookRequestTitle {
 
 	private validate(value: string): void {
 		if (!value || value.trim().length === 0) {
-			throw new Error('Title cannot be empty');
+			throw new DomainException('Title cannot be empty');
 		}
 	}
 

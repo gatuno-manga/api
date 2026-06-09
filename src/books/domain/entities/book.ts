@@ -1,5 +1,6 @@
 import { BookType } from '@books/domain/enums/book-type.enum';
 import { ExportFormat } from '@books/domain/enums/export-format.enum';
+import { PublicationStatus } from '@books/domain/enums/publication-status.enum';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { AlternativeTitle } from './alternative-title';
 import { Author } from './author';
@@ -22,7 +23,11 @@ export class Book {
 	description: string | null; // Keep for legacy return mapping
 	publication: number | null;
 	scrapingStatus: ScrapingStatus;
+	publicationStatus: PublicationStatus;
 	autoUpdate: boolean;
+	lastChapterAddedAt?: Date | null;
+	nextScrapeAt?: Date | null;
+	completedCheckCount: number;
 	availableFormats: ExportFormat[] | null;
 	chapters: Chapter[];
 	tags: Tag[];

@@ -54,3 +54,14 @@ export class MeiliConfig {
 		public readonly masterKey: string,
 	) {}
 }
+
+export class SmtpConfig {
+	constructor(
+		public readonly host: string,
+		public readonly port: number,
+		public readonly secure: boolean,
+		public readonly user: string,
+		public readonly pass: string,
+		public readonly from: string,
+	) {}
+}

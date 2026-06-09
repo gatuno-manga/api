@@ -2,6 +2,7 @@ import { PassThrough } from 'node:stream';
 import { ContentFormat } from '@books/domain/enums/content-format.enum';
 import { ContentType } from '@books/domain/enums/content-type.enum';
 import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Injectable, Logger, StreamableFile } from '@nestjs/common';
 import { DownloadStrategy } from './download.strategy';
 
@@ -35,7 +36,9 @@ export class MarkdownDownloadStrategy implements DownloadStrategy {
 		);
 
 		if (textChapters.length === 0) {
-			throw new Error('Nenhum capítulo com conteúdo textual disponível');
+			throw new NotFoundException(
+				'Nenhum capítulo com conteúdo textual disponível',
+			);
 		}
 
 		const outputStream = new PassThrough();

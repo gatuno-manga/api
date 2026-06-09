@@ -15,7 +15,8 @@ describe('SignInUseCase', () => {
 			findByEmail: jest.fn(),
 			findCredentialsByEmail: jest.fn(),
 			save: jest.fn(),
-		};
+			updatePassword: jest.fn(),
+		} as unknown as jest.Mocked<UserRepositoryPort>;
 
 		passwordEncryption = {
 			encrypt: jest.fn(),

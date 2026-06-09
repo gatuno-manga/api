@@ -8,6 +8,7 @@ import { SensitiveContent } from '@books/domain/entities/sensitive-content';
 import { Tag } from '@books/domain/entities/tag';
 import { BookType } from '@books/domain/enums/book-type.enum';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 /**
  * Tipo auxiliar para o builder que substitui os wrappers Relation<T>
@@ -293,11 +294,13 @@ export class BookBuilder {
 	 */
 	private validate(): void {
 		if (!this.book.title || this.book.title.trim().length === 0) {
-			throw new Error('Título é obrigatório');
+			throw new BadRequestException('Título é obrigatório');
 		}
 
 		if (this.book.title.length > 500) {
-			throw new Error('Título não pode ter mais de 500 caracteres');
+			throw new BadRequestException(
+				'Título não pode ter mais de 500 caracteres',
+			);
 		}
 	}
 

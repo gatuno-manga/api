@@ -1,3 +1,4 @@
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Role } from '@users/infrastructure/database/entities/role.entity';
 import { User } from '@users/infrastructure/database/entities/user.entity';
 
@@ -199,13 +200,17 @@ export class UserBuilder {
 	build(): User {
 		// Validações básicas antes de construir
 		if (!this.user.email) {
-			throw new Error('UserBuilder: email é obrigatório');
+			throw new BadRequestException('UserBuilder: email é obrigatório');
 		}
 		if (!this.user.userName) {
-			throw new Error('UserBuilder: userName é obrigatório');
+			throw new BadRequestException(
+				'UserBuilder: userName é obrigatório',
+			);
 		}
 		if (!this.user.password) {
-			throw new Error('UserBuilder: password é obrigatório');
+			throw new BadRequestException(
+				'UserBuilder: password é obrigatório',
+			);
 		}
 
 		return this.user;

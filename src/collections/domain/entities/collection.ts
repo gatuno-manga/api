@@ -2,6 +2,7 @@ import { BookIdList } from '@/collections/domain/value-objects/book-id-list.vo';
 import { CollaboratorList } from '@/collections/domain/value-objects/collaborator-list.vo';
 import { CollectionId } from '@/collections/domain/value-objects/collection-id.vo';
 import { Visibility } from '@/collections/domain/value-objects/visibility.vo';
+import { DomainException } from '@common/domain/exceptions/domain.exception';
 import { BookId } from '@common/domain/value-objects/book-id.vo';
 import { UserId } from '@common/domain/value-objects/user-id.vo';
 
@@ -70,7 +71,7 @@ export class Collection {
 		newCollaboratorId: UserId,
 	): void {
 		if (!this.ownerId.equals(requesterId)) {
-			throw new Error('Only the owner can add collaborators');
+			throw new DomainException('Only the owner can add collaborators');
 		}
 		this.collaborators.add(newCollaboratorId);
 		this.visibility = Visibility.shared();
@@ -81,7 +82,9 @@ export class Collection {
 		collaboratorId: UserId,
 	): void {
 		if (!this.ownerId.equals(requesterId)) {
-			throw new Error('Only the owner can remove collaborators');
+			throw new DomainException(
+				'Only the owner can remove collaborators',
+			);
 		}
 		this.collaborators.remove(collaboratorId);
 		if (this.collaborators.count() === 0 && this.visibility.isShared()) {
@@ -109,7 +112,7 @@ export class Collection {
 
 	public updateTitle(requesterId: UserId, newTitle: string): void {
 		if (!this.ownerId.equals(requesterId)) {
-			throw new Error('Only the owner can update the title');
+			throw new DomainException('Only the owner can update the title');
 		}
 		this.title = newTitle;
 	}
@@ -119,7 +122,7 @@ export class Collection {
 		newVisibility: Visibility,
 	): void {
 		if (!this.ownerId.equals(requesterId)) {
-			throw new Error('Only the owner can update visibility');
+			throw new DomainException('Only the owner can update visibility');
 		}
 		this.visibility = newVisibility;
 	}
