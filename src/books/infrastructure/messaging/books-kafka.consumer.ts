@@ -50,6 +50,7 @@ interface ScrapingBookCompletedPayload {
 	covers: Array<{
 		url: string;
 		isPrimary?: boolean;
+		title?: string;
 	}>;
 }
 
@@ -226,7 +227,10 @@ export class BooksKafkaConsumer {
 					isFinal: c.isFinal || false,
 				}));
 
-				const covers = (data.covers || []).map((c) => c.url);
+				const covers = (data.covers || []).map((c) => ({
+					url: c.url,
+					title: c.title,
+				}));
 
 				await this.bookContentUpdateService.addScrapedChapters(
 					bookId,

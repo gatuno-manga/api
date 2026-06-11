@@ -406,7 +406,7 @@ export class BookContentUpdateService implements OnModuleInit {
 	async addScrapedChapters(
 		bookId: string,
 		scrapedChapters: ScrapedChapter[],
-		scrapedCovers: string[],
+		scrapedCovers: ScrapedCover[],
 	): Promise<void> {
 		const book = await this.bookRepository.findById(
 			bookId,
@@ -419,8 +419,7 @@ export class BookContentUpdateService implements OnModuleInit {
 
 		await this.syncChapters(book, scrapedChapters);
 
-		const covers: ScrapedCover[] = scrapedCovers.map((url) => ({ url }));
-		await this.syncCovers(book, covers, book.originalUrl?.[0] || '');
+		await this.syncCovers(book, scrapedCovers, book.originalUrl?.[0] || '');
 
 		await this.scheduleNextScrape(book);
 	}
