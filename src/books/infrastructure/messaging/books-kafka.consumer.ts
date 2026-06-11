@@ -363,10 +363,11 @@ export class BooksKafkaConsumer {
 			const { bookId, results } = data;
 
 			try {
-				const processingCovers = await this.coverRepository.find({
-					book: { id: bookId } as Book,
-					scrapingStatus: ScrapingStatus.PROCESS,
-				});
+				const allCovers =
+					await this.coverRepository.findByBookId(bookId);
+				const processingCovers = allCovers.filter(
+					(c) => c.scrapingStatus === ScrapingStatus.PROCESS,
+				);
 
 				const redis = this.redisService.getClient();
 
