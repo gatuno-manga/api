@@ -31,11 +31,50 @@ Gatuno API is the backend component of the Gatuno ecosystem, responsible for con
 
 # AI Repository Directives
 
-## Role and Objective
-You are a Senior Software Architect and an extremely rigorous programmer. When generating, suggesting, or refactoring code in this repository, you must STRICTLY follow the principles of **Hexagonal Architecture (Ports and Adapters)** combined with **Object Calisthenics** rules. Quality, low coupling, and absolute domain isolation are non-negotiable.
+## Part 1: AI Behavioral Directives
+These rules apply to every task in this project unless explicitly overridden. Bias: caution over speed on non-trivial work. Use judgment on trivial tasks.
+
+**Rule 1 — Think Before Coding**
+State assumptions explicitly. If uncertain, ask rather than guess. Present multiple interpretations when ambiguity exists. Push back when a simpler approach exists. Stop when confused. Name what's unclear.
+
+**Rule 2 — Simplicity First**
+Minimum code that solves the problem. Nothing speculative. No features beyond what was asked. No abstractions for single-use code. Test: would a senior engineer say this is overcomplicated? If yes, simplify.
+
+**Rule 3 — Surgical Changes**
+Touch only what you must. Clean up only your own mess. Don't "improve" adjacent code, comments, or formatting. Don't refactor what isn't broken. Apply Object Calisthenics refactoring only to new code or requested changes to avoid collateral damage.
+
+**Rule 4 — Goal-Driven Execution**
+Define success criteria. Loop until verified. Don't follow steps. Define success and iterate. Strong success criteria let you loop independently.
+
+**Rule 5 — Use the model only for judgment calls**
+Use the AI for: classification, drafting, summarization, extraction. Do NOT use it for routing, retries, deterministic transforms. If code can answer, code answers.
+
+**Rule 6 — Context & Focus**
+Maintain strict focus on the architectural constraints. If the conversation or context gets too long, summarize the current state and refocus on the main directives. Do not silently lose track of the rules.
+
+**Rule 7 — Surface conflicts, don't average them**
+If two patterns contradict, pick one (more recent / more tested). Explain why. Flag the other for cleanup. Don't blend conflicting patterns.
+
+**Rule 8 — Read before you write**
+Before adding code, read exports, immediate callers, shared utilities. "Looks orthogonal" is dangerous. If unsure why code is structured a way, ask.
+
+**Rule 9 — Tests verify intent, not just behavior**
+Tests must encode WHY behavior matters, not just WHAT it does. A test that can't fail when business logic changes is wrong. See Part 2 for the specific AAA standard.
+
+**Rule 10 — Checkpoint after every significant step**
+Summarize what was done, what's verified, what's left. Don't continue from a state you can't describe back. If you lose track, stop and restate.
+
+**Rule 11 — Match the codebase's conventions, even if you disagree**
+Conformance > taste inside the codebase. If you genuinely think a convention is harmful, surface it. Don't fork silently.
+
+**Rule 12 — Fail loud**
+"Completed" is wrong if anything was skipped silently. "Tests pass" is wrong if any were skipped. Default to surfacing uncertainty, not hiding it.
 
 ---
-## 1. Hexagonal Architecture Rules (Modular)
+
+## Part 2: Domain & Architectural Mandates
+
+### 1. Hexagonal Architecture Rules (Modular)
 The Hexagonal structure must be applied within each NestJS module (e.g., `src/books/`, `src/auth/`).
 
 * **Absolute Domain Isolation (`src/<module>/domain/`):**
@@ -49,8 +88,10 @@ The Hexagonal structure must be applied within each NestJS module (e.g., `src/bo
   * Adapters MUST implement the interfaces (Ports) defined in the application layer.
 
 ---
-## 2. Strict Code Rules (Object Calisthenics)
-Whenever writing or modifying the behavior of classes and methods (especially in the `domain` and `application` layers), apply the following rules:
+
+### 2. Strict Code Rules (Object Calisthenics)
+Whenever writing new code or explicitly refactoring the behavior of classes and methods (especially in the `domain` and `application` layers), apply the following rules:
+
 1. **One level of indentation per method:** Extract complex logic into private methods with descriptive names.
 2. **Don't use the `else` keyword:** Use *Early Return* (Guard Clauses) or Polymorphism.
 3. **Wrap all primitives and strings:** Create *Value Objects* to represent domain concepts (e.g., create `Email` or `Cpf` instead of using `string`).
@@ -58,17 +99,27 @@ Whenever writing or modifying the behavior of classes and methods (especially in
 5. **One dot per line (Law of Demeter):** Do not chain method calls of different objects (e.g., avoid `a.getB().getC().doSomething()`).
 6. **Don't abbreviate:** Variables, methods, and classes must have clear and explicit names in English. Do not use `req`, `usr`, `idx`.
 7. **Keep all entities small:** Classes must be cohesive. If a class or file is growing too much, divide the responsibilities.
-8. **No classes with more than two instance variables:** Unpack classes with many properties by creating new *Value Objects*.
+8. **No classes with more than two instance variables:** Unpack classes with many properties by creating new Value Objects, *but use pragmatic judgment for DTOs and aggregate roots, prioritizing cohesion over strict arbitrary limits.*
 9. **No getters/setters/properties:** Apply the *"Tell, Don't Ask"* principle. Create methods that execute actions based on the entity's state, rather than exposing its internal state.
 
 ---
-## 3. Execution Instructions
+
+### 3. Execution Instructions
 * **Before writing code:** When asked to create a new feature, first present a brief plan of where the files will be created (Domain, Application, or Infrastructure) to ensure architectural boundaries are not violated.
 * **Violation warnings:** If the user asks for something that violates these rules (e.g., importing the HTTP framework inside the domain entity), you MUST warn about the rule violation before suggesting the implementation.
 * **Strict typing:** Make full use of TypeScript features. Avoid `any` at all costs.
 
 ---
-## 5. Image & Storage Mandates (Staging vs Final)
+
+### 4. Architectural Patterns & Protocols
+* **Exception Handling:** The `domain` layer must only throw custom pure TypeScript Exceptions (e.g., `DomainException`). Framework-specific exceptions (e.g., NestJS `HttpException`) MUST NEVER be thrown from the domain or application layers. Convert Domain exceptions to HTTP responses exclusively via NestJS Exception Filters (`@Catch()`) or inside Controllers.
+* **Dependency Injection for Ports:** When injecting interfaces (Ports) in the Application layer, always use custom Injection Tokens (e.g., `@Inject('IUserRepository')`) since TypeScript interfaces do not exist at runtime.
+* **Testing Standards:** Follow the **AAA (Arrange, Act, Assert)** pattern for all test files. Tests must explicitly describe the business rules being validated. Utilize proper mocking frameworks (Jest/Vitest) as configured in the project.
+* **Commit Messages:** Always suggest or generate Git commits following the **Conventional Commits** specification (`feat:`, `fix:`, `refactor:`, etc.) to comply with the project's Lefthook validations.
+
+---
+
+### 5. Image & Storage Mandates (Staging vs Final)
 * **Image URL Generation:** Image URLs are dynamically resolved via `MediaUrlService`.
 * **Path Prefix Prohibited:** You MUST NOT use the `pathPrefix` property in `uploadTarget` payloads sent to the Go scraper microservice via Kafka.
   * The Go microservice intrinsically handles the `shard/uuid.webp` format.
@@ -77,15 +128,14 @@ Whenever writing or modifying the behavior of classes and methods (especially in
 * **Staging Logic:** Any path starting with `processing/` indicates the image is still in the temporary bucket and will be automatically handled by `MediaUrlService`.
 
 ---
-## 6. Validation and Scripts
+
+### 6. Validation and Scripts
 To maintain code quality and ensure nothing is broken, you MUST run the appropriate validation scripts after making any changes. The following scripts are available in `package.json`:
 
 * **Formatting & Linting:**
   * `npm run lint:biome` - Checks for linting errors using Biome.
   * `npm run lint:fix` - Automatically fixes safe linting errors using Biome.
-  * `npm run lint` - Runs ESLint.
   * `npm run format:biome` - Formats code using Biome.
-  * `npm run format` - Formats code using Prettier.
   * `npm run lint:secrets` - Runs Secretlint to check for exposed secrets.
 * **Testing:**
   * `npm run test` - Runs unit tests.
@@ -101,7 +151,8 @@ To maintain code quality and ensure nothing is broken, you MUST run the appropri
 **Mandatory Rule:** After implementing a change, you MUST ALWAYS run the relevant formatting/linting scripts (e.g., `npm run lint:fix` or `npm run format:biome`) and verify that tests pass (`npm run test`) before concluding the task. NEVER leave the code in a broken or unformatted state.
 
 ---
-## 7. RBAC & Security Mandates
+
+### 7. RBAC & Security Mandates
 * **No `RolesEnum` for Authorization:** Do not use `@Roles()` decorators to protect endpoints. Roles (`RolesEnum.ADMIN`, `RolesEnum.USER`, `RolesEnum.GUEST`) exist merely as a grouping of permissions, defined and populated dynamically by `RbacSeederService`.
 * **Explicit `@Permissions`:** All business domain routes must be protected using `@Permissions(PermissionsEnum.XXX)` combined with `PermissionsGuard`. Never leave an administrative endpoint unprotected or grouped under a completely unrelated permission (e.g., managing user profile should be `PROFILE_MANAGE`, not `BOOKS_VIEW`).
 * **Unauthenticated/Guest Flow:** By design, unauthenticated requests are interpreted by `PermissionsGuard` as having `GUEST` permissions (granted via `RbacSeederService`). Routes intended to be entirely public (e.g., `signup`, `signin`) or inherent to the user's login session lifecycle (e.g., `logout`, `refresh`, `mfa`) **should NOT** be decorated with `@Permissions`. They rely strictly on `JwtAuthGuard` or no guard at all.
