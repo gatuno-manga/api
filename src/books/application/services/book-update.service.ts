@@ -215,11 +215,42 @@ export class BookUpdateService {
 		}
 
 		if (dto.cover?.urlImgs && dto.cover.urlImgs.length > 0) {
-			await this.coverImageService.addCoverToQueue(
-				id,
-				dto.cover.urlOrigin,
-				dto.cover.urlImgs,
+			const bookForCovers = await this.findBookWith(id, ['covers']);
+
+			const existingUrls = new Set(
+				bookForCovers.covers.map((c) => c.originalUrl).filter(Boolean),
 			);
+
+			const newUrlImgs = dto.cover.urlImgs.filter(
+				(img) => !existingUrls.has(img.url),
+			);
+
+			if (newUrlImgs.length > 0) {
+				const coversToCreate = newUrlImgs.map((img, index) => {
+					const cover = new Cover();
+					Object.assign(cover, {
+						url: img.url,
+						originalUrl: img.url,
+						title:
+							img.title ||
+							`Capa ${bookForCovers.covers.length + index + 1}`,
+						index: bookForCovers.covers.length + index,
+						selected:
+							bookForCovers.covers.length === 0 && index === 0,
+						book: bookForCovers,
+						scrapingStatus: ScrapingStatus.PROCESS,
+					});
+					return cover;
+				});
+
+				await this.coverRepository.saveAll(coversToCreate);
+
+				await this.coverImageService.addCoverToQueue(
+					id,
+					dto.cover.urlOrigin,
+					newUrlImgs,
+				);
+			}
 		}
 
 		const updatedBook = await this.findBookWith(id, [

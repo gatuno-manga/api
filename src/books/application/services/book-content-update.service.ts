@@ -315,19 +315,10 @@ export class BookContentUpdateService implements OnModuleInit {
 			return 0;
 		}
 
-		const getBaseUrl = (urlStr: string) => {
-			try {
-				const u = new URL(normalizeUrl(urlStr));
-				return u.origin + u.pathname;
-			} catch {
-				return normalizeUrl(urlStr).split('?')[0];
-			}
-		};
-
 		const existingUrls = new Set(
 			book.covers
 				.filter((c) => c.originalUrl)
-				.map((c) => getBaseUrl(c.originalUrl as string)),
+				.map((c) => normalizeUrl(c.originalUrl as string)),
 		);
 
 		let newCoversCount = 0;
@@ -335,9 +326,8 @@ export class BookContentUpdateService implements OnModuleInit {
 		for (const scrapedCover of scrapedCovers) {
 			try {
 				const normalizedUrl = normalizeUrl(scrapedCover.url);
-				const baseUrl = getBaseUrl(scrapedCover.url);
 
-				if (existingUrls.has(baseUrl)) {
+				if (existingUrls.has(normalizedUrl)) {
 					this.logger.debug(
 						`Cover already exists (URL match): ${scrapedCover.url}`,
 					);
@@ -358,7 +348,7 @@ export class BookContentUpdateService implements OnModuleInit {
 
 				const savedCover = await this.coverRepository.save(cover);
 				book.covers.push(savedCover);
-				existingUrls.add(baseUrl);
+				existingUrls.add(normalizedUrl);
 				newCoversCount++;
 
 				await this.coverImageService.addCoverToQueue(

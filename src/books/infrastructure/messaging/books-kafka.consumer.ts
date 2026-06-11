@@ -20,6 +20,7 @@ import {
 import { BookContentUpdateService } from '@books/application/services/book-content-update.service';
 import { BookCreationService } from '@books/application/services/book-creation.service';
 import { Book } from '@books/domain/entities/book';
+import { Cover } from '@books/domain/entities/cover';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { ChapterScrapingSharedService } from '@books/infrastructure/jobs/chapter-scraping.shared';
 import { StorageBucket } from '@common/enum/storage-bucket.enum';
@@ -71,6 +72,8 @@ interface ChapterCompletedPayload {
 }
 
 interface BatchCoversCompletedPayload {
+	jobId?: string;
+	job_id?: string;
 	bookId: string;
 	results: string[];
 }
@@ -361,6 +364,7 @@ export class BooksKafkaConsumer {
 			if (!data) continue;
 
 			const { bookId, results } = data;
+			const jobId = data.jobId || data.job_id;
 
 			try {
 				const allCovers =
@@ -371,8 +375,36 @@ export class BooksKafkaConsumer {
 
 				const redis = this.redisService.getClient();
 
-				for (let i = 0; i < processingCovers.length; i++) {
-					const cover = processingCovers[i];
+				let originalUrls: string[] = [];
+				if (jobId) {
+					const cachedUrls = await redis.get(`job_covers:${jobId}`);
+					if (cachedUrls) {
+						try {
+							originalUrls = JSON.parse(cachedUrls);
+						} catch (e) {
+							this.logger.warn(
+								`Failed to parse job_covers:${jobId}`,
+							);
+						}
+					}
+				}
+
+				for (let i = 0; i < results.length; i++) {
+					let cover: Cover | undefined;
+					const originalUrl = originalUrls[i];
+
+					if (originalUrl) {
+						cover = processingCovers.find(
+							(c) => c.originalUrl === originalUrl,
+						);
+					}
+
+					if (!cover) {
+						cover = processingCovers[i];
+					}
+
+					if (!cover) continue;
+
 					const resultPath = results[i];
 					if (resultPath) {
 						let path: string = resultPath;
