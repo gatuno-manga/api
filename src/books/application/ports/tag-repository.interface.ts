@@ -9,6 +9,9 @@ export interface ITagRepository {
 	remove(tags: Tag[]): Promise<void>;
 	deleteByIds(ids: string[]): Promise<void>;
 	findByName(name: string): Promise<Tag | null>;
+	findByNameOrAlias(name: string): Promise<Tag | null>;
+	findByIds(ids: string[]): Promise<Tag[]>;
+	replaceReferences(oldIds: string[], newId: string): Promise<void>;
 	exists(id: string): Promise<boolean>;
 	findWithFilters(options: TagsOptions, maxWeight?: number): Promise<Tag[]>;
 	findByBookIds(bookIds: string[]): Promise<(Tag & { bookId: string })[]>;

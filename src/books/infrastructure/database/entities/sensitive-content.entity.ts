@@ -12,7 +12,13 @@ export class SensitiveContent {
 		type: 'json',
 		nullable: true,
 	})
-	altNames: string[] | null;
+	altNames: { name: string; languageCode: string }[] | null;
+
+	@Column({
+		type: 'json',
+		nullable: true,
+	})
+	aliases: string[] | null;
 
 	@Column({
 		type: 'int',

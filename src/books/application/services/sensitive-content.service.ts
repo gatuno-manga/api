@@ -38,6 +38,12 @@ export class SensitiveContentService {
 	}
 
 	async create(dto: CreateSensitiveContentDto): Promise<SensitiveContent> {
+		const existing =
+			await this.sensitiveContentRepository.findByNameOrAlias(dto.name);
+		if (existing) {
+			return existing;
+		}
+
 		const sensitiveContent = new SensitiveContent();
 		Object.assign(sensitiveContent, dto);
 		return this.sensitiveContentRepository.save(sensitiveContent);
@@ -57,9 +63,44 @@ export class SensitiveContentService {
 		await this.sensitiveContentRepository.remove(sensitiveContent);
 	}
 
-	async mergeSensitiveContent(id: string, _copy: string[]) {
-		// Lógica simplificada para o build
-		return this.getOne(id);
+	async mergeSensitiveContent(id: string, copyIds: string[]) {
+		const target = await this.getOne(id);
+
+		const validCopyIds = copyIds.filter((copyId) => copyId !== id);
+		if (!validCopyIds.length) {
+			return target;
+		}
+
+		const itemsToMerge =
+			await this.sensitiveContentRepository.findByIds(validCopyIds);
+		if (!itemsToMerge.length) {
+			return target;
+		}
+
+		const aliasesSet = new Set<string>(target.aliases || []);
+
+		for (const item of itemsToMerge) {
+			aliasesSet.add(item.name);
+			if (item.aliases && item.aliases.length > 0) {
+				for (const alias of item.aliases) {
+					aliasesSet.add(alias);
+				}
+			}
+		}
+
+		aliasesSet.delete(target.name);
+
+		target.aliases = Array.from(aliasesSet);
+		await this.sensitiveContentRepository.save(target);
+
+		const actualMergeIds = itemsToMerge.map((item) => item.id);
+		await this.sensitiveContentRepository.replaceReferences(
+			actualMergeIds,
+			target.id,
+		);
+		await this.sensitiveContentRepository.deleteByIds(actualMergeIds);
+
+		return target;
 	}
 
 	async filterBooksSensitiveContent(
