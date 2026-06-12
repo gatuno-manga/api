@@ -151,14 +151,48 @@ export class TypeOrmTagRepositoryAdapter implements ITagRepository {
 		return result;
 	}
 
-	async findOrCreateByName(name: string): Promise<DomainTag> {
-		let tag = await this.repository.findOne({ where: { name } });
-		if (!tag) {
-			tag = this.repository.create({ name });
-			tag = await this.repository.save(tag);
-		}
+	async findByNameOrAlias(name: string): Promise<DomainTag | null> {
+		const tag = await this.repository
+			.createQueryBuilder('tag')
+			.where('tag.name = :name', { name })
+			.orWhere('JSON_CONTAINS(tag.aliases, :jsonName)', {
+				jsonName: JSON.stringify(name),
+			})
+			.getOne();
+		if (!tag) return null;
 		const result = new DomainTag();
 		Object.assign(result, tag);
+		return result;
+	}
+
+	async replaceReferences(oldIds: string[], newId: string): Promise<void> {
+		if (!oldIds.length) return;
+
+		const placeholders = oldIds.map(() => '?').join(', ');
+
+		// Insert new relationships for books that had any of the old ones (IGNORE prevents duplicate entry error)
+		await this.repository.query(
+			`INSERT IGNORE INTO books_tags_tags (booksId, tagsId)
+			 SELECT booksId, ? FROM books_tags_tags WHERE tagsId IN (${placeholders})`,
+			[newId, ...oldIds],
+		);
+
+		// Remove the old relationships
+		await this.repository.query(
+			`DELETE FROM books_tags_tags WHERE tagsId IN (${placeholders})`,
+			oldIds,
+		);
+	}
+
+	async findOrCreateByName(name: string): Promise<DomainTag> {
+		const tag = await this.findByNameOrAlias(name);
+		if (tag) return tag;
+
+		const entity = this.repository.create({ name });
+		const saved = await this.repository.save(entity);
+
+		const result = new DomainTag();
+		Object.assign(result, saved);
 		return result;
 	}
 

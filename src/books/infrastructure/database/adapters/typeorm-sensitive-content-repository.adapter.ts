@@ -77,6 +77,19 @@ export class TypeOrmSensitiveContentRepositoryAdapter
 		return content as unknown as DomainSensitiveContent;
 	}
 
+	async findByNameOrAlias(
+		name: string,
+	): Promise<DomainSensitiveContent | null> {
+		const content = await this.repository
+			.createQueryBuilder('sc')
+			.where('sc.name = :name', { name })
+			.orWhere('JSON_CONTAINS(sc.aliases, :jsonName)', {
+				jsonName: JSON.stringify(name),
+			})
+			.getOne();
+		return content as unknown as DomainSensitiveContent;
+	}
+
 	async findByNames(
 		names: string[],
 		weight: number,
@@ -88,6 +101,33 @@ export class TypeOrmSensitiveContentRepositoryAdapter
 			},
 		});
 		return contents as unknown as DomainSensitiveContent[];
+	}
+
+	async findByIds(ids: string[]): Promise<DomainSensitiveContent[]> {
+		if (!ids.length) return [];
+		const contents = await this.repository.find({
+			where: { id: In(ids) },
+		});
+		return contents as unknown as DomainSensitiveContent[];
+	}
+
+	async replaceReferences(oldIds: string[], newId: string): Promise<void> {
+		if (!oldIds.length) return;
+
+		const placeholders = oldIds.map(() => '?').join(', ');
+
+		// Insert new relationships for books that had any of the old ones (IGNORE prevents duplicate entry error)
+		await this.repository.query(
+			`INSERT IGNORE INTO books_sensitive_content_sensitive_content (booksId, sensitiveContentId)
+			 SELECT booksId, ? FROM books_sensitive_content_sensitive_content WHERE sensitiveContentId IN (${placeholders})`,
+			[newId, ...oldIds],
+		);
+
+		// Remove the old relationships
+		await this.repository.query(
+			`DELETE FROM books_sensitive_content_sensitive_content WHERE sensitiveContentId IN (${placeholders})`,
+			oldIds,
+		);
 	}
 
 	async count(criteria?: SensitiveContentCriteria): Promise<number> {

@@ -11,7 +11,13 @@ export class Tag {
 		type: 'json',
 		nullable: true,
 	})
-	altNames: string[];
+	altNames: { name: string; languageCode: string }[];
+
+	@Column({
+		type: 'json',
+		nullable: true,
+	})
+	aliases: string[] | null;
 
 	@Column({
 		type: 'text',

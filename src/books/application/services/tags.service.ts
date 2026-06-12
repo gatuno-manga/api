@@ -33,7 +33,10 @@ export class TagsService {
 			return result.hits.map((hit) => ({
 				id: hit.id as string,
 				name: hit.name as string,
-				altNames: hit.altNames as string[],
+				altNames: hit.altNames as {
+					name: string;
+					languageCode: string;
+				}[],
 				description: hit.description as string,
 			})) as unknown as Tag[];
 		} catch (error: unknown) {
@@ -54,14 +57,45 @@ export class TagsService {
 		);
 	}
 
-	async mergeTags(id: string, _copy: string[]) {
-		const tag = await this.tagRepository.findById(id);
-		if (!tag) {
+	async mergeTags(id: string, copyIds: string[]) {
+		const target = await this.tagRepository.findById(id);
+		if (!target) {
 			this.logger.warn(`Tag with id ${id} not found`);
 			throw new NotFoundException(`Tag with id ${id} not found`);
 		}
 
-		// Lógica simplificada para o build
-		return tag;
+		// Garante que o target não esteja na lista de itens a serem mesclados
+		const itemsToMerge =
+			copyIds.length > 0
+				? await this.tagRepository.findByIds(copyIds)
+				: [];
+		if (!itemsToMerge.length) {
+			return target;
+		}
+
+		const aliasesSet = new Set<string>(target.aliases || []);
+
+		for (const item of itemsToMerge) {
+			aliasesSet.add(item.name);
+			if (item.aliases && item.aliases.length > 0) {
+				for (const alias of item.aliases) {
+					aliasesSet.add(alias);
+				}
+			}
+		}
+
+		aliasesSet.delete(target.name);
+		target.aliases = Array.from(aliasesSet);
+
+		const actualMergeIds = itemsToMerge.map((item) => item.id);
+
+		// Atualiza as referências nos livros (tabela pivô) e ignora os duplicados
+		await this.tagRepository.replaceReferences(actualMergeIds, target.id);
+
+		// Remove as tags antigas do banco
+		await this.tagRepository.deleteByIds(actualMergeIds);
+
+		// Salva o target atualizado com os novos aliases
+		return this.tagRepository.save(target);
 	}
 }

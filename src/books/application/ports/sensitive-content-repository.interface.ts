@@ -11,7 +11,10 @@ export interface ISensitiveContentRepository {
 	remove(content: SensitiveContent): Promise<void>;
 	deleteByIds(ids: string[]): Promise<void>;
 	findByName(name: string): Promise<SensitiveContent | null>;
+	findByNameOrAlias(name: string): Promise<SensitiveContent | null>;
 	findByNames(names: string[], weight: number): Promise<SensitiveContent[]>;
+	findByIds(ids: string[]): Promise<SensitiveContent[]>;
+	replaceReferences(oldIds: string[], newId: string): Promise<void>;
 	count(criteria?: SensitiveContentCriteria): Promise<number>;
 }
 

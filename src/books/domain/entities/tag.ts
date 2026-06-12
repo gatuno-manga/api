@@ -1,6 +1,7 @@
 export class Tag {
 	id: string;
 	name: string;
-	altNames: string[] | null;
+	altNames: { name: string; languageCode: string }[] | null;
+	aliases: string[] | null;
 	description: string | null;
 }

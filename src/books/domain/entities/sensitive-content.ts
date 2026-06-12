@@ -1,6 +1,7 @@
 export class SensitiveContent {
 	id: string;
 	name: string;
-	altNames: string[] | null;
+	altNames: { name: string; languageCode: string }[] | null;
+	aliases: string[] | null;
 	weight: number;
 }

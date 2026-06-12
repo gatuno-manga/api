@@ -59,8 +59,13 @@ export class BookRelationshipService {
 				byName.set(tag.name.toLowerCase(), tag);
 			}
 			for (const alt of tag.altNames ?? []) {
-				if (typeof alt === 'string') {
-					byAltName.set(alt.toLowerCase(), tag);
+				if (alt && typeof alt.name === 'string') {
+					byAltName.set(alt.name.toLowerCase(), tag);
+				}
+			}
+			for (const alias of tag.aliases ?? []) {
+				if (typeof alias === 'string') {
+					byAltName.set(alias.toLowerCase(), tag);
 				}
 			}
 		}
@@ -192,8 +197,13 @@ export class BookRelationshipService {
 				byName.set(sc.name.toLowerCase(), sc);
 			}
 			for (const alt of sc.altNames ?? []) {
-				if (typeof alt === 'string') {
-					byAltName.set(alt.toLowerCase(), sc);
+				if (alt && typeof alt.name === 'string') {
+					byAltName.set(alt.name.toLowerCase(), sc);
+				}
+			}
+			for (const alias of sc.aliases ?? []) {
+				if (typeof alias === 'string') {
+					byAltName.set(alias.toLowerCase(), sc);
 				}
 			}
 		}
