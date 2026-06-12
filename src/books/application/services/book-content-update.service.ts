@@ -326,6 +326,7 @@ export class BookContentUpdateService implements OnModuleInit {
 		for (const scrapedCover of scrapedCovers) {
 			try {
 				const normalizedUrl = normalizeUrl(scrapedCover.url);
+
 				if (existingUrls.has(normalizedUrl)) {
 					this.logger.debug(
 						`Cover already exists (URL match): ${scrapedCover.url}`,
@@ -353,7 +354,7 @@ export class BookContentUpdateService implements OnModuleInit {
 				await this.coverImageService.addCoverToQueue(
 					book.id,
 					refererUrl,
-					[{ url: scrapedCover.url, title: savedCover.title }],
+					[{ url: normalizedUrl, title: savedCover.title }],
 				);
 
 				this.logger.debug(
@@ -405,7 +406,7 @@ export class BookContentUpdateService implements OnModuleInit {
 	async addScrapedChapters(
 		bookId: string,
 		scrapedChapters: ScrapedChapter[],
-		scrapedCovers: string[],
+		scrapedCovers: ScrapedCover[],
 	): Promise<void> {
 		const book = await this.bookRepository.findById(
 			bookId,
@@ -418,8 +419,7 @@ export class BookContentUpdateService implements OnModuleInit {
 
 		await this.syncChapters(book, scrapedChapters);
 
-		const covers: ScrapedCover[] = scrapedCovers.map((url) => ({ url }));
-		await this.syncCovers(book, covers, book.originalUrl?.[0] || '');
+		await this.syncCovers(book, scrapedCovers, book.originalUrl?.[0] || '');
 
 		await this.scheduleNextScrape(book);
 	}

@@ -11,6 +11,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { WebsiteService } from '@websites/application/services/website.service';
 import { Job } from 'bullmq';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
+import { RedisService } from 'src/infrastructure/redis/redis.service';
 import { DataSource, In, Repository } from 'typeorm';
 
 const QUEUE_NAME = 'cover-image-queue';
@@ -30,6 +31,7 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 		private readonly dataSource: DataSource,
 		private readonly configService: AppConfigService,
 		private readonly eventEmitter: EventEmitter2,
+		private readonly redisService: RedisService,
 	) {
 		super();
 	}
@@ -142,6 +144,16 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 					bucket: StorageBucket.PROCESSING,
 				},
 			};
+
+			const requestedUrls = covers.map((c) => c.url);
+			await this.redisService
+				.getClient()
+				.set(
+					`job_covers:${job.id}`,
+					JSON.stringify(requestedUrls),
+					'EX',
+					3600,
+				);
 
 			this.scraperClient
 				.emit('scraping.covers.requested', payload)
