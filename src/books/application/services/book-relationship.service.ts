@@ -55,9 +55,13 @@ export class BookRelationshipService {
 		const byName = new Map<string, Tag>();
 		const byAltName = new Map<string, Tag>();
 		for (const tag of allTags) {
-			byName.set(tag.name.toLowerCase(), tag);
+			if (typeof tag.name === 'string') {
+				byName.set(tag.name.toLowerCase(), tag);
+			}
 			for (const alt of tag.altNames ?? []) {
-				byAltName.set(alt.toLowerCase(), tag);
+				if (typeof alt === 'string') {
+					byAltName.set(alt.toLowerCase(), tag);
+				}
 			}
 		}
 
@@ -184,9 +188,13 @@ export class BookRelationshipService {
 		const byName = new Map<string, SensitiveContent>();
 		const byAltName = new Map<string, SensitiveContent>();
 		for (const sc of all) {
-			byName.set(sc.name.toLowerCase(), sc);
+			if (typeof sc.name === 'string') {
+				byName.set(sc.name.toLowerCase(), sc);
+			}
 			for (const alt of sc.altNames ?? []) {
-				byAltName.set(alt.toLowerCase(), sc);
+				if (typeof alt === 'string') {
+					byAltName.set(alt.toLowerCase(), sc);
+				}
 			}
 		}
 
