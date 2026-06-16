@@ -117,6 +117,14 @@ services:
       MYSQL_PASSWORD: ${DB_PASS}
       DB_REPL_USER: ${DB_REPL_USER}
       DB_REPL_PASS: ${DB_REPL_PASS}
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.2'
+          memory: 512M
     volumes:
       - database-data:/var/lib/mysql
       - ./database/master/init.sh:/docker-entrypoint-initdb.d/init.sh
@@ -133,6 +141,14 @@ services:
         DB_MASTER_HOST: database-master
         DB_REPL_USER: ${DB_REPL_USER}
         DB_REPL_PASS: ${DB_REPL_PASS}
+      deploy:
+        resources:
+          limits:
+            cpus: '1.0'
+            memory: 1G
+          reservations:
+            cpus: '0.2'
+            memory: 512M
       depends_on:
         database-master:
           condition: service_healthy
