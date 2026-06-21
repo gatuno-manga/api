@@ -117,6 +117,14 @@ services:
       MYSQL_PASSWORD: ${DB_PASS}
       DB_REPL_USER: ${DB_REPL_USER}
       DB_REPL_PASS: ${DB_REPL_PASS}
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.2'
+          memory: 512M
     volumes:
       - database-data:/var/lib/mysql
       - ./database/master/init.sh:/docker-entrypoint-initdb.d/init.sh
@@ -133,6 +141,14 @@ services:
         DB_MASTER_HOST: database-master
         DB_REPL_USER: ${DB_REPL_USER}
         DB_REPL_PASS: ${DB_REPL_PASS}
+      deploy:
+        resources:
+          limits:
+            cpus: '1.0'
+            memory: 1G
+          reservations:
+            cpus: '0.2'
+            memory: 512M
       depends_on:
         database-master:
           condition: service_healthy
@@ -236,6 +252,7 @@ services:
     environment:
       - KAFKA_NODE_ID=1
       - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_LOG_DIRS=/var/lib/kafka/data
       - KAFKA_LISTENERS=INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094,CONTROLLER://0.0.0.0:9093
       - KAFKA_ADVERTISED_LISTENERS=INTERNAL://kafka:9092,EXTERNAL://localhost:${KAFKA_PORT_EXTERNAL:-9092}
       - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
