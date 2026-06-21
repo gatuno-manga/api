@@ -40,4 +40,32 @@ export class TypeOrmFavoriteRepository implements FavoriteRepository {
 		});
 		return entities.map((e) => Favorite.restore(e));
 	}
+
+	async findPaginatedByUser(
+		userId: UserId,
+		limit: number,
+		cursorCreatedAt?: Date,
+		cursorBookId?: string,
+	): Promise<Favorite[]> {
+		const qb = this.repository
+			.createQueryBuilder('favorite')
+			.where('favorite.userId = :userId', { userId: userId.toString() })
+			.orderBy('favorite.createdAt', 'DESC')
+			.addOrderBy('favorite.bookId', 'DESC');
+
+		if (cursorCreatedAt && cursorBookId) {
+			qb.andWhere(
+				'(favorite.createdAt < :cursorCreatedAt OR (favorite.createdAt = :cursorCreatedAt AND favorite.bookId < :cursorBookId))',
+				{
+					cursorCreatedAt,
+					cursorBookId,
+				},
+			);
+		}
+
+		qb.take(limit + 1);
+
+		const entities = await qb.getMany();
+		return entities.map((e) => Favorite.restore(e));
+	}
 }
