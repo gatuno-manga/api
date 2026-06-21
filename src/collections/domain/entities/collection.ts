@@ -35,10 +35,11 @@ export class Collection {
 		ownerId: UserId,
 		title: string,
 		description: string | null = null,
+		id?: string,
 	): Collection {
 		const now = new Date();
 		return new Collection(
-			CollectionId.generate(),
+			id ? CollectionId.create(id) : CollectionId.generate(),
 			ownerId,
 			title,
 			description,

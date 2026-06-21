@@ -64,6 +64,7 @@ export class CollectionsController {
 			user.userId,
 			dto.title,
 			dto.description,
+			dto.id,
 		);
 	}
 

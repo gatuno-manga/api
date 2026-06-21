@@ -17,9 +17,10 @@ export class CreateCollectionUseCase {
 		ownerId: string,
 		title: string,
 		description?: string,
+		id?: string,
 	): Promise<void> {
 		const owner = UserId.create(ownerId);
-		const collection = Collection.create(owner, title, description);
+		const collection = Collection.create(owner, title, description, id);
 		await this.collectionRepository.save(collection);
 		this.eventEmitter.emit(CollectionEvents.CREATED, collection);
 	}
