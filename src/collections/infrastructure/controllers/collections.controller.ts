@@ -1,5 +1,6 @@
 import { AddBookToCollectionUseCase } from '@/collections/application/use-cases/add-book-to-collection.use-case';
 import { CreateCollectionUseCase } from '@/collections/application/use-cases/create-collection.use-case';
+import { DeleteCollectionUseCase } from '@/collections/application/use-cases/delete-collection.use-case';
 import { GetUserCollectionsUseCase } from '@/collections/application/use-cases/get-user-collections.use-case';
 import { ShareCollectionUseCase } from '@/collections/application/use-cases/share-collection.use-case';
 import { AddBookDto } from '@/collections/infrastructure/http/dto/add-book.dto';
@@ -13,6 +14,7 @@ import { SWAGGER_AUTH_SCHEME } from '@common/swagger/swagger-auth.constants';
 import {
 	Body,
 	Controller,
+	Delete,
 	Get,
 	Param,
 	Post,
@@ -26,6 +28,7 @@ import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 import {
 	ApiDocsAddBook,
 	ApiDocsCreate,
+	ApiDocsDelete,
 	ApiDocsGetMyCollections,
 	ApiDocsShare,
 } from './swagger/collections.swagger';
@@ -38,6 +41,7 @@ import {
 export class CollectionsController {
 	constructor(
 		private readonly createCollectionUseCase: CreateCollectionUseCase,
+		private readonly deleteCollectionUseCase: DeleteCollectionUseCase,
 		private readonly addBookToCollectionUseCase: AddBookToCollectionUseCase,
 		private readonly shareCollectionUseCase: ShareCollectionUseCase,
 		private readonly getUserCollectionsUseCase: GetUserCollectionsUseCase,
@@ -95,5 +99,12 @@ export class CollectionsController {
 			id,
 			dto.collaboratorId,
 		);
+	}
+
+	@Delete(':id')
+	@Permissions(PermissionsEnum.COLLECTIONS_MANAGE)
+	@ApiDocsDelete()
+	async delete(@CurrentUser() user: CurrentUserDto, @Param('id') id: string) {
+		return this.deleteCollectionUseCase.execute(user.userId, id);
 	}
 }
