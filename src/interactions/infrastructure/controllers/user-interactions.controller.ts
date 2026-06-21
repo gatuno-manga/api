@@ -29,7 +29,7 @@ export class UserInteractionsController {
 	constructor(private readonly getFavoritesUseCase: GetFavoritesUseCase) {}
 
 	@Get('favorites')
-	@Permissions(PermissionsEnum.PROFILE_VIEW)
+	@Permissions(PermissionsEnum.INTERACTIONS_MANAGE)
 	@ApiDocsGetFavorites()
 	async getFavorites(
 		@CurrentUser() user: CurrentUserDto,
