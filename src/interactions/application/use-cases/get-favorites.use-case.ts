@@ -25,29 +25,13 @@ export class GetFavoritesUseCase {
 		limit: number,
 		cursor?: string,
 	): Promise<CursorPageDto<Favorite>> {
-		let cursorCreatedAt: Date | undefined;
-		let cursorBookId: string | undefined;
-
-		if (cursor) {
-			const decoded = decodeCursorPayload<FavoritesCursorPayload>(cursor);
-			if (
-				decoded &&
-				typeof decoded.createdAt === 'string' &&
-				typeof decoded.bookId === 'string'
-			) {
-				const parsedDate = new Date(decoded.createdAt);
-				if (!Number.isNaN(parsedDate.getTime())) {
-					cursorCreatedAt = parsedDate;
-					cursorBookId = decoded.bookId;
-				}
-			}
-		}
+		const parsedCursor = this.parseCursor(cursor);
 
 		const favorites = await this.favoriteRepository.findPaginatedByUser(
 			userId,
 			limit,
-			cursorCreatedAt,
-			cursorBookId,
+			parsedCursor?.createdAt,
+			parsedCursor?.bookId,
 		);
 
 		const hasNextPage = favorites.length > limit;
@@ -65,5 +49,32 @@ export class GetFavoritesUseCase {
 				: null;
 
 		return new CursorPageDto(data, nextCursor, hasNextPage);
+	}
+
+	private parseCursor(
+		cursor?: string,
+	): { createdAt?: Date; bookId?: string } | undefined {
+		if (!cursor) {
+			return undefined;
+		}
+
+		const decoded = decodeCursorPayload<FavoritesCursorPayload>(cursor);
+		if (
+			!decoded ||
+			typeof decoded.createdAt !== 'string' ||
+			typeof decoded.bookId !== 'string'
+		) {
+			return undefined;
+		}
+
+		const parsedDate = new Date(decoded.createdAt);
+		if (Number.isNaN(parsedDate.getTime())) {
+			return undefined;
+		}
+
+		return {
+			createdAt: parsedDate,
+			bookId: decoded.bookId,
+		};
 	}
 }
