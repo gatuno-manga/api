@@ -10,9 +10,9 @@ import {
 export class CreateCollectionDto {
 	@ApiPropertyOptional({
 		example: '123e4567-e89b-12d3-a456-426614174000',
-		description: 'Optional client-generated UUID v4',
+		description: 'Optional client-generated UUID',
 	})
-	@IsUUID('4')
+	@IsUUID()
 	@IsOptional()
 	id?: string;
 
