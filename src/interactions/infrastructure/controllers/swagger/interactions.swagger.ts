@@ -14,3 +14,11 @@ export function ApiDocsSubscribe() {
 export function ApiDocsReview() {
 	return applyDecorators(ApiOperation({ summary: 'Review and rate a book' }));
 }
+
+export function ApiDocsGetFavorites() {
+	return applyDecorators(
+		ApiOperation({
+			summary: 'Get paginated favorite books for the current user',
+		}),
+	);
+}

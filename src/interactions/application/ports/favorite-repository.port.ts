@@ -7,4 +7,10 @@ export interface FavoriteRepository {
 	delete(userId: UserId, bookId: BookId): Promise<void>;
 	isFavorite(userId: UserId, bookId: BookId): Promise<boolean>;
 	findByUser(userId: UserId): Promise<Favorite[]>;
+	findPaginatedByUser(
+		userId: UserId,
+		limit: number,
+		cursorCreatedAt?: Date,
+		cursorBookId?: string,
+	): Promise<Favorite[]>;
 }
