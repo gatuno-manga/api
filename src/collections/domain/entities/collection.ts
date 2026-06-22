@@ -127,6 +127,14 @@ export class Collection {
 		this.visibility = newVisibility;
 	}
 
+	public verifyOwner(userId: UserId): void {
+		if (!this.ownerId.equals(userId)) {
+			throw new DomainException(
+				'Only the owner can delete this collection',
+			);
+		}
+	}
+
 	public toSnapshot(): CollectionSnapshot {
 		return {
 			id: this.id.toString(),

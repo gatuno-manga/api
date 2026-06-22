@@ -1,5 +1,6 @@
 import { AddBookToCollectionUseCase } from '@/collections/application/use-cases/add-book-to-collection.use-case';
 import { CreateCollectionUseCase } from '@/collections/application/use-cases/create-collection.use-case';
+import { DeleteCollectionUseCase } from '@/collections/application/use-cases/delete-collection.use-case';
 import { GetUserCollectionsUseCase } from '@/collections/application/use-cases/get-user-collections.use-case';
 import { ShareCollectionUseCase } from '@/collections/application/use-cases/share-collection.use-case';
 import { AddBookDto } from '@/collections/infrastructure/http/dto/add-book.dto';
@@ -8,13 +9,19 @@ import { ShareCollectionDto } from '@/collections/infrastructure/http/dto/share-
 import { CurrentUserDto } from '@auth/application/dto/current-user.dto';
 import { CurrentUser } from '@auth/infrastructure/framework/current-user.decorator';
 import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
+import { DomainException } from '@common/domain/exceptions/domain.exception';
+import { ResourceNotFoundException } from '@common/domain/exceptions/resource-not-found.exception';
 import { DataEnvelopeInterceptor } from '@common/interceptors/data-envelope.interceptor';
 import { SWAGGER_AUTH_SCHEME } from '@common/swagger/swagger-auth.constants';
 import {
 	Body,
 	Controller,
+	Delete,
+	ForbiddenException,
 	Get,
+	NotFoundException,
 	Param,
+	ParseUUIDPipe,
 	Post,
 	UseGuards,
 	UseInterceptors,
@@ -26,6 +33,7 @@ import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 import {
 	ApiDocsAddBook,
 	ApiDocsCreate,
+	ApiDocsDelete,
 	ApiDocsGetMyCollections,
 	ApiDocsShare,
 } from './swagger/collections.swagger';
@@ -38,6 +46,7 @@ import {
 export class CollectionsController {
 	constructor(
 		private readonly createCollectionUseCase: CreateCollectionUseCase,
+		private readonly deleteCollectionUseCase: DeleteCollectionUseCase,
 		private readonly addBookToCollectionUseCase: AddBookToCollectionUseCase,
 		private readonly shareCollectionUseCase: ShareCollectionUseCase,
 		private readonly getUserCollectionsUseCase: GetUserCollectionsUseCase,
@@ -95,5 +104,26 @@ export class CollectionsController {
 			id,
 			dto.collaboratorId,
 		);
+	}
+
+	@Delete(':id')
+	@Permissions(PermissionsEnum.COLLECTIONS_MANAGE)
+	@ApiDocsDelete()
+	async delete(
+		@CurrentUser() user: CurrentUserDto,
+		@Param('id', ParseUUIDPipe) id: string,
+	) {
+		try {
+			await this.deleteCollectionUseCase.execute(user.userId, id);
+			return { message: 'Collection deleted successfully' };
+		} catch (error) {
+			if (error instanceof ResourceNotFoundException) {
+				throw new NotFoundException(error.message);
+			}
+			if (error instanceof DomainException) {
+				throw new ForbiddenException(error.message);
+			}
+			throw error;
+		}
 	}
 }
