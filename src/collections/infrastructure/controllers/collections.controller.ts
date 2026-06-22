@@ -9,13 +9,17 @@ import { ShareCollectionDto } from '@/collections/infrastructure/http/dto/share-
 import { CurrentUserDto } from '@auth/application/dto/current-user.dto';
 import { CurrentUser } from '@auth/infrastructure/framework/current-user.decorator';
 import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
+import { DomainException } from '@common/domain/exceptions/domain.exception';
+import { ResourceNotFoundException } from '@common/domain/exceptions/resource-not-found.exception';
 import { DataEnvelopeInterceptor } from '@common/interceptors/data-envelope.interceptor';
 import { SWAGGER_AUTH_SCHEME } from '@common/swagger/swagger-auth.constants';
 import {
 	Body,
 	Controller,
 	Delete,
+	ForbiddenException,
 	Get,
+	NotFoundException,
 	Param,
 	Post,
 	UseGuards,
@@ -105,6 +109,16 @@ export class CollectionsController {
 	@Permissions(PermissionsEnum.COLLECTIONS_MANAGE)
 	@ApiDocsDelete()
 	async delete(@CurrentUser() user: CurrentUserDto, @Param('id') id: string) {
-		return this.deleteCollectionUseCase.execute(user.userId, id);
+		try {
+			await this.deleteCollectionUseCase.execute(user.userId, id);
+		} catch (error) {
+			if (error instanceof ResourceNotFoundException) {
+				throw new NotFoundException(error.message);
+			}
+			if (error instanceof DomainException) {
+				throw new ForbiddenException(error.message);
+			}
+			throw error;
+		}
 	}
 }

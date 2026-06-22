@@ -45,4 +45,21 @@ describe('Collection Domain Entity', () => {
 			collection.addCollaborator(otherUserId, UserId.generate()),
 		).toThrow();
 	});
+
+	it('should allow owner to pass verifyOwner without throwing', () => {
+		const ownerId = UserId.generate();
+		const collection = Collection.create(ownerId, 'My Collection');
+
+		expect(() => collection.verifyOwner(ownerId)).not.toThrow();
+	});
+
+	it('should throw error when non-owner tries to verifyOwner', () => {
+		const ownerId = UserId.generate();
+		const otherUserId = UserId.generate();
+		const collection = Collection.create(ownerId, 'My Collection');
+
+		expect(() => collection.verifyOwner(otherUserId)).toThrow(
+			'Only the owner can delete this collection',
+		);
+	});
 });
