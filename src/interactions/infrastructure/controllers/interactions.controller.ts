@@ -44,7 +44,11 @@ export class InteractionsController {
 		@CurrentUser() user: CurrentUserDto,
 		@Param('id') id: string,
 	) {
-		return this.favoriteUseCase.execute(user.userId, id);
+		return this.favoriteUseCase.execute(
+			user.userId,
+			id,
+			user.maxWeightSensitiveContent,
+		);
 	}
 
 	@Post('subscribe')
@@ -54,7 +58,11 @@ export class InteractionsController {
 		@CurrentUser() user: CurrentUserDto,
 		@Param('id') id: string,
 	) {
-		return this.subscribeUseCase.execute(user.userId, id);
+		return this.subscribeUseCase.execute(
+			user.userId,
+			id,
+			user.maxWeightSensitiveContent,
+		);
 	}
 
 	@Post('reviews')
@@ -70,6 +78,7 @@ export class InteractionsController {
 			id,
 			dto.rating,
 			dto.content,
+			user.maxWeightSensitiveContent,
 		);
 	}
 }

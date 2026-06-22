@@ -1,3 +1,4 @@
+import { BooksModule } from '@/books/books.module';
 import { AuthModule } from '@auth/auth.module';
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -20,6 +21,7 @@ import { NotificationEvents } from './infrastructure/events/notification.events'
 	imports: [
 		forwardRef(() => AuthModule),
 		forwardRef(() => UsersModule),
+		forwardRef(() => BooksModule),
 		TypeOrmModule.forFeature([
 			FavoriteEntity,
 			SubscriptionEntity,

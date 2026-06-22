@@ -17,6 +17,7 @@ import { LastWriteWinsStrategy } from './application/strategies/last-write-wins.
 import { SyncStrategyResolver } from './application/strategies/sync-strategy.resolver';
 import { AdminUsersService } from './application/use-cases/admin-users.service';
 import { ReadingProgressService } from './application/use-cases/reading-progress.service';
+import { UserAccessPolicyService } from './application/use-cases/user-access-policy.service';
 import { UsersService } from './application/use-cases/users.service';
 import { AdminAccessPoliciesController } from './infrastructure/controllers/admin-access-policies.controller';
 import { AdminGroupsController } from './infrastructure/controllers/admin-groups.controller';
@@ -89,6 +90,7 @@ import { RbacModule } from './rbac.module';
 		},
 		UsersService,
 		AdminUsersService,
+		UserAccessPolicyService,
 		ReadingProgressService,
 		RbacSeederService,
 		ReadingProgressGateway,
@@ -103,6 +105,7 @@ import { RbacModule } from './rbac.module';
 	],
 	exports: [
 		AdminUsersService,
+		UserAccessPolicyService,
 		I_USER_REPOSITORY,
 		I_USER_IMAGE_REPOSITORY,
 		ReadingProgressService,

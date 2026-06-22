@@ -100,6 +100,7 @@ export class CollectionsController {
 			user.userId,
 			id,
 			dto.bookId,
+			user.maxWeightSensitiveContent,
 		);
 	}
 

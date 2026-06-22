@@ -1,3 +1,4 @@
+import { BooksModule } from '@/books/books.module';
 import { AddBookToCollectionUseCase } from '@/collections/application/use-cases/add-book-to-collection.use-case';
 import { CreateCollectionUseCase } from '@/collections/application/use-cases/create-collection.use-case';
 import { DeleteCollectionUseCase } from '@/collections/application/use-cases/delete-collection.use-case';
@@ -18,6 +19,7 @@ import { TypeOrmCollectionRepository } from './infrastructure/database/repositor
 	imports: [
 		forwardRef(() => AuthModule),
 		forwardRef(() => UsersModule),
+		forwardRef(() => BooksModule),
 		TypeOrmModule.forFeature([CollectionEntity, User, Book]),
 	],
 	controllers: [CollectionsController],

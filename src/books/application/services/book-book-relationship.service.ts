@@ -30,7 +30,7 @@ import {
 	encodeCursorPayload,
 } from 'src/common/pagination/cursor.utils';
 import { MediaUrlService } from 'src/common/services/media-url.service';
-import { AdminUsersService } from 'src/users/application/use-cases/admin-users.service';
+import { UserAccessPolicyService } from 'src/users/application/use-cases/user-access-policy.service';
 
 export type RelatedBookItem = {
 	relationId: string;
@@ -62,7 +62,7 @@ export class BookBookRelationshipService {
 		private readonly bookRelationshipRepository: IBookRelationshipRepository,
 		@Inject(I_BOOK_REPOSITORY)
 		private readonly bookRepository: IBookRepository,
-		private readonly adminUsersService: AdminUsersService,
+		private readonly userAccessPolicyService: UserAccessPolicyService,
 		private readonly mediaUrlService: MediaUrlService,
 	) {}
 
@@ -225,17 +225,19 @@ export class BookBookRelationshipService {
 		// Evaluate access for each related book
 		const filteredItems: RelatedBookItem[] = [];
 		for (const item of items) {
-			const access = await this.adminUsersService.evaluateAccessForBook({
-				userId,
-				bookId: item.relatedBook.id,
-				bookTagIds: item.relatedBook.tags.map((t) => t.id),
-				bookSensitiveContentIds: item.relatedBook.sensitiveContent.map(
-					(sc) => sc.id,
-				),
-				bookSensitiveContentWeights:
-					item.relatedBook.sensitiveContent.map((sc) => sc.weight),
-				baseMaxWeightSensitiveContent: maxWeightSensitiveContent,
-			});
+			const access =
+				await this.userAccessPolicyService.evaluateAccessForBook({
+					userId,
+					bookId: item.relatedBook.id,
+					bookTagIds: item.relatedBook.tags.map((t) => t.id),
+					bookSensitiveContentIds:
+						item.relatedBook.sensitiveContent.map((sc) => sc.id),
+					bookSensitiveContentWeights:
+						item.relatedBook.sensitiveContent.map(
+							(sc) => sc.weight,
+						),
+					baseMaxWeightSensitiveContent: maxWeightSensitiveContent,
+				});
 
 			if (access.blocked) {
 				continue;

@@ -8,7 +8,7 @@ import { I_TAG_REPOSITORY } from '@books/application/ports/tag-repository.interf
 import { getQueueToken } from '@nestjs/bullmq';
 import { Test, TestingModule } from '@nestjs/testing';
 import { MediaUrlService } from 'src/common/services/media-url.service';
-import { AdminUsersService } from 'src/users/application/use-cases/admin-users.service';
+import { UserAccessPolicyService } from 'src/users/application/use-cases/user-access-policy.service';
 import { BookPageOptionsDto } from '../dto/book-page-options.dto';
 import { BookQueryService } from './book-query.service';
 import { SensitiveContentService } from './sensitive-content.service';
@@ -17,7 +17,7 @@ describe('BookQueryService (Search Optimization)', () => {
 	let service: BookQueryService;
 	let meiliClient: any;
 	let bookRepository: any;
-	let adminUsersService: any;
+	let userAccessPolicyService: any;
 
 	beforeEach(async () => {
 		meiliClient = {
@@ -38,7 +38,7 @@ describe('BookQueryService (Search Optimization)', () => {
 			findWithFilters: jest.fn(),
 		};
 
-		adminUsersService = {
+		userAccessPolicyService = {
 			evaluateListAccessContext: jest.fn().mockResolvedValue({
 				effectiveMaxWeightSensitiveContent: 0,
 			}),
@@ -49,7 +49,10 @@ describe('BookQueryService (Search Optimization)', () => {
 				BookQueryService,
 				{ provide: I_BOOK_REPOSITORY, useValue: bookRepository },
 				{ provide: MEILI_CLIENT, useValue: meiliClient },
-				{ provide: AdminUsersService, useValue: adminUsersService },
+				{
+					provide: UserAccessPolicyService,
+					useValue: userAccessPolicyService,
+				},
 				{
 					provide: MediaUrlService,
 					useValue: { resolveUrl: jest.fn() },
