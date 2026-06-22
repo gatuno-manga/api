@@ -4,6 +4,7 @@ import { CollectionId } from '@/collections/domain/value-objects/collection-id.v
 import { CollectionEntity } from '@/collections/infrastructure/database/entities/collection.entity';
 import { CollectionMapper } from '@/collections/infrastructure/mappers/collection.mapper';
 import { Book } from '@books/infrastructure/database/entities/book.entity';
+import { DomainException } from '@common/domain/exceptions/domain.exception';
 import { UserId } from '@common/domain/value-objects/user-id.vo';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -20,6 +21,34 @@ export class TypeOrmCollectionRepository implements CollectionRepository {
 		@InjectRepository(Book)
 		private readonly bookRepository: Repository<Book>,
 	) {}
+
+	async create(collection: Collection): Promise<void> {
+		const snapshot = collection.toSnapshot();
+		const entity = new CollectionEntity();
+		entity.id = snapshot.id;
+		entity.ownerId = snapshot.ownerId;
+		entity.title = snapshot.title;
+		entity.description = snapshot.description;
+		entity.visibility = snapshot.visibility;
+
+		try {
+			await this.repository.insert({
+				id: entity.id,
+				ownerId: entity.ownerId,
+				title: entity.title,
+				description: entity.description,
+				visibility: entity.visibility,
+			});
+		} catch (error: unknown) {
+			const err = error as { code?: string; number?: number };
+			if (err?.code === 'ER_DUP_ENTRY' || err?.number === 1062) {
+				throw new DomainException(
+					'Collection with this ID already exists',
+				);
+			}
+			throw error;
+		}
+	}
 
 	async save(collection: Collection): Promise<void> {
 		const snapshot = collection.toSnapshot();

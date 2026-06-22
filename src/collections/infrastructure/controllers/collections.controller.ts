@@ -15,6 +15,7 @@ import { DataEnvelopeInterceptor } from '@common/interceptors/data-envelope.inte
 import { SWAGGER_AUTH_SCHEME } from '@common/swagger/swagger-auth.constants';
 import {
 	Body,
+	ConflictException,
 	Controller,
 	Delete,
 	ForbiddenException,
@@ -69,11 +70,22 @@ export class CollectionsController {
 		@CurrentUser() user: CurrentUserDto,
 		@Body() dto: CreateCollectionDto,
 	) {
-		return this.createCollectionUseCase.execute(
-			user.userId,
-			dto.title,
-			dto.description,
-		);
+		try {
+			return await this.createCollectionUseCase.execute(
+				user.userId,
+				dto.title,
+				dto.description,
+				dto.id,
+			);
+		} catch (error) {
+			if (
+				error instanceof DomainException &&
+				error.message === 'Collection with this ID already exists'
+			) {
+				throw new ConflictException(error.message);
+			}
+			throw error;
+		}
 	}
 
 	@Post(':id/books')
