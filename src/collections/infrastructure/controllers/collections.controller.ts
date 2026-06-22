@@ -21,6 +21,7 @@ import {
 	Get,
 	NotFoundException,
 	Param,
+	ParseUUIDPipe,
 	Post,
 	UseGuards,
 	UseInterceptors,
@@ -108,9 +109,13 @@ export class CollectionsController {
 	@Delete(':id')
 	@Permissions(PermissionsEnum.COLLECTIONS_MANAGE)
 	@ApiDocsDelete()
-	async delete(@CurrentUser() user: CurrentUserDto, @Param('id') id: string) {
+	async delete(
+		@CurrentUser() user: CurrentUserDto,
+		@Param('id', ParseUUIDPipe) id: string,
+	) {
 		try {
 			await this.deleteCollectionUseCase.execute(user.userId, id);
+			return { message: 'Collection deleted successfully' };
 		} catch (error) {
 			if (error instanceof ResourceNotFoundException) {
 				throw new NotFoundException(error.message);
