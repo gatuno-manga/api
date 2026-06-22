@@ -32,7 +32,13 @@ export class TypeOrmCollectionRepository implements CollectionRepository {
 		entity.visibility = snapshot.visibility;
 
 		try {
-			await this.repository.insert(entity);
+			await this.repository.insert({
+				id: entity.id,
+				ownerId: entity.ownerId,
+				title: entity.title,
+				description: entity.description,
+				visibility: entity.visibility,
+			});
 		} catch (error: unknown) {
 			const err = error as { code?: string; number?: number };
 			if (err?.code === 'ER_DUP_ENTRY' || err?.number === 1062) {
