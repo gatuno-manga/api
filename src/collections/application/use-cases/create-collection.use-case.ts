@@ -2,8 +2,9 @@ import { CollectionRepository } from '@/collections/application/ports/collection
 import { CollectionEvents } from '@/collections/domain/constants/events.constant';
 import { Collection } from '@/collections/domain/entities/collection';
 import { CollectionId } from '@/collections/domain/value-objects/collection-id.vo';
+import { DomainException } from '@common/domain/exceptions/domain.exception';
 import { UserId } from '@common/domain/value-objects/user-id.vo';
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
@@ -25,7 +26,7 @@ export class CreateCollectionUseCase {
 				CollectionId.create(id),
 			);
 			if (existing) {
-				throw new ConflictException(
+				throw new DomainException(
 					'Collection with this ID already exists',
 				);
 			}
