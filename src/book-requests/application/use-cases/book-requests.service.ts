@@ -23,8 +23,10 @@ import { BookRequestReason } from '@/book-requests/domain/value-objects/book-req
 import { BookRequestTitle } from '@/book-requests/domain/value-objects/book-request-title.vo';
 import { BookRequestUrl } from '@/book-requests/domain/value-objects/book-request-url.vo';
 import { RejectionMessage } from '@/book-requests/domain/value-objects/rejection-message.vo';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ResourceNotFoundException } from '@common/domain/exceptions/resource-not-found.exception';
+import { Inject, Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { v7 as uuidv7 } from 'uuid';
 
 @Injectable()
 export class BookRequestsService {
@@ -34,10 +36,14 @@ export class BookRequestsService {
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
-	async create(dto: CreateBookRequestDto, userId: string): Promise<void> {
+	async create(
+		dto: CreateBookRequestDto,
+		userId: string,
+	): Promise<{ id: string }> {
+		const id = uuidv7();
 		const bookRequest = new BookRequest(
 			new BookRequestHeader(
-				new BookRequestIdentity('', userId),
+				new BookRequestIdentity(id, userId),
 				new BookRequestTiming(new Date(), new Date()),
 			),
 			new BookRequestBody(
@@ -57,6 +63,8 @@ export class BookRequestsService {
 
 		await this.bookRequestRepository.save(bookRequest);
 		this.eventEmitter.emit(BookRequestEvents.CREATED, bookRequest);
+
+		return { id };
 	}
 
 	async listMyRequests(userId: string): Promise<BookRequest[]> {
@@ -70,7 +78,7 @@ export class BookRequestsService {
 	async approve(id: string, adminId: string): Promise<void> {
 		const request = await this.bookRequestRepository.findById(id);
 		if (!request) {
-			throw new NotFoundException('Book request not found');
+			throw new ResourceNotFoundException('Book request not found');
 		}
 
 		const approvedRequest = request.approve(adminId);
@@ -85,7 +93,7 @@ export class BookRequestsService {
 	): Promise<void> {
 		const request = await this.bookRequestRepository.findById(id);
 		if (!request) {
-			throw new NotFoundException('Book request not found');
+			throw new ResourceNotFoundException('Book request not found');
 		}
 
 		const rejectedRequest = request.reject(adminId, dto.message ?? null);
