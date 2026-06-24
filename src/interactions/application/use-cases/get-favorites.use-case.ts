@@ -7,6 +7,7 @@ import {
 	decodeCursorPayload,
 	encodeCursorPayload,
 } from 'src/common/pagination/cursor.utils';
+import { PageDto } from 'src/common/pagination/page.dto';
 
 type FavoritesCursorPayload = {
 	createdAt: string;
@@ -24,7 +25,26 @@ export class GetFavoritesUseCase {
 		userId: UserId,
 		limit: number,
 		cursor?: string,
-	): Promise<CursorPageDto<Favorite>> {
+		page?: number,
+	): Promise<CursorPageDto<Favorite> | PageDto<Favorite>> {
+		if (page) {
+			const skip = (page - 1) * limit;
+			const [data, total] =
+				await this.favoriteRepository.findByUserWithOffset(
+					userId,
+					skip,
+					limit,
+				);
+
+			const lastPage = Math.ceil(total / limit);
+
+			return new PageDto(data, {
+				total,
+				page,
+				lastPage,
+			});
+		}
+
 		const parsedCursor = this.parseCursor(cursor);
 
 		const favorites = await this.favoriteRepository.findPaginatedByUser(

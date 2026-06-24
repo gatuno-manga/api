@@ -11,6 +11,7 @@ export const CollectionMapper = {
 			ownerId: entity.ownerId,
 			title: entity.title,
 			description: entity.description,
+			coverUrl: entity.coverUrl,
 			visibility: entity.visibility,
 			collaborators: entity.collaborators?.map((u) => u.id) ?? [],
 			books: entity.books?.map((b) => b.id) ?? [],
@@ -27,6 +28,7 @@ export const CollectionMapper = {
 		entity.ownerId = snapshot.ownerId;
 		entity.title = snapshot.title;
 		entity.description = snapshot.description;
+		entity.coverUrl = snapshot.coverUrl;
 		entity.visibility = snapshot.visibility;
 		entity.createdAt = snapshot.createdAt;
 		entity.updatedAt = snapshot.updatedAt;

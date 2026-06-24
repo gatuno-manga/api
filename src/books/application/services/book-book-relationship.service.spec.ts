@@ -10,7 +10,7 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { MediaUrlService } from 'src/common/services/media-url.service';
-import { AdminUsersService } from 'src/users/application/use-cases/admin-users.service';
+import { UserAccessPolicyService } from 'src/users/application/use-cases/user-access-policy.service';
 import {
 	BookBookRelationshipService,
 	type RelatedBookItem,
@@ -32,9 +32,9 @@ describe('BookBookRelationshipService', () => {
 		find: jest.fn(),
 	} as unknown as jest.Mocked<IBookRepository>;
 
-	const mockAdminUsersService = {
+	const mockUserAccessPolicyService = {
 		evaluateAccessForBook: jest.fn(),
-	} as unknown as jest.Mocked<AdminUsersService>;
+	} as unknown as jest.Mocked<UserAccessPolicyService>;
 
 	const mockMediaUrlService = {
 		resolveUrl: jest
@@ -59,8 +59,8 @@ describe('BookBookRelationshipService', () => {
 					useValue: mockBookRepository,
 				},
 				{
-					provide: AdminUsersService,
-					useValue: mockAdminUsersService,
+					provide: UserAccessPolicyService,
+					useValue: mockUserAccessPolicyService,
 				},
 				{
 					provide: MediaUrlService,
@@ -98,7 +98,7 @@ describe('BookBookRelationshipService', () => {
 			],
 		);
 
-		mockAdminUsersService.evaluateAccessForBook.mockResolvedValue({
+		mockUserAccessPolicyService.evaluateAccessForBook.mockResolvedValue({
 			blocked: true,
 			effectiveMaxWeightSensitiveContent: 0,
 		});
@@ -113,7 +113,7 @@ describe('BookBookRelationshipService', () => {
 		expect(result.items).toEqual([]);
 		expect(result.total).toBe(0);
 		expect(
-			mockAdminUsersService.evaluateAccessForBook,
+			mockUserAccessPolicyService.evaluateAccessForBook,
 		).toHaveBeenCalledWith(
 			expect.objectContaining({
 				userId: 'user-1',
@@ -147,7 +147,7 @@ describe('BookBookRelationshipService', () => {
 			],
 		);
 
-		mockAdminUsersService.evaluateAccessForBook.mockResolvedValue({
+		mockUserAccessPolicyService.evaluateAccessForBook.mockResolvedValue({
 			blocked: false,
 			effectiveMaxWeightSensitiveContent: 10,
 		});
@@ -187,7 +187,7 @@ describe('BookBookRelationshipService', () => {
 			],
 		);
 
-		mockAdminUsersService.evaluateAccessForBook.mockResolvedValue({
+		mockUserAccessPolicyService.evaluateAccessForBook.mockResolvedValue({
 			blocked: false,
 			effectiveMaxWeightSensitiveContent: 20,
 		});

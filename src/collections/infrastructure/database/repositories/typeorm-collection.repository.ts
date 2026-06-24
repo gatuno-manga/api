@@ -4,6 +4,7 @@ import { CollectionId } from '@/collections/domain/value-objects/collection-id.v
 import { CollectionEntity } from '@/collections/infrastructure/database/entities/collection.entity';
 import { CollectionMapper } from '@/collections/infrastructure/mappers/collection.mapper';
 import { Book } from '@books/infrastructure/database/entities/book.entity';
+import { DomainException } from '@common/domain/exceptions/domain.exception';
 import { UserId } from '@common/domain/value-objects/user-id.vo';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -20,6 +21,34 @@ export class TypeOrmCollectionRepository implements CollectionRepository {
 		@InjectRepository(Book)
 		private readonly bookRepository: Repository<Book>,
 	) {}
+
+	async create(collection: Collection): Promise<void> {
+		const snapshot = collection.toSnapshot();
+		const entity = new CollectionEntity();
+		entity.id = snapshot.id;
+		entity.ownerId = snapshot.ownerId;
+		entity.title = snapshot.title;
+		entity.description = snapshot.description;
+		entity.visibility = snapshot.visibility;
+
+		try {
+			await this.repository.insert({
+				id: entity.id,
+				ownerId: entity.ownerId,
+				title: entity.title,
+				description: entity.description,
+				visibility: entity.visibility,
+			});
+		} catch (error: unknown) {
+			const err = error as { code?: string; number?: number };
+			if (err?.code === 'ER_DUP_ENTRY' || err?.number === 1062) {
+				throw new DomainException(
+					'Collection with this ID already exists',
+				);
+			}
+			throw error;
+		}
+	}
 
 	async save(collection: Collection): Promise<void> {
 		const snapshot = collection.toSnapshot();
@@ -83,6 +112,54 @@ export class TypeOrmCollectionRepository implements CollectionRepository {
 			.where('collaborator.id = :userId', { userId: userId.toString() })
 			.getMany();
 		return entities.map((entity) => CollectionMapper.toDomain(entity));
+	}
+
+	async findPaginatedByOwner(
+		ownerId: UserId,
+		limit: number,
+		cursorCreatedAt?: Date,
+		cursorId?: string,
+	): Promise<Collection[]> {
+		const qb = this.repository
+			.createQueryBuilder('collection')
+			.leftJoinAndSelect('collection.collaborators', 'collaborator')
+			.leftJoinAndSelect('collection.books', 'book')
+			.where('collection.ownerId = :ownerId', {
+				ownerId: ownerId.toString(),
+			})
+			.orderBy('collection.createdAt', 'DESC')
+			.addOrderBy('collection.id', 'DESC');
+
+		if (cursorCreatedAt && cursorId) {
+			qb.andWhere(
+				'(collection.createdAt < :cursorCreatedAt OR (collection.createdAt = :cursorCreatedAt AND collection.id < :cursorId))',
+				{ cursorCreatedAt, cursorId },
+			);
+		}
+
+		qb.take(limit + 1);
+
+		const entities = await qb.getMany();
+		return entities.map((entity) => CollectionMapper.toDomain(entity));
+	}
+
+	async findByOwnerWithOffset(
+		ownerId: UserId,
+		skip: number,
+		take: number,
+	): Promise<[Collection[], number]> {
+		const [entities, count] = await this.repository.findAndCount({
+			where: { ownerId: ownerId.toString() },
+			relations: ['collaborators', 'books'],
+			order: { createdAt: 'DESC', id: 'DESC' },
+			skip,
+			take,
+		});
+
+		return [
+			entities.map((entity) => CollectionMapper.toDomain(entity)),
+			count,
+		];
 	}
 
 	async delete(id: CollectionId): Promise<void> {

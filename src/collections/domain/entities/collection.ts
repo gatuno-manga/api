@@ -11,6 +11,7 @@ export interface CollectionSnapshot {
 	ownerId: string;
 	title: string;
 	description: string | null;
+	coverUrl: string | null;
 	visibility: string;
 	collaborators: string[];
 	books: string[];
@@ -24,6 +25,7 @@ export class Collection {
 		private readonly ownerId: UserId,
 		private title: string,
 		private description: string | null,
+		private coverUrl: string | null,
 		private visibility: Visibility,
 		private readonly collaborators: CollaboratorList,
 		private readonly books: BookIdList,
@@ -35,13 +37,15 @@ export class Collection {
 		ownerId: UserId,
 		title: string,
 		description: string | null = null,
+		id?: string,
 	): Collection {
 		const now = new Date();
 		return new Collection(
-			CollectionId.generate(),
+			id ? CollectionId.create(id) : CollectionId.generate(),
 			ownerId,
 			title,
 			description,
+			null,
 			Visibility.private(),
 			CollaboratorList.create(),
 			BookIdList.create(),
@@ -56,6 +60,7 @@ export class Collection {
 			UserId.create(snapshot.ownerId),
 			snapshot.title,
 			snapshot.description,
+			snapshot.coverUrl,
 			Visibility.create(snapshot.visibility),
 			CollaboratorList.create(
 				snapshot.collaborators.map((id) => UserId.create(id)),
@@ -64,6 +69,16 @@ export class Collection {
 			snapshot.createdAt,
 			snapshot.updatedAt,
 		);
+	}
+
+	public updateCoverUrl(
+		requesterId: UserId,
+		newCoverUrl: string | null,
+	): void {
+		if (!this.canEdit(requesterId)) {
+			throw new DomainException('Only editors can update the cover');
+		}
+		this.coverUrl = newCoverUrl;
 	}
 
 	public addCollaborator(
@@ -127,12 +142,21 @@ export class Collection {
 		this.visibility = newVisibility;
 	}
 
+	public verifyOwner(userId: UserId): void {
+		if (!this.ownerId.equals(userId)) {
+			throw new DomainException(
+				'Only the owner can delete this collection',
+			);
+		}
+	}
+
 	public toSnapshot(): CollectionSnapshot {
 		return {
 			id: this.id.toString(),
 			ownerId: this.ownerId.toString(),
 			title: this.title,
 			description: this.description,
+			coverUrl: this.coverUrl,
 			visibility: this.visibility.toString(),
 			collaborators: this.collaborators
 				.toArray()

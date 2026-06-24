@@ -1,12 +1,17 @@
+import { BooksModule } from '@/books/books.module';
+import { AddBookToCollectionUseCase } from '@/collections/application/use-cases/add-book-to-collection.use-case';
+import { CreateCollectionUseCase } from '@/collections/application/use-cases/create-collection.use-case';
+import { DeleteCollectionUseCase } from '@/collections/application/use-cases/delete-collection.use-case';
+import { GetCollectionBookCoversUseCase } from '@/collections/application/use-cases/get-collection-book-covers.use-case';
+import { GetPublicCollectionsUseCase } from '@/collections/application/use-cases/get-public-collections.use-case';
+import { UpdateCollectionCoverUseCase } from '@/collections/application/use-cases/update-collection-cover.use-case';
+import { CollectionResolver } from '@/collections/infrastructure/graphql/resolvers/collection.resolver';
 import { AuthModule } from '@auth/auth.module';
 import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '@users/infrastructure/database/entities/user.entity';
 import { UsersModule } from '@users/users.module';
-import { AddBookToCollectionUseCase } from './application/use-cases/add-book-to-collection.use-case';
-import { CreateCollectionUseCase } from './application/use-cases/create-collection.use-case';
-import { GetPublicCollectionsUseCase } from './application/use-cases/get-public-collections.use-case';
 import { GetUserCollectionsUseCase } from './application/use-cases/get-user-collections.use-case';
 import { ShareCollectionUseCase } from './application/use-cases/share-collection.use-case';
 import { CollectionsController } from './infrastructure/controllers/collections.controller';
@@ -17,6 +22,7 @@ import { TypeOrmCollectionRepository } from './infrastructure/database/repositor
 	imports: [
 		forwardRef(() => AuthModule),
 		forwardRef(() => UsersModule),
+		forwardRef(() => BooksModule),
 		TypeOrmModule.forFeature([CollectionEntity, User, Book]),
 	],
 	controllers: [CollectionsController],
@@ -26,15 +32,24 @@ import { TypeOrmCollectionRepository } from './infrastructure/database/repositor
 			useClass: TypeOrmCollectionRepository,
 		},
 		CreateCollectionUseCase,
+		DeleteCollectionUseCase,
 		AddBookToCollectionUseCase,
 		ShareCollectionUseCase,
 		GetUserCollectionsUseCase,
 		GetPublicCollectionsUseCase,
+		UpdateCollectionCoverUseCase,
+		GetCollectionBookCoversUseCase,
+		CollectionResolver,
 	],
 	exports: [
 		'CollectionRepository',
 		GetUserCollectionsUseCase,
 		GetPublicCollectionsUseCase,
+		CreateCollectionUseCase,
+		DeleteCollectionUseCase,
+		AddBookToCollectionUseCase,
+		UpdateCollectionCoverUseCase,
+		GetCollectionBookCoversUseCase,
 	],
 })
 export class CollectionsModule {}

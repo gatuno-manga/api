@@ -1,5 +1,5 @@
 import { applyDecorators } from '@nestjs/common';
-import { ApiOperation } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 export function ApiDocsGetMyCollections() {
 	return applyDecorators(ApiOperation({ summary: 'Get my collections' }));
@@ -15,8 +15,41 @@ export function ApiDocsAddBook() {
 	);
 }
 
+export function ApiDocsDelete() {
+	return applyDecorators(
+		ApiOperation({
+			summary: 'Delete a collection',
+			description: 'Deletes a specific collection belonging to the user',
+		}),
+		ApiResponse({
+			status: 200,
+			description: 'Collection successfully deleted',
+		}),
+		ApiResponse({
+			status: 403,
+			description: 'Forbidden: Insufficient permissions or not the owner',
+		}),
+		ApiResponse({
+			status: 404,
+			description: 'Collection not found',
+		}),
+	);
+}
+
 export function ApiDocsShare() {
 	return applyDecorators(
 		ApiOperation({ summary: 'Share a collection with a collaborator' }),
+	);
+}
+
+export function ApiDocsUpdateCover() {
+	return applyDecorators(
+		ApiOperation({ summary: 'Update collection cover URL' }),
+	);
+}
+
+export function ApiDocsGetCollectionBookCovers() {
+	return applyDecorators(
+		ApiOperation({ summary: 'Get book covers for a collection' }),
 	);
 }

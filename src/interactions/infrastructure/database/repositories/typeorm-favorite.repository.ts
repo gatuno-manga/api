@@ -68,4 +68,19 @@ export class TypeOrmFavoriteRepository implements FavoriteRepository {
 		const entities = await qb.getMany();
 		return entities.map((e) => Favorite.restore(e));
 	}
+
+	async findByUserWithOffset(
+		userId: UserId,
+		skip: number,
+		take: number,
+	): Promise<[Favorite[], number]> {
+		const [entities, count] = await this.repository.findAndCount({
+			where: { userId: userId.toString() },
+			order: { createdAt: 'DESC', bookId: 'DESC' },
+			skip,
+			take,
+		});
+
+		return [entities.map((e) => Favorite.restore(e)), count];
+	}
 }

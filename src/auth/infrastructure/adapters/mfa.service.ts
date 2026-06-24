@@ -66,20 +66,24 @@ export class MfaService {
 			throw new BadRequestException('Invalid MFA secret format');
 		}
 
-		const key = this.getEncryptionKey();
-		const decipher = createDecipheriv(
-			'aes-256-gcm',
-			key,
-			Buffer.from(ivHex, 'hex'),
-		);
-		decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
+		try {
+			const key = this.getEncryptionKey();
+			const decipher = createDecipheriv(
+				'aes-256-gcm',
+				key,
+				Buffer.from(ivHex, 'hex'),
+			);
+			decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
 
-		const decrypted = Buffer.concat([
-			decipher.update(Buffer.from(encryptedHex, 'hex')),
-			decipher.final(),
-		]);
+			const decrypted = Buffer.concat([
+				decipher.update(Buffer.from(encryptedHex, 'hex')),
+				decipher.final(),
+			]);
 
-		return decrypted.toString('utf8');
+			return decrypted.toString('utf8');
+		} catch (error) {
+			throw new UnauthorizedException('Failed to decrypt MFA secret');
+		}
 	}
 
 	private async getOrCreateConfig(userId: string): Promise<UserMfa> {
@@ -197,10 +201,15 @@ export class MfaService {
 		}
 
 		const secret = this.decryptSecret(config.totpSecretEncrypted);
-		const isValid = authenticator.verify({
-			token: code,
-			secret,
-		});
+		let isValid = false;
+		try {
+			isValid = authenticator.verify({
+				token: code,
+				secret,
+			});
+		} catch {
+			isValid = false;
+		}
 
 		if (!isValid) {
 			throw new UnauthorizedException('Invalid MFA verification code');
@@ -263,17 +272,21 @@ export class MfaService {
 			return false;
 		}
 
-		const secret = this.decryptSecret(config.totpSecretEncrypted);
-		const validTotp = authenticator.verify({
-			token: code,
-			secret,
-		});
+		try {
+			const secret = this.decryptSecret(config.totpSecretEncrypted);
+			const validTotp = authenticator.verify({
+				token: code,
+				secret,
+			});
 
-		if (validTotp) {
-			await this.checkAndLockTotp(userId, code);
-			config.lastVerifiedAt = new Date();
-			await this.userMfaRepository.save(config);
-			return true;
+			if (validTotp) {
+				await this.checkAndLockTotp(userId, code);
+				config.lastVerifiedAt = new Date();
+				await this.userMfaRepository.save(config);
+				return true;
+			}
+		} catch (error) {
+			// If decryption fails or TOTP check throws, ignore and fallback to backup codes
 		}
 
 		return this.consumeBackupCode(config, code.toUpperCase());

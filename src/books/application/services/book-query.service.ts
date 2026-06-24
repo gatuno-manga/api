@@ -51,7 +51,7 @@ import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 import { MetadataPageDto } from 'src/common/pagination/metadata-page.dto';
 import { PageDto } from 'src/common/pagination/page.dto';
 import { MediaUrlService } from 'src/common/services/media-url.service';
-import { AdminUsersService } from 'src/users/application/use-cases/admin-users.service';
+import { UserAccessPolicyService } from 'src/users/application/use-cases/user-access-policy.service';
 import { SensitiveContentService } from './sensitive-content.service';
 
 interface RawChapterItem {
@@ -101,7 +101,7 @@ export class BookQueryService {
 		private readonly coverImageQueue: Queue<QueueCoverProcessorDto>,
 		@InjectQueue('fix-chapter-queue')
 		private readonly fixChapterQueue: Queue<{ chapterId: string }>,
-		private readonly adminUsersService: AdminUsersService,
+		private readonly userAccessPolicyService: UserAccessPolicyService,
 		@Inject(MEILI_CLIENT)
 		private readonly meiliClient: Meilisearch,
 	) {}
@@ -111,18 +111,20 @@ export class BookQueryService {
 		maxWeightSensitiveContent: number,
 		userId?: string,
 	) {
-		const result = await this.adminUsersService.evaluateAccessForBook({
-			userId,
-			bookId: book.id,
-			bookTagIds: (book.tags || []).map((tag) => tag.id),
-			bookSensitiveContentIds: (book.sensitiveContent || []).map(
-				(sensitiveContent) => sensitiveContent.id,
-			),
-			bookSensitiveContentWeights: (book.sensitiveContent || []).map(
-				(sensitiveContent) => sensitiveContent.weight,
-			),
-			baseMaxWeightSensitiveContent: maxWeightSensitiveContent,
-		});
+		const result = await this.userAccessPolicyService.evaluateAccessForBook(
+			{
+				userId,
+				bookId: book.id,
+				bookTagIds: (book.tags || []).map((tag) => tag.id),
+				bookSensitiveContentIds: (book.sensitiveContent || []).map(
+					(sensitiveContent) => sensitiveContent.id,
+				),
+				bookSensitiveContentWeights: (book.sensitiveContent || []).map(
+					(sensitiveContent) => sensitiveContent.weight,
+				),
+				baseMaxWeightSensitiveContent: maxWeightSensitiveContent,
+			},
+		);
 
 		if (result.blocked) {
 			throw new ForbiddenException(
@@ -182,7 +184,7 @@ export class BookQueryService {
 		targetLang?: string,
 	): Promise<PageDto<BookListItem> | CursorPageDto<BookListItem>> {
 		const accessContext =
-			await this.adminUsersService.evaluateListAccessContext({
+			await this.userAccessPolicyService.evaluateListAccessContext({
 				userId,
 				baseMaxWeightSensitiveContent: maxWeightSensitiveContent,
 			});
@@ -296,7 +298,7 @@ export class BookQueryService {
 		_targetLang?: string,
 	): Promise<{ id: string }> {
 		const accessContext =
-			await this.adminUsersService.evaluateListAccessContext({
+			await this.userAccessPolicyService.evaluateListAccessContext({
 				userId,
 				baseMaxWeightSensitiveContent: maxWeightSensitiveContent,
 			});

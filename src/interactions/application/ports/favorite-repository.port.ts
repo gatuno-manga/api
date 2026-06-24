@@ -13,4 +13,9 @@ export interface FavoriteRepository {
 		cursorCreatedAt?: Date,
 		cursorBookId?: string,
 	): Promise<Favorite[]>;
+	findByUserWithOffset(
+		userId: UserId,
+		skip: number,
+		take: number,
+	): Promise<[Favorite[], number]>;
 }

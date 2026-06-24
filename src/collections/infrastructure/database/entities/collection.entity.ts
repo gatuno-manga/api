@@ -22,6 +22,9 @@ export class CollectionEntity {
 	@Column({ type: 'text', nullable: true })
 	description: string | null;
 
+	@Column({ type: 'varchar', length: 255, nullable: true })
+	coverUrl: string | null;
+
 	@Column({ type: 'enum', enum: ['PRIVATE', 'PUBLIC', 'SHARED'] })
 	visibility: string;
 

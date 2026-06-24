@@ -1,3 +1,4 @@
+import { BooksModule } from '@/books/books.module';
 import { AuthModule } from '@auth/auth.module';
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -15,11 +16,13 @@ import { TypeOrmFavoriteRepository } from './infrastructure/database/repositorie
 import { TypeOrmReviewRepository } from './infrastructure/database/repositories/typeorm-review.repository';
 import { TypeOrmSubscriptionRepository } from './infrastructure/database/repositories/typeorm-subscription.repository';
 import { NotificationEvents } from './infrastructure/events/notification.events';
+import { FavoriteResolver } from './infrastructure/graphql/resolvers/favorite.resolver';
 
 @Module({
 	imports: [
 		forwardRef(() => AuthModule),
 		forwardRef(() => UsersModule),
+		forwardRef(() => BooksModule),
 		TypeOrmModule.forFeature([
 			FavoriteEntity,
 			SubscriptionEntity,
@@ -45,6 +48,7 @@ import { NotificationEvents } from './infrastructure/events/notification.events'
 		SubscribeToBookUseCase,
 		ReviewBookUseCase,
 		NotificationEvents,
+		FavoriteResolver,
 	],
 	exports: [
 		'FavoriteRepository',
