@@ -1,3 +1,7 @@
+import {
+	IBookRepository,
+	I_BOOK_REPOSITORY,
+} from '@/books/application/ports/book-repository.interface';
 import { GetFavoritesUseCase } from '@/interactions/application/use-cases/get-favorites.use-case';
 import { CurrentUserDto } from '@auth/application/dto/current-user.dto';
 import { CurrentUser } from '@auth/infrastructure/framework/current-user.decorator';
@@ -8,6 +12,7 @@ import { SWAGGER_AUTH_SCHEME } from '@common/swagger/swagger-auth.constants';
 import {
 	Controller,
 	Get,
+	Inject,
 	Query,
 	UseGuards,
 	UseInterceptors,
@@ -26,7 +31,11 @@ import { ApiDocsGetFavorites } from './swagger/interactions.swagger';
 @UseInterceptors(DataEnvelopeInterceptor)
 @ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 export class UserInteractionsController {
-	constructor(private readonly getFavoritesUseCase: GetFavoritesUseCase) {}
+	constructor(
+		private readonly getFavoritesUseCase: GetFavoritesUseCase,
+		@Inject(I_BOOK_REPOSITORY)
+		private readonly bookRepository: IBookRepository,
+	) {}
 
 	@Get('favorites')
 	@Permissions(PermissionsEnum.INTERACTIONS_MANAGE)
@@ -42,10 +51,32 @@ export class UserInteractionsController {
 			options.cursor,
 		);
 
-		return new CursorPageDto(
-			page.data.map((f) => f.toSnapshot()),
-			page.nextCursor,
-			page.hasNextPage,
-		);
+		if (page.data.length === 0) {
+			return new CursorPageDto([], page.nextCursor, page.hasNextPage);
+		}
+
+		const snapshots = page.data.map((f) => f.toSnapshot());
+		const bookIds = snapshots.map((f) => f.bookId);
+		const books =
+			await this.bookRepository.findByIdsPreservingOrder(bookIds);
+
+		const mappedData = snapshots.map((favorite) => {
+			const book = books.find((b) => b.id === favorite.bookId);
+			return {
+				...favorite,
+				book: book
+					? {
+							id: book.id,
+							title: book.title,
+							type: book.type,
+							covers: book.covers,
+							publicationStatus: book.publicationStatus,
+							scrapingStatus: book.scrapingStatus,
+						}
+					: null,
+			};
+		});
+
+		return new CursorPageDto(mappedData, page.nextCursor, page.hasNextPage);
 	}
 }

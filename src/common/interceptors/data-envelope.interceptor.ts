@@ -19,7 +19,9 @@ export class DataEnvelopeInterceptor implements NestInterceptor {
 					payload &&
 					typeof payload === 'object' &&
 					'data' in payload &&
-					'meta' in payload
+					('meta' in payload ||
+						'metadata' in payload ||
+						'hasNextPage' in payload)
 				) {
 					return payload;
 				}
