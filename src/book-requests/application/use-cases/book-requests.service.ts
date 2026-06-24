@@ -25,6 +25,7 @@ import { BookRequestUrl } from '@/book-requests/domain/value-objects/book-reques
 import { RejectionMessage } from '@/book-requests/domain/value-objects/rejection-message.vo';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { v7 as uuidv7 } from 'uuid';
 
 @Injectable()
 export class BookRequestsService {
@@ -34,10 +35,14 @@ export class BookRequestsService {
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
-	async create(dto: CreateBookRequestDto, userId: string): Promise<void> {
+	async create(
+		dto: CreateBookRequestDto,
+		userId: string,
+	): Promise<{ id: string }> {
+		const id = uuidv7();
 		const bookRequest = new BookRequest(
 			new BookRequestHeader(
-				new BookRequestIdentity('', userId),
+				new BookRequestIdentity(id, userId),
 				new BookRequestTiming(new Date(), new Date()),
 			),
 			new BookRequestBody(
@@ -57,6 +62,8 @@ export class BookRequestsService {
 
 		await this.bookRequestRepository.save(bookRequest);
 		this.eventEmitter.emit(BookRequestEvents.CREATED, bookRequest);
+
+		return { id };
 	}
 
 	async listMyRequests(userId: string): Promise<BookRequest[]> {

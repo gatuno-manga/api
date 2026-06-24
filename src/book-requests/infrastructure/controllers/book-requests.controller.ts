@@ -29,8 +29,8 @@ export class BookRequestsController {
 		@Body() dto: CreateBookRequestDto,
 		@CurrentUser() user: CurrentUserDto,
 	) {
-		await this.bookRequestsService.create(dto, user.userId);
-		return { message: 'Book request submitted successfully' };
+		const { id } = await this.bookRequestsService.create(dto, user.userId);
+		return { id, message: 'Book request submitted successfully' };
 	}
 
 	@Get('me')
