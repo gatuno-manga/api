@@ -39,6 +39,9 @@ export class AuthorsService {
 			author.localizedBiographies,
 			lang,
 			null,
+			'pt-BR',
+			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+			(item: any) => item.biography,
 		);
 		if (bestBio) {
 			author.biography = bestBio.biography;
