@@ -132,6 +132,18 @@ export class Collection {
 		this.title = newTitle;
 	}
 
+	public updateDescription(
+		requesterId: UserId,
+		newDescription: string | null,
+	): void {
+		if (!this.ownerId.equals(requesterId)) {
+			throw new DomainException(
+				'Only the owner can update the description',
+			);
+		}
+		this.description = newDescription;
+	}
+
 	public updateVisibility(
 		requesterId: UserId,
 		newVisibility: Visibility,

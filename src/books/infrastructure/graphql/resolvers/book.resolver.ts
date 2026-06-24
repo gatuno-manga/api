@@ -157,6 +157,9 @@ export class BookResolver {
 				author.localizedBiographies,
 				targetLang,
 				null,
+				'pt-BR',
+				// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+				(item: any) => item.biography,
 			);
 			return {
 				...author,

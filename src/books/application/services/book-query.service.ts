@@ -133,9 +133,6 @@ export class BookQueryService {
 		}
 	}
 
-	/**
-	 * Mapeia e resolve campos localizados para um livro
-	 */
 	private mapBookLocalizations(book: Book, targetLang?: string): Book {
 		const lang = targetLang || 'pt-BR';
 
@@ -144,6 +141,9 @@ export class BookQueryService {
 			book.alternativeTitles,
 			lang,
 			book.originalLanguageCode,
+			'pt-BR',
+			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+			(item: any) => item.title,
 		);
 		if (bestTitle) {
 			book.title = bestTitle.title;
@@ -154,6 +154,9 @@ export class BookQueryService {
 			book.localizedDescriptions,
 			lang,
 			book.originalLanguageCode,
+			'pt-BR',
+			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+			(item: any) => item.description,
 		);
 		if (bestDesc) {
 			book.description = bestDesc.description;
@@ -166,6 +169,9 @@ export class BookQueryService {
 					author.localizedBiographies,
 					lang,
 					null,
+					'pt-BR',
+					// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+					(item: any) => item.biography,
 				);
 				if (bestBio) {
 					author.biography = bestBio.biography;

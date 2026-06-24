@@ -6,6 +6,7 @@ import {
 	UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { GqlExecutionContext } from '@nestjs/graphql';
 import { JwtService } from '@nestjs/jwt';
 import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
@@ -19,6 +20,14 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 		private readonly jwtService: JwtService,
 	) {
 		super();
+	}
+
+	getRequest(context: ExecutionContext) {
+		if (context.getType<string>() === 'graphql') {
+			const ctx = GqlExecutionContext.create(context);
+			return ctx.getContext().req;
+		}
+		return context.switchToHttp().getRequest();
 	}
 
 	async canActivate(context: ExecutionContext) {
@@ -36,7 +45,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 			return true;
 		}
 
-		const request = context.switchToHttp().getRequest<Request>();
+		const request = this.getRequest(context);
 		const user = request.user as { roles?: string[] };
 
 		if (!user || !user.roles) {

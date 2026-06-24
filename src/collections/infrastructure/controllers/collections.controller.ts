@@ -5,10 +5,13 @@ import { GetCollectionBookCoversUseCase } from '@/collections/application/use-ca
 import { GetUserCollectionsUseCase } from '@/collections/application/use-cases/get-user-collections.use-case';
 import { ShareCollectionUseCase } from '@/collections/application/use-cases/share-collection.use-case';
 import { UpdateCollectionCoverUseCase } from '@/collections/application/use-cases/update-collection-cover.use-case';
+import { UpdateCollectionUseCase } from '@/collections/application/use-cases/update-collection.use-case';
+import { UploadCollectionCoverUseCase } from '@/collections/application/use-cases/upload-collection-cover.use-case';
 import { AddBookDto } from '@/collections/infrastructure/http/dto/add-book.dto';
 import { CreateCollectionDto } from '@/collections/infrastructure/http/dto/create-collection.dto';
 import { ShareCollectionDto } from '@/collections/infrastructure/http/dto/share-collection.dto';
 import { UpdateCollectionCoverDto } from '@/collections/infrastructure/http/dto/update-collection-cover.dto';
+import { UpdateCollectionDto } from '@/collections/infrastructure/http/dto/update-collection.dto';
 import { CurrentUserDto } from '@auth/application/dto/current-user.dto';
 import { CurrentUser } from '@auth/infrastructure/framework/current-user.decorator';
 import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
@@ -17,6 +20,7 @@ import { ResourceNotFoundException } from '@common/domain/exceptions/resource-no
 import { DataEnvelopeInterceptor } from '@common/interceptors/data-envelope.interceptor';
 import { SWAGGER_AUTH_SCHEME } from '@common/swagger/swagger-auth.constants';
 import {
+	BadRequestException,
 	Body,
 	ConflictException,
 	Controller,
@@ -28,11 +32,20 @@ import {
 	ParseUUIDPipe,
 	Patch,
 	Post,
+	Put,
 	Query,
+	UploadedFile,
 	UseGuards,
 	UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+	ApiBearerAuth,
+	ApiBody,
+	ApiConsumes,
+	ApiOperation,
+	ApiTags,
+} from '@nestjs/swagger';
 import { PageDto } from 'src/common/pagination/page.dto';
 import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
 import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
@@ -60,7 +73,9 @@ export class CollectionsController {
 		private readonly shareCollectionUseCase: ShareCollectionUseCase,
 		private readonly getUserCollectionsUseCase: GetUserCollectionsUseCase,
 		private readonly updateCollectionCoverUseCase: UpdateCollectionCoverUseCase,
+		private readonly uploadCollectionCoverUseCase: UploadCollectionCoverUseCase,
 		private readonly getCollectionBookCoversUseCase: GetCollectionBookCoversUseCase,
+		private readonly updateCollectionUseCase: UpdateCollectionUseCase,
 	) {}
 
 	@Get()
@@ -147,6 +162,30 @@ export class CollectionsController {
 		);
 	}
 
+	@Put(':id')
+	@Permissions(PermissionsEnum.COLLECTIONS_MANAGE)
+	async update(
+		@CurrentUser() user: CurrentUserDto,
+		@Param('id', ParseUUIDPipe) id: string,
+		@Body() dto: UpdateCollectionDto,
+	) {
+		try {
+			await this.updateCollectionUseCase.execute(user.userId, id, dto);
+			return { message: 'Collection updated successfully' };
+		} catch (error) {
+			if (error instanceof ResourceNotFoundException) {
+				throw new NotFoundException(error.message);
+			}
+			if (error instanceof DomainException) {
+				if (error.message.includes('Only the owner')) {
+					throw new ForbiddenException(error.message);
+				}
+				throw new BadRequestException(error.message);
+			}
+			throw error;
+		}
+	}
+
 	@Delete(':id')
 	@Permissions(PermissionsEnum.COLLECTIONS_MANAGE)
 	@ApiDocsDelete()
@@ -189,6 +228,48 @@ export class CollectionsController {
 			}
 			if (error instanceof DomainException) {
 				throw new ForbiddenException(error.message);
+			}
+			throw error;
+		}
+	}
+
+	@Post(':id/cover/upload')
+	@UseInterceptors(FileInterceptor('file'))
+	@Permissions(PermissionsEnum.COLLECTIONS_MANAGE)
+	@ApiOperation({ summary: 'Upload a custom cover for the collection' })
+	@ApiConsumes('multipart/form-data')
+	@ApiBody({
+		schema: {
+			type: 'object',
+			properties: {
+				file: {
+					type: 'string',
+					format: 'binary',
+				},
+			},
+		},
+	})
+	async uploadCover(
+		@CurrentUser() user: CurrentUserDto,
+		@Param('id', ParseUUIDPipe) id: string,
+		@UploadedFile() file: Express.Multer.File,
+	) {
+		try {
+			await this.uploadCollectionCoverUseCase.execute(user.userId, id, {
+				buffer: file.buffer,
+				mimetype: file.mimetype,
+				size: file.size,
+			});
+			return { message: 'Collection cover uploaded successfully' };
+		} catch (error) {
+			if (error instanceof ResourceNotFoundException) {
+				throw new NotFoundException(error.message);
+			}
+			if (error instanceof DomainException) {
+				if (error.message.includes('Only the owner')) {
+					throw new ForbiddenException(error.message);
+				}
+				throw new BadRequestException(error.message);
 			}
 			throw error;
 		}

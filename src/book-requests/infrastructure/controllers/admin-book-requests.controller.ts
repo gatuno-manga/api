@@ -5,12 +5,10 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUserDto } from 'src/auth/application/dto/current-user.dto';
 import { CurrentUser } from 'src/auth/infrastructure/framework/current-user.decorator';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
-import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
 import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
 import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
-import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 import { mapBookRequestToResponseDtoList } from './book-request-http.mapper';
 import {
 	ApiDocsApprove,
@@ -21,7 +19,6 @@ import {
 @ApiTags('Book Requests Admin')
 @Controller('admin/book-requests')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
-@Roles(RolesEnum.ADMIN)
 @ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 export class AdminBookRequestsController {
 	constructor(private readonly bookRequestsService: BookRequestsService) {}

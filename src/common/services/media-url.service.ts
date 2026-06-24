@@ -43,6 +43,11 @@ export class MediaUrlService {
 			finalInternalPath = cleanPath.substring(bucketName.length + 1);
 		}
 
+		// Remove o prefixo 'capas/' legado caso exista no banco de dados
+		if (finalInternalPath.startsWith('capas/')) {
+			finalInternalPath = finalInternalPath.substring('capas/'.length);
+		}
+
 		return `${this.appConfig.rustfsPublicUrl}/${bucketName}/${finalInternalPath}`;
 	}
 }
