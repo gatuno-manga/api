@@ -41,12 +41,13 @@ import {
 	ApiDocsAddBook,
 	ApiDocsCreate,
 	ApiDocsDelete,
+	ApiDocsGetCollectionBookCovers,
 	ApiDocsGetMyCollections,
 	ApiDocsShare,
 	ApiDocsUpdateCover,
 } from './swagger/collections.swagger';
 
-@ApiTags('Collections V2')
+@ApiTags('Collections')
 @Controller('collections')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @UseInterceptors(DataEnvelopeInterceptor)
@@ -195,6 +196,7 @@ export class CollectionsController {
 
 	@Get(':id/books/covers')
 	@Permissions(PermissionsEnum.COLLECTIONS_VIEW)
+	@ApiDocsGetCollectionBookCovers()
 	async getCollectionBookCovers(
 		@CurrentUser() user: CurrentUserDto,
 		@Param('id', ParseUUIDPipe) id: string,

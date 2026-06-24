@@ -47,3 +47,9 @@ export function ApiDocsUpdateCover() {
 		ApiOperation({ summary: 'Update collection cover URL' }),
 	);
 }
+
+export function ApiDocsGetCollectionBookCovers() {
+	return applyDecorators(
+		ApiOperation({ summary: 'Get book covers for a collection' }),
+	);
+}
