@@ -2,7 +2,10 @@ import { BooksModule } from '@/books/books.module';
 import { AddBookToCollectionUseCase } from '@/collections/application/use-cases/add-book-to-collection.use-case';
 import { CreateCollectionUseCase } from '@/collections/application/use-cases/create-collection.use-case';
 import { DeleteCollectionUseCase } from '@/collections/application/use-cases/delete-collection.use-case';
+import { GetCollectionBookCoversUseCase } from '@/collections/application/use-cases/get-collection-book-covers.use-case';
 import { GetPublicCollectionsUseCase } from '@/collections/application/use-cases/get-public-collections.use-case';
+import { UpdateCollectionCoverUseCase } from '@/collections/application/use-cases/update-collection-cover.use-case';
+import { CollectionResolver } from '@/collections/infrastructure/graphql/resolvers/collection.resolver';
 import { AuthModule } from '@auth/auth.module';
 import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { Module, forwardRef } from '@nestjs/common';
@@ -34,6 +37,9 @@ import { TypeOrmCollectionRepository } from './infrastructure/database/repositor
 		ShareCollectionUseCase,
 		GetUserCollectionsUseCase,
 		GetPublicCollectionsUseCase,
+		UpdateCollectionCoverUseCase,
+		GetCollectionBookCoversUseCase,
+		CollectionResolver,
 	],
 	exports: [
 		'CollectionRepository',
@@ -42,6 +48,8 @@ import { TypeOrmCollectionRepository } from './infrastructure/database/repositor
 		CreateCollectionUseCase,
 		DeleteCollectionUseCase,
 		AddBookToCollectionUseCase,
+		UpdateCollectionCoverUseCase,
+		GetCollectionBookCoversUseCase,
 	],
 })
 export class CollectionsModule {}

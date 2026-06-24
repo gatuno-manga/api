@@ -7,6 +7,17 @@ export interface CollectionRepository {
 	save(collection: Collection): Promise<void>;
 	findById(id: CollectionId): Promise<Collection | null>;
 	findByOwner(ownerId: UserId): Promise<Collection[]>;
+	findPaginatedByOwner(
+		ownerId: UserId,
+		limit: number,
+		cursorCreatedAt?: Date,
+		cursorId?: string,
+	): Promise<Collection[]>;
+	findByOwnerWithOffset(
+		ownerId: UserId,
+		skip: number,
+		take: number,
+	): Promise<[Collection[], number]>;
 	findSharedWith(userId: UserId): Promise<Collection[]>;
 	delete(id: CollectionId): Promise<void>;
 }

@@ -41,3 +41,9 @@ export function ApiDocsShare() {
 		ApiOperation({ summary: 'Share a collection with a collaborator' }),
 	);
 }
+
+export function ApiDocsUpdateCover() {
+	return applyDecorators(
+		ApiOperation({ summary: 'Update collection cover URL' }),
+	);
+}

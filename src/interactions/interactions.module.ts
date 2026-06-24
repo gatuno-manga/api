@@ -16,6 +16,7 @@ import { TypeOrmFavoriteRepository } from './infrastructure/database/repositorie
 import { TypeOrmReviewRepository } from './infrastructure/database/repositories/typeorm-review.repository';
 import { TypeOrmSubscriptionRepository } from './infrastructure/database/repositories/typeorm-subscription.repository';
 import { NotificationEvents } from './infrastructure/events/notification.events';
+import { FavoriteResolver } from './infrastructure/graphql/resolvers/favorite.resolver';
 
 @Module({
 	imports: [
@@ -47,6 +48,7 @@ import { NotificationEvents } from './infrastructure/events/notification.events'
 		SubscribeToBookUseCase,
 		ReviewBookUseCase,
 		NotificationEvents,
+		FavoriteResolver,
 	],
 	exports: [
 		'FavoriteRepository',

@@ -22,4 +22,14 @@ export class FavoritesCursorOptionsDto {
 	@Min(1)
 	@Max(100)
 	limit = 20;
+
+	@ApiPropertyOptional({
+		description: 'Página atual (para paginação baseada em offset)',
+		minimum: 1,
+	})
+	@IsOptional()
+	@Type(() => Number)
+	@IsInt()
+	@Min(1)
+	page?: number;
 }

@@ -19,6 +19,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
+import { PageDto } from 'src/common/pagination/page.dto';
 import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
 import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
 import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
@@ -52,6 +53,11 @@ export class UserInteractionsController {
 		);
 
 		if (page.data.length === 0) {
+			const isPageDto = page instanceof PageDto;
+			if (isPageDto) {
+				return new PageDto([], page.metadata);
+			}
+
 			return new CursorPageDto([], page.nextCursor, page.hasNextPage);
 		}
 
@@ -76,6 +82,11 @@ export class UserInteractionsController {
 					: null,
 			};
 		});
+
+		const isPageDto = page instanceof PageDto;
+		if (isPageDto) {
+			return new PageDto(mappedData, page.metadata);
+		}
 
 		return new CursorPageDto(mappedData, page.nextCursor, page.hasNextPage);
 	}

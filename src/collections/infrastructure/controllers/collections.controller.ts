@@ -1,11 +1,14 @@
 import { AddBookToCollectionUseCase } from '@/collections/application/use-cases/add-book-to-collection.use-case';
 import { CreateCollectionUseCase } from '@/collections/application/use-cases/create-collection.use-case';
 import { DeleteCollectionUseCase } from '@/collections/application/use-cases/delete-collection.use-case';
+import { GetCollectionBookCoversUseCase } from '@/collections/application/use-cases/get-collection-book-covers.use-case';
 import { GetUserCollectionsUseCase } from '@/collections/application/use-cases/get-user-collections.use-case';
 import { ShareCollectionUseCase } from '@/collections/application/use-cases/share-collection.use-case';
+import { UpdateCollectionCoverUseCase } from '@/collections/application/use-cases/update-collection-cover.use-case';
 import { AddBookDto } from '@/collections/infrastructure/http/dto/add-book.dto';
 import { CreateCollectionDto } from '@/collections/infrastructure/http/dto/create-collection.dto';
 import { ShareCollectionDto } from '@/collections/infrastructure/http/dto/share-collection.dto';
+import { UpdateCollectionCoverDto } from '@/collections/infrastructure/http/dto/update-collection-cover.dto';
 import { CurrentUserDto } from '@auth/application/dto/current-user.dto';
 import { CurrentUser } from '@auth/infrastructure/framework/current-user.decorator';
 import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
@@ -23,11 +26,14 @@ import {
 	NotFoundException,
 	Param,
 	ParseUUIDPipe,
+	Patch,
 	Post,
+	Query,
 	UseGuards,
 	UseInterceptors,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { PageDto } from 'src/common/pagination/page.dto';
 import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
 import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
 import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
@@ -37,6 +43,7 @@ import {
 	ApiDocsDelete,
 	ApiDocsGetMyCollections,
 	ApiDocsShare,
+	ApiDocsUpdateCover,
 } from './swagger/collections.swagger';
 
 @ApiTags('Collections V2')
@@ -51,16 +58,36 @@ export class CollectionsController {
 		private readonly addBookToCollectionUseCase: AddBookToCollectionUseCase,
 		private readonly shareCollectionUseCase: ShareCollectionUseCase,
 		private readonly getUserCollectionsUseCase: GetUserCollectionsUseCase,
+		private readonly updateCollectionCoverUseCase: UpdateCollectionCoverUseCase,
+		private readonly getCollectionBookCoversUseCase: GetCollectionBookCoversUseCase,
 	) {}
 
 	@Get()
 	@Permissions(PermissionsEnum.COLLECTIONS_VIEW)
 	@ApiDocsGetMyCollections()
-	async getMyCollections(@CurrentUser() user: CurrentUserDto) {
-		const collections = await this.getUserCollectionsUseCase.execute(
+	async getMyCollections(
+		@CurrentUser() user: CurrentUserDto,
+		@Query('limit') limit?: string,
+		@Query('cursor') cursor?: string,
+		@Query('page') page?: string,
+	) {
+		const numLimit = limit ? Number.parseInt(limit, 10) : 20;
+		const numPage = page ? Number.parseInt(page, 10) : undefined;
+		const result = await this.getUserCollectionsUseCase.execute(
 			user.userId,
+			numLimit,
+			cursor,
+			numPage,
 		);
-		return collections.map((c) => c.toSnapshot());
+
+		const isPageDto = result instanceof PageDto;
+
+		return {
+			data: result.data.map((c) => c.toSnapshot()),
+			nextCursor: isPageDto ? undefined : result.nextCursor,
+			hasNextPage: isPageDto ? undefined : result.hasNextPage,
+			metadata: isPageDto ? result.metadata : undefined,
+		};
 	}
 
 	@Post()
@@ -138,5 +165,46 @@ export class CollectionsController {
 			}
 			throw error;
 		}
+	}
+
+	@Patch(':id/cover')
+	@Permissions(PermissionsEnum.COLLECTIONS_MANAGE)
+	@ApiDocsUpdateCover()
+	async updateCover(
+		@CurrentUser() user: CurrentUserDto,
+		@Param('id', ParseUUIDPipe) id: string,
+		@Body() dto: UpdateCollectionCoverDto,
+	) {
+		try {
+			await this.updateCollectionCoverUseCase.execute(
+				user.userId,
+				id,
+				dto.coverUrl || null,
+			);
+			return { message: 'Collection cover updated successfully' };
+		} catch (error) {
+			if (error instanceof ResourceNotFoundException) {
+				throw new NotFoundException(error.message);
+			}
+			if (error instanceof DomainException) {
+				throw new ForbiddenException(error.message);
+			}
+			throw error;
+		}
+	}
+
+	@Get(':id/books/covers')
+	@Permissions(PermissionsEnum.COLLECTIONS_VIEW)
+	async getCollectionBookCovers(
+		@CurrentUser() user: CurrentUserDto,
+		@Param('id', ParseUUIDPipe) id: string,
+		@Query('limit') limit?: string,
+	) {
+		const numLimit = limit ? Number.parseInt(limit, 10) : 4;
+		return this.getCollectionBookCoversUseCase.execute(
+			user.userId,
+			id,
+			numLimit,
+		);
 	}
 }

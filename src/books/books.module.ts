@@ -299,6 +299,7 @@ import { ContentUploadedListener } from './infrastructure/notifiers/content-uplo
 		AuthorsService,
 		TagsService,
 		SensitiveContentService,
+		BookDataLoaderService,
 	],
 })
 export class BooksModule {}
