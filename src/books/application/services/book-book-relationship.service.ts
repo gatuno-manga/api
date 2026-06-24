@@ -107,7 +107,7 @@ export class BookBookRelationshipService {
 		});
 
 		const saved = await this.bookRelationshipRepository.save(entity);
-		return this.getRelationshipById(saved.id);
+		return saved;
 	}
 
 	async updateRelationship(
@@ -154,7 +154,14 @@ export class BookBookRelationshipService {
 		}
 
 		await this.bookRelationshipRepository.save(relationship);
-		return this.getRelationshipById(relationship.id);
+
+		if (relationship.sourceBookId !== relationship.sourceBook?.id) {
+			const temp = relationship.sourceBook;
+			relationship.sourceBook = relationship.targetBook;
+			relationship.targetBook = temp;
+		}
+
+		return relationship;
 	}
 
 	async deleteRelationship(idBook: string, idRelationship: string) {
