@@ -19,14 +19,17 @@ export class GetCollectionsForSyncUseCase {
 			lastSyncAt,
 		);
 
-		return collections.map((c) => ({
-			id: c.id,
-			title: c.title,
-			description: c.description ?? undefined,
-			visibility: c.visibility,
-			createdAt: c.createdAt,
-			updatedAt: c.updatedAt,
-			deletedAt: c.deletedAt?.toISOString() ?? undefined,
-		}));
+		return collections.map((c) => {
+			const snapshot = c.toSnapshot();
+			return {
+				id: snapshot.id,
+				title: snapshot.title,
+				description: snapshot.description ?? undefined,
+				visibility: snapshot.visibility,
+				createdAt: snapshot.createdAt,
+				updatedAt: snapshot.updatedAt,
+				deletedAt: snapshot.deletedAt?.toISOString() ?? undefined,
+			};
+		});
 	}
 }

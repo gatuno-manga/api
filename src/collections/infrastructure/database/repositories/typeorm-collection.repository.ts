@@ -190,17 +190,7 @@ export class TypeOrmCollectionRepository implements CollectionRepository {
 	async findByOwnerForSync(
 		ownerId: UserId,
 		lastSyncAt?: Date,
-	): Promise<
-		{
-			id: string;
-			title: string;
-			description: string | null;
-			visibility: string;
-			createdAt: Date;
-			updatedAt: Date;
-			deletedAt: Date | null;
-		}[]
-	> {
+	): Promise<Collection[]> {
 		const where: FindOptionsWhere<CollectionEntity> = {
 			ownerId: ownerId.toString(),
 		};
@@ -210,16 +200,9 @@ export class TypeOrmCollectionRepository implements CollectionRepository {
 		const entities = await this.repository.find({
 			where,
 			withDeleted: !!lastSyncAt,
+			relations: ['collaborators', 'books'],
 		});
-		return entities.map((e) => ({
-			id: e.id,
-			title: e.title,
-			description: e.description,
-			visibility: e.visibility,
-			createdAt: e.createdAt,
-			updatedAt: e.updatedAt,
-			deletedAt: e.deletedAt,
-		}));
+		return entities.map((entity) => CollectionMapper.toDomain(entity));
 	}
 
 	async getSyncState(id: CollectionId): Promise<SyncState> {

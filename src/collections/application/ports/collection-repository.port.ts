@@ -29,16 +29,6 @@ export interface CollectionRepository {
 	findByOwnerForSync(
 		ownerId: UserId,
 		lastSyncAt?: Date,
-	): Promise<
-		{
-			id: string;
-			title: string;
-			description: string | null;
-			visibility: string;
-			createdAt: Date;
-			updatedAt: Date;
-			deletedAt: Date | null;
-		}[]
-	>;
+	): Promise<Collection[]>;
 	getSyncState(id: CollectionId): Promise<SyncState>;
 }
