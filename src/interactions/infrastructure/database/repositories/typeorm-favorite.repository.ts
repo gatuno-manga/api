@@ -5,7 +5,7 @@ import { BookId } from '@common/domain/value-objects/book-id.vo';
 import { UserId } from '@common/domain/value-objects/user-id.vo';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindOptionsWhere, MoreThanOrEqual, Repository } from 'typeorm';
 
 @Injectable()
 export class TypeOrmFavoriteRepository implements FavoriteRepository {
@@ -16,12 +16,25 @@ export class TypeOrmFavoriteRepository implements FavoriteRepository {
 
 	async save(favorite: Favorite): Promise<void> {
 		const snapshot = favorite.toSnapshot();
+		const existing = await this.repository.findOne({
+			where: { userId: snapshot.userId, bookId: snapshot.bookId },
+			withDeleted: true,
+		});
+
+		if (existing) {
+			if (existing.deletedAt) {
+				existing.deletedAt = null;
+				await this.repository.save(existing);
+			}
+			return;
+		}
+
 		const entity = this.repository.create(snapshot);
 		await this.repository.save(entity);
 	}
 
 	async delete(userId: UserId, bookId: BookId): Promise<void> {
-		await this.repository.delete({
+		await this.repository.softDelete({
 			userId: userId.toString(),
 			bookId: bookId.toString(),
 		});
@@ -82,5 +95,22 @@ export class TypeOrmFavoriteRepository implements FavoriteRepository {
 		});
 
 		return [entities.map((e) => Favorite.restore(e)), count];
+	}
+
+	async findByUserForSync(
+		userId: UserId,
+		lastSyncAt?: Date,
+	): Promise<Favorite[]> {
+		const where: FindOptionsWhere<FavoriteEntity> = {
+			userId: userId.toString(),
+		};
+		if (lastSyncAt) {
+			where.updatedAt = MoreThanOrEqual(lastSyncAt);
+		}
+		const entities = await this.repository.find({
+			where,
+			withDeleted: !!lastSyncAt,
+		});
+		return entities.map((e) => Favorite.restore(e));
 	}
 }

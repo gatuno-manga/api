@@ -1,4 +1,5 @@
 import { CollectionsModule } from '@/collections/collections.module';
+import { SyncModule } from '@/sync/sync.module';
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from 'src/auth/auth.module';
@@ -12,6 +13,8 @@ import { EncryptionModule } from 'src/infrastructure/encryption/encryption.modul
 import { UserResourcesMapper } from './application/mappers/user-resources.mapper';
 import { I_USER_IMAGE_REPOSITORY } from './application/ports/user-image-repository.interface';
 import { I_USER_REPOSITORY } from './application/ports/user-repository.interface';
+import { ReadingProgressSyncProvider } from './application/providers/reading-progress-sync.provider';
+import { SavedPagesSyncProvider } from './application/providers/saved-pages-sync.provider';
 import { HighestPageWinsStrategy } from './application/strategies/highest-page-wins.strategy';
 import { LastWriteWinsStrategy } from './application/strategies/last-write-wins.strategy';
 import { SyncStrategyResolver } from './application/strategies/sync-strategy.resolver';
@@ -55,6 +58,7 @@ import { RbacModule } from './rbac.module';
 		EncryptionModule,
 		forwardRef(() => FilesModule),
 		forwardRef(() => CollectionsModule),
+		forwardRef(() => SyncModule),
 		RbacModule,
 		TypeOrmModule.forFeature([
 			User,
@@ -102,6 +106,8 @@ import { RbacModule } from './rbac.module';
 		SyncStrategyResolver,
 		UserResolver,
 		UserImageResolver,
+		ReadingProgressSyncProvider,
+		SavedPagesSyncProvider,
 	],
 	exports: [
 		AdminUsersService,

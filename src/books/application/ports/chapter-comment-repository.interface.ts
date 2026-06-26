@@ -3,6 +3,7 @@ import {
 	PaginationOptions,
 	ViewerContext,
 } from '@books/domain/types/criteria.types';
+import { UserId } from '@common/domain/value-objects/user-id.vo';
 
 export interface IChapterCommentRepository {
 	findById(
@@ -31,6 +32,10 @@ export interface IChapterCommentRepository {
 		viewer?: ViewerContext,
 	): Promise<ChapterComment[]>;
 	create(data: Partial<ChapterComment>): ChapterComment;
+	findByUserForSync(
+		userId: UserId,
+		lastSyncAt?: Date,
+	): Promise<ChapterComment[]>;
 }
 
 export const I_CHAPTER_COMMENT_REPOSITORY = 'IChapterCommentRepository';

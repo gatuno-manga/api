@@ -3,13 +3,14 @@ import { Collection } from '@/collections/domain/entities/collection';
 import { CollectionId } from '@/collections/domain/value-objects/collection-id.vo';
 import { CollectionEntity } from '@/collections/infrastructure/database/entities/collection.entity';
 import { CollectionMapper } from '@/collections/infrastructure/mappers/collection.mapper';
+import { SyncState } from '@/sync/application/types/sync-state.enum';
 import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { DomainException } from '@common/domain/exceptions/domain.exception';
 import { UserId } from '@common/domain/value-objects/user-id.vo';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '@users/infrastructure/database/entities/user.entity';
-import { In, Repository } from 'typeorm';
+import { FindOptionsWhere, In, MoreThanOrEqual, Repository } from 'typeorm';
 
 @Injectable()
 export class TypeOrmCollectionRepository implements CollectionRepository {
@@ -163,6 +164,71 @@ export class TypeOrmCollectionRepository implements CollectionRepository {
 	}
 
 	async delete(id: CollectionId): Promise<void> {
-		await this.repository.delete(id.toString());
+		await this.repository.softDelete(id.toString());
+	}
+
+	async restore(
+		id: CollectionId,
+		title: string,
+		description?: string,
+	): Promise<void> {
+		const entity = await this.repository.findOne({
+			where: { id: id.toString() },
+			withDeleted: true,
+		});
+
+		if (!entity || !entity.deletedAt) {
+			return;
+		}
+
+		entity.deletedAt = null;
+		entity.title = title;
+		entity.description = description ?? null;
+		await this.repository.save(entity);
+	}
+
+	async findByOwnerForSync(
+		ownerId: UserId,
+		lastSyncAt?: Date,
+	): Promise<
+		{
+			id: string;
+			title: string;
+			description: string | null;
+			visibility: string;
+			createdAt: Date;
+			updatedAt: Date;
+			deletedAt: Date | null;
+		}[]
+	> {
+		const where: FindOptionsWhere<CollectionEntity> = {
+			ownerId: ownerId.toString(),
+		};
+		if (lastSyncAt) {
+			where.updatedAt = MoreThanOrEqual(lastSyncAt);
+		}
+		const entities = await this.repository.find({
+			where,
+			withDeleted: !!lastSyncAt,
+		});
+		return entities.map((e) => ({
+			id: e.id,
+			title: e.title,
+			description: e.description,
+			visibility: e.visibility,
+			createdAt: e.createdAt,
+			updatedAt: e.updatedAt,
+			deletedAt: e.deletedAt,
+		}));
+	}
+
+	async getSyncState(id: CollectionId): Promise<SyncState> {
+		const entity = await this.repository.findOne({
+			where: { id: id.toString() },
+			withDeleted: true,
+		});
+		if (!entity) return SyncState.NOT_FOUND;
+		if (entity.deletedAt) return SyncState.DELETED;
+		return SyncState.ACTIVE;
 	}
 }

@@ -1,3 +1,4 @@
+import { UserId } from '@common/domain/value-objects/user-id.vo';
 import {
 	Body,
 	Controller,
@@ -151,7 +152,10 @@ export class SavedPagesController {
 		@Param('pageId', ParseIntPipe) pageId: number,
 		@CurrentUser() user: CurrentUserDto,
 	) {
-		await this.savedPagesService.unsavePageByPageId(pageId, user.userId);
+		await this.savedPagesService.unsavePageByPageId(
+			pageId,
+			UserId.create(user.userId),
+		);
 		return { message: 'Page unsaved successfully' };
 	}
 

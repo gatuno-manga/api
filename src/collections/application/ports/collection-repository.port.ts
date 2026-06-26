@@ -1,5 +1,6 @@
 import { Collection } from '@/collections/domain/entities/collection';
 import { CollectionId } from '@/collections/domain/value-objects/collection-id.vo';
+import { SyncState } from '@/sync/application/types/sync-state.enum';
 import { UserId } from '@common/domain/value-objects/user-id.vo';
 
 export interface CollectionRepository {
@@ -20,4 +21,24 @@ export interface CollectionRepository {
 	): Promise<[Collection[], number]>;
 	findSharedWith(userId: UserId): Promise<Collection[]>;
 	delete(id: CollectionId): Promise<void>;
+	restore(
+		id: CollectionId,
+		title: string,
+		description?: string,
+	): Promise<void>;
+	findByOwnerForSync(
+		ownerId: UserId,
+		lastSyncAt?: Date,
+	): Promise<
+		{
+			id: string;
+			title: string;
+			description: string | null;
+			visibility: string;
+			createdAt: Date;
+			updatedAt: Date;
+			deletedAt: Date | null;
+		}[]
+	>;
+	getSyncState(id: CollectionId): Promise<SyncState>;
 }

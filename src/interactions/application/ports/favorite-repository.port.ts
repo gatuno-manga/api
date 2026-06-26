@@ -18,4 +18,5 @@ export interface FavoriteRepository {
 		skip: number,
 		take: number,
 	): Promise<[Favorite[], number]>;
+	findByUserForSync(userId: UserId, lastSyncAt?: Date): Promise<Favorite[]>;
 }

@@ -13,6 +13,7 @@ import {
 import { Chapter } from '@books/domain/entities/chapter';
 import { ChapterComment } from '@books/domain/entities/chapter-comment';
 import { ContentFormat } from '@books/domain/enums/content-format.enum';
+import { UserId } from '@common/domain/value-objects/user-id.vo';
 import { InjectQueue } from '@nestjs/bullmq';
 import {
 	BadRequestException,
@@ -361,5 +362,15 @@ export class ChapterCommentsService {
 		);
 
 		return { userName, profileImageUrl };
+	}
+
+	async getCommentsForSync(
+		userId: UserId,
+		lastSyncAt?: Date,
+	): Promise<ChapterComment[]> {
+		return this.chapterCommentRepository.findByUserForSync(
+			userId,
+			lastSyncAt,
+		);
 	}
 }

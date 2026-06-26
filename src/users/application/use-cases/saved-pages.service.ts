@@ -1,3 +1,4 @@
+import { UserId } from '@common/domain/value-objects/user-id.vo';
 import {
 	BadRequestException,
 	Injectable,
@@ -11,7 +12,7 @@ import { UpdateSavedPageDto } from '@users/infrastructure/http/dto/update-saved-
 import { Book } from 'src/books/infrastructure/database/entities/book.entity';
 import { Chapter } from 'src/books/infrastructure/database/entities/chapter.entity';
 import { Page } from 'src/books/infrastructure/database/entities/page.entity';
-import { Repository } from 'typeorm';
+import { FindOptionsWhere, MoreThanOrEqual, Repository } from 'typeorm';
 
 @Injectable()
 export class SavedPagesService {
@@ -55,15 +56,23 @@ export class SavedPagesService {
 			);
 		}
 
-		// Verifica se já está salvo
+		// Verifica se já está salvo (inclusive deletado)
 		const existing = await this.savedPageRepository.findOne({
 			where: {
 				user: { id: userId },
 				page: { id: dto.pageId },
 			},
+			withDeleted: true,
 		});
 
 		if (existing) {
+			if (existing.deletedAt) {
+				// Restore se estava deletado
+				existing.deletedAt = null;
+				existing.comment = dto.comment || null;
+				existing.isPublic = dto.isPublic ?? false;
+				return this.savedPageRepository.save(existing);
+			}
 			throw new BadRequestException('Page is already saved');
 		}
 
@@ -223,16 +232,16 @@ export class SavedPagesService {
 	 */
 	async unsavePage(id: string, userId: string): Promise<void> {
 		const savedPage = await this.getSavedPage(id, userId);
-		await this.savedPageRepository.remove(savedPage);
+		await this.savedPageRepository.softRemove(savedPage);
 	}
 
 	/**
 	 * Remove página salva por pageId (alternativo)
 	 */
-	async unsavePageByPageId(pageId: number, userId: string): Promise<void> {
+	async unsavePageByPageId(pageId: number, userId: UserId): Promise<void> {
 		const savedPage = await this.savedPageRepository.findOne({
 			where: {
-				user: { id: userId },
+				user: { id: userId.toString() },
 				page: { id: pageId },
 			},
 		});
@@ -241,7 +250,29 @@ export class SavedPagesService {
 			throw new NotFoundException('Saved page not found');
 		}
 
-		await this.savedPageRepository.remove(savedPage);
+		await this.savedPageRepository.softRemove(savedPage);
+	}
+
+	/**
+	 * Lists saved pages for sync, optionally filtering by lastSyncAt and including soft-deleted records.
+	 */
+	async getSavedPagesForSync(
+		userId: UserId,
+		lastSyncAt?: Date,
+	): Promise<SavedPage[]> {
+		const whereClause: FindOptionsWhere<SavedPage> = {
+			user: { id: userId.toString() },
+		};
+
+		if (lastSyncAt) {
+			whereClause.updatedAt = MoreThanOrEqual(lastSyncAt);
+		}
+
+		return this.savedPageRepository.find({
+			where: whereClause,
+			withDeleted: !!lastSyncAt,
+			relations: ['page', 'chapter', 'book'],
+		});
 	}
 
 	/**
