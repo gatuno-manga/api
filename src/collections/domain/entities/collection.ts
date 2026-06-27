@@ -17,6 +17,7 @@ export interface CollectionSnapshot {
 	books: string[];
 	createdAt: Date;
 	updatedAt: Date;
+	deletedAt: Date | null;
 }
 
 export class Collection {
@@ -31,6 +32,7 @@ export class Collection {
 		private readonly books: BookIdList,
 		private readonly createdAt: Date,
 		private readonly updatedAt: Date,
+		private readonly deletedAt: Date | null = null,
 	) {}
 
 	public static create(
@@ -51,6 +53,7 @@ export class Collection {
 			BookIdList.create(),
 			now,
 			now,
+			null,
 		);
 	}
 
@@ -68,6 +71,7 @@ export class Collection {
 			BookIdList.create(snapshot.books.map((id) => BookId.create(id))),
 			snapshot.createdAt,
 			snapshot.updatedAt,
+			snapshot.deletedAt,
 		);
 	}
 
@@ -176,6 +180,7 @@ export class Collection {
 			books: this.books.toArray().map((id) => id.toString()),
 			createdAt: this.createdAt,
 			updatedAt: this.updatedAt,
+			deletedAt: this.deletedAt,
 		};
 	}
 

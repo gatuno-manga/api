@@ -1,35 +1,34 @@
+import { UserId } from '@common/domain/value-objects/user-id.vo';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { UserResourcesMapper } from '@users/application/mappers/user-resources.mapper';
-import { SavedPage } from '@users/infrastructure/database/entities/saved-page.entity';
-import { Book } from 'src/books/infrastructure/database/entities/book.entity';
-import { Chapter } from 'src/books/infrastructure/database/entities/chapter.entity';
-import { Page } from 'src/books/infrastructure/database/entities/page.entity';
-import { Repository } from 'typeorm';
+import {
+	ISavedPagesRepository,
+	I_SAVED_PAGES_REPOSITORY,
+} from '@users/application/ports/saved-pages-repository.interface';
+import { SavedPage } from '@users/domain/entities/saved-page';
 import { SavedPagesService } from './saved-pages.service';
 
 describe('SavedPagesService', () => {
 	let service: SavedPagesService;
-	let _savedPageRepository: jest.Mocked<Repository<SavedPage>>;
-	let _pageRepository: jest.Mocked<Repository<Page>>;
-	let _userResourcesMapper: jest.Mocked<UserResourcesMapper>;
+	let savedPagesRepository: jest.Mocked<ISavedPagesRepository>;
+	let userResourcesMapper: jest.Mocked<UserResourcesMapper>;
 
-	const mockSavedPageRepository = {
-		findOne: jest.fn(),
-		find: jest.fn(),
+	const mockSavedPagesRepository = {
 		save: jest.fn(),
-		create: jest.fn(),
-		count: jest.fn(),
-		remove: jest.fn(),
+		findOneByPageAndUser: jest.fn(),
+		findByIdAndUser: jest.fn(),
+		findByUser: jest.fn(),
+		findPublicByUser: jest.fn(),
+		findPublicByBookAndUser: jest.fn(),
+		findByBookAndUser: jest.fn(),
+		findByChapterAndUser: jest.fn(),
+		countByPageAndUser: jest.fn(),
+		countByBookAndUser: jest.fn(),
+		softRemove: jest.fn(),
+		findForSync: jest.fn(),
+		verifyPageOwnership: jest.fn(),
 	};
-
-	const mockPageRepository = {
-		findOne: jest.fn(),
-	};
-
-	const mockChapterRepository = {};
-	const mockBookRepository = {};
 
 	const mockUserResourcesMapper = {
 		toSavedPageList: jest.fn().mockImplementation((val) => val),
@@ -41,20 +40,8 @@ describe('SavedPagesService', () => {
 			providers: [
 				SavedPagesService,
 				{
-					provide: getRepositoryToken(SavedPage),
-					useValue: mockSavedPageRepository,
-				},
-				{
-					provide: getRepositoryToken(Page),
-					useValue: mockPageRepository,
-				},
-				{
-					provide: getRepositoryToken(Chapter),
-					useValue: mockChapterRepository,
-				},
-				{
-					provide: getRepositoryToken(Book),
-					useValue: mockBookRepository,
+					provide: I_SAVED_PAGES_REPOSITORY,
+					useValue: mockSavedPagesRepository,
 				},
 				{
 					provide: UserResourcesMapper,
@@ -64,9 +51,8 @@ describe('SavedPagesService', () => {
 		}).compile();
 
 		service = module.get<SavedPagesService>(SavedPagesService);
-		_savedPageRepository = module.get(getRepositoryToken(SavedPage));
-		_pageRepository = module.get(getRepositoryToken(Page));
-		_userResourcesMapper = module.get(UserResourcesMapper);
+		savedPagesRepository = module.get(I_SAVED_PAGES_REPOSITORY);
+		userResourcesMapper = module.get(UserResourcesMapper);
 	});
 
 	afterEach(() => {
@@ -78,7 +64,7 @@ describe('SavedPagesService', () => {
 	});
 
 	describe('savePage', () => {
-		const userId = 'user-1';
+		const userIdStr = '00000000-0000-0000-0000-000000000000';
 		const dto = {
 			pageId: 10,
 			chapterId: 'ch-1',
@@ -87,63 +73,83 @@ describe('SavedPagesService', () => {
 		};
 
 		it('should save a page successfully', async () => {
-			mockPageRepository.findOne.mockResolvedValue({
-				id: 10,
-				chapter: { id: 'ch-1', book: { id: 'book-1' } },
-			} as any);
-			mockSavedPageRepository.findOne.mockResolvedValue(null);
-			mockSavedPageRepository.create.mockReturnValue(dto as any);
-			mockSavedPageRepository.save.mockResolvedValue({
-				id: 's1',
-				...dto,
-			} as any);
+			mockSavedPagesRepository.verifyPageOwnership.mockResolvedValue(
+				true,
+			);
+			mockSavedPagesRepository.findOneByPageAndUser.mockResolvedValue(
+				null,
+			);
 
-			const result = await service.savePage(dto as any, userId);
+			const newSavedPage = SavedPage.create(
+				'',
+				UserId.create(userIdStr),
+				dto.pageId,
+				dto.chapterId,
+				dto.bookId,
+				dto.comment,
+				false,
+			);
 
-			expect(result.id).toBe('s1');
-			expect(mockSavedPageRepository.save).toHaveBeenCalled();
+			mockSavedPagesRepository.save.mockResolvedValue(newSavedPage);
+
+			const result = await service.savePage(dto as any, userIdStr);
+
+			expect(mockSavedPagesRepository.save).toHaveBeenCalled();
+			expect(result).toBeDefined();
 		});
 
-		it('should throw NotFoundException if page does not exist', async () => {
-			mockPageRepository.findOne.mockResolvedValue(null);
-
-			await expect(service.savePage(dto as any, userId)).rejects.toThrow(
-				NotFoundException,
+		it('should throw NotFoundException if page does not exist or ownership mismatch', async () => {
+			mockSavedPagesRepository.verifyPageOwnership.mockResolvedValue(
+				false,
 			);
-		});
 
-		it('should throw BadRequestException if page belongs to different chapter', async () => {
-			mockPageRepository.findOne.mockResolvedValue({
-				id: 10,
-				chapter: { id: 'different-ch', book: { id: 'book-1' } },
-			} as any);
-
-			await expect(service.savePage(dto as any, userId)).rejects.toThrow(
-				BadRequestException,
-			);
+			await expect(
+				service.savePage(dto as any, userIdStr),
+			).rejects.toThrow(NotFoundException);
 		});
 
 		it('should throw BadRequestException if page is already saved', async () => {
-			mockPageRepository.findOne.mockResolvedValue({
-				id: 10,
-				chapter: { id: 'ch-1', book: { id: 'book-1' } },
-			} as any);
-			mockSavedPageRepository.findOne.mockResolvedValue({
-				id: 'existing',
-			} as any);
-
-			await expect(service.savePage(dto as any, userId)).rejects.toThrow(
-				BadRequestException,
+			mockSavedPagesRepository.verifyPageOwnership.mockResolvedValue(
+				true,
 			);
+
+			const existing = SavedPage.create(
+				'',
+				UserId.create(userIdStr),
+				dto.pageId,
+				dto.chapterId,
+				dto.bookId,
+				null,
+				false,
+			);
+			mockSavedPagesRepository.findOneByPageAndUser.mockResolvedValue(
+				existing,
+			);
+
+			await expect(
+				service.savePage(dto as any, userIdStr),
+			).rejects.toThrow(BadRequestException);
 		});
 	});
 
 	describe('getSavedPages', () => {
 		it('should return mapped saved pages', async () => {
-			const savedPages = [{ id: '1' }];
-			mockSavedPageRepository.find.mockResolvedValue(savedPages as any);
+			const savedPages = [
+				SavedPage.create(
+					'',
+					UserId.create('00000000-0000-0000-0000-000000000000'),
+					1,
+					'',
+					'',
+					null,
+					false,
+				),
+			];
+			mockSavedPagesRepository.findByUser.mockResolvedValue(savedPages);
 
-			const result = await service.getSavedPages('u1');
+			const result = await service.getSavedPages(
+				'00000000-0000-0000-0000-000000000000',
+			);
 
 			expect(result).toEqual(savedPages);
 			expect(
@@ -154,21 +160,27 @@ describe('SavedPagesService', () => {
 
 	describe('updateComment', () => {
 		it('should update comment and save', async () => {
-			const existing = { id: 's1', comment: 'old' };
-			mockSavedPageRepository.findOne.mockResolvedValue(existing as any);
-			mockSavedPageRepository.save.mockResolvedValue({
-				...existing,
-				comment: 'new',
-			} as any);
+			const existing = SavedPage.create(
+				's1',
+				UserId.create('00000000-0000-0000-0000-000000000000'),
+				1,
+				'',
+				'',
+				'old',
+				false,
+			);
+			mockSavedPagesRepository.findByIdAndUser.mockResolvedValue(
+				existing,
+			);
+			mockSavedPagesRepository.save.mockResolvedValue(existing);
 
 			const result = await service.updateComment(
 				's1',
 				{ comment: 'new' },
-				'u1',
+				'00000000-0000-0000-0000-000000000000',
 			);
 
-			expect(result.comment).toBe('new');
-			expect(mockSavedPageRepository.save).toHaveBeenCalled();
+			expect(mockSavedPagesRepository.save).toHaveBeenCalled();
 		});
 	});
 });

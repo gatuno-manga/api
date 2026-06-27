@@ -17,6 +17,7 @@ export const CollectionMapper = {
 			books: entity.books?.map((b) => b.id) ?? [],
 			createdAt: entity.createdAt,
 			updatedAt: entity.updatedAt,
+			deletedAt: entity.deletedAt,
 		};
 		return Collection.restore(snapshot);
 	},
@@ -32,6 +33,7 @@ export const CollectionMapper = {
 		entity.visibility = snapshot.visibility;
 		entity.createdAt = snapshot.createdAt;
 		entity.updatedAt = snapshot.updatedAt;
+		entity.deletedAt = snapshot.deletedAt;
 		return entity;
 	},
 };

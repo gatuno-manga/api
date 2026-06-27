@@ -13,6 +13,11 @@ import {
 } from 'class-validator';
 
 export class SyncCommentDto {
+	@ApiProperty({ description: 'ID do comentário', required: false })
+	@IsString()
+	@IsOptional()
+	id?: string;
+
 	@ApiProperty({ description: 'ID do capítulo' })
 	@IsString()
 	@IsNotEmpty()
@@ -37,6 +42,11 @@ export class SyncCommentDto {
 	@IsOptional()
 	@IsBoolean()
 	isPublic?: boolean;
+
+	@ApiPropertyOptional()
+	@IsOptional()
+	@IsDateString()
+	deletedAt?: string;
 }
 
 export class SyncRequestDto {
