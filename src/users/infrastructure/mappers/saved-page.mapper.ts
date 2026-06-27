@@ -1,4 +1,7 @@
-import { SavedPage as DomainSavedPage } from '@users/domain/entities/saved-page';
+import {
+	SavedPage as DomainSavedPage,
+	SavedPageSnapshot,
+} from '@users/domain/entities/saved-page';
 import { SavedPage as OrmSavedPage } from '@users/infrastructure/database/entities/saved-page.entity';
 import { User } from '@users/infrastructure/database/entities/user.entity';
 import { Book } from 'src/books/infrastructure/database/entities/book.entity';
@@ -23,9 +26,7 @@ export const SavedPageMapper = {
 			book: entity.book as unknown as Record<string, unknown>,
 		};
 		return DomainSavedPage.restore(
-			snapshot as unknown as import(
-				'@users/domain/entities/saved-page',
-			).SavedPageSnapshot,
+			snapshot as unknown as SavedPageSnapshot,
 		);
 	},
 
