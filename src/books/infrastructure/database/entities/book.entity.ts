@@ -181,8 +181,6 @@ export class Book {
 	@Column({
 		type: 'text',
 		select: false,
-		insert: false,
-		update: false,
 		nullable: true,
 	})
 	alternative_titles_text: string;

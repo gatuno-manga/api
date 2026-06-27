@@ -105,6 +105,32 @@ describe('TypeOrmBookRepositoryAdapter', () => {
 			expect(result).toEqual(savedInfraBook);
 			expect(mockRepository.save).toHaveBeenCalledWith(domainBook);
 		});
+
+		it('should manually populate alternative_titles_text before saving', async () => {
+			const domainBook = {
+				title: 'New Book',
+				alternativeTitles: [
+					{ title: 'Alternative 1' },
+					{ title: 'Alternative 2' },
+				],
+				searchTerms: ['term1', 'term2'],
+			} as unknown as DomainBook;
+
+			const savedInfraBook = {
+				...domainBook,
+				id: '1',
+			} as unknown as InfrastructureBook;
+			mockRepository.save.mockResolvedValue(savedInfraBook);
+
+			await adapter.save(domainBook);
+
+			expect(mockRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({
+					alternative_titles_text:
+						'New Book, Alternative 1, Alternative 2, term1, term2',
+				}),
+			);
+		});
 	});
 
 	describe('findByIdWithDetails', () => {
