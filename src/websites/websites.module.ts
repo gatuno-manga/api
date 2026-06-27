@@ -6,8 +6,10 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from '@users/users.module';
 import { Partitioners } from 'kafkajs';
+import { I_WEBSITE_CACHE } from './application/ports/website-cache.interface';
 import { I_WEBSITE_REPOSITORY } from './application/ports/website-repository.interface';
 import { WebsiteService } from './application/services/website.service';
+import { RedisWebsiteCacheAdapter } from './infrastructure/cache/adapters/redis-website-cache.adapter';
 import { TypeOrmWebsiteRepositoryAdapter } from './infrastructure/database/adapters/typeorm-website-repository.adapter';
 import { Website } from './infrastructure/database/entities/website.entity';
 import { WebsiteController } from './infrastructure/http/controllers/website.controller';
@@ -18,6 +20,10 @@ import { WebsiteController } from './infrastructure/http/controllers/website.con
 		{
 			provide: I_WEBSITE_REPOSITORY,
 			useClass: TypeOrmWebsiteRepositoryAdapter,
+		},
+		{
+			provide: I_WEBSITE_CACHE,
+			useClass: RedisWebsiteCacheAdapter,
 		},
 		WebsiteService,
 	],

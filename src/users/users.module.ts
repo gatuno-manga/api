@@ -1,4 +1,5 @@
 import { CollectionsModule } from '@/collections/collections.module';
+import { SyncModule } from '@/sync/sync.module';
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from 'src/auth/auth.module';
@@ -10,8 +11,11 @@ import { FilesModule } from 'src/files/files.module';
 import { AppConfigModule } from 'src/infrastructure/app-config/app-config.module';
 import { EncryptionModule } from 'src/infrastructure/encryption/encryption.module';
 import { UserResourcesMapper } from './application/mappers/user-resources.mapper';
+import { I_SAVED_PAGES_REPOSITORY } from './application/ports/saved-pages-repository.interface';
 import { I_USER_IMAGE_REPOSITORY } from './application/ports/user-image-repository.interface';
 import { I_USER_REPOSITORY } from './application/ports/user-repository.interface';
+import { ReadingProgressSyncProvider } from './application/providers/reading-progress-sync.provider';
+import { SavedPagesSyncProvider } from './application/providers/saved-pages-sync.provider';
 import { HighestPageWinsStrategy } from './application/strategies/highest-page-wins.strategy';
 import { LastWriteWinsStrategy } from './application/strategies/last-write-wins.strategy';
 import { SyncStrategyResolver } from './application/strategies/sync-strategy.resolver';
@@ -41,6 +45,7 @@ import { Role } from './infrastructure/database/entities/role.entity';
 import { UserGroup } from './infrastructure/database/entities/user-group.entity';
 import { UserImage } from './infrastructure/database/entities/user-image.entity';
 import { User } from './infrastructure/database/entities/user.entity';
+import { TypeOrmSavedPagesRepository } from './infrastructure/database/repositories/typeorm-saved-pages.repository';
 import { ReadingProgressGateway } from './infrastructure/gateways/reading-progress.gateway';
 import { UserImageResolver } from './infrastructure/graphql/resolvers/user-image.resolver';
 import { UserResolver } from './infrastructure/graphql/resolvers/user.resolver';
@@ -55,6 +60,7 @@ import { RbacModule } from './rbac.module';
 		EncryptionModule,
 		forwardRef(() => FilesModule),
 		forwardRef(() => CollectionsModule),
+		forwardRef(() => SyncModule),
 		RbacModule,
 		TypeOrmModule.forFeature([
 			User,
@@ -102,6 +108,12 @@ import { RbacModule } from './rbac.module';
 		SyncStrategyResolver,
 		UserResolver,
 		UserImageResolver,
+		ReadingProgressSyncProvider,
+		SavedPagesSyncProvider,
+		{
+			provide: I_SAVED_PAGES_REPOSITORY,
+			useClass: TypeOrmSavedPagesRepository,
+		},
 	],
 	exports: [
 		AdminUsersService,

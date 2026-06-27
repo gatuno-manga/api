@@ -5,12 +5,14 @@ import {
 	ViewerContext,
 } from '@books/domain/types/criteria.types';
 import { ChapterComment as InfrastructureChapterComment } from '@books/infrastructure/database/entities/chapter-comment.entity';
+import { UserId } from '@common/domain/value-objects/user-id.vo';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { RolesEnum } from '@users/domain/enums/roles.enum';
 import {
 	Brackets,
 	FindOptionsWhere,
+	MoreThanOrEqual,
 	Repository,
 	SelectQueryBuilder,
 } from 'typeorm';
@@ -169,6 +171,30 @@ export class TypeOrmChapterCommentRepositoryAdapter
 
 		qb.andWhere(`${alias}.isPublic = :isPublic`, {
 			isPublic: true,
+		});
+	}
+
+	async findByUserForSync(
+		userId: UserId,
+		lastSyncAt?: Date,
+	): Promise<DomainChapterComment[]> {
+		const where: FindOptionsWhere<InfrastructureChapterComment> = {
+			user: { id: userId.toString() },
+		};
+		if (lastSyncAt) {
+			where.updatedAt = MoreThanOrEqual(
+				lastSyncAt,
+			) as FindOptionsWhere<InfrastructureChapterComment>['updatedAt'];
+		}
+		const entities = await this.repository.find({
+			where,
+			withDeleted: !!lastSyncAt,
+			relations: ['chapter', 'parent'],
+		});
+		return entities.map((e) => {
+			const domain = new DomainChapterComment();
+			Object.assign(domain, e);
+			return domain;
 		});
 	}
 }

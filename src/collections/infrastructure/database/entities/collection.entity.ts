@@ -3,6 +3,7 @@ import { User } from '@users/infrastructure/database/entities/user.entity';
 import {
 	Column,
 	CreateDateColumn,
+	DeleteDateColumn,
 	Entity,
 	JoinTable,
 	ManyToMany,
@@ -55,4 +56,7 @@ export class CollectionEntity {
 
 	@UpdateDateColumn()
 	updatedAt: Date;
+
+	@DeleteDateColumn()
+	deletedAt: Date | null;
 }

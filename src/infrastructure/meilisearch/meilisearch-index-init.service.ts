@@ -52,7 +52,7 @@ export class MeilisearchIndexInitService implements OnApplicationBootstrap {
 			],
 			searchableAttributes: [
 				'title',
-				'alternativeTitles',
+				'alternativeTitles.title',
 				'description',
 				'authors',
 				'tags',

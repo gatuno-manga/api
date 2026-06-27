@@ -2,11 +2,13 @@ import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { User } from '@users/infrastructure/database/entities/user.entity';
 import {
 	CreateDateColumn,
+	DeleteDateColumn,
 	Entity,
 	Index,
 	JoinColumn,
 	ManyToOne,
 	PrimaryColumn,
+	UpdateDateColumn,
 } from 'typeorm';
 
 @Entity('favorites')
@@ -28,4 +30,10 @@ export class FavoriteEntity {
 
 	@CreateDateColumn()
 	createdAt: Date;
+
+	@UpdateDateColumn()
+	updatedAt: Date;
+
+	@DeleteDateColumn()
+	deletedAt: Date | null;
 }

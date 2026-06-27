@@ -1,4 +1,5 @@
 import { RedisModule } from '@/infrastructure/redis/redis.module';
+import { SyncModule } from '@/sync/sync.module';
 import { AppConfigModule } from '@app-config/app-config.module';
 import { AuthModule } from '@auth/auth.module';
 import { FilesModule } from '@files/files.module';
@@ -22,6 +23,7 @@ import { I_COVER_REPOSITORY } from './application/ports/cover-repository.interfa
 import { I_PAGE_REPOSITORY } from './application/ports/page-repository.interface';
 import { I_SENSITIVE_CONTENT_REPOSITORY } from './application/ports/sensitive-content-repository.interface';
 import { I_TAG_REPOSITORY } from './application/ports/tag-repository.interface';
+import { ChapterCommentsSyncProvider } from './application/providers/chapter-comments-sync.provider';
 import { AdminSystemManagementService } from './application/services/admin-system-management.service';
 import { AuthorsService } from './application/services/authors.service';
 import { BookBookRelationshipService } from './application/services/book-book-relationship.service';
@@ -110,6 +112,7 @@ import { ContentUploadedListener } from './infrastructure/notifiers/content-uplo
 		ScheduleModule.forRoot(),
 		DownloadModule,
 		forwardRef(() => UsersModule),
+		forwardRef(() => SyncModule),
 		TypeOrmModule.forFeature([
 			Book,
 			BookRelationship,
@@ -265,6 +268,7 @@ import { ContentUploadedListener } from './infrastructure/notifiers/content-uplo
 		BookUpdateService,
 		BookBookRelationshipService,
 		BookContentUpdateService,
+		ChapterCommentsSyncProvider,
 		BookQueryService,
 		ChapterManagementService,
 		BookRelationshipService,

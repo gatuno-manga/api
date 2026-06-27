@@ -4,6 +4,7 @@ import { Page } from 'src/books/infrastructure/database/entities/page.entity';
 import {
 	Column,
 	CreateDateColumn,
+	DeleteDateColumn,
 	Entity,
 	JoinColumn,
 	ManyToOne,
@@ -53,4 +54,7 @@ export class SavedPage {
 
 	@UpdateDateColumn()
 	updatedAt: Date;
+
+	@DeleteDateColumn()
+	deletedAt: Date | null;
 }
