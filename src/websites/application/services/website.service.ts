@@ -3,6 +3,10 @@ import { ClientKafka } from '@nestjs/microservices';
 import { RegisterWebSiteDto } from '@websites/application/dto/register-website.dto';
 import { UpdateWebsiteDto } from '@websites/application/dto/update-website.dto';
 import {
+	IWebsiteCache,
+	I_WEBSITE_CACHE,
+} from '@websites/application/ports/website-cache.interface';
+import {
 	IWebsiteRepository,
 	I_WEBSITE_REPOSITORY,
 } from '@websites/application/ports/website-repository.interface';
@@ -15,6 +19,8 @@ export class WebsiteService {
 	constructor(
 		@Inject(I_WEBSITE_REPOSITORY)
 		private readonly websiteRepository: IWebsiteRepository,
+		@Inject(I_WEBSITE_CACHE)
+		private readonly websiteCache: IWebsiteCache,
 		@Inject('SCRAPER_SERVICE')
 		private readonly scraperClient: ClientKafka,
 	) {}
@@ -84,7 +90,9 @@ export class WebsiteService {
 		this.minifyDtoScripts(dto);
 		const website = new Website();
 		Object.assign(website, dto);
-		return this.websiteRepository.save(website);
+		const saved = await this.websiteRepository.save(website);
+		await this.websiteCache.set(saved);
+		return saved;
 	}
 
 	async findAll(): Promise<Website[]> {
@@ -107,11 +115,14 @@ export class WebsiteService {
 		const website = await this.findOne(id);
 		this.minifyDtoScripts(dto);
 		Object.assign(website, dto);
-		return this.websiteRepository.save(website);
+		const updated = await this.websiteRepository.save(website);
+		await this.websiteCache.set(updated);
+		return updated;
 	}
 
 	async remove(id: string): Promise<void> {
 		await this.websiteRepository.delete(id);
+		await this.websiteCache.delete(id);
 	}
 
 	/**
