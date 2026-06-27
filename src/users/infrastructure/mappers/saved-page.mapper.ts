@@ -18,11 +18,15 @@ export const SavedPageMapper = {
 			createdAt: entity.createdAt,
 			updatedAt: entity.updatedAt,
 			deletedAt: entity.deletedAt,
-			page: entity.page,
-			chapter: entity.chapter,
-			book: entity.book,
+			page: entity.page as unknown as Record<string, unknown>,
+			chapter: entity.chapter as unknown as Record<string, unknown>,
+			book: entity.book as unknown as Record<string, unknown>,
 		};
-		return DomainSavedPage.restore(snapshot);
+		return DomainSavedPage.restore(
+			snapshot as unknown as import(
+				'@users/domain/entities/saved-page',
+			).SavedPageSnapshot,
+		);
 	},
 
 	toOrm(domain: DomainSavedPage): OrmSavedPage {
