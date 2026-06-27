@@ -26,7 +26,6 @@ import { ApiDocsGetAll, ApiDocsMergeTags } from './swagger/tags.swagger';
 
 @ApiTags('Tags')
 @Controller('tags')
-@UseGuards(JwtAuthGuard)
 @ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 export class TagsController {
 	constructor(private readonly tagsService: TagsService) {}
