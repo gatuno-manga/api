@@ -3,5 +3,6 @@ export const FULLTEXT_COLUMNS =
 export const LIKE_FALLBACK_COLUMNS = [
 	'book.title',
 	'book.alternative_titles_text',
+	'alternativeTitles.title',
 ] as const;
 export const FULLTEXT_SPECIAL_CHARS_REGEX = /[+\-><()~*"@]/g;
