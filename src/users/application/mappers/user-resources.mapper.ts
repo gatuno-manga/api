@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
+import {
+	SavedPage as DomainSavedPage,
+	SavedPageSnapshot,
+} from '@users/domain/entities/saved-page';
 import { ReadingProgress } from '@users/infrastructure/database/entities/reading-progress.entity';
-import { SavedPage } from '@users/infrastructure/database/entities/saved-page.entity';
+import { SavedPage as OrmSavedPage } from '@users/infrastructure/database/entities/saved-page.entity';
 import { User } from '@users/infrastructure/database/entities/user.entity';
 import { ReadingProgressResponseDto } from '@users/infrastructure/http/dto/reading-progress.dto';
 import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
@@ -31,19 +35,18 @@ export class UserResourcesMapper {
 		return progressList.map((item) => this.toReadingProgressDto(item));
 	}
 
-	toSavedPage(savedPage: SavedPage): SavedPage {
-		if (!savedPage.page) {
-			return savedPage;
+	toSavedPage(savedPage: DomainSavedPage): SavedPageSnapshot {
+		const snapshot = savedPage.toSnapshot();
+		if (snapshot.page?.path) {
+			snapshot.page.path = this.mediaUrlService.resolveUrl(
+				snapshot.page.path as string,
+				StorageBucket.BOOKS,
+			);
 		}
-
-		savedPage.page.path = this.mediaUrlService.resolveUrl(
-			savedPage.page.path,
-			StorageBucket.BOOKS,
-		);
-		return savedPage;
+		return snapshot;
 	}
 
-	toSavedPageList(savedPages: SavedPage[]): SavedPage[] {
+	toSavedPageList(savedPages: DomainSavedPage[]): SavedPageSnapshot[] {
 		return savedPages.map((savedPage) => this.toSavedPage(savedPage));
 	}
 

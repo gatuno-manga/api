@@ -41,9 +41,9 @@ export class SavedPagesSyncProvider
 		return pages.map((p) => {
 			const saved = this.userResourcesMapper.toSavedPage(p);
 			return {
-				pageId: saved.page.id,
-				chapterId: saved.chapter.id,
-				bookId: saved.book.id,
+				pageId: saved.pageId,
+				chapterId: saved.chapterId,
+				bookId: saved.bookId,
 				comment: saved.comment ?? undefined,
 				isPublic: saved.isPublic,
 				deletedAt: saved.deletedAt?.toISOString() || undefined,
