@@ -6,114 +6,225 @@ export interface ILocalizable {
 	rank?: number;
 }
 
+const NON_LATIN_REGEX =
+	/[\u0400-\u04FF\u0500-\u052F\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\u0E00-\u0E7F\u0590-\u05FF\u0900-\u097F\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af]/;
+const NON_LATIN_LANG_PREFIXES = new Set([
+	'ja',
+	'zh',
+	'ko',
+	'ru',
+	'ar',
+	'th',
+	'he',
+	'hi',
+]);
+
 /**
- * Verifica se a string contém caracteres do leste asiático (Kanji, Hiragana, Katakana, Hangul, etc)
+ * Verifica se a string contém caracteres de alfabetos não-latinos
+ * (Cirílico, Árabe, Tailandês, Hebraico, Devanágari, CJK, etc)
  */
-export function hasCJKCharacters(str: string): boolean {
-	return /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af]/.test(str);
+export function hasNonLatinCharacters(text: string): boolean {
+	return NON_LATIN_REGEX.test(text);
 }
 
 /**
  * Motor de resolução de conteúdo localizado com heurísticas para alfabeto.
- * Segue a hierarquia de prioridades adaptada para usuários ocidentais/orientais:
- * 1. Idioma alvo solicitado (targetLang)
- * 2. Idioma padrão do sistema (defaultLang)
- * 3. Idioma ponte global (inglês), caso ocidental
- * 4. Idioma original da obra (originalLang) - priorizando versão romanizada se usuário ocidental
- * 5. Qualquer conteúdo sem caracteres CJK (se usuário ocidental)
- * 6. Qualquer conteúdo disponível
- *
- * Em caso de múltiplos resultados para o mesmo idioma, o maior rank vence.
+ */
+export class LocalizedFieldResolver<T extends ILocalizable> {
+	private readonly items: T[];
+	private readonly targetLanguage: string | undefined | null;
+	private readonly originalLanguage: string | undefined | null;
+	private readonly defaultLanguage: string;
+	private readonly preferLatinFallback: boolean;
+	private readonly textExtractor?: (item: T) => string | undefined | null;
+
+	constructor(
+		items: T[] | undefined | null,
+		targetLanguage: string | undefined | null,
+		originalLanguage: string | undefined | null,
+		defaultLanguage = 'pt-BR',
+		textExtractor?: (item: T) => string | undefined | null,
+	) {
+		this.items = items || [];
+		this.targetLanguage = targetLanguage;
+		this.originalLanguage = originalLanguage;
+		this.defaultLanguage = defaultLanguage;
+		this.textExtractor = textExtractor;
+		this.preferLatinFallback = this.determineIfPrefersLatinFallback();
+	}
+
+	public resolve(): T | null {
+		if (this.items.length === 0) {
+			return null;
+		}
+
+		return (
+			this.findMatchForLanguage(this.targetLanguage) ||
+			this.findMatchForLanguage(this.defaultLanguage) ||
+			this.findGlobalBridgeMatch() ||
+			this.findOriginalLanguageLatinMatch() ||
+			this.findAnyLatinMatch() ||
+			this.findOriginalLanguageMatch() ||
+			this.getHighestRank(this.items)
+		);
+	}
+
+	private determineIfPrefersLatinFallback(): boolean {
+		if (!this.targetLanguage) {
+			return true;
+		}
+
+		const normalizedTargetLanguage = this.targetLanguage.toLowerCase();
+		const prefix = normalizedTargetLanguage.split('-')[0];
+
+		return !NON_LATIN_LANG_PREFIXES.has(prefix);
+	}
+
+	private findMatchForLanguage(
+		language: string | undefined | null,
+	): T | null {
+		if (!language) {
+			return null;
+		}
+
+		const matches = this.getMatchesForLanguage(language);
+
+		if (matches.length === 0) {
+			return null;
+		}
+
+		if (this.preferLatinFallback) {
+			const latinMatches = this.filterLatinItems(matches);
+			if (latinMatches.length > 0) {
+				return this.getHighestRank(latinMatches);
+			}
+		}
+
+		return this.getHighestRank(matches);
+	}
+
+	private findGlobalBridgeMatch(): T | null {
+		if (!this.preferLatinFallback) {
+			return null;
+		}
+
+		const matches = this.getMatchesForLanguage('en');
+
+		if (matches.length === 0) {
+			return null;
+		}
+
+		const latinMatches = this.filterLatinItems(matches);
+
+		if (latinMatches.length > 0) {
+			return this.getHighestRank(latinMatches);
+		}
+
+		return this.getHighestRank(matches);
+	}
+
+	private findOriginalLanguageLatinMatch(): T | null {
+		if (!this.preferLatinFallback || !this.originalLanguage) {
+			return null;
+		}
+
+		const matches = this.getMatchesForLanguage(this.originalLanguage);
+
+		if (matches.length === 0) {
+			return null;
+		}
+
+		const latinMatches = this.filterLatinItems(matches);
+
+		if (latinMatches.length > 0) {
+			return this.getHighestRank(latinMatches);
+		}
+
+		return null;
+	}
+
+	private findAnyLatinMatch(): T | null {
+		if (!this.preferLatinFallback) {
+			return null;
+		}
+
+		const allLatinItems = this.filterLatinItems(this.items);
+
+		if (allLatinItems.length > 0) {
+			return this.getHighestRank(allLatinItems);
+		}
+
+		return null;
+	}
+
+	private findOriginalLanguageMatch(): T | null {
+		if (!this.originalLanguage) {
+			return null;
+		}
+
+		const matches = this.getMatchesForLanguage(this.originalLanguage);
+
+		if (matches.length > 0) {
+			return this.getHighestRank(matches);
+		}
+
+		return null;
+	}
+
+	private getMatchesForLanguage(language: string): T[] {
+		const normalizedLanguage = language.toLowerCase();
+		return this.items.filter((item) => {
+			if (!item.languageCode) {
+				return false;
+			}
+			return item.languageCode.toLowerCase() === normalizedLanguage;
+		});
+	}
+
+	private filterLatinItems(list: T[]): T[] {
+		if (!this.textExtractor) {
+			return list;
+		}
+
+		return list.filter((item) => {
+			const text = this.textExtractor?.(item);
+			if (!text) {
+				return false;
+			}
+			return !hasNonLatinCharacters(text);
+		});
+	}
+
+	private getHighestRank(list: T[]): T | null {
+		if (list.length === 0) {
+			return null;
+		}
+
+		return list.reduce((highest, current) => {
+			const currentRank = current.rank || 0;
+			const highestRank = highest.rank || 0;
+			return currentRank > highestRank ? current : highest;
+		}, list[0]);
+	}
+}
+
+/**
+ * Função de conveniência para manter a compatibilidade com o uso anterior.
  */
 export function resolveLocalizedField<T extends ILocalizable>(
 	items: T[] | undefined | null,
-	targetLang: string | undefined | null,
-	originalLang: string | undefined | null,
-	defaultLang = 'pt-BR',
+	targetLanguage: string | undefined | null,
+	originalLanguage: string | undefined | null,
+	defaultLanguage = 'pt-BR',
 	textExtractor?: (item: T) => string | undefined | null,
 ): T | null {
-	if (!items || items.length === 0) return null;
+	const resolver = new LocalizedFieldResolver(
+		items,
+		targetLanguage,
+		originalLanguage,
+		defaultLanguage,
+		textExtractor,
+	);
 
-	const getMatchesForLang = (lang: string) => {
-		return items.filter(
-			(item) => item.languageCode?.toLowerCase() === lang.toLowerCase(),
-		);
-	};
-
-	const getHighestRank = (list: T[]) =>
-		list.sort((a, b) => (b.rank || 0) - (a.rank || 0))[0];
-
-	const isTargetCJK = targetLang
-		? ['ja', 'zh', 'ko'].some((code) =>
-				targetLang.toLowerCase().startsWith(code),
-			)
-		: false;
-	const preferLatinFallback = !isTargetCJK;
-
-	// Helper: filtra apenas os que NÃO tem CJK
-	const getNonCJK = (list: T[]) => {
-		if (!textExtractor) return list;
-		return list.filter((m) => {
-			const text = textExtractor(m);
-			return text ? !hasCJKCharacters(text) : false;
-		});
-	};
-
-	// 1. Tentar idioma solicitado explicitamente
-	if (targetLang) {
-		const matches = getMatchesForLang(targetLang);
-		if (matches.length > 0) {
-			if (preferLatinFallback) {
-				const nonCJK = getNonCJK(matches);
-				if (nonCJK.length > 0) return getHighestRank(nonCJK);
-			}
-			return getHighestRank(matches);
-		}
-	}
-
-	// 2. Tentar idioma padrão do sistema
-	if (defaultLang) {
-		const matches = getMatchesForLang(defaultLang);
-		if (matches.length > 0) {
-			if (preferLatinFallback) {
-				const nonCJK = getNonCJK(matches);
-				if (nonCJK.length > 0) return getHighestRank(nonCJK);
-			}
-			return getHighestRank(matches);
-		}
-	}
-
-	// 3. Tentar idioma inglês como ponte global caso o usuário seja ocidental e não haja no idioma dele
-	if (preferLatinFallback) {
-		const matches = getMatchesForLang('en');
-		if (matches.length > 0) {
-			const nonCJK = getNonCJK(matches);
-			if (nonCJK.length > 0) return getHighestRank(nonCJK);
-			return getHighestRank(matches);
-		}
-	}
-
-	// 4. Se for ocidental, procurar QUALQUER título romanizado/latino do idioma original
-	if (preferLatinFallback && originalLang) {
-		const matches = getMatchesForLang(originalLang);
-		if (matches.length > 0) {
-			const nonCJK = getNonCJK(matches);
-			if (nonCJK.length > 0) return getHighestRank(nonCJK);
-		}
-	}
-
-	// 5. Se for ocidental, procurar QUALQUER título latino em TODA A LISTA
-	if (preferLatinFallback) {
-		const nonCJKAll = getNonCJK(items);
-		if (nonCJKAll.length > 0) return getHighestRank(nonCJKAll);
-	}
-
-	// 6. Fallback final: Tentar o idioma original mesmo que seja CJK
-	if (originalLang) {
-		const matches = getMatchesForLang(originalLang);
-		if (matches.length > 0) return getHighestRank(matches);
-	}
-
-	// 7. Qualquer coisa que sobrou (Absoluto)
-	return getHighestRank([...items]);
+	return resolver.resolve();
 }
