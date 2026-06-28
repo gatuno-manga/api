@@ -9,6 +9,7 @@ import { Permission } from '@users/infrastructure/database/entities/permission.e
 import { Role } from '@users/infrastructure/database/entities/role.entity';
 import { UserGroup } from '@users/infrastructure/database/entities/user-group.entity';
 import { User } from '@users/infrastructure/database/entities/user.entity';
+import { WebPushService } from '@users/infrastructure/web-push/web-push.service';
 import { Repository } from 'typeorm';
 import { UserPermissionsService } from '../services/user-permissions.service';
 import { AdminUsersService } from './admin-users.service';
@@ -94,6 +95,18 @@ describe('AdminUsersService', () => {
 					useValue: {
 						hash: jest.fn(),
 						compare: jest.fn(),
+					},
+				},
+				{
+					provide: 'MQTT_CLIENT',
+					useValue: {
+						emit: jest.fn(),
+					},
+				},
+				{
+					provide: WebPushService,
+					useValue: {
+						notifyUser: jest.fn(),
 					},
 				},
 			],

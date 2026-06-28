@@ -1,9 +1,9 @@
+import { AppConfigService } from '@/infrastructure/app-config/app-config.service';
 import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { Cover } from '@books/infrastructure/database/entities/cover.entity';
 import { Page } from '@books/infrastructure/database/entities/page.entity';
 import { StoragePort } from '@files/application/ports/storage.port';
-import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { FileCleanupService } from './file-cleanup.service';
@@ -39,7 +39,7 @@ describe('FileCleanupService (S3)', () => {
 			remove: jest.fn().mockResolvedValue(undefined),
 		};
 		mockConfigService = {
-			get: jest.fn().mockReturnValue(10),
+			fileCleanup: { retentionDays: 10 },
 		};
 		mockStoragePort = {
 			save: jest.fn(),
@@ -69,7 +69,7 @@ describe('FileCleanupService (S3)', () => {
 					provide: getRepositoryToken(Chapter),
 					useValue: mockChapterRepository,
 				},
-				{ provide: ConfigService, useValue: mockConfigService },
+				{ provide: AppConfigService, useValue: mockConfigService },
 				{ provide: 'STORAGE_PORT', useValue: mockStoragePort },
 			],
 		}).compile();
