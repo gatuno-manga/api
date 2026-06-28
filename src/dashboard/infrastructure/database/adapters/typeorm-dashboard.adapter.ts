@@ -61,7 +61,10 @@ export class TypeOrmDashboardAdapter implements DashboardRepositoryPort {
 					const subQuery = subQb
 						.subQuery()
 						.select('1')
-						.from('books_sensitive_content', 'bsc')
+						.from(
+							'books_sensitive_content_sensitive_content',
+							'bsc',
+						)
 						.where(`bsc.booksId = ${alias}.id`)
 						.getQuery();
 					return `NOT EXISTS ${subQuery}`;
@@ -71,7 +74,10 @@ export class TypeOrmDashboardAdapter implements DashboardRepositoryPort {
 					const subQuery = subQb
 						.subQuery()
 						.select('1')
-						.from('books_sensitive_content', 'bsc')
+						.from(
+							'books_sensitive_content_sensitive_content',
+							'bsc',
+						)
 						.where(`bsc.booksId = ${alias}.id`)
 						.getQuery();
 					return `EXISTS ${subQuery}`;
