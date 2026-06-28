@@ -4,6 +4,7 @@ import { BookId } from '@common/domain/value-objects/book-id.vo';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { ClientProxy } from '@nestjs/microservices';
+import { WebPushService } from '@users/infrastructure/web-push/web-push.service';
 
 @Injectable()
 export class NotificationEvents {
@@ -13,6 +14,7 @@ export class NotificationEvents {
 		@Inject('SubscriptionRepository')
 		private readonly subscriptionRepository: SubscriptionRepository,
 		@Inject('MQTT_CLIENT') private readonly mqttClient: ClientProxy,
+		private readonly webPushService: WebPushService,
 	) {}
 
 	@OnEvent(BookEvents.NEW_CHAPTERS)
@@ -45,6 +47,12 @@ export class NotificationEvents {
 					chapters: payload.chapters,
 					timestamp: new Date().toISOString(),
 				},
+			});
+
+			this.webPushService.notifyUser(snapshot.userId, {
+				title: 'Gatuno: Capítulos Novos!',
+				body: `${payload.newChaptersCount} novo(s) capítulo(s) foram adicionados ao livro que você acompanha.`,
+				url: `/book/${payload.bookId}`,
 			});
 		}
 	}

@@ -26,6 +26,7 @@ import { SetUserModerationDto } from '@users/infrastructure/http/dto/set-user-mo
 import { UpdateGroupDto } from '@users/infrastructure/http/dto/update-group.dto';
 import { UpdateRoleDto } from '@users/infrastructure/http/dto/update-role.dto';
 import { UpdateUserRolesDto } from '@users/infrastructure/http/dto/update-user-roles.dto';
+import { WebPushService } from '@users/infrastructure/web-push/web-push.service';
 import { Meilisearch } from 'meilisearch';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 import {
@@ -56,6 +57,7 @@ export class AdminUsersService {
 		private readonly passwordEncryption: PasswordEncryption,
 		private readonly userPermissionsService: UserPermissionsService,
 		@Inject('MQTT_CLIENT') private readonly mqttClient: ClientProxy,
+		private readonly webPushService: WebPushService,
 	) {}
 
 	async search(query: string) {
@@ -606,6 +608,12 @@ export class AdminUsersService {
 			},
 		});
 
+		this.webPushService.notifyUser(user.id, {
+			title,
+			body: message,
+			url: '/notifications',
+		});
+
 		return { success: true, message: 'Notification sent successfully' };
 	}
 
@@ -631,6 +639,12 @@ export class AdminUsersService {
 					timestamp,
 					data: {},
 				},
+			});
+
+			this.webPushService.notifyUser(user.id, {
+				title,
+				body: message,
+				url: '/notifications',
 			});
 		}
 

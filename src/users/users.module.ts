@@ -45,12 +45,15 @@ import { Role } from './infrastructure/database/entities/role.entity';
 import { UserGroup } from './infrastructure/database/entities/user-group.entity';
 import { UserImage } from './infrastructure/database/entities/user-image.entity';
 import { User } from './infrastructure/database/entities/user.entity';
+import { WebPushSubscription } from './infrastructure/database/entities/web-push-subscription.entity';
 import { TypeOrmSavedPagesRepository } from './infrastructure/database/repositories/typeorm-saved-pages.repository';
 import { ReadingProgressGateway } from './infrastructure/gateways/reading-progress.gateway';
 import { UserImageResolver } from './infrastructure/graphql/resolvers/user-image.resolver';
 import { UserResolver } from './infrastructure/graphql/resolvers/user.resolver';
+import { WebPushController } from './infrastructure/http/controllers/web-push.controller';
 import { ReadingProgressNotifier } from './infrastructure/notifiers/reading-progress.notifier';
 import { RbacSeederService } from './infrastructure/seeding/rbac-seeder.service';
+import { WebPushService } from './infrastructure/web-push/web-push.service';
 import { RbacModule } from './rbac.module';
 
 @Module({
@@ -64,6 +67,7 @@ import { RbacModule } from './rbac.module';
 		RbacModule,
 		TypeOrmModule.forFeature([
 			User,
+			WebPushSubscription,
 			UserImage,
 			Role,
 			Permission,
@@ -87,6 +91,7 @@ import { RbacModule } from './rbac.module';
 		UserBookSavedPagesController,
 		ReadingProgressController,
 		SavedPagesController,
+		WebPushController,
 	],
 	providers: [
 		{ provide: I_USER_REPOSITORY, useClass: TypeOrmUserRepositoryAdapter },
@@ -110,6 +115,7 @@ import { RbacModule } from './rbac.module';
 		UserImageResolver,
 		ReadingProgressSyncProvider,
 		SavedPagesSyncProvider,
+		WebPushService,
 		{
 			provide: I_SAVED_PAGES_REPOSITORY,
 			useClass: TypeOrmSavedPagesRepository,
@@ -123,6 +129,7 @@ import { RbacModule } from './rbac.module';
 		ReadingProgressService,
 		SavedPagesService,
 		RbacModule,
+		WebPushService,
 	],
 })
 export class UsersModule {}
