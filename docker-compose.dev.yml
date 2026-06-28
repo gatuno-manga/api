@@ -67,6 +67,6 @@ services:
       - ./search/patch.py:/meilisync/patch.py
 
   nanomq:
-    ports:
-      - "${NANOMQ_PORT:-1883}:1883"
-      - "${NANOMQ_WS_PORT:-8083}:8083"
+    # As portas do NanoMQ já estão mapeadas no docker-compose.common.yml
+    # para garantir acesso tanto em dev quanto em prod (WS/MQTT).
+

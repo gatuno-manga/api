@@ -63,6 +63,9 @@ services:
     container_name: gatuno-nanomq
     environment:
       - NANOMQ_BROKER_MQTT_CONNACK_ACK_TIMEOUT=5s
+    ports:
+      - "${NANOMQ_PORT:-1883}:1883"
+      - "${NANOMQ_WS_PORT:-8083}:8083"
     healthcheck:
       test: ["CMD", "nanomq_cli", "broker", "stats"]
       interval: 10s
