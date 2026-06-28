@@ -8,6 +8,7 @@ import { FavoritesSyncProvider } from './application/providers/favorites-sync.pr
 import { FavoriteBookUseCase } from './application/use-cases/favorite-book.use-case';
 import { GetFavoritesForSyncUseCase } from './application/use-cases/get-favorites-for-sync.use-case';
 import { GetFavoritesUseCase } from './application/use-cases/get-favorites.use-case';
+import { GetMqttTopicsUseCase } from './application/use-cases/get-mqtt-topics.use-case';
 import { ReviewBookUseCase } from './application/use-cases/review-book.use-case';
 import { SubscribeToBookUseCase } from './application/use-cases/subscribe-to-book.use-case';
 import { UnfavoriteBookUseCase } from './application/use-cases/unfavorite-book.use-case';
@@ -52,6 +53,7 @@ import { FavoriteResolver } from './infrastructure/graphql/resolvers/favorite.re
 		UnfavoriteBookUseCase,
 		GetFavoritesForSyncUseCase,
 		GetFavoritesUseCase,
+		GetMqttTopicsUseCase,
 		SubscribeToBookUseCase,
 		ReviewBookUseCase,
 		FavoritesSyncProvider,

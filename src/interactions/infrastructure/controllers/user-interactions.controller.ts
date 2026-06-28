@@ -3,6 +3,7 @@ import {
 	I_BOOK_REPOSITORY,
 } from '@/books/application/ports/book-repository.interface';
 import { GetFavoritesUseCase } from '@/interactions/application/use-cases/get-favorites.use-case';
+import { GetMqttTopicsUseCase } from '@/interactions/application/use-cases/get-mqtt-topics.use-case';
 import { CurrentUserDto } from '@auth/application/dto/current-user.dto';
 import { CurrentUser } from '@auth/infrastructure/framework/current-user.decorator';
 import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
@@ -34,6 +35,7 @@ import { ApiDocsGetFavorites } from './swagger/interactions.swagger';
 export class UserInteractionsController {
 	constructor(
 		private readonly getFavoritesUseCase: GetFavoritesUseCase,
+		private readonly getMqttTopicsUseCase: GetMqttTopicsUseCase,
 		@Inject(I_BOOK_REPOSITORY)
 		private readonly bookRepository: IBookRepository,
 	) {}
@@ -89,5 +91,12 @@ export class UserInteractionsController {
 		}
 
 		return new CursorPageDto(mappedData, page.nextCursor, page.hasNextPage);
+	}
+
+	@Get('mqtt-topics')
+	@Permissions(PermissionsEnum.PROFILE_VIEW)
+	async getMqttTopics(@CurrentUser() user: CurrentUserDto) {
+		const topics = await this.getMqttTopicsUseCase.execute(user.userId);
+		return { topics };
 	}
 }

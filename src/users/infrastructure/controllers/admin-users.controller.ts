@@ -153,4 +153,16 @@ export class AdminUsersController {
 			dto.message,
 		);
 	}
+
+	@Post('notifications/bulk')
+	@Permissions(PermissionsEnum.USERS_EDIT)
+	sendBulkNotification(
+		@Body() dto: { userIds: string[]; title: string; message: string },
+	) {
+		return this.adminUsersService.sendBulkNotification(
+			dto.userIds,
+			dto.title,
+			dto.message,
+		);
+	}
 }

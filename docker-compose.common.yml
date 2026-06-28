@@ -25,7 +25,7 @@ services:
       - RUSTFS_REGION=${RUSTFS_REGION:-us-east-1}
       - KAFKA_HOST=${KAFKA_HOST:-kafka}
       - KAFKA_PORT=${KAFKA_PORT:-9092}
-      - NANOMQ_HOST=${NANOMQ_HOST:-nanomq}
+      - NANOMQ_HOST=${NANOMQ_HOST:-emqx}
       - NANOMQ_PORT=${NANOMQ_PORT:-1883}
     healthcheck:
       test:
@@ -53,24 +53,27 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
-      nanomq:
+      emqx:
         condition: service_started
     networks:
       - gatuno-net
 
-  nanomq:
-    image: emqx/nanomq:latest
-    container_name: gatuno-nanomq
+  emqx:
+    image: emqx/emqx:5.8.0
+    container_name: gatuno-emqx
     environment:
-      - NANOMQ_BROKER_MQTT_CONNACK_ACK_TIMEOUT=5s
+      - EMQX_NODE__NAME=emqx@127.0.0.1
     ports:
       - "${NANOMQ_PORT:-1883}:1883"
       - "${NANOMQ_WS_PORT:-8083}:8083"
+      - "18083:18083"
     healthcheck:
-      test: ["CMD", "nanomq_cli", "broker", "stats"]
+      test: ["CMD", "/opt/emqx/bin/emqx", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    volumes:
+      - ./emqx/cluster.hocon:/opt/emqx/data/configs/cluster.hocon:ro
     networks:
       - gatuno-net
 

@@ -12,6 +12,8 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 					transport: Transport.MQTT,
 					options: {
 						url: `mqtt://${configService.get('NANOMQ_HOST')}:${configService.get('NANOMQ_PORT')}`,
+						username: 'internal-system',
+						password: configService.get('JWT_SECRET') || 'internal',
 					},
 				}),
 				inject: [ConfigService],

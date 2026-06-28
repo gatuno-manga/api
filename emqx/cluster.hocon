@@ -1,0 +1,66 @@
+# EMQX Configuração (cluster.hocon)
+# Substitui o NanoMQ para termos HTTP Auth & ACL nativo e estável
+
+# 1. Configurações Base
+node {
+  name = "emqx@127.0.0.1"
+  cookie = "gatuno_emqx_secret"
+}
+
+# 2. Listeners
+listeners.tcp.default {
+  bind = "0.0.0.0:1883"
+  max_connections = 102400
+}
+
+listeners.ws.default {
+  bind = "0.0.0.0:8083"
+  max_connections = 102400
+}
+
+# 3. Autenticação (AuthN) - Verifica a Conexão (Login)
+authentication = [
+  {
+    mechanism = password_based
+    backend = http
+    method = post
+    url = "http://api:3000/api/auth/mqtt/connect"
+    body {
+      clientid = "${clientid}"
+      username = "${username}"
+      password = "${password}"
+    }
+    headers {
+      "Content-Type" = "application/json"
+    }
+  }
+]
+
+# 4. Autorização (AuthZ) - Verifica Permissões de Tópicos (ACL)
+authorization {
+  no_match = deny
+  deny_action = ignore
+  cache = {
+    enable = true
+    max_size = 32
+    ttl = 1m
+  }
+  sources = [
+    {
+      type = http
+      enable = true
+      method = post
+      url = "http://api:3000/api/auth/mqtt/acl"
+      body {
+        clientid = "${clientid}"
+        username = "${username}"
+        password = "${password}"
+        access = "${action}"
+        topic = "${topic}"
+      }
+      headers {
+        "Content-Type" = "application/json"
+      }
+    }
+  ]
+}

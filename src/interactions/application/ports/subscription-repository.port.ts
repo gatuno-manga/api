@@ -7,4 +7,5 @@ export interface SubscriptionRepository {
 	delete(userId: UserId, bookId: BookId): Promise<void>;
 	isSubscribed(userId: UserId, bookId: BookId): Promise<boolean>;
 	findByBook(bookId: BookId): Promise<Subscription[]>;
+	findByUser(userId: UserId): Promise<Subscription[]>;
 }

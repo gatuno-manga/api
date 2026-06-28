@@ -16,7 +16,7 @@ services:
       - API_URL=${API_SCHEME:-http}://localhost:${API_PORT}
       - KAFKA_HOST=${KAFKA_HOST:-kafka}
       - KAFKA_PORT=${KAFKA_PORT:-9092}
-      - NANOMQ_HOST=${NANOMQ_HOST:-nanomq}
+      - NANOMQ_HOST=${NANOMQ_HOST:-emqx}
       - NANOMQ_PORT=${NANOMQ_PORT:-1883}
       # Session / JWT Settings (defaults in Joi schema: ACCESS=15m, REFRESH=7d, MAX_SESSIONS=0=unlimited)
       # - JWT_ACCESS_EXPIRATION=15m
@@ -24,7 +24,7 @@ services:
       # - MAX_SESSIONS_PER_USER=0
     depends_on:
       - kafka
-      - nanomq
+      - emqx
     develop:
       watch:
         - action: sync
@@ -66,7 +66,7 @@ services:
       - ./search/progress.json:/meilisync/progress.json
       - ./search/patch.py:/meilisync/patch.py
 
-  nanomq:
-    # As portas do NanoMQ já estão mapeadas no docker-compose.common.yml
-    # para garantir acesso tanto em dev quanto em prod (WS/MQTT).
+  emqx:
+    # As portas do EMQX já estão mapeadas no docker-compose.common.yml
+    # para garantir acesso tanto em dev quanto em prod (WS/MQTT/Dashboard).
 

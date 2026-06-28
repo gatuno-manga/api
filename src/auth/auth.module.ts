@@ -27,6 +27,7 @@ import { TokenStoreService } from './infrastructure/adapters/token-store.service
 import { TypeOrmUserRepositoryAdapter } from './infrastructure/adapters/typeorm-user-repository.adapter';
 import { WebauthnService } from './infrastructure/adapters/webauthn.service';
 import { AuthController } from './infrastructure/controllers/auth.controller';
+import { MqttAuthController } from './infrastructure/controllers/mqtt-auth.controller';
 import { PasswordMigrationController } from './infrastructure/controllers/password-migration.controller';
 import { AuthAuditLog } from './infrastructure/database/entities/auth-audit-log.entity';
 import { AuthSession } from './infrastructure/database/entities/auth-session.entity';
@@ -69,7 +70,11 @@ import { GoogleStrategy } from './infrastructure/strategies/google.strategy';
 			}),
 		}),
 	],
-	controllers: [AuthController, PasswordMigrationController],
+	controllers: [
+		AuthController,
+		PasswordMigrationController,
+		MqttAuthController,
+	],
 	providers: [
 		CreateAdminEvent,
 		AuthService,
