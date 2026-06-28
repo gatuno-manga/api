@@ -1,6 +1,7 @@
 export class Website {
 	id: string;
 	url: string;
+	isActive: boolean;
 	preScript: string | null;
 	posScript: string | null;
 	selector: string;
