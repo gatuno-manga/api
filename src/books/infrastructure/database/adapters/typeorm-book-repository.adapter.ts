@@ -314,6 +314,19 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 			}
 		}
 
+		if (
+			'scrapingStatus' in options &&
+			Array.isArray(options.scrapingStatus) &&
+			options.scrapingStatus.length > 0
+		) {
+			queryBuilder.andWhere(
+				'book.scrapingStatus IN (:...scrapingStatus)',
+				{
+					scrapingStatus: options.scrapingStatus,
+				},
+			);
+		}
+
 		// 4. Sorting
 		const orderBy = options.orderBy || BookOrderField.CREATED_AT;
 		const orderDirection = options.order || OrderDirection.DESC;
@@ -437,6 +450,19 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 			if (strategy.canApply(options)) {
 				await strategy.apply(queryBuilder, options);
 			}
+		}
+
+		if (
+			'scrapingStatus' in options &&
+			Array.isArray(options.scrapingStatus) &&
+			options.scrapingStatus.length > 0
+		) {
+			queryBuilder.andWhere(
+				'book.scrapingStatus IN (:...scrapingStatus)',
+				{
+					scrapingStatus: options.scrapingStatus,
+				},
+			);
 		}
 
 		// 4. Random selection
