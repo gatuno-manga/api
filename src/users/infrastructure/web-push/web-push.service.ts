@@ -1,5 +1,5 @@
+import { AppConfigService } from '@/infrastructure/app-config/app-config.service';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as webpush from 'web-push';
@@ -18,15 +18,15 @@ export class WebPushService implements OnModuleInit {
 	private readonly logger = new Logger(WebPushService.name);
 
 	constructor(
-		private readonly configService: ConfigService,
+		private readonly appConfigService: AppConfigService,
 		@InjectRepository(WebPushSubscription)
 		private readonly subscriptionRepository: Repository<WebPushSubscription>,
 	) {}
 
 	onModuleInit() {
-		const publicKey = this.configService.get<string>('VAPID_PUBLIC_KEY');
-		const privateKey = this.configService.get<string>('VAPID_PRIVATE_KEY');
-		const subject = this.configService.get<string>('VAPID_SUBJECT');
+		const publicKey = this.appConfigService.webPush.vapidPublicKey;
+		const privateKey = this.appConfigService.webPush.vapidPrivateKey;
+		const subject = this.appConfigService.webPush.vapidSubject;
 
 		if (publicKey && privateKey && subject) {
 			webpush.setVapidDetails(subject, publicKey, privateKey);
@@ -39,7 +39,7 @@ export class WebPushService implements OnModuleInit {
 	}
 
 	getPublicKey(): string {
-		const key = this.configService.get<string>('VAPID_PUBLIC_KEY');
+		const key = this.appConfigService.webPush.vapidPublicKey;
 		if (!key) throw new Error('VAPID_PUBLIC_KEY is not defined');
 		return key;
 	}

@@ -1,6 +1,6 @@
+import { AppConfigService } from '@/infrastructure/app-config/app-config.service';
 import { FileCleanupService } from '@files/application/services/file-cleanup.service';
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
@@ -10,11 +10,9 @@ export class FileCleanupCron {
 
 	constructor(
 		private readonly fileCleanupService: FileCleanupService,
-		private readonly configService: ConfigService,
+		private readonly appConfigService: AppConfigService,
 	) {
-		this.enabled =
-			this.configService.get<string>('FILE_CLEANUP_ENABLED', 'true') ===
-			'true';
+		this.enabled = this.appConfigService.fileCleanup.enabled;
 	}
 
 	@Cron(CronExpression.EVERY_DAY_AT_2AM, {

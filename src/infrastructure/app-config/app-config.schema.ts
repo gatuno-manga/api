@@ -168,4 +168,19 @@ export const validationSchema = Joi.object({
 	ENABLE_SWAGGER: Joi.boolean()
 		.default(false)
 		.description('Force enable Swagger UI regardless of NODE_ENV'),
+	DASHBOARD_OVERVIEW_TTL_MINUTES: Joi.number()
+		.min(1)
+		.default(10)
+		.description('TTL in minutes for dashboard overview cache'),
+	FILE_CLEANUP_ENABLED: Joi.boolean().default(true),
+	FILE_CLEANUP_RETENTION_DAYS: Joi.number().min(1).default(7),
+	RUSTFS_ENDPOINT: Joi.string().default('http://rustfs:9000'),
+	RUSTFS_BUCKET: Joi.string().default('gatuno-files'),
+	RUSTFS_REGION: Joi.string().default('us-east-1'),
+	RUSTFS_ACCESS_KEY_ID: Joi.string().allow(''),
+	RUSTFS_SECRET_ACCESS_KEY: Joi.string().allow(''),
+	RUSTFS_PUBLIC_URL: Joi.string().allow(''),
+	VAPID_PUBLIC_KEY: Joi.string().allow(''),
+	VAPID_PRIVATE_KEY: Joi.string().allow(''),
+	VAPID_SUBJECT: Joi.string().allow(''),
 });

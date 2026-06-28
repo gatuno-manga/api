@@ -3,9 +3,9 @@ import {
 	DashboardRepositoryPort,
 	DashboardStats,
 } from '@/dashboard/application/ports/dashboard-repository.port';
+import { AppConfigService } from '@/infrastructure/app-config/app-config.service';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Cache } from 'cache-manager';
 
 @Injectable()
@@ -15,7 +15,7 @@ export class GetDashboardOverviewUseCase {
 		private readonly dashboardRepository: DashboardRepositoryPort,
 		@Inject(CACHE_MANAGER)
 		private readonly cacheManager: Cache,
-		private readonly configService: ConfigService,
+		private readonly appConfigService: AppConfigService,
 	) {}
 
 	async execute(filter?: DashboardFilterDto): Promise<DashboardStats> {
@@ -30,10 +30,7 @@ export class GetDashboardOverviewUseCase {
 
 		const stats = await this.dashboardRepository.getOverviewStats(filter);
 
-		const ttlMinutes = this.configService.get<number>(
-			'DASHBOARD_CACHE_TTL_MINUTES',
-			15,
-		);
+		const ttlMinutes = this.appConfigService.dashboard.overviewTtlMinutes;
 		const ttlMs = ttlMinutes * 60 * 1000;
 
 		await this.cacheManager.set(cacheKey, stats, ttlMs);

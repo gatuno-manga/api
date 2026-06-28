@@ -38,7 +38,7 @@ export class MqttAuthController {
 
 		// 1. Backend Service Authentication (Microservices)
 		// Se for um serviço interno usando o secret do sistema
-		const internalSecret = this.configService.get<string>('JWT_SECRET'); // Or a specific MQTT secret
+		const internalSecret = this.appConfigService.jwt.accessSecret; // Or a specific MQTT secret
 		if (
 			body.password === internalSecret ||
 			body.username === 'internal-system'

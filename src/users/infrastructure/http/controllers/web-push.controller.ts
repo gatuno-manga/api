@@ -1,3 +1,4 @@
+import { CurrentUserDto } from '@auth/application/dto/current-user.dto';
 import { CurrentUser } from '@auth/infrastructure/framework/current-user.decorator';
 import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
 import {
@@ -10,7 +11,6 @@ import {
 	Query,
 	UseGuards,
 } from '@nestjs/common';
-import { UserSnapshot } from '@users/domain/entities/user';
 import { WebPushService } from '../../web-push/web-push.service';
 import { WebPushSubscriptionDto } from '../dto/web-push.dto';
 
@@ -27,10 +27,10 @@ export class WebPushController {
 	@UseGuards(JwtAuthGuard)
 	@HttpCode(200)
 	async subscribe(
-		@CurrentUser() user: UserSnapshot,
+		@CurrentUser() user: CurrentUserDto,
 		@Body() dto: WebPushSubscriptionDto,
 	) {
-		await this.webPushService.saveSubscription(user.id, dto);
+		await this.webPushService.saveSubscription(user.userId, dto);
 		return { success: true };
 	}
 
@@ -38,13 +38,13 @@ export class WebPushController {
 	@UseGuards(JwtAuthGuard)
 	@HttpCode(200)
 	async unsubscribe(
-		@CurrentUser() user: UserSnapshot,
+		@CurrentUser() user: CurrentUserDto,
 		@Query('endpoint') endpoint: string,
 	) {
 		if (!endpoint) {
 			return { success: false, message: 'Endpoint is required' };
 		}
-		await this.webPushService.deleteSubscription(user.id, endpoint);
+		await this.webPushService.deleteSubscription(user.userId, endpoint);
 		return { success: true };
 	}
 }
