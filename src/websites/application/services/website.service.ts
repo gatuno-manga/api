@@ -1,4 +1,10 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+	Inject,
+	Injectable,
+	Logger,
+	NotFoundException,
+	OnApplicationBootstrap,
+} from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
 import { RegisterWebSiteDto } from '@websites/application/dto/register-website.dto';
 import { UpdateWebsiteDto } from '@websites/application/dto/update-website.dto';
@@ -15,7 +21,8 @@ import { Website } from '@websites/domain/entities/website';
 import { lastValueFrom } from 'rxjs';
 
 @Injectable()
-export class WebsiteService {
+export class WebsiteService implements OnApplicationBootstrap {
+	private readonly logger = new Logger(WebsiteService.name);
 	constructor(
 		@Inject(I_WEBSITE_REPOSITORY)
 		private readonly websiteRepository: IWebsiteRepository,
@@ -24,6 +31,24 @@ export class WebsiteService {
 		@Inject('SCRAPER_SERVICE')
 		private readonly scraperClient: ClientKafka,
 	) {}
+
+	async onApplicationBootstrap(): Promise<void> {
+		this.logger.log('Sincronizando websites com o cache do Redis...');
+		try {
+			const websites = await this.websiteRepository.findAll();
+			for (const website of websites) {
+				await this.websiteCache.set(website);
+			}
+			this.logger.log(
+				`Sincronização concluída. ${websites.length} websites armazenados no cache.`,
+			);
+		} catch (error: unknown) {
+			this.logger.error(
+				'Erro ao sincronizar websites com o cache',
+				error instanceof Error ? error.stack : String(error),
+			);
+		}
+	}
 
 	async testScript(
 		targetUrl: string,
