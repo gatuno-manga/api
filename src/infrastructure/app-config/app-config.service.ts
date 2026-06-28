@@ -416,6 +416,12 @@ export class AppConfigService {
 			vapidPublicKey: this.config.get<string>('VAPID_PUBLIC_KEY') || '',
 			vapidPrivateKey: this.config.get<string>('VAPID_PRIVATE_KEY') || '',
 			vapidSubject: this.config.get<string>('VAPID_SUBJECT') || '',
+			defaultIcon:
+				this.config.get<string>('WEB_PUSH_DEFAULT_ICON') ||
+				'/assets/icons/icon-512x512.png',
+			defaultBadge:
+				this.config.get<string>('WEB_PUSH_DEFAULT_BADGE') ||
+				'/assets/icons/badge-128x128.png',
 		};
 	}
 }

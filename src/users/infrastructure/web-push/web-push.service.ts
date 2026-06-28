@@ -11,6 +11,11 @@ export interface PushNotificationPayload {
 	body: string;
 	url?: string;
 	icon?: string;
+	badge?: string;
+	image?: string;
+	vibrate?: number[];
+	data?: Record<string, unknown>;
+	actions?: Array<{ action: string; title: string }>;
 }
 
 @Injectable()
@@ -85,7 +90,18 @@ export class WebPushService implements OnModuleInit {
 
 		if (subscriptions.length === 0) return;
 
-		const notificationPayload = JSON.stringify(payload);
+		const finalPayload = {
+			icon: payload.icon || this.appConfigService.webPush.defaultIcon,
+			badge: payload.badge || this.appConfigService.webPush.defaultBadge,
+			vibrate: payload.vibrate || [100, 50, 100],
+			...payload,
+			data: {
+				url: payload.url, // Keep backward compatibility for frontend routing
+				...payload.data,
+			},
+		};
+
+		const notificationPayload = JSON.stringify(finalPayload);
 
 		const sendPromises = subscriptions.map(async (sub) => {
 			try {

@@ -1,6 +1,12 @@
 import { SubscriptionRepository } from '@/interactions/application/ports/subscription-repository.port';
+import {
+	IBookRepository,
+	I_BOOK_REPOSITORY,
+} from '@books/application/ports/book-repository.interface';
 import { BookEvents } from '@books/domain/constants/events.constant';
 import { BookId } from '@common/domain/value-objects/book-id.vo';
+import { StorageBucket } from '@common/enum/storage-bucket.enum';
+import { MediaUrlService } from '@common/services/media-url.service';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { ClientProxy } from '@nestjs/microservices';
@@ -13,8 +19,11 @@ export class NotificationEvents {
 	constructor(
 		@Inject('SubscriptionRepository')
 		private readonly subscriptionRepository: SubscriptionRepository,
+		@Inject(I_BOOK_REPOSITORY)
+		private readonly bookRepository: IBookRepository,
 		@Inject('MQTT_CLIENT') private readonly mqttClient: ClientProxy,
 		private readonly webPushService: WebPushService,
+		private readonly mediaUrlService: MediaUrlService,
 	) {}
 
 	@OnEvent(BookEvents.NEW_CHAPTERS)
@@ -26,6 +35,22 @@ export class NotificationEvents {
 		this.logger.log(
 			`New chapters added to book ${payload.bookId}. Notifying subscribers...`,
 		);
+
+		const book = await this.bookRepository.findById(payload.bookId);
+		let bookTitle = 'Gatuno: Capítulos Novos!';
+		let imageUrl: string | undefined;
+
+		if (book) {
+			bookTitle = `Gatuno: ${book.title}`;
+			const primaryCover =
+				book.covers?.find((c) => c.selected) || book.covers?.[0];
+			if (primaryCover) {
+				imageUrl = this.mediaUrlService.resolveUrl(
+					primaryCover.url,
+					StorageBucket.BOOKS,
+				);
+			}
+		}
 
 		const subscriptions = await this.subscriptionRepository.findByBook(
 			BookId.create(payload.bookId),
@@ -50,9 +75,10 @@ export class NotificationEvents {
 			});
 
 			this.webPushService.notifyUser(snapshot.userId, {
-				title: 'Gatuno: Capítulos Novos!',
+				title: bookTitle,
 				body: `${payload.newChaptersCount} novo(s) capítulo(s) foram adicionados ao livro que você acompanha.`,
 				url: `/book/${payload.bookId}`,
+				image: imageUrl,
 			});
 		}
 	}
