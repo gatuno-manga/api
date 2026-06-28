@@ -56,6 +56,7 @@ import {
 	ApiDocsListDeletedPages,
 	ApiDocsOrderChapters,
 	ApiDocsOrderCovers,
+	ApiDocsResendUpdateEvent,
 	ApiDocsResetBook,
 	ApiDocsScrapeCover,
 	ApiDocsSelectCover,
@@ -306,6 +307,14 @@ export class AdminBooksController {
 	}
 
 	// ==================== DELETION ENDPOINTS ====================
+
+	@Post(':idBook/events/resend')
+	@Permissions(PermissionsEnum.BOOKS_MAINTENANCE)
+	@ApiDocsResendUpdateEvent()
+	async resendUpdateEvent(@Param('idBook') idBook: string) {
+		await this.booksService.resendBookUpdatedEvent(idBook);
+		return { message: 'Book updated event resent successfully' };
+	}
 
 	@Delete(':idBook')
 	@Permissions(PermissionsEnum.BOOKS_DELETE)

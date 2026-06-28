@@ -134,6 +134,10 @@ export class BooksService {
 		return this.bookUpdateService.toggleAutoUpdate(idBook, enabled);
 	}
 
+	async resendBookUpdatedEvent(idBook: string) {
+		return this.bookUpdateService.resendBookUpdatedEvent(idBook);
+	}
+
 	// ==================== CONSULTA ====================
 
 	async getAllBooks(
