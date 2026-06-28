@@ -3,6 +3,7 @@ import { BookEvents } from '@books/domain/constants/events.constant';
 import { BookId } from '@common/domain/value-objects/book-id.vo';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
+import { ClientProxy } from '@nestjs/microservices';
 
 @Injectable()
 export class NotificationEvents {
@@ -11,6 +12,7 @@ export class NotificationEvents {
 	constructor(
 		@Inject('SubscriptionRepository')
 		private readonly subscriptionRepository: SubscriptionRepository,
+		@Inject('MQTT_CLIENT') private readonly mqttClient: ClientProxy,
 	) {}
 
 	@OnEvent(BookEvents.NEW_CHAPTERS)
@@ -30,10 +32,20 @@ export class NotificationEvents {
 		for (const sub of subscriptions) {
 			const snapshot = sub.toSnapshot();
 			// Here we would call a Notification Service (Push, Email, etc.)
-			// For now, we log the intent as per the current scope
+			// We are also emitting real-time MQTT events to connected clients
 			this.logger.log(
 				`[NOTIFICATION] Notifying user ${snapshot.userId} about ${payload.newChaptersCount} new chapters in book ${snapshot.bookId}`,
 			);
+
+			this.mqttClient.emit(`users/${snapshot.userId}/notifications`, {
+				event: 'book.new_chapters',
+				payload: {
+					bookId: payload.bookId,
+					newChaptersCount: payload.newChaptersCount,
+					chapters: payload.chapters,
+					timestamp: new Date().toISOString(),
+				},
+			});
 		}
 	}
 }

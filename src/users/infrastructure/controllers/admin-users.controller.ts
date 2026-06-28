@@ -9,6 +9,7 @@ import {
 	ParseIntPipe,
 	ParseUUIDPipe,
 	Patch,
+	Post,
 	Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -137,6 +138,19 @@ export class AdminUsersController {
 		return this.adminUsersService.deleteUserByAdmin(
 			userId,
 			currentUser.userId,
+		);
+	}
+
+	@Post(':userId/notifications')
+	@Permissions(PermissionsEnum.USERS_EDIT)
+	sendNotification(
+		@Param('userId', ParseUUIDPipe) userId: string,
+		@Body() dto: { title: string; message: string },
+	) {
+		return this.adminUsersService.sendNotification(
+			userId,
+			dto.title,
+			dto.message,
 		);
 	}
 }

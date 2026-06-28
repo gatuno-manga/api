@@ -7,6 +7,7 @@ import {
 	Injectable,
 	NotFoundException,
 } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserPermissionsService } from '@users/application/services/user-permissions.service';
 import { AccessPolicyEffectEnum } from '@users/domain/enums/access-policy-effect.enum';
@@ -54,6 +55,7 @@ export class AdminUsersService {
 		@Inject(MEILI_CLIENT) private readonly meiliClient: Meilisearch,
 		private readonly passwordEncryption: PasswordEncryption,
 		private readonly userPermissionsService: UserPermissionsService,
+		@Inject('MQTT_CLIENT') private readonly mqttClient: ClientProxy,
 	) {}
 
 	async search(query: string) {
@@ -588,5 +590,20 @@ export class AdminUsersService {
 		}
 		await this.accessPolicyRepository.remove(policy);
 		return { success: true };
+	}
+
+	async sendNotification(userId: string, title: string, message: string) {
+		const user = await this.getUserById(userId);
+
+		this.mqttClient.emit(`users/${user.id}/notifications`, {
+			event: 'system.alert',
+			payload: {
+				title,
+				message,
+				timestamp: new Date().toISOString(),
+			},
+		});
+
+		return { success: true, message: 'Notification sent successfully' };
 	}
 }
