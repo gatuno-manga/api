@@ -97,39 +97,9 @@ export class ChapterScrapingSharedService implements OnModuleInit {
 				chapterId: chapter.id,
 				bookId: book?.id,
 				targetUrl: chapter.originalUrl,
-				websiteConfig: {
-					name: host,
-					cloudflareBypass:
-						useFlareSolverr || websiteConfig.useFlareSolverr,
-					preScript: websiteConfig.preScript,
-					posScript: websiteConfig.posScript,
-					useNetworkInterception:
-						websiteConfig.useNetworkInterception,
-					useScreenshotMode: websiteConfig.useScreenshotMode,
-					cookies: websiteConfig.cookies,
-					localStorage: websiteConfig.localStorage,
-					sessionStorage: websiteConfig.sessionStorage,
-					reloadAfterStorageInjection:
-						websiteConfig.reloadAfterStorageInjection,
-					enableAdaptiveTimeouts:
-						websiteConfig.enableAdaptiveTimeouts,
-					timeoutMultipliers: websiteConfig.timeoutMultipliers,
-					proxyUrl: websiteConfig.proxyUrl,
-					blacklistTerms: websiteConfig.blacklistTerms,
-					whitelistTerms: websiteConfig.whitelistTerms,
-					selectors: {
-						chapterTitle: websiteConfig.selector, // Mapping 'selector' to 'chapterTitle' as it's the primary content selector
-						chapterImages: websiteConfig.selector,
-						chapterListSelector: websiteConfig.chapterListSelector,
-						bookInfoExtractScript:
-							websiteConfig.bookInfoExtractScript,
-						newBookExtractScript:
-							websiteConfig.newBookExtractScript,
-					},
-					headers: {
-						Referer: host,
-					},
-				},
+				websiteId: websiteConfig.id,
+				chapterSpecificSelector: chapter.specificSelector,
+				useFlareSolverr: useFlareSolverr ? true : undefined,
 				uploadTarget: {
 					bucket: StorageBucket.PROCESSING,
 				},

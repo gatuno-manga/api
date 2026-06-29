@@ -73,6 +73,7 @@ export class ChapterManagementService {
 			originalUrl: dto.url,
 			index,
 			isFinal: dto.isFinal,
+			specificSelector: dto.specificSelector,
 			book: { id: bookId } as Book,
 		});
 
@@ -161,6 +162,7 @@ export class ChapterManagementService {
 			index: dto.index,
 			content: dto.content,
 			contentFormat: dto.format,
+			specificSelector: dto.specificSelector,
 		});
 		const savedChapter = await this.chapterRepository.save(updatedChapter);
 

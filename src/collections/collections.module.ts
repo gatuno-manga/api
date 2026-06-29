@@ -46,6 +46,7 @@ import { TypeOrmCollectionRepository } from './infrastructure/database/repositor
 		RestoreCollectionUseCase,
 		GetCollectionsForSyncUseCase,
 		ProcessSyncPushCollectionUseCase,
+		CollectionsSyncProvider,
 		AddBookToCollectionUseCase,
 		ShareCollectionUseCase,
 		GetUserCollectionsUseCase,
