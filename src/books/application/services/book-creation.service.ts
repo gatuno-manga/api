@@ -73,34 +73,7 @@ export class BookCreationService implements OnModuleInit {
 		const payload = {
 			jobId,
 			targetUrl: url,
-			websiteConfig: {
-				name: host,
-				cloudflareBypass: websiteConfig.useFlareSolverr,
-				preScript: websiteConfig.preScript,
-				posScript: websiteConfig.posScript,
-				useNetworkInterception: websiteConfig.useNetworkInterception,
-				useScreenshotMode: websiteConfig.useScreenshotMode,
-				cookies: websiteConfig.cookies,
-				localStorage: websiteConfig.localStorage,
-				sessionStorage: websiteConfig.sessionStorage,
-				reloadAfterStorageInjection:
-					websiteConfig.reloadAfterStorageInjection,
-				enableAdaptiveTimeouts: websiteConfig.enableAdaptiveTimeouts,
-				timeoutMultipliers: websiteConfig.timeoutMultipliers,
-				proxyUrl: websiteConfig.proxyUrl,
-				blacklistTerms: websiteConfig.blacklistTerms,
-				whitelistTerms: websiteConfig.whitelistTerms,
-				selectors: {
-					chapterTitle: websiteConfig.selector,
-					chapterImages: websiteConfig.selector,
-					chapterListSelector: websiteConfig.chapterListSelector,
-					bookInfoExtractScript: websiteConfig.bookInfoExtractScript,
-					newBookExtractScript: websiteConfig.newBookExtractScript,
-				},
-				headers: {
-					Referer: host,
-				},
-			},
+			websiteId: websiteConfig.id,
 			newBookExtractScript: websiteConfig.newBookExtractScript,
 			uploadTarget: {
 				bucket: StorageBucket.PROCESSING,
@@ -262,6 +235,7 @@ export class BookCreationService implements OnModuleInit {
 						originalUrl: chDto.url,
 						index: chDto.index,
 						isFinal: chDto.isFinal ?? false,
+						specificSelector: chDto.specificSelector,
 						book: savedBook,
 						scrapingStatus: ScrapingStatus.PROCESS,
 					});

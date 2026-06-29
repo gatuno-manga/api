@@ -1,0 +1,1 @@
+ALTER TABLE chapters ADD COLUMN specificSelector VARCHAR(255) NULL DEFAULT NULL;

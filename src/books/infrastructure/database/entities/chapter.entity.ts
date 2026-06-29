@@ -42,6 +42,14 @@ export class Chapter {
 	@Column({ type: 'decimal', precision: 15, scale: 5 })
 	index: number;
 
+	@Column({
+		type: 'varchar',
+		length: 255,
+		nullable: true,
+		default: null,
+	})
+	specificSelector: string | null;
+
 	/**
 	 * Tipo de conteúdo do capítulo
 	 * - IMAGE: Páginas de imagem (mangás) - usa relação 'pages'

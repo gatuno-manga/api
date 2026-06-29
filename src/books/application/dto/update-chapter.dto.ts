@@ -62,4 +62,15 @@ export class UpdateChapterDto {
 	@IsOptional()
 	@ValidateIf((dto: UpdateChapterDto) => dto.content !== undefined)
 	format?: ContentFormat;
+
+	@ApiPropertyOptional({
+		description:
+			'Specific CSS selector for this chapter to override website defaults',
+		example: 'div#capitulo-5 img',
+		maxLength: 255,
+	})
+	@IsString()
+	@MaxLength(255)
+	@IsOptional()
+	specificSelector?: string;
 }

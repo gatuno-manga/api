@@ -11,6 +11,7 @@ export class Chapter {
 	title: string | null;
 	originalUrl: string;
 	index: number;
+	specificSelector: string | null;
 	contentType: ContentType;
 	content: string | null;
 	contentFormat: ContentFormat | null;

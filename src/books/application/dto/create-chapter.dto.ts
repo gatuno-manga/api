@@ -48,4 +48,15 @@ export class CreateChapterDto {
 	})
 	@IsOptional()
 	isFinal?: boolean;
+
+	@ApiPropertyOptional({
+		description:
+			'Specific CSS selector for this chapter to override website defaults',
+		example: 'div#capitulo-5 img',
+		maxLength: 255,
+	})
+	@IsString()
+	@MaxLength(255)
+	@IsOptional()
+	specificSelector?: string;
 }
