@@ -69,6 +69,7 @@ import { BookInitEvents } from './infrastructure/events/book.init.events';
 import { BookScrapingEvents } from './infrastructure/events/book.scraping.events';
 import { FileDeletionEvents } from './infrastructure/events/file-deletion.events';
 import { BooksGateway } from './infrastructure/gateways/books.gateway';
+import { AdminTroubleshootingResolver } from './infrastructure/graphql/resolvers/admin-troubleshooting.resolver';
 import { BookResolver } from './infrastructure/graphql/resolvers/book.resolver';
 import {
 	CoverResolver,
@@ -280,6 +281,7 @@ import { ContentUploadedListener } from './infrastructure/notifiers/content-uplo
 		ContentUploadedListener,
 		// WebSocket Gateway
 		BooksGateway,
+		AdminTroubleshootingResolver,
 		BookResolver,
 		CoverResolver,
 		PageResolver,

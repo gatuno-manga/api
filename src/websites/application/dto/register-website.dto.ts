@@ -83,6 +83,15 @@ export class RegisterWebSiteDto {
 	url: string;
 
 	@ApiPropertyOptional({
+		description: 'Whether the website is active and should be scraped',
+		example: true,
+		default: true,
+	})
+	@IsOptional()
+	@IsBoolean()
+	isActive?: boolean;
+
+	@ApiPropertyOptional({
 		description: 'Script to execute before scraping',
 		example: 'window.scrollTo(0, document.body.scrollHeight);',
 	})

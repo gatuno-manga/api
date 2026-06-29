@@ -41,7 +41,6 @@ export function configureSwagger(app: INestApplication) {
 	// Anexa as permissões exigidas na descrição do Swagger
 	for (const pathItem of Object.values(document.paths)) {
 		for (const operation of Object.values(pathItem)) {
-			// biome-ignore lint/suspicious/noExplicitAny: Swagger extension properties are not statically typed
 			const swaggerOp = operation as Record<string, unknown>;
 			const permissions = swaggerOp['x-permissions'] as
 				| string[]

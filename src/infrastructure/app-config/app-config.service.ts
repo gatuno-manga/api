@@ -290,6 +290,12 @@ export class AppConfigService {
 			),
 			bucket: this.config.get<string>('RUSTFS_BUCKET', 'gatuno-files'),
 			publicUrl: this.config.get<string>('RUSTFS_PUBLIC_URL', ''),
+			region: this.config.get<string>('RUSTFS_REGION', 'us-east-1'),
+			accessKeyId: this.config.get<string>('RUSTFS_ACCESS_KEY_ID', ''),
+			secretAccessKey: this.config.get<string>(
+				'RUSTFS_SECRET_ACCESS_KEY',
+				'',
+			),
 		};
 	}
 
@@ -387,6 +393,35 @@ export class AppConfigService {
 					this.config.get<string>('GITHUB_CALLBACK_URL') ||
 					`${this.apiUrl}/api/auth/github/callback`,
 			},
+		};
+	}
+
+	get dashboard() {
+		return {
+			overviewTtlMinutes:
+				this.config.get<number>('DASHBOARD_OVERVIEW_TTL_MINUTES') || 10,
+		};
+	}
+
+	get fileCleanup() {
+		return {
+			enabled: this.config.get<boolean>('FILE_CLEANUP_ENABLED') ?? true,
+			retentionDays:
+				this.config.get<number>('FILE_CLEANUP_RETENTION_DAYS') || 7,
+		};
+	}
+
+	get webPush() {
+		return {
+			vapidPublicKey: this.config.get<string>('VAPID_PUBLIC_KEY') || '',
+			vapidPrivateKey: this.config.get<string>('VAPID_PRIVATE_KEY') || '',
+			vapidSubject: this.config.get<string>('VAPID_SUBJECT') || '',
+			defaultIcon:
+				this.config.get<string>('WEB_PUSH_DEFAULT_ICON') ||
+				'/assets/icons/icon-512x512.png',
+			defaultBadge:
+				this.config.get<string>('WEB_PUSH_DEFAULT_BADGE') ||
+				'/assets/icons/badge-128x128.png',
 		};
 	}
 }

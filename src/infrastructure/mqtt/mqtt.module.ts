@@ -1,20 +1,25 @@
+import { AppConfigModule } from '@/infrastructure/app-config/app-config.module';
+import { AppConfigService } from '@/infrastructure/app-config/app-config.service';
 import { Global, Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 
 @Global()
 @Module({
 	imports: [
+		AppConfigModule,
 		ClientsModule.registerAsync([
 			{
 				name: 'MQTT_CLIENT',
-				useFactory: (configService: ConfigService) => ({
+				imports: [AppConfigModule],
+				useFactory: (appConfigService: AppConfigService) => ({
 					transport: Transport.MQTT,
 					options: {
-						url: `mqtt://${configService.get('NANOMQ_HOST')}:${configService.get('NANOMQ_PORT')}`,
+						url: `mqtt://${appConfigService.nanomq.host}:${appConfigService.nanomq.port}`,
+						username: 'internal-system',
+						password: appConfigService.jwt.accessSecret,
 					},
 				}),
-				inject: [ConfigService],
+				inject: [AppConfigService],
 			},
 		]),
 	],

@@ -12,6 +12,7 @@ import { UsersModule } from '@users/users.module';
 import { GetDashboardOverviewUseCase } from './application/use-cases/get-dashboard-overview.use-case';
 import { DashboardController } from './infrastructure/controllers/dashboard.controller';
 import { TypeOrmDashboardAdapter } from './infrastructure/database/adapters/typeorm-dashboard.adapter';
+import { DashboardResolver } from './infrastructure/graphql/resolvers/dashboard.resolver';
 
 @Module({
 	imports: [
@@ -30,6 +31,7 @@ import { TypeOrmDashboardAdapter } from './infrastructure/database/adapters/type
 	controllers: [DashboardController],
 	providers: [
 		GetDashboardOverviewUseCase,
+		DashboardResolver,
 		{
 			provide: 'DashboardRepositoryPort',
 			useClass: TypeOrmDashboardAdapter,

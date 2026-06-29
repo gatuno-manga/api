@@ -719,3 +719,19 @@ export function ApiDocsListDeletedPages() {
 		}),
 	);
 }
+
+export function ApiDocsResendUpdateEvent() {
+	return applyDecorators(
+		ApiOperation({
+			summary: 'Resend update event',
+			description: 'Resend the book.updated event (Admin only)',
+		}),
+		ApiParam({
+			name: 'idBook',
+			description: 'Book unique identifier',
+			example: '550e8400-e29b-41d4-a716-446655440000',
+		}),
+		ApiResponse({ status: 200, description: 'Event resent successfully' }),
+		ApiResponse({ status: 404, description: 'Book not found' }),
+	);
+}

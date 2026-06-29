@@ -8,6 +8,7 @@ import { AdminBookRequestsController } from './infrastructure/controllers/admin-
 import { BookRequestsController } from './infrastructure/controllers/book-requests.controller';
 import { TypeOrmBookRequestRepository } from './infrastructure/database/adapters/typeorm-book-request.repository';
 import { BookRequestEntity } from './infrastructure/database/entities/book-request.entity';
+import { BookRequestsNotifier } from './infrastructure/notifiers/book-requests.notifier';
 
 @Module({
 	imports: [
@@ -21,6 +22,7 @@ import { BookRequestEntity } from './infrastructure/database/entities/book-reque
 			provide: I_BOOK_REQUEST_REPOSITORY,
 			useClass: TypeOrmBookRequestRepository,
 		},
+		BookRequestsNotifier,
 	],
 	controllers: [BookRequestsController, AdminBookRequestsController],
 	exports: [BookRequestsService],

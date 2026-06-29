@@ -1,3 +1,4 @@
+import { AppConfigService } from '@/infrastructure/app-config/app-config.service';
 import {
 	DeleteObjectCommand,
 	GetObjectCommand,
@@ -12,7 +13,6 @@ import {
 } from '@files/application/ports/storage.port';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class S3StorageAdapter implements StoragePort {
@@ -20,31 +20,19 @@ export class S3StorageAdapter implements StoragePort {
 	private readonly defaultBucket: string;
 	private readonly logger = new Logger(S3StorageAdapter.name);
 
-	constructor(private readonly configService: ConfigService) {
-		const endpoint = this.configService.get<string>(
-			'RUSTFS_ENDPOINT',
-			'http://rustfs:9000',
-		);
-		this.defaultBucket = this.configService.get<string>(
-			'RUSTFS_BUCKET',
-			'gatuno-files',
-		);
+	constructor(private readonly appConfigService: AppConfigService) {
+		const endpoint = this.appConfigService.rustfs.endpoint;
+		this.defaultBucket = this.appConfigService.rustfs.bucket;
 
 		this.s3Client = new S3Client({
 			endpoint: endpoint,
-			region: this.configService.get<string>(
-				'RUSTFS_REGION',
-				'us-east-1',
-			),
+			region: this.appConfigService.rustfs.region,
 			credentials: {
-				accessKeyId: this.configService.get<string>(
-					'RUSTFS_ACCESS_KEY',
+				accessKeyId:
+					this.appConfigService.rustfs.accessKeyId || 'rustfsadmin',
+				secretAccessKey:
+					this.appConfigService.rustfs.secretAccessKey ||
 					'rustfsadmin',
-				),
-				secretAccessKey: this.configService.get<string>(
-					'RUSTFS_SECRET_KEY',
-					'rustfsadmin',
-				),
 			},
 			forcePathStyle: true, // Obrigatório para RustFS/MinIO
 			tls: endpoint.startsWith('https'),

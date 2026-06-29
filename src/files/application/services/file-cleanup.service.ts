@@ -1,10 +1,10 @@
+import { AppConfigService } from '@/infrastructure/app-config/app-config.service';
 import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { Chapter } from '@books/infrastructure/database/entities/chapter.entity';
 import { Cover } from '@books/infrastructure/database/entities/cover.entity';
 import { Page } from '@books/infrastructure/database/entities/page.entity';
 import { StoragePort } from '@files/application/ports/storage.port';
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
 
@@ -46,13 +46,10 @@ export class FileCleanupService {
 		private readonly bookRepository: Repository<Book>,
 		@InjectRepository(Chapter)
 		private readonly chapterRepository: Repository<Chapter>,
-		private readonly configService: ConfigService,
+		private readonly appConfigService: AppConfigService,
 		@Inject('STORAGE_PORT') private readonly storagePort: StoragePort,
 	) {
-		this.retentionDays = this.configService.get<number>(
-			'SOFT_DELETE_RETENTION_DAYS',
-			10,
-		);
+		this.retentionDays = this.appConfigService.fileCleanup.retentionDays;
 	}
 
 	private getErrorMessage(error: unknown): string {

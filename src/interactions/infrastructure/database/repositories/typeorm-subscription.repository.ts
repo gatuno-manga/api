@@ -40,4 +40,11 @@ export class TypeOrmSubscriptionRepository implements SubscriptionRepository {
 		});
 		return entities.map((e) => Subscription.restore(e));
 	}
+
+	async findByUser(userId: UserId): Promise<Subscription[]> {
+		const entities = await this.repository.find({
+			where: { userId: userId.toString() },
+		});
+		return entities.map((e) => Subscription.restore(e));
+	}
 }

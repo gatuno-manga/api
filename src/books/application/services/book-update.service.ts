@@ -562,4 +562,20 @@ export class BookUpdateService {
 			[{ url: cover.originalUrl, title: cover.title }],
 		);
 	}
+
+	/**
+	 * Reenvia o evento de atualização de um livro
+	 */
+	async resendBookUpdatedEvent(idBook: string): Promise<void> {
+		const book = await this.findBookWith(idBook, [
+			'tags',
+			'sensitiveContent',
+			'authors',
+		]);
+
+		this.logger.log(
+			`Re-emitting book.updated event for book: ${book.title}`,
+		);
+		this.eventEmitter.emit('book.updated', book);
+	}
 }

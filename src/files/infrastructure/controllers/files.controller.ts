@@ -1,3 +1,4 @@
+import { AppConfigService } from '@/infrastructure/app-config/app-config.service';
 import { StoragePort } from '@files/application/ports/storage.port';
 import {
 	Controller,
@@ -8,7 +9,6 @@ import {
 	Res,
 } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { SkipThrottle } from '@nestjs/throttler';
 import { Response } from 'express';
 
@@ -18,7 +18,7 @@ export class FilesController {
 
 	constructor(
 		@Inject('STORAGE_PORT') private readonly storagePort: StoragePort,
-		private readonly configService: ConfigService,
+		private readonly appConfigService: AppConfigService,
 	) {}
 
 	/**
@@ -48,8 +48,7 @@ export class FilesController {
 		@Param('filename') filename: string,
 		@Res() res: Response,
 	) {
-		const defaultBucket =
-			this.configService.get<string>('RUSTFS_BUCKET') || 'gatuno-files';
+		const defaultBucket = this.appConfigService.rustfs.bucket;
 		return this.redirectToFile(defaultBucket, shard, filename, res);
 	}
 
@@ -65,7 +64,7 @@ export class FilesController {
 			// Usamos o RUSTFS_PUBLIC_URL para o redirecionamento externo
 			// Se não houver, tentamos o ENDPOINT (mas ENDPOINT costuma ser interno da rede Docker)
 			const publicEndpoint =
-				this.configService.get<string>('RUSTFS_PUBLIC_URL') ||
+				this.appConfigService.rustfs.publicUrl ||
 				'http://localhost:9000';
 
 			// Redireciona para o RustFS usando o bucket correto
