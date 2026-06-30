@@ -12,17 +12,14 @@ if [[ -f "$ENV_FILE" ]]; then
   set +a
 fi
 
-COMPOSE_ARGS=(
-  -f "$ROOT_DIR/docker-compose.common.yml"
-  -f "$ROOT_DIR/docker-compose.dev.yml"
-)
-
+COMPOSE_ARGS=()
 if [[ -n "${GATUNO_COMPOSE_FILES:-}" ]]; then
-  COMPOSE_ARGS=()
   IFS=':' read -r -a compose_files <<<"$GATUNO_COMPOSE_FILES"
   for f in "${compose_files[@]}"; do
     COMPOSE_ARGS+=( -f "$ROOT_DIR/$f" )
   done
+elif [[ -f "$ROOT_DIR/docker-compose.common.yml" && -f "$ROOT_DIR/docker-compose.dev.yml" ]]; then
+  COMPOSE_ARGS=( -f "$ROOT_DIR/docker-compose.common.yml" -f "$ROOT_DIR/docker-compose.dev.yml" )
 fi
 
 if ! command -v docker >/dev/null 2>&1; then
@@ -93,23 +90,13 @@ service_container_id() {
   compose ps -q "$service"
 }
 
-volume_name() {
-  case "$1" in
-    database-slave-1) echo "database-slave-1-data" ;;
-    database-slave-2) echo "database-slave-2-data" ;;
-    *)
-      echo ""
-      ;;
-  esac
-}
-
 wait_mysql_ready() {
   local container="$1"
   local attempts=60
   local sleep_seconds=2
 
   for ((i=1; i<=attempts; i++)); do
-    if docker exec "$container" mysqladmin -uroot -p"$ROOT_PASS" ping --silent >/dev/null 2>&1; then
+    if docker exec -e MYSQL_PWD="${ROOT_PASS}" "$container" mysqladmin -uroot ping --silent >/dev/null 2>&1; then
       return 0
     fi
     sleep "$sleep_seconds"
@@ -126,7 +113,7 @@ wait_replica_ok() {
   local status=""
 
   for ((i=1; i<=attempts; i++)); do
-    status="$(docker exec "$container" mysql -uroot -p"$ROOT_PASS" -e "SHOW REPLICA STATUS\\G" 2>/dev/null || true)"
+    status="$(docker exec -e MYSQL_PWD="${ROOT_PASS}" "$container" mysql -uroot -e "SHOW REPLICA STATUS\\G" 2>/dev/null || true)"
 
     if echo "$status" | grep -q "Replica_IO_Running: Yes" && \
        echo "$status" | grep -q "Replica_SQL_Running: Yes"; then
@@ -139,7 +126,7 @@ wait_replica_ok() {
   done
 
   echo "[warn] Replicacao ainda nao ficou OK em ${container}."
-  docker exec "$container" mysql -uroot -p"$ROOT_PASS" -e "SHOW REPLICA STATUS\\G" || true
+  docker exec -e MYSQL_PWD="${ROOT_PASS}" "$container" mysql -uroot -e "SHOW REPLICA STATUS\\G" || true
   return 1
 }
 
@@ -157,18 +144,27 @@ reseed_slave() {
   echo "==> Reseed do ${service} a partir do master"
 
   wait_mysql_ready "$master_container"
+  
+  echo "==> Garantindo permissoes do usuario '${REPL_USER}' no master..."
+  docker exec -e MYSQL_PWD="${ROOT_PASS}" "$master_container" mysql -uroot -e "
+CREATE USER IF NOT EXISTS '${REPL_USER}'@'%' IDENTIFIED BY '${REPL_PASS}';
+ALTER USER '${REPL_USER}'@'%' IDENTIFIED BY '${REPL_PASS}';
+GRANT REPLICATION SLAVE ON *.* TO '${REPL_USER}'@'%';
+FLUSH PRIVILEGES;
+"
+
   wait_mysql_ready "$slave_container"
 
-  docker exec -i "$slave_container" mysql -uroot -p"$ROOT_PASS" <<SQL
+  docker exec -i -e MYSQL_PWD="${ROOT_PASS}" "$slave_container" mysql -uroot <<SQL
 STOP REPLICA;
 RESET REPLICA ALL;
 RESET BINARY LOGS AND GTIDS;
 SQL
 
-  docker exec "$master_container" sh -c 'exec mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" --single-transaction --routines --triggers --events --set-gtid-purged=ON --databases "$MYSQL_DATABASE"' \
-    | docker exec -i "$slave_container" sh -c 'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD"'
+  docker exec -e MYSQL_PWD="${ROOT_PASS}" "$master_container" sh -c 'exec mysqldump -uroot --single-transaction --routines --triggers --events --set-gtid-purged=ON --databases "$MYSQL_DATABASE"' \
+    | docker exec -i -e MYSQL_PWD="${ROOT_PASS}" "$slave_container" sh -c 'exec mysql -uroot'
 
-  docker exec -i "$slave_container" mysql -uroot -p"$ROOT_PASS" <<SQL
+  docker exec -i -e MYSQL_PWD="${ROOT_PASS}" "$slave_container" mysql -uroot <<SQL
 CHANGE REPLICATION SOURCE TO
   SOURCE_HOST='${MASTER_HOST}',
   SOURCE_USER='${REPL_USER}',
@@ -185,26 +181,12 @@ SQL
 
 recreate_one() {
   local service="$1"
-  local volume
   local container
-
-  volume="$(volume_name "$service")"
-  if [[ -z "$volume" ]]; then
-    echo "Erro: servico invalido: ${service}"
-    exit 1
-  fi
 
   echo "==> Recriando ${service}"
 
-  compose stop "$service" || true
-
-  container="$(service_container_id "$service")"
-  if [[ -n "$container" ]]; then
-    docker rm -f "$container" >/dev/null 2>&1 || true
-  fi
-
-  # Volume com prefixo do projeto (name: gatuno) e fallback sem prefixo.
-  docker volume rm "gatuno_${volume}" >/dev/null 2>&1 || docker volume rm "$volume" >/dev/null 2>&1 || true
+  # Remove o container e seus volumes associados geridos pelo compose
+  compose rm -s -v -f "$service"
 
   compose up -d "$service"
 
