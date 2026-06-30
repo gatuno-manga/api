@@ -6,18 +6,19 @@ import { PaginatedBookResponseModel } from '@books/infrastructure/graphql/models
 import { UseGuards } from '@nestjs/common';
 import { Args, Query, Resolver } from '@nestjs/graphql';
 import { GqlJwtAuthGuard } from 'src/auth/infrastructure/framework/gql-jwt-auth.guard';
-import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 import { PageDto } from 'src/common/pagination/page.dto';
-import { RolesEnum } from 'src/users/domain/enums/roles.enum';
+import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
+import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
+import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 
 @Resolver(() => BookModel)
-@UseGuards(GqlJwtAuthGuard)
-@Roles(RolesEnum.ADMIN)
+@UseGuards(GqlJwtAuthGuard, PermissionsGuard)
 export class AdminTroubleshootingResolver {
 	constructor(private readonly booksService: BooksService) {}
 
 	@Query(() => PaginatedBookResponseModel, { name: 'adminBooksWithErrors' })
+	@Permissions(PermissionsEnum.BOOKS_MAINTENANCE)
 	async getAdminBooksWithErrors(
 		@Args('filter', { type: () => AdminBookFilterInput, nullable: true })
 		filter?: AdminBookFilterInput,

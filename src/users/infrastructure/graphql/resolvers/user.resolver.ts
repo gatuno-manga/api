@@ -6,17 +6,18 @@ import { PaginatedUserResponseModel } from '@users/infrastructure/graphql/models
 import { UserFilterInput } from '@users/infrastructure/graphql/models/user-filter.input';
 import { UserModel } from '@users/infrastructure/graphql/models/user.model';
 import { GqlJwtAuthGuard } from 'src/auth/infrastructure/framework/gql-jwt-auth.guard';
-import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
 import { UserAwareCacheInterceptor } from 'src/common/interceptors/user-aware-cache.interceptor';
-import { RolesEnum } from 'src/users/domain/enums/roles.enum';
+import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
+import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
+import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 
 @Resolver(() => UserModel)
-@UseGuards(GqlJwtAuthGuard)
-@Roles(RolesEnum.ADMIN)
+@UseGuards(GqlJwtAuthGuard, PermissionsGuard)
 export class UserResolver {
 	constructor(private readonly adminUsersService: AdminUsersService) {}
 
 	@Query(() => PaginatedUserResponseModel, { name: 'users' })
+	@Permissions(PermissionsEnum.USERS_VIEW)
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(30)
 	async listUsers(
@@ -50,6 +51,7 @@ export class UserResolver {
 	}
 
 	@Query(() => UserModel, { name: 'user' })
+	@Permissions(PermissionsEnum.USERS_VIEW)
 	async getUserById(@Args('id', { type: () => ID }) id: string) {
 		return this.adminUsersService.getUserById(id);
 	}

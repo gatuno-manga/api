@@ -3,12 +3,10 @@ import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { Controller, Get, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
-import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
 import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
 import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
-import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 import {
 	ApiDocsDashboard,
 	ApiDocsGetQueueStats,
@@ -18,7 +16,6 @@ import {
 @ApiTags('Books Admin Dashboard')
 @Controller('books')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
-@Roles(RolesEnum.ADMIN)
 @ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 export class AdminBooksDashboardController {
 	constructor(private readonly booksService: BooksService) {}
