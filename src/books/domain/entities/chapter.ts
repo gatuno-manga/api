@@ -9,6 +9,7 @@ import { Page } from './page';
 export class Chapter {
 	id: string;
 	title: string | null;
+	languageCode: string;
 	originalUrl: string;
 	index: number;
 	specificSelector: string | null;

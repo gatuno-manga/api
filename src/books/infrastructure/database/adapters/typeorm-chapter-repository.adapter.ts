@@ -77,6 +77,8 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 		>[1] = {};
 
 		if (data.title !== undefined) updateData.title = data.title;
+		if (data.languageCode !== undefined)
+			updateData.languageCode = data.languageCode;
 		if (data.index !== undefined) updateData.index = data.index;
 		if (data.originalUrl !== undefined)
 			updateData.originalUrl = data.originalUrl;
@@ -161,6 +163,7 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 		const chapters = await this.repository.find({
 			where: {
 				book: { id: bookId },
+				languageCode: options?.languageCode || 'pt-BR',
 			} as FindOptionsWhere<InfrastructureChapter>,
 			order,
 			take: options?.limit,
@@ -215,7 +218,10 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 	): Promise<Record<string, unknown>[]> {
 		const chaptersQuery = this.repository
 			.createQueryBuilder('chapter')
-			.where('chapter.bookId = :bookId', { bookId });
+			.where('chapter.bookId = :bookId', { bookId })
+			.andWhere('chapter.languageCode = :languageCode', {
+				languageCode: options.languageCode || 'pt-BR',
+			});
 
 		if (options.cursorIndex !== undefined && options.cursorIndex !== null) {
 			const operator = options.order === 'DESC' ? '<' : '>';
@@ -281,6 +287,9 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 		const previousChapter = await this.repository
 			.createQueryBuilder('chapter')
 			.where('chapter.bookId = :bookId', { bookId: chapter.book.id })
+			.andWhere('chapter.languageCode = :languageCode', {
+				languageCode: chapter.languageCode,
+			})
 			.andWhere('chapter.index < :currentIndex', {
 				currentIndex: chapter.index,
 			})
@@ -291,6 +300,9 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 		const nextChapter = await this.repository
 			.createQueryBuilder('chapter')
 			.where('chapter.bookId = :bookId', { bookId: chapter.book.id })
+			.andWhere('chapter.languageCode = :languageCode', {
+				languageCode: chapter.languageCode,
+			})
 			.andWhere('chapter.index > :currentIndex', {
 				currentIndex: chapter.index,
 			})
@@ -301,6 +313,9 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 		const maxIndexChapter = await this.repository
 			.createQueryBuilder('chapter')
 			.where('chapter.bookId = :bookId', { bookId: chapter.book.id })
+			.andWhere('chapter.languageCode = :languageCode', {
+				languageCode: chapter.languageCode,
+			})
 			.select('MAX(chapter.index)', 'max')
 			.getRawOne<{ max: string | number | null }>();
 
@@ -333,6 +348,8 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 			Repository<InfrastructureChapter>['merge']
 		>[1] = {};
 		if (data.title !== undefined) updateData.title = data.title;
+		if (data.languageCode !== undefined)
+			updateData.languageCode = data.languageCode;
 		if (data.index !== undefined) updateData.index = data.index;
 		if (data.content !== undefined) updateData.content = data.content;
 

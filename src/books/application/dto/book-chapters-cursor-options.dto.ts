@@ -34,4 +34,12 @@ export class BookChaptersCursorOptionsDto {
 	@IsOptional()
 	@IsEnum(OrderDirection)
 	order?: OrderDirection = OrderDirection.ASC;
+
+	@ApiPropertyOptional({
+		description: 'Código do idioma dos capítulos',
+		example: 'pt-BR',
+	})
+	@IsOptional()
+	@IsString()
+	languageCode?: string;
 }

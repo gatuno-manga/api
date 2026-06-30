@@ -1,6 +1,7 @@
 import { RedisService } from '@/infrastructure/redis/redis.service';
 import { CreateAuthorDto } from '@books/application/dto/create-author.dto';
 import { CreateBookDto } from '@books/application/dto/create-book.dto';
+import { CreateChapterDto } from '@books/application/dto/create-chapter.dto';
 import {
 	IBookRepository,
 	I_BOOK_REPOSITORY,
@@ -17,7 +18,10 @@ import {
 	ICoverRepository,
 	I_COVER_REPOSITORY,
 } from '@books/application/ports/cover-repository.interface';
-import { BookContentUpdateService } from '@books/application/services/book-content-update.service';
+import {
+	BookContentUpdateService,
+	ScrapedChapter,
+} from '@books/application/services/book-content-update.service';
 import { BookCreationService } from '@books/application/services/book-creation.service';
 import { Book } from '@books/domain/entities/book';
 import { Cover } from '@books/domain/entities/cover';
@@ -41,12 +45,26 @@ interface ScrapingBookCompletedPayload {
 	description?: string;
 	authors?: string[];
 	tags?: string[];
-	chapters: Array<{
-		title: string;
-		url: string;
-		index?: number;
-		isFinal?: boolean;
-	}>;
+	chapters:
+		| Array<{
+				title: string;
+				url: string;
+				index?: number;
+				isFinal?: boolean;
+				languageCode?: string;
+		  }>
+		| Record<
+				string,
+				{
+					chapters: Array<{
+						title: string;
+						url: string;
+						index?: number;
+						isFinal?: boolean;
+						languageCode?: string;
+					}>;
+				}
+		  >;
 	covers: Array<{
 		url: string;
 		isPrimary?: boolean;
@@ -121,6 +139,40 @@ export class BooksKafkaConsumer {
 		}
 	}
 
+	private parseChaptersFromPayload(
+		chaptersData: ScrapingBookCompletedPayload['chapters'],
+	): CreateChapterDto[] {
+		const parsedChapters: CreateChapterDto[] = [];
+		if (!chaptersData) return parsedChapters;
+
+		if (Array.isArray(chaptersData)) {
+			for (const c of chaptersData) {
+				parsedChapters.push({
+					title: c.title,
+					url: c.url,
+					index: c.index,
+					isFinal: c.isFinal || false,
+					languageCode: c.languageCode || 'pt-BR',
+				});
+			}
+		} else if (typeof chaptersData === 'object') {
+			for (const [lang, langData] of Object.entries(chaptersData)) {
+				if (langData && Array.isArray(langData.chapters)) {
+					for (const c of langData.chapters) {
+						parsedChapters.push({
+							title: c.title,
+							url: c.url,
+							index: c.index,
+							isFinal: c.isFinal || false,
+							languageCode: c.languageCode || lang,
+						});
+					}
+				}
+			}
+		}
+		return parsedChapters;
+	}
+
 	@EventPattern('scraping.new-book.completed')
 	async handleNewBookScrapingCompleted(
 		@Payload() messages: KafkaMessage[] | ScrapingBookCompletedPayload,
@@ -160,12 +212,7 @@ export class BooksKafkaConsumer {
 					originalUrl: targetUrl ? [targetUrl] : [],
 					authors,
 					tags: data.tags || [],
-					chapters: (data.chapters || []).map((c) => ({
-						title: c.title,
-						url: c.url,
-						index: c.index,
-						isFinal: c.isFinal || false,
-					})),
+					chapters: this.parseChaptersFromPayload(data.chapters),
 					cover: {
 						urlOrigin: targetUrl,
 						urlImgs: (data.covers || []).map((c) => ({
@@ -220,12 +267,7 @@ export class BooksKafkaConsumer {
 			}
 
 			try {
-				const chapters = (data.chapters || []).map((c) => ({
-					title: c.title,
-					url: c.url,
-					index: c.index,
-					isFinal: c.isFinal || false,
-				}));
+				const chapters = this.parseChaptersFromPayload(data.chapters);
 
 				const covers = (data.covers || []).map((c) => ({
 					url: c.url,
@@ -234,7 +276,7 @@ export class BooksKafkaConsumer {
 
 				await this.bookContentUpdateService.addScrapedChapters(
 					bookId,
-					chapters,
+					chapters as unknown as ScrapedChapter[],
 					covers,
 				);
 				this.logger.log(

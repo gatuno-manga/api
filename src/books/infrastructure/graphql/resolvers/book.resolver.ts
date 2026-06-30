@@ -196,6 +196,7 @@ export class BookResolver {
 		const options = new BookChaptersCursorOptionsDto();
 		options.cursor = filter.cursor;
 		options.order = filter.order;
+		options.languageCode = filter.languageCode;
 		Object.assign(options, { limit: filter.limit ?? 100 });
 
 		const result = await this.booksService.getChapters(

@@ -27,4 +27,9 @@ export class ChapterFilterInput {
 	})
 	@IsOptional()
 	order?: OrderDirection;
+
+	@Field(() => String, { nullable: true, defaultValue: 'pt-BR' })
+	@IsOptional()
+	@IsString()
+	languageCode?: string;
 }

@@ -26,14 +26,15 @@ import { WebsiteService } from '@websites/application/services/website.service';
 import { normalizeUrl } from 'src/common/utils/url.utils';
 import { v7 as uuidv7 } from 'uuid';
 
-interface ScrapedChapter {
-	title: string;
+export interface ScrapedChapter {
+	title?: string;
 	url: string;
 	index?: number;
 	isFinal?: boolean;
+	languageCode?: string;
 }
 
-interface ScrapedCover {
+export interface ScrapedCover {
 	url: string;
 	title?: string;
 }
@@ -179,13 +180,19 @@ export class BookContentUpdateService implements OnModuleInit {
 
 		this.logger.log(`Found ${newChapters.length} new chapters`);
 
-		const existingIndexes = await this.getExistingChapterIndexes(
+		const existingIndexesByLang = await this.getExistingChapterIndexes(
 			book.id,
 			alreadyCreatedChapters,
 		);
 
 		const chaptersToCreate: Chapter[] = [];
 		for (const scraped of newChapters) {
+			const lang = scraped.languageCode || 'pt-BR';
+			let existingIndexes = existingIndexesByLang.get(lang);
+			if (!existingIndexes) {
+				existingIndexes = new Set();
+				existingIndexesByLang.set(lang, existingIndexes);
+			}
 			const scrapedIndex =
 				typeof scraped.index === 'string'
 					? Number.parseFloat(scraped.index)
@@ -214,10 +221,11 @@ export class BookContentUpdateService implements OnModuleInit {
 			}
 
 			const chapter = this.chapterRepository.create({
-				title: scraped.title,
+				title: scraped.title || `Capítulo ${nextIndex}`,
 				originalUrl: normalizeUrl(scraped.url),
 				index: nextIndex,
 				isFinal: scraped.isFinal ?? false,
+				languageCode: scraped.languageCode || 'pt-BR',
 				book: book,
 				scrapingStatus: ScrapingStatus.PROCESS,
 			});
@@ -246,13 +254,24 @@ export class BookContentUpdateService implements OnModuleInit {
 	private async getExistingChapterIndexes(
 		bookId: string,
 		additionalChapters: Chapter[],
-	): Promise<Set<number>> {
+	): Promise<Map<string, Set<number>>> {
 		const chapters = await this.chapterRepository.findByBookId(bookId);
 
-		return new Set([
-			...chapters.map((ch) => Number.parseFloat(ch.index.toString())),
-			...additionalChapters.map((ch) => ch.index),
-		]);
+		const map = new Map<string, Set<number>>();
+
+		for (const ch of chapters) {
+			const lang = ch.languageCode || 'pt-BR';
+			if (!map.has(lang)) map.set(lang, new Set());
+			map.get(lang)?.add(Number.parseFloat(ch.index.toString()));
+		}
+
+		for (const ch of additionalChapters) {
+			const lang = ch.languageCode || 'pt-BR';
+			if (!map.has(lang)) map.set(lang, new Set());
+			map.get(lang)?.add(ch.index);
+		}
+
+		return map;
 	}
 
 	private determineNextChapterIndex(

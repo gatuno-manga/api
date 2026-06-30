@@ -59,4 +59,12 @@ export class CreateChapterDto {
 	@MaxLength(255)
 	@IsOptional()
 	specificSelector?: string;
+
+	@ApiPropertyOptional({
+		description: 'Language code for the chapter (e.g. pt-BR, en)',
+		example: 'pt-BR',
+	})
+	@IsString()
+	@IsOptional()
+	languageCode?: string;
 }
