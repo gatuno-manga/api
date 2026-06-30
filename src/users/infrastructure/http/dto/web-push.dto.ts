@@ -22,4 +22,7 @@ export class WebPushSubscriptionDto {
 	@IsString()
 	@IsOptional()
 	deviceAgent?: string;
+
+	@IsOptional()
+	expirationTime?: number | null;
 }
