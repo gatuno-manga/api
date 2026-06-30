@@ -35,7 +35,6 @@ import {
 
 @ApiTags('Chapters')
 @Controller('chapters')
-@UseGuards(PermissionsGuard)
 export class ChapterController {
 	constructor(private readonly chapterService: ChapterService) {}
 
@@ -53,7 +52,7 @@ export class ChapterController {
 		return this.chapterService.getChapter(idChapter, user?.userId);
 	}
 
-	@Patch(':idChapter/reset/')
+	@Patch(':idChapter/reset')
 	@Permissions(PermissionsEnum.BOOKS_MAINTENANCE)
 	@AuthenticatedApi()
 	@ApiDocsResetChapter()

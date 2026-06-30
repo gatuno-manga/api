@@ -4,18 +4,19 @@ import { GetDashboardOverviewUseCase } from '@/dashboard/application/use-cases/g
 import { UseGuards } from '@nestjs/common';
 import { Args, Query, Resolver } from '@nestjs/graphql';
 import { GqlJwtAuthGuard } from 'src/auth/infrastructure/framework/gql-jwt-auth.guard';
-import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
-import { RolesEnum } from 'src/users/domain/enums/roles.enum';
+import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
+import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
+import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 
 @Resolver(() => DashboardOverviewType)
-@UseGuards(GqlJwtAuthGuard)
-@Roles(RolesEnum.ADMIN)
+@UseGuards(GqlJwtAuthGuard, PermissionsGuard)
 export class DashboardResolver {
 	constructor(
 		private readonly getDashboardOverviewUseCase: GetDashboardOverviewUseCase,
 	) {}
 
 	@Query(() => DashboardOverviewType, { name: 'dashboardOverview' })
+	@Permissions(PermissionsEnum.BOOKS_DASHBOARD_VIEW)
 	async getOverview(
 		@Args('filter', { nullable: true }) filter?: DashboardFilterInput,
 	) {

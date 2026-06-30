@@ -2,6 +2,28 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+input AdminBookFilterInput {
+	authors: [ID]
+	authorsLogic: FilterLogic = AND
+	cursor: String
+	excludeTags: [ID]
+	excludeTagsLogic: FilterLogic = OR
+	lang: String
+	limit: Int = 20
+	order: OrderDirection = DESC
+	orderBy: BookOrderField = CREATED_AT
+	page: Int = 1
+	publication: Int
+	publicationOperator: FilterOperator = EQ
+	scrapingStatus: [ScrapingStatus]
+	search: String
+	sensitiveContent: [String]
+	sites: [String]
+	tags: [ID]
+	tagsLogic: FilterLogic = AND
+	type: [BookType]
+}
+
 type AlternativeTitle {
 	languageCode: String
 	rank: Int!
@@ -103,6 +125,20 @@ input ChapterFilterInput {
 	page: Int = 1
 }
 
+type Collection {
+	bookCovers(limit: Int = 4): [[Cover!]!]!
+	books: [String!]!
+	collaborators: [String!]!
+	coverUrl: String
+	createdAt: DateTime!
+	description: String
+	id: ID!
+	ownerId: String!
+	title: String!
+	updatedAt: DateTime!
+	visibility: String!
+}
+
 input CommentInput {
 	chapterId: ID!
 	content: String!
@@ -129,6 +165,42 @@ type Cover {
 	url: String!
 }
 
+type DashboardCountsType {
+	authors: Int!
+	books: Int!
+	chapters: Int!
+	pages: Int!
+	sensitiveContent: Int!
+	tags: Int!
+	users: Int!
+}
+
+input DashboardFilterInput {
+	sensitiveContent: String = "all"
+}
+
+type DashboardNameCountItemType {
+	count: Int!
+	name: String!
+}
+
+type DashboardOverviewType {
+	counts: DashboardCountsType!
+	sensitiveContent: [DashboardNameCountItemType!]!
+	status: DashboardStatusType!
+	tags: [DashboardNameCountItemType!]!
+}
+
+type DashboardStatusItemType {
+	count: Int!
+	status: String!
+}
+
+type DashboardStatusType {
+	books: [DashboardStatusItemType!]!
+	chapters: [DashboardStatusItemType!]!
+}
+
 """
 A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
 """
@@ -137,6 +209,13 @@ scalar DateTime
 enum DocumentFormat {
 	EPUB
 	PDF
+}
+
+type Favorite {
+	book: Book!
+	bookId: String!
+	createdAt: DateTime!
+	userId: String!
 }
 
 enum FilterLogic {
@@ -215,9 +294,27 @@ type PaginatedChapterResponse {
 	total: Int
 }
 
+type PaginatedCollectionResponse {
+	data: [Collection!]!
+	hasNextPage: Boolean!
+	lastPage: Int
+	nextCursor: String
+	page: Int
+	total: Int
+}
+
 type PaginatedCommentResponse {
 	data: [ChapterComment!]!
 	hasNextPage: Boolean
+	lastPage: Int
+	nextCursor: String
+	page: Int
+	total: Int
+}
+
+type PaginatedFavoriteResponse {
+	data: [Favorite!]!
+	hasNextPage: Boolean!
 	lastPage: Int
 	nextCursor: String
 	page: Int
@@ -234,6 +331,7 @@ type PaginatedUserResponse {
 }
 
 type Query {
+	adminBooksWithErrors(filter: AdminBookFilterInput): PaginatedBookResponse!
 	book(id: ID!, lang: String): Book
 	bookComments(
 		chapterId: ID!
@@ -242,6 +340,17 @@ type Query {
 	): PaginatedCommentResponse!
 	books(filter: BookFilterInput): PaginatedBookResponse!
 	chapter(id: ID!): Chapter
+	dashboardOverview(filter: DashboardFilterInput): DashboardOverviewType!
+	myCollections(
+		cursor: String
+		limit: Int = 20
+		page: Int
+	): PaginatedCollectionResponse!
+	myFavorites(
+		cursor: String
+		limit: Int = 20
+		page: Int
+	): PaginatedFavoriteResponse!
 	searchAuthors(query: String!): [Author!]!
 	searchTags(query: String!): [Tag!]!
 	user(id: ID!): User!

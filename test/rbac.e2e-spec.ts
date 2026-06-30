@@ -102,5 +102,42 @@ describe('RBAC (e2e)', () => {
 			expect(response.status).toBe(200);
 			expect(response.body).toBeDefined();
 		});
+
+		describe('Administrative Tools (BOOKS_MAINTENANCE)', () => {
+			const nonExistentId = '1131edff-945b-42c9-80ce-d17ed5a4c79e';
+
+			it('should deny access to book fix route for regular users (403 Forbidden)', async () => {
+				const response = await request(app.getHttpServer())
+					.patch(`/api/books/${nonExistentId}/fix`)
+					.set('Authorization', `Bearer ${userToken}`);
+
+				expect(response.status).toBe(403);
+			});
+
+			it('should allow access to book fix route for admin users (404 Not Found since book does not exist)', async () => {
+				const response = await request(app.getHttpServer())
+					.patch(`/api/books/${nonExistentId}/fix`)
+					.set('Authorization', `Bearer ${adminToken}`);
+
+				// If it returns 404, it means it bypassed the guards and hit the service layer
+				expect(response.status).toBe(404);
+			});
+
+			it('should deny access to chapter reset route for regular users (403 Forbidden)', async () => {
+				const response = await request(app.getHttpServer())
+					.patch(`/api/chapters/${nonExistentId}/reset`)
+					.set('Authorization', `Bearer ${userToken}`);
+
+				expect(response.status).toBe(403);
+			});
+
+			it('should allow access to chapter reset route for admin users (404 Not Found since chapter does not exist)', async () => {
+				const response = await request(app.getHttpServer())
+					.patch(`/api/chapters/${nonExistentId}/reset`)
+					.set('Authorization', `Bearer ${adminToken}`);
+
+				expect(response.status).toBe(404);
+			});
+		});
 	});
 });

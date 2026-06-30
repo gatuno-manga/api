@@ -26,9 +26,16 @@ export class PermissionsGuard implements CanActivate {
 			return true;
 		}
 
-		const request = context
-			.switchToHttp()
-			.getRequest<Record<string, unknown>>();
+		let request: Record<string, unknown>;
+		if (context.getType<string>() === 'graphql') {
+			const { GqlExecutionContext } = require('@nestjs/graphql');
+			const ctx = GqlExecutionContext.create(context);
+			request = ctx.getContext().req;
+		} else {
+			request = context
+				.switchToHttp()
+				.getRequest<Record<string, unknown>>();
+		}
 		const user = request.user as CurrentUserDto;
 
 		let userPermissions: string[];

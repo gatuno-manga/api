@@ -11,12 +11,10 @@ import {
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
-import { Roles } from 'src/auth/infrastructure/framework/roles.decorator';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
 import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
 import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
 import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
-import { RolesEnum } from 'src/users/domain/enums/roles.enum';
 import {
 	ApiDocsCheckIntegrity,
 	ApiDocsCleanupOldDeletedFiles,
@@ -29,7 +27,6 @@ import {
 @ApiTags('Admin - File Cleanup')
 @Controller('admin/files')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
-@Roles(RolesEnum.ADMIN)
 @ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 export class FileCleanupController {
 	constructor(private readonly fileCleanupService: FileCleanupService) {}
