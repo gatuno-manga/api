@@ -390,6 +390,7 @@ export class BookQueryService {
 					limit: options.limit,
 					order: options.order,
 					cursorIndex,
+					languageCode: options.languageCode,
 				},
 				userid,
 			)) as RawChapterItem[];
