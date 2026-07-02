@@ -26,4 +26,20 @@ export class BookChapterCursorItemDto {
 export class BookChaptersCursorPageDto extends CursorPageDto<BookChapterCursorItemDto> {
 	@ApiProperty({ type: [BookChapterCursorItemDto] })
 	declare data: BookChapterCursorItemDto[];
+
+	@ApiProperty({
+		type: [String],
+		description: 'List of language codes available for these chapters',
+	})
+	availableLanguages: string[];
+
+	constructor(
+		data: BookChapterCursorItemDto[],
+		nextCursor: string | null,
+		hasNextPage: boolean,
+		availableLanguages: string[],
+	) {
+		super(data, nextCursor, hasNextPage);
+		this.availableLanguages = availableLanguages;
+	}
 }

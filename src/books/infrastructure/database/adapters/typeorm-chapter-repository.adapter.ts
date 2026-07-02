@@ -275,6 +275,16 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 		});
 	}
 
+	async findAvailableLanguagesByBookId(bookId: string): Promise<string[]> {
+		const results = await this.repository
+			.createQueryBuilder('chapter')
+			.select('DISTINCT(chapter.languageCode)', 'languageCode')
+			.where('chapter.bookId = :bookId', { bookId })
+			.getRawMany();
+
+		return results.map((r) => r.languageCode).filter(Boolean);
+	}
+
 	async findWithNavigation(id: string): Promise<ChapterNavigation | null> {
 		const chapter = await this.repository
 			.createQueryBuilder('chapter')

@@ -421,10 +421,14 @@ export class BookQueryService {
 			);
 		}
 
+		const availableLanguages =
+			await this.chapterRepository.findAvailableLanguagesByBookId(id);
+
 		return new BookChaptersCursorPageDto(
 			mappedData,
 			nextCursor,
 			hasNextPage,
+			availableLanguages,
 		);
 	}
 
