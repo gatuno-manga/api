@@ -186,9 +186,15 @@ export class BookResolver {
 			const chapters = await this.dataLoaderService.chaptersLoader.load(
 				book.id,
 			);
+
+			const availableLanguages = Array.from(
+				new Set(chapters.map((ch) => ch.languageCode).filter(Boolean)),
+			) as string[];
+
 			return {
 				data: chapters as ChapterModel[],
 				hasNextPage: false,
+				availableLanguages,
 			};
 		}
 
@@ -210,6 +216,7 @@ export class BookResolver {
 			data: result.data as ChapterModel[],
 			nextCursor: result.nextCursor,
 			hasNextPage: result.hasNextPage,
+			availableLanguages: result.availableLanguages,
 		};
 	}
 
