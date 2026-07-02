@@ -43,7 +43,7 @@ export class AdminTroubleshootingResolver {
 
 		const mappedData = result.data.map((book) => ({
 			...book,
-		})) as BookModel[];
+		})) as unknown as BookModel[];
 
 		const metadata =
 			result instanceof PageDto ? result.metadata : undefined;

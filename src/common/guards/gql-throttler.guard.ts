@@ -26,7 +26,7 @@ export class GqlThrottlerGuard extends ThrottlerGuard {
 					headers: {},
 					ip: '127.0.0.1',
 				} as Partial<Request>),
-			res: res || ({ header: () => {} } as Partial<Response>),
+			res: res || ({ header: () => res } as unknown as Partial<Response>),
 		};
 	}
 }
