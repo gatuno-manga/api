@@ -87,7 +87,7 @@ export class BookResolver {
 			Object.assign(options, { limit: filter.limit ?? 20 });
 		}
 
-		const targetLang = filter?.lang || user?.preferredLanguage;
+		const targetLang = filter?.lang || user?.contentLanguages?.[0];
 
 		const result = await this.booksService.getAllBooks(
 			options,
@@ -124,7 +124,7 @@ export class BookResolver {
 		@Args('lang', { type: () => String, nullable: true }) lang?: string,
 		@GqlCurrentUser() user?: CurrentUserDto,
 	) {
-		const targetLang = lang || user?.preferredLanguage;
+		const targetLang = lang || user?.contentLanguages?.[0];
 		const book = await this.booksService.getOne(
 			id,
 			user?.maxWeightSensitiveContent ?? 0,
@@ -150,7 +150,7 @@ export class BookResolver {
 			book.id,
 		);
 
-		const targetLang = lang || user?.preferredLanguage;
+		const targetLang = lang || user?.contentLanguages?.[0];
 
 		// Note: Since DataLoader might share results, we need to map them here
 		return authors.map((author) => {

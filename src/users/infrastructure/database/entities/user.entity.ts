@@ -67,6 +67,9 @@ export class User {
 	@Column({ type: 'varchar', length: 10, default: 'pt-BR' })
 	preferredLanguage: string;
 
+	@Column({ type: 'simple-array', nullable: true })
+	contentLanguages: string[];
+
 	@Column({ type: 'json', nullable: true })
 	preferences: Record<string, unknown> = {};
 
