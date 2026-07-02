@@ -156,8 +156,8 @@ Example output:
     index: i + 1,
     isFinal: i === arr.length - 1
   }));
-
-  return { covers, chapters };
+  // Formato com separação por idioma
+  return { covers, chapters: { "pt-BR": chapters } };
 })()`,
 	})
 	@IsString()
@@ -171,14 +171,17 @@ Example output:
 - authors: array of strings
 - tags: array of strings
 - covers: array of {url, title?}
-- chapters: array of {title, url, index, isFinal?}`,
+- chapters: array of {title, url, index, isFinal?} OR an object mapping language codes to such arrays (e.g., { "pt-BR": [...] })`,
 		example: `(() => ({
   title: document.querySelector('h1').innerText,
   description: document.querySelector('.desc').innerText,
   authors: ["Author Name"],
   tags: ["Action", "Adventure"],
   covers: [{ url: "...", title: "Cover" }],
-  chapters: [{ title: "Cap 1", url: "..." }]
+  chapters: {
+    "pt-BR": [{ title: "Cap 1", url: "..." }],
+    "en-US": [{ title: "Ch 1", url: "..." }]
+  }
 }))()`,
 	})
 	@IsString()

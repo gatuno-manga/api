@@ -55,15 +55,13 @@ interface ScrapingBookCompletedPayload {
 		  }>
 		| Record<
 				string,
-				{
-					chapters: Array<{
-						title: string;
-						url: string;
-						index?: number;
-						isFinal?: boolean;
-						languageCode?: string;
-					}>;
-				}
+				Array<{
+					title: string;
+					url: string;
+					index?: number;
+					isFinal?: boolean;
+					languageCode?: string;
+				}>
 		  >;
 	covers: Array<{
 		url: string;
@@ -155,10 +153,10 @@ export class BooksKafkaConsumer {
 					languageCode: c.languageCode || DEFAULT_LANGUAGE_CODE,
 				});
 			}
-		} else if (typeof chaptersData === 'object') {
-			for (const [lang, langData] of Object.entries(chaptersData)) {
-				if (langData && Array.isArray(langData.chapters)) {
-					for (const c of langData.chapters) {
+		} else if (typeof chaptersData === 'object' && chaptersData !== null) {
+			for (const [lang, chapterArray] of Object.entries(chaptersData)) {
+				if (Array.isArray(chapterArray)) {
+					for (const c of chapterArray) {
 						parsedChapters.push({
 							title: c.title,
 							url: c.url,
