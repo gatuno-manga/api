@@ -51,7 +51,6 @@ interface ScrapingBookCompletedPayload {
 				url: string;
 				index?: number;
 				isFinal?: boolean;
-				languageCode?: string;
 		  }>
 		| Record<
 				string,
@@ -150,7 +149,7 @@ export class BooksKafkaConsumer {
 					url: c.url,
 					index: c.index,
 					isFinal: c.isFinal || false,
-					languageCode: c.languageCode || DEFAULT_LANGUAGE_CODE,
+					languageCode: DEFAULT_LANGUAGE_CODE,
 				});
 			}
 		} else if (typeof chaptersData === 'object' && chaptersData !== null) {
