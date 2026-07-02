@@ -11,6 +11,7 @@ import {
 	ICoverRepository,
 	I_COVER_REPOSITORY,
 } from '@books/application/ports/cover-repository.interface';
+import { DEFAULT_LANGUAGE_CODE } from '@books/domain/constants/chapter.constants';
 import { Book } from '@books/domain/entities/book';
 import { Chapter } from '@books/domain/entities/chapter';
 import { Cover } from '@books/domain/entities/cover';
@@ -187,7 +188,7 @@ export class BookContentUpdateService implements OnModuleInit {
 
 		const chaptersToCreate: Chapter[] = [];
 		for (const scraped of newChapters) {
-			const lang = scraped.languageCode || 'pt-BR';
+			const lang = scraped.languageCode || DEFAULT_LANGUAGE_CODE;
 			let existingIndexes = existingIndexesByLang.get(lang);
 			if (!existingIndexes) {
 				existingIndexes = new Set();
@@ -225,7 +226,7 @@ export class BookContentUpdateService implements OnModuleInit {
 				originalUrl: normalizeUrl(scraped.url),
 				index: nextIndex,
 				isFinal: scraped.isFinal ?? false,
-				languageCode: scraped.languageCode || 'pt-BR',
+				languageCode: scraped.languageCode || DEFAULT_LANGUAGE_CODE,
 				book: book,
 				scrapingStatus: ScrapingStatus.PROCESS,
 			});
@@ -260,13 +261,13 @@ export class BookContentUpdateService implements OnModuleInit {
 		const map = new Map<string, Set<number>>();
 
 		for (const ch of chapters) {
-			const lang = ch.languageCode || 'pt-BR';
+			const lang = ch.languageCode || DEFAULT_LANGUAGE_CODE;
 			if (!map.has(lang)) map.set(lang, new Set());
 			map.get(lang)?.add(Number.parseFloat(ch.index.toString()));
 		}
 
 		for (const ch of additionalChapters) {
-			const lang = ch.languageCode || 'pt-BR';
+			const lang = ch.languageCode || DEFAULT_LANGUAGE_CODE;
 			if (!map.has(lang)) map.set(lang, new Set());
 			map.get(lang)?.add(ch.index);
 		}

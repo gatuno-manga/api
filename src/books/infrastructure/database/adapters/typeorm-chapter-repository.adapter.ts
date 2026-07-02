@@ -2,6 +2,7 @@ import {
 	ChapterNavigation,
 	IChapterRepository,
 } from '@books/application/ports/chapter-repository.interface';
+import { DEFAULT_LANGUAGE_CODE } from '@books/domain/constants/chapter.constants';
 import { Chapter as DomainChapter } from '@books/domain/entities/chapter';
 import {
 	ChapterCriteria,
@@ -163,7 +164,7 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 		const chapters = await this.repository.find({
 			where: {
 				book: { id: bookId },
-				languageCode: options?.languageCode || 'pt-BR',
+				languageCode: options?.languageCode || DEFAULT_LANGUAGE_CODE,
 			} as FindOptionsWhere<InfrastructureChapter>,
 			order,
 			take: options?.limit,
@@ -220,7 +221,7 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 			.createQueryBuilder('chapter')
 			.where('chapter.bookId = :bookId', { bookId })
 			.andWhere('chapter.languageCode = :languageCode', {
-				languageCode: options.languageCode || 'pt-BR',
+				languageCode: options.languageCode || DEFAULT_LANGUAGE_CODE,
 			});
 
 		if (options.cursorIndex !== undefined && options.cursorIndex !== null) {

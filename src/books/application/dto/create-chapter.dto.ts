@@ -7,6 +7,7 @@ import {
 	IsPositive,
 	IsString,
 	IsUrl,
+	Matches,
 	MaxLength,
 } from 'class-validator';
 
@@ -61,10 +62,17 @@ export class CreateChapterDto {
 	specificSelector?: string;
 
 	@ApiPropertyOptional({
-		description: 'Language code for the chapter (e.g. pt-BR, en)',
+		description:
+			'Language code for the chapter (BCP 47 format, e.g. pt-BR, en)',
 		example: 'pt-BR',
+		maxLength: 10,
 	})
 	@IsString()
+	@MaxLength(10)
+	@Matches(/^[a-z]{2}(-[A-Z]{2})?$/, {
+		message:
+			'languageCode must be a valid BCP 47 language tag (e.g. pt-BR, en)',
+	})
 	@IsOptional()
 	languageCode?: string;
 }

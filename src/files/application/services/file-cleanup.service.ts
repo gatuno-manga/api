@@ -321,23 +321,27 @@ export class FileCleanupService {
 								const stats =
 									await this.storagePort.getStats(fileKey);
 								size = stats.size;
-							} catch (e) {
-								// Ignore if file doesn't exist anymore in storage
+							} catch {
+								// File may no longer exist in storage; size stays 0
 							}
 
+							let fileDeleted = false;
 							try {
 								await this.storagePort.delete(fileKey);
-							} catch (e) {
-								// Ignore if file already deleted
+								fileDeleted = true;
+							} catch {
+								// File already absent from storage — safe to remove DB record
+								fileDeleted = true;
 							}
 
-							report.filesDeleted++;
-							report.spaceRecovered += size;
-
-							await this.pageRepository.remove(page);
-							this.logger.log(
-								`Deleted old page file and record: ${fileKey}`,
-							);
+							if (fileDeleted) {
+								report.filesDeleted++;
+								report.spaceRecovered += size;
+								await this.pageRepository.remove(page);
+								this.logger.log(
+									`Deleted old page file and record: ${fileKey}`,
+								);
+							}
 						} catch (error: unknown) {
 							const errorMsg = `Failed to delete page ${page.id}: ${this.getErrorMessage(error)}`;
 							this.logger.error(errorMsg);
@@ -371,19 +375,27 @@ export class FileCleanupService {
 								const stats =
 									await this.storagePort.getStats(fileKey);
 								size = stats.size;
-							} catch (e) {}
+							} catch {
+								// File may no longer exist in storage; size stays 0
+							}
 
+							let fileDeleted = false;
 							try {
 								await this.storagePort.delete(fileKey);
-							} catch (e) {}
+								fileDeleted = true;
+							} catch {
+								// File already absent from storage — safe to remove DB record
+								fileDeleted = true;
+							}
 
-							report.filesDeleted++;
-							report.spaceRecovered += size;
-
-							await this.coverRepository.remove(cover);
-							this.logger.log(
-								`Deleted old cover file and record: ${fileKey}`,
-							);
+							if (fileDeleted) {
+								report.filesDeleted++;
+								report.spaceRecovered += size;
+								await this.coverRepository.remove(cover);
+								this.logger.log(
+									`Deleted old cover file and record: ${fileKey}`,
+								);
+							}
 						} catch (error: unknown) {
 							const errorMsg = `Failed to delete cover ${cover.id}: ${this.getErrorMessage(error)}`;
 							this.logger.error(errorMsg);
@@ -440,7 +452,9 @@ export class FileCleanupService {
 			}
 		}
 
-		report.orphanFilesFound = report.filesDeleted;
+		// filesDeleted already tracks the number of DB records hard-deleted above.
+		// orphanFilesFound is reserved for files found in storage without a DB reference
+		// (see cleanupOrphanFiles). Do NOT assign filesDeleted to orphanFilesFound here.
 
 		this.logger.log(
 			`Cleanup completed: ${report.filesDeleted} files deleted, ${(report.spaceRecovered / 1024 / 1024).toFixed(2)} MB recovered`,

@@ -1,7 +1,6 @@
 import { RedisService } from '@/infrastructure/redis/redis.service';
 import { CreateAuthorDto } from '@books/application/dto/create-author.dto';
 import { CreateBookDto } from '@books/application/dto/create-book.dto';
-import { CreateChapterDto } from '@books/application/dto/create-chapter.dto';
 import {
 	IBookRepository,
 	I_BOOK_REPOSITORY,
@@ -23,6 +22,7 @@ import {
 	ScrapedChapter,
 } from '@books/application/services/book-content-update.service';
 import { BookCreationService } from '@books/application/services/book-creation.service';
+import { DEFAULT_LANGUAGE_CODE } from '@books/domain/constants/chapter.constants';
 import { Book } from '@books/domain/entities/book';
 import { Cover } from '@books/domain/entities/cover';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
@@ -141,8 +141,8 @@ export class BooksKafkaConsumer {
 
 	private parseChaptersFromPayload(
 		chaptersData: ScrapingBookCompletedPayload['chapters'],
-	): CreateChapterDto[] {
-		const parsedChapters: CreateChapterDto[] = [];
+	): ScrapedChapter[] {
+		const parsedChapters: ScrapedChapter[] = [];
 		if (!chaptersData) return parsedChapters;
 
 		if (Array.isArray(chaptersData)) {
@@ -152,7 +152,7 @@ export class BooksKafkaConsumer {
 					url: c.url,
 					index: c.index,
 					isFinal: c.isFinal || false,
-					languageCode: c.languageCode || 'pt-BR',
+					languageCode: c.languageCode || DEFAULT_LANGUAGE_CODE,
 				});
 			}
 		} else if (typeof chaptersData === 'object') {
@@ -276,7 +276,7 @@ export class BooksKafkaConsumer {
 
 				await this.bookContentUpdateService.addScrapedChapters(
 					bookId,
-					chapters as unknown as ScrapedChapter[],
+					chapters,
 					covers,
 				);
 				this.logger.log(
