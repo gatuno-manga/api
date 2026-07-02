@@ -8,6 +8,7 @@ import { ChapterCommentsService } from '@books/application/services/chapter-comm
 import { ChapterService } from '@books/application/services/chapter.service';
 import { TagsService } from '@books/application/services/tags.service';
 import { resolveLocalizedField } from '@books/application/utils/localization.utils';
+import { AuthorBiography } from '@books/domain/entities/author-biography';
 import { BookFilterInput } from '@books/infrastructure/graphql/models/book-filter.input';
 import {
 	AuthorModel,
@@ -158,8 +159,7 @@ export class BookResolver {
 				targetLang,
 				null,
 				'pt-BR',
-				// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-				(item: any) => item.biography,
+				(item: AuthorBiography) => item.biography,
 			);
 			return {
 				...author,
@@ -187,7 +187,7 @@ export class BookResolver {
 				book.id,
 			);
 			return {
-				data: chapters as unknown as ChapterModel[],
+				data: chapters as ChapterModel[],
 				hasNextPage: false,
 			};
 		}

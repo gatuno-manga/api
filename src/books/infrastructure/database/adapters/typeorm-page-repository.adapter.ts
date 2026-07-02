@@ -16,34 +16,34 @@ export class TypeOrmPageRepositoryAdapter implements IPageRepository {
 
 	async findById(id: number): Promise<DomainPage | null> {
 		const page = await this.repository.findOne({
-			where: { id } as unknown as FindOptionsWhere<InfrastructurePage>,
+			where: { id } as FindOptionsWhere<InfrastructurePage>,
 		});
-		return page as unknown as DomainPage;
+		return page as DomainPage | null;
 	}
 
 	async save(page: DomainPage): Promise<DomainPage> {
 		const saved = await this.repository.save(
 			page as unknown as InfrastructurePage,
 		);
-		return saved as unknown as DomainPage;
+		return saved as DomainPage;
 	}
 
 	async saveAll(pages: DomainPage[]): Promise<DomainPage[]> {
 		const saved = await this.repository.save(
 			pages as unknown as InfrastructurePage[],
 		);
-		return saved as unknown as DomainPage[];
+		return saved as DomainPage[];
 	}
 
 	async delete(criteria: PageCriteria): Promise<void> {
 		await this.repository.delete(
-			criteria as unknown as FindOptionsWhere<InfrastructurePage>,
+			criteria as FindOptionsWhere<InfrastructurePage>,
 		);
 	}
 
 	async softDelete(criteria: PageCriteria): Promise<void> {
 		await this.repository.softDelete(
-			criteria as unknown as FindOptionsWhere<InfrastructurePage>,
+			criteria as FindOptionsWhere<InfrastructurePage>,
 		);
 	}
 
@@ -57,22 +57,22 @@ export class TypeOrmPageRepositoryAdapter implements IPageRepository {
 		const pages = await this.repository.find({
 			where: {
 				chapter: { id: chapterId },
-			} as unknown as FindOptionsWhere<InfrastructurePage>,
+			} as FindOptionsWhere<InfrastructurePage>,
 		});
-		return pages as unknown as DomainPage[];
+		return pages as DomainPage[];
 	}
 
 	async count(criteria?: PageCriteria): Promise<number> {
 		return this.repository.count({
-			where: criteria as unknown as FindOptionsWhere<InfrastructurePage>,
+			where: criteria as FindOptionsWhere<InfrastructurePage>,
 		});
 	}
 
 	create(data: Partial<DomainPage>): DomainPage {
 		const page = this.repository.create(
-			data as unknown as DeepPartial<InfrastructurePage>,
+			data as DeepPartial<InfrastructurePage>,
 		);
-		return page as unknown as DomainPage;
+		return page as DomainPage;
 	}
 
 	async update(
@@ -80,7 +80,7 @@ export class TypeOrmPageRepositoryAdapter implements IPageRepository {
 		data: Partial<DomainPage>,
 	): Promise<void> {
 		await this.repository.update(
-			criteria as unknown as FindOptionsWhere<InfrastructurePage>,
+			criteria as FindOptionsWhere<InfrastructurePage>,
 			data as Parameters<Repository<InfrastructurePage>['update']>[1],
 		);
 	}
@@ -92,7 +92,7 @@ export class TypeOrmPageRepositoryAdapter implements IPageRepository {
 		const pages = await this.repository.find({
 			where: {
 				path: In(oldPaths),
-			} as unknown as FindOptionsWhere<InfrastructurePage>,
+			} as FindOptionsWhere<InfrastructurePage>,
 		});
 
 		for (const page of pages) {

@@ -25,9 +25,7 @@ export const SavedPageMapper = {
 			chapter: entity.chapter as unknown as Record<string, unknown>,
 			book: entity.book as unknown as Record<string, unknown>,
 		};
-		return DomainSavedPage.restore(
-			snapshot as unknown as SavedPageSnapshot,
-		);
+		return DomainSavedPage.restore(snapshot as SavedPageSnapshot);
 	},
 
 	toOrm(domain: DomainSavedPage): OrmSavedPage {

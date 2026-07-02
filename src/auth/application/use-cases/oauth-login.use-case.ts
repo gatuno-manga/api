@@ -32,8 +32,11 @@ export class OAuthLoginUseCase {
 				relations: ['roles', 'roles.permissions'],
 			});
 			if (existingUser) {
-				// biome-ignore lint/suspicious/noExplicitAny: Dynamic assignment of providerId
-				(existingUser as any)[idField] = providerId;
+				if (provider === 'google') existingUser.googleId = providerId;
+				else if (provider === 'discord')
+					existingUser.discordId = providerId;
+				else if (provider === 'github')
+					existingUser.githubId = providerId;
 				return this.userRepository.save(existingUser);
 			}
 		}
