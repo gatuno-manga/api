@@ -12,6 +12,9 @@ export class BookChapterCursorItemDto {
 	@ApiProperty({ example: 1 })
 	index: number;
 
+	@ApiProperty({ example: 'pt-BR' })
+	languageCode: string;
+
 	@ApiPropertyOptional({
 		enum: ScrapingStatus,
 		example: ScrapingStatus.READY,

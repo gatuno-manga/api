@@ -62,12 +62,14 @@ interface RawChapterItem {
 	id?: string;
 	title?: string;
 	index?: number | string;
+	languageCode?: string;
 	scrapingStatus?: ScrapingStatus;
 
 	// Campos do getRawMany
 	chapter_id?: string;
 	chapter_title?: string;
 	chapter_index?: string | number;
+	chapter_languageCode?: string;
 	chapter_scrapingStatus?: ScrapingStatus;
 	readCount?: string | number;
 }
@@ -405,6 +407,9 @@ export class BookQueryService {
 				id: (isRaw ? item.chapter_id : item.id) as string,
 				title: (isRaw ? item.chapter_title : item.title) as string,
 				index: isRaw ? Number(item.chapter_index) : Number(item.index),
+				languageCode: (isRaw
+					? item.chapter_languageCode
+					: item.languageCode) as string,
 				scrapingStatus:
 					(isRaw
 						? item.chapter_scrapingStatus
