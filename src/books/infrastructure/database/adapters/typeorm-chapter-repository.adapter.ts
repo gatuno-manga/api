@@ -219,10 +219,13 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 	): Promise<Record<string, unknown>[]> {
 		const chaptersQuery = this.repository
 			.createQueryBuilder('chapter')
-			.where('chapter.bookId = :bookId', { bookId })
-			.andWhere('chapter.languageCode = :languageCode', {
-				languageCode: options.languageCode || DEFAULT_LANGUAGE_CODE,
+			.where('chapter.bookId = :bookId', { bookId });
+
+		if (options.languageCode && options.languageCode !== 'all') {
+			chaptersQuery.andWhere('chapter.languageCode = :languageCode', {
+				languageCode: options.languageCode,
 			});
+		}
 
 		if (options.cursorIndex !== undefined && options.cursorIndex !== null) {
 			const operator = options.order === 'DESC' ? '<' : '>';
