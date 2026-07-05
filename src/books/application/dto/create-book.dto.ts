@@ -4,6 +4,7 @@ import { SUPPORTED_LANGUAGE_CODES } from '@common/domain/constants/languages.con
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
+	IsArray,
 	IsBoolean,
 	IsEnum,
 	IsIn,
@@ -127,6 +128,12 @@ export class CreateBookDto {
 	@IsOptional()
 	@IsString()
 	description?: string;
+
+	@ApiPropertyOptional({ example: ['pt-BR', 'en-US'] })
+	@IsOptional()
+	@IsArray()
+	@IsString({ each: true })
+	allowedScrapingLanguages?: string[];
 
 	@ApiPropertyOptional({
 		description: 'Book cover information',
