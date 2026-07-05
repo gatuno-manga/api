@@ -19,7 +19,7 @@ export class TypeOrmUserImageRepositoryAdapter implements IUserImageRepository {
 	): Promise<void> {
 		await this.repository.update(
 			criteria as FindOptionsWhere<InfrastructureUserImage>,
-			data as unknown as InfrastructureUserImage,
+			data as Partial<InfrastructureUserImage>,
 		);
 	}
 
@@ -30,7 +30,7 @@ export class TypeOrmUserImageRepositoryAdapter implements IUserImageRepository {
 		const userImages = await this.repository.find({
 			where: {
 				path: In(oldPaths),
-			} as unknown as FindOptionsWhere<InfrastructureUserImage>,
+			} as FindOptionsWhere<InfrastructureUserImage>,
 		});
 
 		for (const userImage of userImages) {

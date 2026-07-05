@@ -12,6 +12,7 @@ export class User {
 	suspendedUntil: Date | null;
 	suspensionReason: string | null;
 	preferredLanguage: string;
+	contentLanguages: string[];
 	preferences: Record<string, unknown>;
 	createdAt: Date;
 	updatedAt: Date;

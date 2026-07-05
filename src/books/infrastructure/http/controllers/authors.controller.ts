@@ -40,7 +40,7 @@ export class AuthorsController {
 		@Query('lang') queryLang?: string,
 		@CurrentUser() user?: CurrentUserDto,
 	) {
-		const targetLang = queryLang || user?.preferredLanguage;
+		const targetLang = queryLang || user?.contentLanguages?.[0];
 		return this.authorsService.getAll(
 			options,
 			user?.maxWeightSensitiveContent,

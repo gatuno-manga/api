@@ -33,12 +33,10 @@ export class TypeOrmSensitiveContentRepositoryAdapter
 		relations?: string[],
 	): Promise<DomainSensitiveContent | null> {
 		const content = await this.repository.findOne({
-			where: {
-				id,
-			} as unknown as FindOptionsWhere<InfrastructureSensitiveContent>,
+			where: { id } as FindOptionsWhere<InfrastructureSensitiveContent>,
 			relations,
 		});
-		return content as unknown as DomainSensitiveContent;
+		return content as DomainSensitiveContent | null;
 	}
 
 	async findAll(maxWeight = 0): Promise<DomainSensitiveContent[]> {
@@ -46,7 +44,7 @@ export class TypeOrmSensitiveContentRepositoryAdapter
 			where: { weight: LessThanOrEqual(maxWeight) },
 			order: { weight: 'ASC' },
 		});
-		return contents as unknown as DomainSensitiveContent[];
+		return contents as DomainSensitiveContent[];
 	}
 
 	async save(
@@ -55,7 +53,7 @@ export class TypeOrmSensitiveContentRepositoryAdapter
 		const saved = await this.repository.save(
 			content as unknown as InfrastructureSensitiveContent,
 		);
-		return saved as unknown as DomainSensitiveContent;
+		return saved as DomainSensitiveContent;
 	}
 
 	async remove(content: DomainSensitiveContent): Promise<void> {
@@ -70,11 +68,9 @@ export class TypeOrmSensitiveContentRepositoryAdapter
 
 	async findByName(name: string): Promise<DomainSensitiveContent | null> {
 		const content = await this.repository.findOne({
-			where: {
-				name,
-			} as unknown as FindOptionsWhere<InfrastructureSensitiveContent>,
+			where: { name } as FindOptionsWhere<InfrastructureSensitiveContent>,
 		});
-		return content as unknown as DomainSensitiveContent;
+		return content as DomainSensitiveContent | null;
 	}
 
 	async findByNameOrAlias(
@@ -87,7 +83,7 @@ export class TypeOrmSensitiveContentRepositoryAdapter
 				jsonName: JSON.stringify(name),
 			})
 			.getOne();
-		return content as unknown as DomainSensitiveContent;
+		return content as DomainSensitiveContent | null;
 	}
 
 	async findByNames(
@@ -100,7 +96,7 @@ export class TypeOrmSensitiveContentRepositoryAdapter
 				weight: LessThanOrEqual(weight),
 			},
 		});
-		return contents as unknown as DomainSensitiveContent[];
+		return contents as DomainSensitiveContent[];
 	}
 
 	async findByIds(ids: string[]): Promise<DomainSensitiveContent[]> {
@@ -108,7 +104,7 @@ export class TypeOrmSensitiveContentRepositoryAdapter
 		const contents = await this.repository.find({
 			where: { id: In(ids) },
 		});
-		return contents as unknown as DomainSensitiveContent[];
+		return contents as DomainSensitiveContent[];
 	}
 
 	async replaceReferences(oldIds: string[], newId: string): Promise<void> {
@@ -119,7 +115,7 @@ export class TypeOrmSensitiveContentRepositoryAdapter
 		// Insert new relationships for books that had any of the old ones (IGNORE prevents duplicate entry error)
 		await this.repository.query(
 			`INSERT IGNORE INTO books_sensitive_content_sensitive_content (booksId, sensitiveContentId)
-			 SELECT booksId, ? FROM books_sensitive_content_sensitive_content WHERE sensitiveContentId IN (${placeholders})`,
+			SELECT booksId, ? FROM books_sensitive_content_sensitive_content WHERE sensitiveContentId IN (${placeholders})`,
 			[newId, ...oldIds],
 		);
 
@@ -132,7 +128,7 @@ export class TypeOrmSensitiveContentRepositoryAdapter
 
 	async count(criteria?: SensitiveContentCriteria): Promise<number> {
 		return this.repository.count({
-			where: criteria as unknown as FindOptionsWhere<InfrastructureSensitiveContent>,
+			where: criteria as FindOptionsWhere<InfrastructureSensitiveContent>,
 		});
 	}
 }

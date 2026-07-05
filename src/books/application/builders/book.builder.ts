@@ -53,6 +53,8 @@ export class BookBuilder {
 			searchTerms: [],
 			originalUrl: [],
 			originalLanguageCode: null,
+			availableChapterLanguages: [],
+			allowedScrapingLanguages: [],
 		};
 	}
 
@@ -330,6 +332,8 @@ export class BookBuilder {
 			searchTerms: [],
 			originalUrl: [],
 			originalLanguageCode: null,
+			availableChapterLanguages: [],
+			allowedScrapingLanguages: [],
 		};
 		return this;
 	}

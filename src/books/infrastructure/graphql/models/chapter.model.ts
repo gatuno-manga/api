@@ -20,6 +20,9 @@ export class ChapterModel {
 	@Field(() => Int)
 	index: number;
 
+	@Field(() => String)
+	languageCode: string;
+
 	@Field(() => ContentType)
 	contentType: ContentType;
 

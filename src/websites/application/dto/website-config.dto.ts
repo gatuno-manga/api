@@ -83,7 +83,7 @@ export class WebsiteConfigDto {
 
 	@ApiPropertyOptional({
 		description: 'Script to extract book metadata and chapter list',
-		example: '(() => ({ covers: [], chapters: [] }))()',
+		example: '(() => ({ covers: [], chapters: { "pt-BR": [] } }))()',
 	})
 	@IsOptional()
 	@IsString()
@@ -93,7 +93,7 @@ export class WebsiteConfigDto {
 		description:
 			'Script to extract complete book metadata (Title, Desc, Authors, Tags) and chapters on creation',
 		example:
-			'(() => ({ title: "", description: "", authors: [], tags: [], covers: [], chapters: [] }))()',
+			'(() => ({ title: "", description: "", authors: [], tags: [], covers: [], chapters: { "pt-BR": [] } }))()',
 	})
 	@IsOptional()
 	@IsString()

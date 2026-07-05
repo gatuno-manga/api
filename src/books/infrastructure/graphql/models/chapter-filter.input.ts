@@ -1,3 +1,4 @@
+import { DEFAULT_LANGUAGE_CODE } from '@books/domain/constants/chapter.constants';
 import { OrderDirection } from '@common/enum/order-direction.enum';
 import { Field, InputType, Int } from '@nestjs/graphql';
 import { IsInt, IsOptional, IsPositive, IsString, Min } from 'class-validator';
@@ -27,4 +28,12 @@ export class ChapterFilterInput {
 	})
 	@IsOptional()
 	order?: OrderDirection;
+
+	@Field(() => String, {
+		nullable: true,
+		defaultValue: DEFAULT_LANGUAGE_CODE,
+	})
+	@IsOptional()
+	@IsString()
+	languageCode?: string;
 }

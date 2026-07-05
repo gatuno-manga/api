@@ -88,7 +88,7 @@ describe('BooksController', () => {
 			const pageOptions = { page: 1, take: 10 } as any;
 			const user = {
 				maxWeightSensitiveContent: 5,
-				preferredLanguage: 'en',
+				contentLanguages: ['en'],
 			} as any;
 			const mockResult = { data: [], meta: {} };
 			mockBooksService.getAllBooks.mockResolvedValue(mockResult);
@@ -177,7 +177,7 @@ describe('BooksController', () => {
 			const id = 'test-id';
 			const user = {
 				maxWeightSensitiveContent: 5,
-				preferredLanguage: 'en',
+				contentLanguages: ['en'],
 			} as any;
 			mockBooksService.getOne.mockResolvedValue({});
 

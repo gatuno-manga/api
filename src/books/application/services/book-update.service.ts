@@ -78,6 +78,9 @@ export class BookUpdateService {
 		if (dto.type !== undefined) scalarUpdates.type = dto.type;
 		if (dto.originalLanguageCode !== undefined)
 			scalarUpdates.originalLanguageCode = dto.originalLanguageCode;
+		if (dto.allowedScrapingLanguages !== undefined)
+			scalarUpdates.allowedScrapingLanguages =
+				dto.allowedScrapingLanguages;
 
 		if (Object.keys(scalarUpdates).length > 0) {
 			await this.bookRepository.update(id, scalarUpdates);

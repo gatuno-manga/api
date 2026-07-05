@@ -40,6 +40,7 @@ export interface IChapterRepository {
 		userId?: string,
 	): Promise<Record<string, unknown>[]>;
 	findChaptersWithError(bookId: string): Promise<Chapter[]>;
+	findAvailableLanguagesByBookId(bookId: string): Promise<string[]>;
 	findWithNavigation(id: string): Promise<ChapterNavigation | null>;
 	create(data: Partial<Chapter>): Chapter;
 	merge(chapter: Chapter, data: Partial<Chapter>): Chapter;
