@@ -1,3 +1,4 @@
+import { ContentType } from '@books/domain/enums/content-type.enum';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
@@ -14,6 +15,9 @@ export class BookChapterCursorItemDto {
 
 	@ApiProperty({ example: 'pt-BR' })
 	languageCode: string;
+
+	@ApiProperty({ enum: ContentType, example: ContentType.TEXT })
+	contentType: ContentType;
 
 	@ApiPropertyOptional({
 		enum: ScrapingStatus,

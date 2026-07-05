@@ -37,6 +37,7 @@ import { AlternativeTitle } from '@books/domain/entities/alternative-title';
 import { AuthorBiography } from '@books/domain/entities/author-biography';
 import { Book } from '@books/domain/entities/book';
 import { BookDescription } from '@books/domain/entities/book-description';
+import { ContentType } from '@books/domain/enums/content-type.enum';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { InjectQueue } from '@nestjs/bullmq';
 import {
@@ -63,6 +64,7 @@ interface RawChapterItem {
 	title?: string;
 	index?: number | string;
 	languageCode?: string;
+	contentType?: ContentType;
 	scrapingStatus?: ScrapingStatus;
 
 	// Campos do getRawMany
@@ -70,6 +72,7 @@ interface RawChapterItem {
 	chapter_title?: string;
 	chapter_index?: string | number;
 	chapter_languageCode?: string;
+	chapter_contentType?: ContentType;
 	chapter_scrapingStatus?: ScrapingStatus;
 	readCount?: string | number;
 }
@@ -410,6 +413,9 @@ export class BookQueryService {
 				languageCode: (isRaw
 					? item.chapter_languageCode
 					: item.languageCode) as string,
+				contentType: (isRaw
+					? item.chapter_contentType
+					: item.contentType) as ContentType,
 				scrapingStatus:
 					(isRaw
 						? item.chapter_scrapingStatus
