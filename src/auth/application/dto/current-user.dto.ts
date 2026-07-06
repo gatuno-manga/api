@@ -53,6 +53,7 @@ export class CurrentUserDto {
 	@IsOptional()
 	@IsIn(SUPPORTED_LANGUAGE_CODES)
 	preferredLanguage?: string;
+	contentLanguages?: string[];
 
 	@ApiProperty({
 		description: 'Current logical session identifier',

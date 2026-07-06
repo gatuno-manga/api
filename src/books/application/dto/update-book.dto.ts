@@ -4,6 +4,7 @@ import { SUPPORTED_LANGUAGE_CODES } from '@common/domain/constants/languages.con
 import { ApiPropertyOptional, OmitType, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+	IsArray,
 	IsEnum,
 	IsIn,
 	IsOptional,
@@ -49,6 +50,12 @@ export class UpdateBookDto extends PartialType(
 	@IsString()
 	@IsIn(SUPPORTED_LANGUAGE_CODES)
 	originalLanguageCode?: string;
+
+	@ApiPropertyOptional({ example: ['pt-BR', 'en-US'] })
+	@IsOptional()
+	@IsArray()
+	@IsString({ each: true })
+	allowedScrapingLanguages?: string[];
 
 	@ApiPropertyOptional({
 		description: 'Localized descriptions for the book',

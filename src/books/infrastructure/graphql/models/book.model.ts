@@ -99,6 +99,12 @@ export class BookModel {
 	@Field(() => String, { nullable: true })
 	originalLanguageCode?: string;
 
+	@Field(() => [String], { nullable: true })
+	availableChapterLanguages?: string[];
+
+	@Field(() => [String], { nullable: true })
+	allowedScrapingLanguages?: string[];
+
 	@Field(() => [AuthorModel], { nullable: 'itemsAndList' })
 	authors: AuthorModel[];
 

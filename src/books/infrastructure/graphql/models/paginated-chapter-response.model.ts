@@ -20,4 +20,7 @@ export class PaginatedChapterResponseModel {
 
 	@Field({ nullable: true })
 	hasNextPage?: boolean;
+
+	@Field(() => [String], { nullable: true })
+	availableLanguages?: string[];
 }

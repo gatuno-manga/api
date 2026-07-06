@@ -19,27 +19,27 @@ export class TypeOrmChapterReadRepositoryAdapter
 		const saved = await this.repository.save(
 			chapterRead as unknown as InfrastructureChapterRead,
 		);
-		return saved as unknown as DomainChapterRead;
+		return saved as DomainChapterRead;
 	}
 
 	async findOneBy(
 		criteria: ChapterReadCriteria,
 	): Promise<DomainChapterRead | null> {
 		const read = await this.repository.findOneBy(
-			criteria as unknown as FindOptionsWhere<InfrastructureChapterRead>,
+			criteria as FindOptionsWhere<InfrastructureChapterRead>,
 		);
-		return read as unknown as DomainChapterRead;
+		return read as DomainChapterRead | null;
 	}
 
 	async delete(criteria: ChapterReadCriteria): Promise<void> {
 		await this.repository.delete(
-			criteria as unknown as FindOptionsWhere<InfrastructureChapterRead>,
+			criteria as FindOptionsWhere<InfrastructureChapterRead>,
 		);
 	}
 
 	create(data: Partial<DomainChapterRead>): DomainChapterRead {
 		return this.repository.create(
-			data as unknown as DeepPartial<InfrastructureChapterRead>,
-		) as unknown as DomainChapterRead;
+			data as DeepPartial<InfrastructureChapterRead>,
+		) as DomainChapterRead;
 	}
 }

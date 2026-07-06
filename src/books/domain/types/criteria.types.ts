@@ -32,6 +32,7 @@ export type PaginationOptions = {
 export type ChapterQueryOptions = PaginationOptions & {
 	order?: 'ASC' | 'DESC';
 	cursorIndex?: number | null;
+	languageCode?: string;
 };
 
 export type ViewerContext = {

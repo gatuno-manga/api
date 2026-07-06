@@ -20,7 +20,7 @@ import { ChapterComment } from './chapter-comment.entity';
 import { Page } from './page.entity';
 
 @Entity('chapters')
-@Unique(['index', 'book'])
+@Unique(['index', 'languageCode', 'book'])
 export class Chapter {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
@@ -31,6 +31,13 @@ export class Chapter {
 		nullable: true,
 	})
 	title: string | null;
+
+	@Column({
+		type: 'varchar',
+		length: 10,
+		default: 'pt-BR',
+	})
+	languageCode: string;
 
 	@Column({
 		type: 'varchar',

@@ -29,8 +29,11 @@ export class UserAwareCacheInterceptor extends CacheInterceptor {
 	}
 
 	private trackHttp(context: ExecutionContext): string | undefined {
-		const request = context.switchToHttp().getRequest<RequestWithUser>();
-		const resourceKey = this.getResourceKey(context) || request.url;
+		const request = context
+			.switchToHttp()
+			.getRequest<RequestWithUser & { originalUrl?: string }>();
+		const resourceKey =
+			this.getResourceKey(context) || request.originalUrl || request.url;
 
 		if (!resourceKey) {
 			return undefined;

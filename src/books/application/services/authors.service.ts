@@ -10,6 +10,7 @@ import {
 } from '@books/application/ports/book-repository.interface';
 import { resolveLocalizedField } from '@books/application/utils/localization.utils';
 import { Author } from '@books/domain/entities/author';
+import { AuthorBiography } from '@books/domain/entities/author-biography';
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Meilisearch } from 'meilisearch';
 import { SensitiveContentService } from './sensitive-content.service';
@@ -40,8 +41,7 @@ export class AuthorsService {
 			lang,
 			null,
 			'pt-BR',
-			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-			(item: any) => item.biography,
+			(item: AuthorBiography) => item.biography,
 		);
 		if (bestBio) {
 			author.biography = bestBio.biography;

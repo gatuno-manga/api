@@ -403,14 +403,14 @@ export class ChapterService {
 				chapter.contentType === ContentType.IMAGE &&
 				baseResponse.pages
 			) {
-				for (const page of baseResponse.pages) {
-					page.path = this.mediaUrlService.resolveUrl(
+				baseResponse.pages = baseResponse.pages.map((page) => ({
+					...page,
+					path: this.mediaUrlService.resolveUrl(
 						page.path,
 						StorageBucket.BOOKS,
-					);
-					// @ts-expect-error - Propriedade virtual para o front
-					page.deleted = !!page.deletedAt;
-				}
+					),
+					deleted: !!page.deletedAt,
+				}));
 			}
 
 			return baseResponse;

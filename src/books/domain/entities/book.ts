@@ -33,6 +33,8 @@ export class Book {
 	tags: Tag[];
 	authors: Author[];
 	originalLanguageCode: string | null;
+	availableChapterLanguages: string[];
+	allowedScrapingLanguages: string[];
 	createdAt: Date;
 	updatedAt: Date;
 	deletedAt: Date | null;

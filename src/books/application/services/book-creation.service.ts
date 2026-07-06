@@ -218,6 +218,7 @@ export class BookCreationService implements OnModuleInit {
 				publication: dto.publication,
 				type: dto.type,
 				originalLanguageCode: dto.originalLanguageCode,
+				allowedScrapingLanguages: dto.allowedScrapingLanguages ?? [],
 				sensitiveContent,
 				tags,
 				authors,

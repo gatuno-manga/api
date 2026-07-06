@@ -1,3 +1,4 @@
+import { ContentType } from '@books/domain/enums/content-type.enum';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
@@ -11,6 +12,12 @@ export class BookChapterCursorItemDto {
 
 	@ApiProperty({ example: 1 })
 	index: number;
+
+	@ApiProperty({ example: 'pt-BR' })
+	languageCode: string;
+
+	@ApiProperty({ enum: ContentType, example: ContentType.TEXT })
+	contentType: ContentType;
 
 	@ApiPropertyOptional({
 		enum: ScrapingStatus,
@@ -26,4 +33,20 @@ export class BookChapterCursorItemDto {
 export class BookChaptersCursorPageDto extends CursorPageDto<BookChapterCursorItemDto> {
 	@ApiProperty({ type: [BookChapterCursorItemDto] })
 	declare data: BookChapterCursorItemDto[];
+
+	@ApiProperty({
+		type: [String],
+		description: 'List of language codes available for these chapters',
+	})
+	availableLanguages: string[];
+
+	constructor(
+		data: BookChapterCursorItemDto[],
+		nextCursor: string | null,
+		hasNextPage: boolean,
+		availableLanguages: string[],
+	) {
+		super(data, nextCursor, hasNextPage);
+		this.availableLanguages = availableLanguages;
+	}
 }

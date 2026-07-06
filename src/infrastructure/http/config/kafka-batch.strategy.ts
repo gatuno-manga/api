@@ -7,6 +7,8 @@ export class KafkaBatchStrategy
 	implements CustomTransportStrategy
 {
 	protected override readonly logger = new Logger(KafkaBatchStrategy.name);
+	// Expõe a propriedade privada da superclasse ServerKafka com tipagem segura
+	protected declare readonly client: Kafka;
 
 	override async bindEvents(consumer: Consumer) {
 		const registeredPatterns = [...this.messageHandlers.keys()];
@@ -105,7 +107,7 @@ export class KafkaBatchStrategy
 	}
 
 	private async ensureTopicsExist(topics: string[]) {
-		const client = (this as unknown as { client: Kafka }).client;
+		const client = this.client;
 		if (!client) {
 			this.logger.warn(
 				'[KafkaBatchStrategy] Cliente Kafka não inicializado na base ServerKafka.',

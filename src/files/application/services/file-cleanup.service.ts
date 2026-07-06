@@ -6,7 +6,7 @@ import { Page } from '@books/infrastructure/database/entities/page.entity';
 import { StoragePort } from '@files/application/ports/storage.port';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LessThan, Repository } from 'typeorm';
+import { In, LessThan, Repository } from 'typeorm';
 
 export interface OrphanFile {
 	filename: string;
@@ -79,34 +79,54 @@ export class FileCleanupService {
 	}
 
 	async findOrphanFiles(): Promise<OrphanFile[]> {
-		this.logger.log('Starting orphan file scan (Storage mode)...');
+		this.logger.log(
+			'Starting orphan file scan (Storage mode - Batched)...',
+		);
 
 		try {
-			const pages = await this.pageRepository.find({
-				select: ['path'],
-				withDeleted: true,
-			});
-			const covers = await this.coverRepository.find({
-				select: ['url'],
-				withDeleted: true,
-			});
-
-			const allReferencedFiles = new Set([
-				...pages.map((p) => p.path.replace('/data/', '')),
-				...covers.map((c) => c.url.replace('/data/', '')),
-			]);
-
 			const orphanFiles: OrphanFile[] = [];
+			let fileBatch: { filename: string; size: number; mtime: Date }[] =
+				[];
+			const batchSize = 1000;
+
+			const processBatch = async (batch: typeof fileBatch) => {
+				const pathsToSearch = batch.map((f) => `/data/${f.filename}`);
+
+				const pages = await this.pageRepository.find({
+					select: ['path'],
+					where: { path: In(pathsToSearch) },
+					withDeleted: true,
+				});
+
+				const covers = await this.coverRepository.find({
+					select: ['url'],
+					where: { url: In(pathsToSearch) },
+					withDeleted: true,
+				});
+
+				const foundPaths = new Set([
+					...pages.map((p) => p.path),
+					...covers.map((c) => c.url),
+				]);
+
+				for (const file of batch) {
+					const expectedPath = `/data/${file.filename}`;
+					if (!foundPaths.has(expectedPath)) {
+						orphanFiles.push({
+							filename: file.filename,
+							size: file.size,
+							lastModified: file.mtime,
+							reason: 'no_page_reference',
+						});
+					}
+				}
+			};
 
 			for await (const file of this.storagePort.listAllFiles()) {
-				if (!allReferencedFiles.has(file.filename)) {
-					orphanFiles.push({
-						filename: file.filename,
-						size: file.size,
-						lastModified: file.mtime,
-						reason: 'no_page_reference',
-					});
-
+				fileBatch.push(file);
+				if (fileBatch.length >= batchSize) {
+					await processBatch(fileBatch);
+					fileBatch = [];
 					if (orphanFiles.length >= 10000) {
 						this.logger.warn(
 							'Too many orphan files found, truncating list at 10k items for safety.',
@@ -114,6 +134,10 @@ export class FileCleanupService {
 						break;
 					}
 				}
+			}
+
+			if (fileBatch.length > 0 && orphanFiles.length < 10000) {
+				await processBatch(fileBatch);
 			}
 
 			this.logger.log(`Found ${orphanFiles.length} orphan files`);
@@ -167,37 +191,45 @@ export class FileCleanupService {
 	}
 
 	async findMissingFiles(): Promise<MissingFile[]> {
-		this.logger.log('Starting missing file check (Batch mode)...');
+		this.logger.log(
+			'Starting missing file check (Batch mode - Parallel Storage Check)...',
+		);
 
 		const missingFiles: MissingFile[] = [];
-		const batchSize = 1000;
+		const dbBatchSize = 1000;
+		const storageConcurrency = 50;
 
-		// Processa Pages em lotes
 		let offset = 0;
 		while (true) {
 			const pages = await this.pageRepository.find({
 				relations: ['chapter', 'chapter.book'],
-				take: batchSize,
+				take: dbBatchSize,
 				skip: offset,
 			});
 
 			if (pages.length === 0) break;
 
-			for (const page of pages) {
-				const fileKey = page.path.replace('/data/', '');
-				const exists = await this.storagePort.exists(fileKey);
-				if (!exists) {
-					missingFiles.push({
-						entityType: 'page',
-						entityId: page.id,
-						expectedPath: page.path,
-						chapterId: page.chapter?.id,
-						bookId: page.chapter?.book?.id,
-					});
-				}
+			for (let i = 0; i < pages.length; i += storageConcurrency) {
+				const chunk = pages.slice(i, i + storageConcurrency);
+
+				await Promise.all(
+					chunk.map(async (page) => {
+						const fileKey = page.path.replace('/data/', '');
+						const exists = await this.storagePort.exists(fileKey);
+						if (!exists) {
+							missingFiles.push({
+								entityType: 'page',
+								entityId: page.id,
+								expectedPath: page.path,
+								chapterId: page.chapter?.id,
+								bookId: page.chapter?.book?.id,
+							});
+						}
+					}),
+				);
 			}
 
-			offset += batchSize;
+			offset += dbBatchSize;
 			if (missingFiles.length >= 1000) {
 				this.logger.warn(
 					'Too many missing files found, truncating report at 1k items.',
@@ -206,32 +238,38 @@ export class FileCleanupService {
 			}
 		}
 
-		// Processa Covers em lotes (se não atingiu o limite)
 		if (missingFiles.length < 1000) {
 			offset = 0;
 			while (true) {
 				const covers = await this.coverRepository.find({
 					relations: ['book'],
-					take: batchSize,
+					take: dbBatchSize,
 					skip: offset,
 				});
 
 				if (covers.length === 0) break;
 
-				for (const cover of covers) {
-					const fileKey = cover.url.replace('/data/', '');
-					const exists = await this.storagePort.exists(fileKey);
-					if (!exists) {
-						missingFiles.push({
-							entityType: 'cover',
-							entityId: cover.id,
-							expectedPath: cover.url,
-							bookId: cover.book?.id,
-						});
-					}
+				for (let i = 0; i < covers.length; i += storageConcurrency) {
+					const chunk = covers.slice(i, i + storageConcurrency);
+
+					await Promise.all(
+						chunk.map(async (cover) => {
+							const fileKey = cover.url.replace('/data/', '');
+							const exists =
+								await this.storagePort.exists(fileKey);
+							if (!exists) {
+								missingFiles.push({
+									entityType: 'cover',
+									entityId: cover.id,
+									expectedPath: cover.url,
+									bookId: cover.book?.id,
+								});
+							}
+						}),
+					);
 				}
 
-				offset += batchSize;
+				offset += dbBatchSize;
 				if (missingFiles.length >= 1000) break;
 			}
 		}
@@ -257,82 +295,166 @@ export class FileCleanupService {
 			dryRun: false,
 		};
 
-		const oldPages = await this.pageRepository.find({
-			where: {
-				deletedAt: LessThan(cutoffDate),
-			},
-			withDeleted: true,
-		});
+		const batchSize = 500;
+		const concurrency = 20;
 
-		for (const page of oldPages) {
-			try {
-				const fileKey = page.path.replace('/data/', '');
-				const stats = await this.storagePort.getStats(fileKey);
+		// Cleanup old pages
+		while (true) {
+			const oldPages = await this.pageRepository.find({
+				where: { deletedAt: LessThan(cutoffDate) },
+				withDeleted: true,
+				take: batchSize,
+			});
 
-				await this.storagePort.delete(fileKey);
-				report.filesDeleted++;
-				report.spaceRecovered += stats.size;
+			if (oldPages.length === 0) break;
 
-				await this.pageRepository.remove(page);
+			report.totalFilesScanned += oldPages.length;
 
-				this.logger.log(`Deleted old page file: ${fileKey}`);
-			} catch (error: unknown) {
-				const errorMsg = `Failed to delete page ${page.id}: ${this.getErrorMessage(error)}`;
-				this.logger.error(errorMsg);
-				report.errors.push(errorMsg);
+			for (let i = 0; i < oldPages.length; i += concurrency) {
+				const chunk = oldPages.slice(i, i + concurrency);
+				await Promise.all(
+					chunk.map(async (page) => {
+						try {
+							const fileKey = page.path.replace('/data/', '');
+							let size = 0;
+							try {
+								const stats =
+									await this.storagePort.getStats(fileKey);
+								size = stats.size;
+							} catch {
+								// File may no longer exist in storage; size stays 0
+							}
+
+							let fileDeleted = false;
+							try {
+								await this.storagePort.delete(fileKey);
+								fileDeleted = true;
+							} catch {
+								// File already absent from storage — safe to remove DB record
+								fileDeleted = true;
+							}
+
+							if (fileDeleted) {
+								report.filesDeleted++;
+								report.spaceRecovered += size;
+								await this.pageRepository.remove(page);
+								this.logger.log(
+									`Deleted old page file and record: ${fileKey}`,
+								);
+							}
+						} catch (error: unknown) {
+							const errorMsg = `Failed to delete page ${page.id}: ${this.getErrorMessage(error)}`;
+							this.logger.error(errorMsg);
+							report.errors.push(errorMsg);
+						}
+					}),
+				);
 			}
 		}
 
-		const oldCovers = await this.coverRepository.find({
-			where: {
-				deletedAt: LessThan(cutoffDate),
-			},
-			withDeleted: true,
-		});
+		// Cleanup old covers
+		while (true) {
+			const oldCovers = await this.coverRepository.find({
+				where: { deletedAt: LessThan(cutoffDate) },
+				withDeleted: true,
+				take: batchSize,
+			});
 
-		for (const cover of oldCovers) {
-			try {
-				const fileKey = cover.url.replace('/data/', '');
-				const stats = await this.storagePort.getStats(fileKey);
+			if (oldCovers.length === 0) break;
 
-				await this.storagePort.delete(fileKey);
-				report.filesDeleted++;
-				report.spaceRecovered += stats.size;
+			report.totalFilesScanned += oldCovers.length;
 
-				await this.coverRepository.remove(cover);
+			for (let i = 0; i < oldCovers.length; i += concurrency) {
+				const chunk = oldCovers.slice(i, i + concurrency);
+				await Promise.all(
+					chunk.map(async (cover) => {
+						try {
+							const fileKey = cover.url.replace('/data/', '');
+							let size = 0;
+							try {
+								const stats =
+									await this.storagePort.getStats(fileKey);
+								size = stats.size;
+							} catch {
+								// File may no longer exist in storage; size stays 0
+							}
 
-				this.logger.log(`Deleted old cover file: ${fileKey}`);
-			} catch (error: unknown) {
-				const errorMsg = `Failed to delete cover ${cover.id}: ${this.getErrorMessage(error)}`;
-				this.logger.error(errorMsg);
-				report.errors.push(errorMsg);
+							let fileDeleted = false;
+							try {
+								await this.storagePort.delete(fileKey);
+								fileDeleted = true;
+							} catch {
+								// File already absent from storage — safe to remove DB record
+								fileDeleted = true;
+							}
+
+							if (fileDeleted) {
+								report.filesDeleted++;
+								report.spaceRecovered += size;
+								await this.coverRepository.remove(cover);
+								this.logger.log(
+									`Deleted old cover file and record: ${fileKey}`,
+								);
+							}
+						} catch (error: unknown) {
+							const errorMsg = `Failed to delete cover ${cover.id}: ${this.getErrorMessage(error)}`;
+							this.logger.error(errorMsg);
+							report.errors.push(errorMsg);
+						}
+					}),
+				);
 			}
 		}
 
-		const oldChapters = await this.chapterRepository.find({
-			where: {
-				deletedAt: LessThan(cutoffDate),
-			},
-			withDeleted: true,
-		});
+		// Cleanup old chapters
+		while (true) {
+			const oldChapters = await this.chapterRepository.find({
+				where: { deletedAt: LessThan(cutoffDate) },
+				withDeleted: true,
+				take: batchSize,
+			});
+			if (oldChapters.length === 0) break;
 
-		for (const chapter of oldChapters) {
-			await this.chapterRepository.remove(chapter);
+			for (let i = 0; i < oldChapters.length; i += concurrency) {
+				const chunk = oldChapters.slice(i, i + concurrency);
+				await Promise.all(
+					chunk.map((c) =>
+						this.chapterRepository.remove(c).catch((e) => {
+							this.logger.error(
+								`Error removing old chapter ${c.id}: ${this.getErrorMessage(e)}`,
+							);
+						}),
+					),
+				);
+			}
 		}
 
-		const oldBooks = await this.bookRepository.find({
-			where: {
-				deletedAt: LessThan(cutoffDate),
-			},
-			withDeleted: true,
-		});
+		// Cleanup old books
+		while (true) {
+			const oldBooks = await this.bookRepository.find({
+				where: { deletedAt: LessThan(cutoffDate) },
+				withDeleted: true,
+				take: batchSize,
+			});
+			if (oldBooks.length === 0) break;
 
-		for (const book of oldBooks) {
-			await this.bookRepository.remove(book);
+			for (let i = 0; i < oldBooks.length; i += concurrency) {
+				const chunk = oldBooks.slice(i, i + concurrency);
+				await Promise.all(
+					chunk.map((b) =>
+						this.bookRepository.remove(b).catch((e) => {
+							this.logger.error(
+								`Error removing old book ${b.id}: ${this.getErrorMessage(e)}`,
+							);
+						}),
+					),
+				);
+			}
 		}
 
-		report.totalFilesScanned = oldPages.length + oldCovers.length;
-		report.orphanFilesFound = report.filesDeleted;
+		// filesDeleted already tracks the number of DB records hard-deleted above.
+		// orphanFilesFound is reserved for files found in storage without a DB reference
+		// (see cleanupOrphanFiles). Do NOT assign filesDeleted to orphanFilesFound here.
 
 		this.logger.log(
 			`Cleanup completed: ${report.filesDeleted} files deleted, ${(report.spaceRecovered / 1024 / 1024).toFixed(2)} MB recovered`,

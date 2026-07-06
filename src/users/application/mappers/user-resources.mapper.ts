@@ -72,6 +72,7 @@ export class UserResourcesMapper {
 				StorageBucket.USERS,
 			),
 			preferredLanguage: user.preferredLanguage,
+			contentLanguages: user.contentLanguages,
 			preferences: user.preferences,
 			createdAt: user.createdAt,
 			updatedAt: user.updatedAt,

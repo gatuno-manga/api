@@ -8,6 +8,7 @@ import { ChapterCommentsService } from '@books/application/services/chapter-comm
 import { ChapterService } from '@books/application/services/chapter.service';
 import { TagsService } from '@books/application/services/tags.service';
 import { resolveLocalizedField } from '@books/application/utils/localization.utils';
+import { AuthorBiography } from '@books/domain/entities/author-biography';
 import { BookFilterInput } from '@books/infrastructure/graphql/models/book-filter.input';
 import {
 	AuthorModel,
@@ -86,7 +87,7 @@ export class BookResolver {
 			Object.assign(options, { limit: filter.limit ?? 20 });
 		}
 
-		const targetLang = filter?.lang || user?.preferredLanguage;
+		const targetLang = filter?.lang || user?.contentLanguages?.[0];
 
 		const result = await this.booksService.getAllBooks(
 			options,
@@ -123,7 +124,7 @@ export class BookResolver {
 		@Args('lang', { type: () => String, nullable: true }) lang?: string,
 		@GqlCurrentUser() user?: CurrentUserDto,
 	) {
-		const targetLang = lang || user?.preferredLanguage;
+		const targetLang = lang || user?.contentLanguages?.[0];
 		const book = await this.booksService.getOne(
 			id,
 			user?.maxWeightSensitiveContent ?? 0,
@@ -149,7 +150,7 @@ export class BookResolver {
 			book.id,
 		);
 
-		const targetLang = lang || user?.preferredLanguage;
+		const targetLang = lang || user?.contentLanguages?.[0];
 
 		// Note: Since DataLoader might share results, we need to map them here
 		return authors.map((author) => {
@@ -158,8 +159,7 @@ export class BookResolver {
 				targetLang,
 				null,
 				'pt-BR',
-				// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-				(item: any) => item.biography,
+				(item: AuthorBiography) => item.biography,
 			);
 			return {
 				...author,
@@ -186,9 +186,15 @@ export class BookResolver {
 			const chapters = await this.dataLoaderService.chaptersLoader.load(
 				book.id,
 			);
+
+			const availableLanguages = Array.from(
+				new Set(chapters.map((ch) => ch.languageCode).filter(Boolean)),
+			) as string[];
+
 			return {
-				data: chapters as unknown as ChapterModel[],
+				data: chapters as ChapterModel[],
 				hasNextPage: false,
+				availableLanguages,
 			};
 		}
 
@@ -196,6 +202,7 @@ export class BookResolver {
 		const options = new BookChaptersCursorOptionsDto();
 		options.cursor = filter.cursor;
 		options.order = filter.order;
+		options.languageCode = filter.languageCode;
 		Object.assign(options, { limit: filter.limit ?? 100 });
 
 		const result = await this.booksService.getChapters(
@@ -209,6 +216,7 @@ export class BookResolver {
 			data: result.data as ChapterModel[],
 			nextCursor: result.nextCursor,
 			hasNextPage: result.hasNextPage,
+			availableLanguages: result.availableLanguages,
 		};
 	}
 

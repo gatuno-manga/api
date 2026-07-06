@@ -132,12 +132,14 @@ export class Book {
 	})
 	completedCheckCount: number;
 
-	@Column({
-		type: 'varchar',
-		length: 10,
-		nullable: true,
-	})
+	@Column({ type: 'varchar', length: 10, nullable: true })
 	originalLanguageCode: string | null;
+
+	@Column({ type: 'simple-array', nullable: true })
+	availableChapterLanguages: string[];
+
+	@Column({ type: 'simple-array', nullable: true })
+	allowedScrapingLanguages: string[];
 
 	/**
 	 * Formatos de exportação disponíveis para este livro

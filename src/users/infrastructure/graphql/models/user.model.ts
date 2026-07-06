@@ -69,6 +69,9 @@ export class UserModel {
 	@Field(() => String, { defaultValue: 'pt-BR' })
 	preferredLanguage: string;
 
+	@Field(() => [String], { nullable: true })
+	contentLanguages?: string[];
+
 	@Field(() => GraphQLJSON, { nullable: true })
 	preferences?: Record<string, unknown>;
 

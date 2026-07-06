@@ -33,7 +33,11 @@ import {
 } from '@books/application/ports/tag-repository.interface';
 import { FilterStrategy } from '@books/application/strategies';
 import { resolveLocalizedField } from '@books/application/utils/localization.utils';
+import { AlternativeTitle } from '@books/domain/entities/alternative-title';
+import { AuthorBiography } from '@books/domain/entities/author-biography';
 import { Book } from '@books/domain/entities/book';
+import { BookDescription } from '@books/domain/entities/book-description';
+import { ContentType } from '@books/domain/enums/content-type.enum';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { InjectQueue } from '@nestjs/bullmq';
 import {
@@ -59,12 +63,16 @@ interface RawChapterItem {
 	id?: string;
 	title?: string;
 	index?: number | string;
+	languageCode?: string;
+	contentType?: ContentType;
 	scrapingStatus?: ScrapingStatus;
 
 	// Campos do getRawMany
 	chapter_id?: string;
 	chapter_title?: string;
 	chapter_index?: string | number;
+	chapter_languageCode?: string;
+	chapter_contentType?: ContentType;
 	chapter_scrapingStatus?: ScrapingStatus;
 	readCount?: string | number;
 }
@@ -142,8 +150,7 @@ export class BookQueryService {
 			lang,
 			book.originalLanguageCode,
 			'pt-BR',
-			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-			(item: any) => item.title,
+			(item: AlternativeTitle) => item.title,
 		);
 		if (bestTitle) {
 			book.title = bestTitle.title;
@@ -155,8 +162,7 @@ export class BookQueryService {
 			lang,
 			book.originalLanguageCode,
 			'pt-BR',
-			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-			(item: any) => item.description,
+			(item: BookDescription) => item.description,
 		);
 		if (bestDesc) {
 			book.description = bestDesc.description;
@@ -170,8 +176,7 @@ export class BookQueryService {
 					lang,
 					null,
 					'pt-BR',
-					// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-					(item: any) => item.biography,
+					(item: AuthorBiography) => item.biography,
 				);
 				if (bestBio) {
 					author.biography = bestBio.biography;
@@ -390,6 +395,7 @@ export class BookQueryService {
 					limit: options.limit,
 					order: options.order,
 					cursorIndex,
+					languageCode: options.languageCode,
 				},
 				userid,
 			)) as RawChapterItem[];
@@ -404,6 +410,12 @@ export class BookQueryService {
 				id: (isRaw ? item.chapter_id : item.id) as string,
 				title: (isRaw ? item.chapter_title : item.title) as string,
 				index: isRaw ? Number(item.chapter_index) : Number(item.index),
+				languageCode: (isRaw
+					? item.chapter_languageCode
+					: item.languageCode) as string,
+				contentType: (isRaw
+					? item.chapter_contentType
+					: item.contentType) as ContentType,
 				scrapingStatus:
 					(isRaw
 						? item.chapter_scrapingStatus
@@ -420,10 +432,14 @@ export class BookQueryService {
 			);
 		}
 
+		const availableLanguages =
+			await this.chapterRepository.findAvailableLanguagesByBookId(id);
+
 		return new BookChaptersCursorPageDto(
 			mappedData,
 			nextCursor,
 			hasNextPage,
+			availableLanguages,
 		);
 	}
 

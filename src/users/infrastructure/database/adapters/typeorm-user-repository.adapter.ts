@@ -16,13 +16,13 @@ export class TypeOrmUserRepositoryAdapter implements IUserRepository {
 		const user = await this.repository.findOne({
 			where: { id } as FindOptionsWhere<InfrastructureUser>,
 		});
-		return user as unknown as DomainUser;
+		return user as DomainUser | null;
 	}
 
 	async save(user: DomainUser): Promise<DomainUser> {
 		const saved = await this.repository.save(
 			user as unknown as InfrastructureUser,
 		);
-		return saved as unknown as DomainUser;
+		return saved as DomainUser;
 	}
 }
