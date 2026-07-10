@@ -76,7 +76,6 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 				'covers.selected = :selected',
 				{ selected: true },
 			)
-			.loadRelationCountAndMap('book.totalChapters', 'book.chapters')
 			.where('book.id = :id', { id })
 			.getOne();
 		return book as unknown as DomainBook;

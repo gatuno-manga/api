@@ -65,6 +65,7 @@ import { Cover } from './infrastructure/database/entities/cover.entity';
 import { Page } from './infrastructure/database/entities/page.entity';
 import { SensitiveContent } from './infrastructure/database/entities/sensitive-content.entity';
 import { Tag } from './infrastructure/database/entities/tags.entity';
+import { ChapterSubscriber } from './infrastructure/database/subscribers/chapter.subscriber';
 import { BookInitEvents } from './infrastructure/events/book.init.events';
 import { BookScrapingEvents } from './infrastructure/events/book.scraping.events';
 import { FileDeletionEvents } from './infrastructure/events/file-deletion.events';
@@ -285,6 +286,7 @@ import { ContentUploadedListener } from './infrastructure/notifiers/content-uplo
 		BookResolver,
 		CoverResolver,
 		PageResolver,
+		ChapterSubscriber,
 		BookDataLoaderService,
 		AdminSystemManagementService,
 	],

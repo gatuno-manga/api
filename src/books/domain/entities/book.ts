@@ -35,6 +35,8 @@ export class Book {
 	originalLanguageCode: string | null;
 	availableChapterLanguages: string[];
 	allowedScrapingLanguages: string[];
+	chaptersPerLanguage?: Array<{ language: string; count: number }>;
+	totalChapters?: number;
 	createdAt: Date;
 	updatedAt: Date;
 	deletedAt: Date | null;

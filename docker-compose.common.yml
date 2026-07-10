@@ -61,6 +61,7 @@ services:
   emqx:
     image: emqx/emqx:5.8.0
     container_name: gatuno-emqx
+    dns_search: "."
     environment:
       - EMQX_NODE__NAME=emqx@127.0.0.1
     ports:

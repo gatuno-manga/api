@@ -5,6 +5,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from '@users/users.module';
 import { FavoritesSyncProvider } from './application/providers/favorites-sync.provider';
+import { CustomizeUserBookUseCase } from './application/use-cases/customize-user-book.use-case';
 import { FavoriteBookUseCase } from './application/use-cases/favorite-book.use-case';
 import { GetFavoritesForSyncUseCase } from './application/use-cases/get-favorites-for-sync.use-case';
 import { GetFavoritesUseCase } from './application/use-cases/get-favorites.use-case';
@@ -17,11 +18,14 @@ import { UserInteractionsController } from './infrastructure/controllers/user-in
 import { FavoriteEntity } from './infrastructure/database/entities/favorite.entity';
 import { ReviewEntity } from './infrastructure/database/entities/review.entity';
 import { SubscriptionEntity } from './infrastructure/database/entities/subscription.entity';
+import { UserBookCustomizationEntity } from './infrastructure/database/entities/user-book-customization.entity';
 import { TypeOrmFavoriteRepository } from './infrastructure/database/repositories/typeorm-favorite.repository';
 import { TypeOrmReviewRepository } from './infrastructure/database/repositories/typeorm-review.repository';
 import { TypeOrmSubscriptionRepository } from './infrastructure/database/repositories/typeorm-subscription.repository';
+import { TypeOrmUserBookCustomizationRepository } from './infrastructure/database/repositories/typeorm-user-book-customization.repository';
 import { NotificationEvents } from './infrastructure/events/notification.events';
 import { FavoriteResolver } from './infrastructure/graphql/resolvers/favorite.resolver';
+import { UserBookCustomizationResolver } from './infrastructure/graphql/resolvers/user-book-customization.resolver';
 
 @Module({
 	imports: [
@@ -33,6 +37,7 @@ import { FavoriteResolver } from './infrastructure/graphql/resolvers/favorite.re
 			FavoriteEntity,
 			SubscriptionEntity,
 			ReviewEntity,
+			UserBookCustomizationEntity,
 		]),
 	],
 	controllers: [InteractionsController, UserInteractionsController],
@@ -49,6 +54,10 @@ import { FavoriteResolver } from './infrastructure/graphql/resolvers/favorite.re
 			provide: 'ReviewRepository',
 			useClass: TypeOrmReviewRepository,
 		},
+		{
+			provide: 'UserBookCustomizationRepository',
+			useClass: TypeOrmUserBookCustomizationRepository,
+		},
 		FavoriteBookUseCase,
 		UnfavoriteBookUseCase,
 		GetFavoritesForSyncUseCase,
@@ -56,17 +65,21 @@ import { FavoriteResolver } from './infrastructure/graphql/resolvers/favorite.re
 		GetMqttTopicsUseCase,
 		SubscribeToBookUseCase,
 		ReviewBookUseCase,
+		CustomizeUserBookUseCase,
 		FavoritesSyncProvider,
 		NotificationEvents,
 		FavoriteResolver,
+		UserBookCustomizationResolver,
 	],
 	exports: [
 		'FavoriteRepository',
 		'SubscriptionRepository',
 		'ReviewRepository',
+		'UserBookCustomizationRepository',
 		FavoriteBookUseCase,
 		UnfavoriteBookUseCase,
 		GetFavoritesForSyncUseCase,
+		CustomizeUserBookUseCase,
 	],
 })
 export class InteractionsModule {}
