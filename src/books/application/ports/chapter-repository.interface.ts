@@ -45,6 +45,7 @@ export interface IChapterRepository {
 	create(data: Partial<Chapter>): Chapter;
 	merge(chapter: Chapter, data: Partial<Chapter>): Chapter;
 	createQueryBuilder(alias: string): unknown;
+	findStuckChapters(hours: number): Promise<Chapter[]>;
 }
 
 export const I_CHAPTER_REPOSITORY = 'IChapterRepository';

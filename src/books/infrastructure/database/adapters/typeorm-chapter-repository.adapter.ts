@@ -365,4 +365,24 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 	createQueryBuilder(alias: string): unknown {
 		return this.repository.createQueryBuilder(alias);
 	}
+
+	async findStuckChapters(hours: number): Promise<DomainChapter[]> {
+		const chapters = await this.repository
+			.createQueryBuilder('chapter')
+			.leftJoinAndSelect('chapter.book', 'book')
+			.where('chapter.scrapingStatus IN (:...statuses)', {
+				statuses: ['process', 'error'],
+			})
+			.andWhere(
+				'chapter.updatedAt < DATE_SUB(NOW(), INTERVAL :hours HOUR)',
+				{ hours },
+			)
+			.getMany();
+
+		return chapters.map((c) => {
+			const result = new DomainChapter();
+			Object.assign(result, c);
+			return result;
+		});
+	}
 }

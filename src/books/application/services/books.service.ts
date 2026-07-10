@@ -259,6 +259,14 @@ export class BooksService {
 		return this.bookQueryService.getQueueStats();
 	}
 
+	async getStuckEntities(hours: number) {
+		return this.bookQueryService.getStuckEntities(hours);
+	}
+
+	async getBooksWithCoverIssues(page: number, limit: number) {
+		return this.bookQueryService.getBooksWithCoverIssues(page, limit);
+	}
+
 	// ==================== GERENCIAMENTO DE CAPÍTULOS ====================
 
 	async updateChapter(idBook: string, dto: UpdateChapterDto[]) {

@@ -1,6 +1,14 @@
 import { BooksService } from '@books/application/services/books.service';
 import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
-import { Controller, Get, UseGuards, UseInterceptors } from '@nestjs/common';
+import {
+	Controller,
+	DefaultValuePipe,
+	Get,
+	ParseIntPipe,
+	Query,
+	UseGuards,
+	UseInterceptors,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/infrastructure/framework/jwt-auth.guard';
 import { SWAGGER_AUTH_SCHEME } from 'src/common/swagger/swagger-auth.constants';
@@ -9,7 +17,9 @@ import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
 import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 import {
 	ApiDocsDashboard,
+	ApiDocsGetBooksWithCoverIssues,
 	ApiDocsGetQueueStats,
+	ApiDocsGetStuckEntities,
 	ApiDocsProcessBookDashboard,
 } from './swagger/admin-books-dashboard.swagger';
 
@@ -41,5 +51,24 @@ export class AdminBooksDashboardController {
 	@ApiDocsGetQueueStats()
 	async getQueueStats() {
 		return this.booksService.getQueueStats();
+	}
+
+	@Get('dashboard/stuck-entities')
+	@Permissions(PermissionsEnum.BOOKS_DASHBOARD_VIEW)
+	@ApiDocsGetStuckEntities()
+	async getStuckEntities(
+		@Query('hours', new DefaultValuePipe(24), ParseIntPipe) hours: number,
+	) {
+		return this.booksService.getStuckEntities(hours);
+	}
+
+	@Get('dashboard/cover-issues')
+	@Permissions(PermissionsEnum.BOOKS_DASHBOARD_VIEW)
+	@ApiDocsGetBooksWithCoverIssues()
+	async getBooksWithCoverIssues(
+		@Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+		@Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+	) {
+		return this.booksService.getBooksWithCoverIssues(page, limit);
 	}
 }

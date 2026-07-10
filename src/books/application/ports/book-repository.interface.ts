@@ -50,6 +50,10 @@ export interface IBookRepository {
 			alternativeTitles?: AlternativeTitle[];
 		}>;
 	}>;
+	findBooksWithCoverIssues(
+		page: number,
+		limit: number,
+	): Promise<[Book[], number]>;
 }
 
 export const I_BOOK_REPOSITORY = 'IBookRepository';
