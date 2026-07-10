@@ -324,15 +324,6 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 			.select(['chapter.id'])
 			.getOne();
 
-		const maxIndexChapter = await this.repository
-			.createQueryBuilder('chapter')
-			.where('chapter.bookId = :bookId', { bookId: chapter.book.id })
-			.andWhere('chapter.languageCode = :languageCode', {
-				languageCode: chapter.languageCode,
-			})
-			.select('MAX(chapter.index)', 'max')
-			.getRawOne<{ max: string | number | null }>();
-
 		const domainChapter = new DomainChapter();
 		Object.assign(domainChapter, chapter);
 
@@ -340,9 +331,7 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 			chapter: domainChapter,
 			previousId: previousChapter?.id,
 			nextId: nextChapter?.id,
-			totalChapters: maxIndexChapter?.max
-				? Number(maxIndexChapter.max)
-				: 0,
+			totalChapters: chapter.book?.totalChapters ?? 0,
 		};
 	}
 

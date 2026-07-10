@@ -141,6 +141,18 @@ export class Book {
 	@Column({ type: 'simple-array', nullable: true })
 	allowedScrapingLanguages: string[];
 
+	@Column({
+		type: 'json',
+		nullable: true,
+	})
+	chaptersPerLanguage: Array<{ language: string; count: number }>;
+
+	@Column({
+		type: 'int',
+		default: 0,
+	})
+	totalChapters: number;
+
 	/**
 	 * Formatos de exportação disponíveis para este livro
 	 * Atualizado automaticamente quando capítulos são adicionados
