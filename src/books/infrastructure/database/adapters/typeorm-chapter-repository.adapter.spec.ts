@@ -10,6 +10,7 @@ describe('TypeOrmChapterRepositoryAdapter', () => {
 	let _repository: jest.Mocked<Repository<InfrastructureChapter>>;
 
 	const mockQueryBuilder = {
+		leftJoinAndSelect: jest.fn().mockReturnThis(),
 		where: jest.fn().mockReturnThis(),
 		andWhere: jest.fn().mockReturnThis(),
 		select: jest.fn().mockReturnThis(),
@@ -146,6 +147,32 @@ describe('TypeOrmChapterRepositoryAdapter', () => {
 				'chapter.index > :cursorIndex',
 				{ cursorIndex: 5 },
 			);
+		});
+	});
+
+	describe('findStuckChapters', () => {
+		it('should return chapters stuck in processing or error', async () => {
+			const chapters = [
+				{ id: '1', title: 'Chapter 1' },
+			] as InfrastructureChapter[];
+			mockQueryBuilder.getMany.mockResolvedValue(chapters);
+
+			const result = await adapter.findStuckChapters(24);
+
+			expect(result).toEqual(chapters);
+			expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
+				'chapter.book',
+				'book',
+			);
+			expect(mockQueryBuilder.where).toHaveBeenCalledWith(
+				'chapter.scrapingStatus IN (:...statuses)',
+				{ statuses: ['process', 'error'] },
+			);
+			expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+				'chapter.updatedAt < DATE_SUB(NOW(), INTERVAL :hours HOUR)',
+				{ hours: 24 },
+			);
+			expect(mockQueryBuilder.getMany).toHaveBeenCalled();
 		});
 	});
 });

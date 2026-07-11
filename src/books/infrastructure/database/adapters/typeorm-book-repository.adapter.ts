@@ -570,4 +570,20 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 
 		return { conflict: false };
 	}
+
+	async findBooksWithCoverIssues(
+		page: number,
+		limit: number,
+	): Promise<[DomainBook[], number]> {
+		const queryBuilder = this.repository
+			.createQueryBuilder('book')
+			.leftJoinAndSelect('book.covers', 'covers')
+			.where('covers.id IS NULL')
+			.orWhere('covers.scrapingStatus = :status', { status: 'error' })
+			.skip((page - 1) * limit)
+			.take(limit);
+
+		const [books, total] = await queryBuilder.getManyAndCount();
+		return [books as unknown as DomainBook[], total];
+	}
 }

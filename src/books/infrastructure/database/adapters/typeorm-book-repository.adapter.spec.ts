@@ -14,6 +14,7 @@ describe('TypeOrmBookRepositoryAdapter', () => {
 		loadRelationCountAndMap: jest.fn().mockReturnThis(),
 		where: jest.fn().mockReturnThis(),
 		andWhere: jest.fn().mockReturnThis(),
+		orWhere: jest.fn().mockReturnThis(),
 		orderBy: jest.fn().mockReturnThis(),
 		addOrderBy: jest.fn().mockReturnThis(),
 		skip: jest.fn().mockReturnThis(),
@@ -230,6 +231,34 @@ describe('TypeOrmBookRepositoryAdapter', () => {
 
 			expect(result).toEqual(book);
 			expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith('RAND()');
+		});
+	});
+	describe('findBooksWithCoverIssues', () => {
+		it('should return books with missing or failed covers', async () => {
+			const books = [
+				{ id: '1', title: 'Book 1' },
+			] as InfrastructureBook[];
+			const total = 1;
+			mockQueryBuilder.getManyAndCount.mockResolvedValue([books, total]);
+
+			const [resultBooks, resultTotal] =
+				await adapter.findBooksWithCoverIssues(1, 10);
+
+			expect(resultBooks).toEqual(books);
+			expect(resultTotal).toBe(total);
+			expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
+				'book.covers',
+				'covers',
+			);
+			expect(mockQueryBuilder.where).toHaveBeenCalledWith(
+				'covers.id IS NULL',
+			);
+			expect(mockQueryBuilder.orWhere).toHaveBeenCalledWith(
+				'covers.scrapingStatus = :status',
+				{ status: 'error' },
+			);
+			expect(mockQueryBuilder.skip).toHaveBeenCalledWith(0);
+			expect(mockQueryBuilder.take).toHaveBeenCalledWith(10);
 		});
 	});
 });

@@ -20,6 +20,10 @@ import {
 	I_CHAPTER_REPOSITORY,
 } from '@books/application/ports/chapter-repository.interface';
 import {
+	ICoverRepository,
+	I_COVER_REPOSITORY,
+} from '@books/application/ports/cover-repository.interface';
+import {
 	IPageRepository,
 	I_PAGE_REPOSITORY,
 } from '@books/application/ports/page-repository.interface';
@@ -95,6 +99,8 @@ export class BookQueryService {
 		private readonly pageRepository: IPageRepository,
 		@Inject(I_TAG_REPOSITORY)
 		private readonly tagRepository: ITagRepository,
+		@Inject(I_COVER_REPOSITORY)
+		private readonly coverRepository: ICoverRepository,
 		@Inject(I_AUTHOR_REPOSITORY)
 		private readonly authorRepository: IAuthorRepository,
 		@Inject(I_SENSITIVE_CONTENT_REPOSITORY)
@@ -598,13 +604,39 @@ export class BookQueryService {
 			};
 		};
 
-		const queues = await Promise.all([
+		return Promise.all([
 			getStats(this.bookUpdateQueue),
 			getStats(this.chapterScrapingQueue),
 			getStats(this.coverImageQueue),
 			getStats(this.fixChapterQueue),
 		]);
+	}
 
-		return { queues };
+	async getStuckEntities(hours: number) {
+		const [chapters, covers] = await Promise.all([
+			this.chapterRepository.findStuckChapters(hours),
+			this.coverRepository.findStuckCovers(hours),
+		]);
+		return { chapters, covers };
+	}
+
+	async getBooksWithCoverIssues(page: number, limit: number) {
+		const [books, total] =
+			await this.bookRepository.findBooksWithCoverIssues(page, limit);
+
+		const mappedBooks = books.map((book) => {
+			const b = this.mapBookLocalizations(book);
+			return {
+				...b,
+				cover: null,
+				coverMetadata: null,
+			} as unknown as BookListItem;
+		});
+
+		return new PageDto(mappedBooks, {
+			page,
+			total,
+			lastPage: Math.ceil(total / limit) || 1,
+		});
 	}
 }

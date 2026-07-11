@@ -15,6 +15,7 @@ export interface ICoverRepository {
 	updateBatch(
 		updates: { oldPath: string; newPath: string; metadata?: unknown }[],
 	): Promise<void>;
+	findStuckCovers(hours: number): Promise<Cover[]>;
 }
 
 export const I_COVER_REPOSITORY = 'ICoverRepository';

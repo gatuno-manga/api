@@ -166,4 +166,24 @@ export class TypeOrmCoverRepositoryAdapter implements ICoverRepository {
 
 		await this.repository.save(covers);
 	}
+
+	async findStuckCovers(hours: number): Promise<DomainCover[]> {
+		const covers = await this.repository
+			.createQueryBuilder('cover')
+			.leftJoinAndSelect('cover.book', 'book')
+			.where('cover.scrapingStatus IN (:...statuses)', {
+				statuses: ['process', 'error'],
+			})
+			.andWhere(
+				'cover.updatedAt < DATE_SUB(NOW(), INTERVAL :hours HOUR)',
+				{ hours },
+			)
+			.getMany();
+
+		return covers.map((c) => {
+			const result = new DomainCover();
+			Object.assign(result, c);
+			return result;
+		});
+	}
 }

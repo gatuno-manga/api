@@ -59,6 +59,8 @@ describe('BooksService', () => {
 		getOne: jest.fn(),
 		findAllBooks: jest.fn(),
 		findOneBook: jest.fn(),
+		getStuckEntities: jest.fn(),
+		getBooksWithCoverIssues: jest.fn(),
 	};
 
 	const mockChapterManagementService = {
@@ -315,6 +317,36 @@ describe('BooksService', () => {
 			expect(
 				mockBookBookRelationshipService.listRelationships,
 			).toHaveBeenCalledWith(idBook, query, 5, 'user-1');
+			expect(result).toEqual(mockResult);
+		});
+	});
+
+	describe('getStuckEntities', () => {
+		it('should call bookQueryService.getStuckEntities', async () => {
+			const mockResult = { chapters: [], covers: [] };
+			mockBookQueryService.getStuckEntities.mockResolvedValue(mockResult);
+
+			const result = await service.getStuckEntities(24);
+
+			expect(mockBookQueryService.getStuckEntities).toHaveBeenCalledWith(
+				24,
+			);
+			expect(result).toEqual(mockResult);
+		});
+	});
+
+	describe('getBooksWithCoverIssues', () => {
+		it('should call bookQueryService.getBooksWithCoverIssues', async () => {
+			const mockResult = { data: [], meta: {} };
+			mockBookQueryService.getBooksWithCoverIssues.mockResolvedValue(
+				mockResult,
+			);
+
+			const result = await service.getBooksWithCoverIssues(1, 10);
+
+			expect(
+				mockBookQueryService.getBooksWithCoverIssues,
+			).toHaveBeenCalledWith(1, 10);
 			expect(result).toEqual(mockResult);
 		});
 	});
