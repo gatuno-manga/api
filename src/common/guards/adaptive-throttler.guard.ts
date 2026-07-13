@@ -33,6 +33,16 @@ export class AdaptiveThrottlerGuard extends ThrottlerGuard {
 			requestProps.limit = requestProps.limit * 3;
 		}
 
+		// Evita contar a mesma requisição HTTP múltiplas vezes para o mesmo limite
+		// (ex: GraphQL resolvendo múltiplos aliases na mesma Query)
+		const reqKey = `_throttled_${requestProps.limit}_${requestProps.ttl}`;
+		const requestRecord = req as Record<string, unknown>;
+
+		if (requestRecord[reqKey]) {
+			return true;
+		}
+		requestRecord[reqKey] = true;
+
 		return super.handleRequest(requestProps);
 	}
 
