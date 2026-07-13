@@ -39,6 +39,12 @@ export class BookFilterInput {
 	@IsString()
 	cursor?: string;
 
+	@Field(() => [ID], { nullable: 'itemsAndList' })
+	@IsOptional()
+	@IsArray()
+	@IsUUID('all', { each: true })
+	ids?: string[];
+
 	@Field(() => [BookType], { nullable: 'itemsAndList' })
 	@IsOptional()
 	@IsArray()

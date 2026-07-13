@@ -63,14 +63,7 @@ export class ChapterService {
 			.orderBy('chapter.index', 'ASC')
 			.select(['chapter.id'])
 			.getOne();
-		const maxIndexChapter = await this.chapterRepository
-			.createQueryBuilder('chapter')
-			.where('chapter.bookId = :bookId', { bookId: chapter.book.id })
-			.select('MAX(chapter.index)', 'max')
-			.getRawOne<ChapterIndexRaw>();
-		const totalChapters = maxIndexChapter?.max
-			? Number(maxIndexChapter.max)
-			: 0;
+		const totalChapters = chapter.book.totalChapters ?? 0;
 		const { book, ...chapterWithoutBook } = chapter;
 
 		// Monta resposta baseada no tipo de conteúdo

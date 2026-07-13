@@ -1,3 +1,4 @@
+import { DEFAULT_LANGUAGE_CODE } from '@books/domain/constants/chapter.constants';
 import { BookType } from '@books/domain/enums/book-type.enum';
 import { ExportFormat } from '@books/domain/enums/export-format.enum';
 import { PublicationStatus } from '@books/domain/enums/publication-status.enum';
@@ -32,7 +33,7 @@ import { Tag } from './tags.entity';
 @Index(['deletedAt'])
 @Index(['title', 'alternative_titles_text'], { fulltext: true })
 @Check(
-	`"publication" IS NULL OR ("publication" >= 1980 AND "publication" <= ${new Date().getFullYear() + 2})`,
+	`"publication" IS NULL OR ("publication" <= ${new Date().getFullYear() + 2})`,
 )
 export class Book {
 	@PrimaryGeneratedColumn('uuid')
@@ -140,6 +141,18 @@ export class Book {
 
 	@Column({ type: 'simple-array', nullable: true })
 	allowedScrapingLanguages: string[];
+
+	@Column({
+		type: 'json',
+		nullable: true,
+	})
+	chaptersPerLanguage: Array<{ language: string; count: number }>;
+
+	@Column({
+		type: 'int',
+		default: 0,
+	})
+	totalChapters: number;
 
 	/**
 	 * Formatos de exportação disponíveis para este livro

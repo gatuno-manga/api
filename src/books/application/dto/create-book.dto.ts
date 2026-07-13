@@ -1,3 +1,4 @@
+import { DEFAULT_LANGUAGE_CODE } from '@books/domain/constants/chapter.constants';
 import { BookType } from '@books/domain/enums/book-type.enum';
 import { NormalizeUrl } from '@common/decorators/normalize-url.decorator';
 import { SUPPORTED_LANGUAGE_CODES } from '@common/domain/constants/languages.constant';
@@ -133,7 +134,7 @@ export class CreateBookDto {
 	@IsOptional()
 	@IsArray()
 	@IsString({ each: true })
-	allowedScrapingLanguages?: string[];
+	allowedScrapingLanguages?: string[] = [DEFAULT_LANGUAGE_CODE];
 
 	@ApiPropertyOptional({
 		description: 'Book cover information',

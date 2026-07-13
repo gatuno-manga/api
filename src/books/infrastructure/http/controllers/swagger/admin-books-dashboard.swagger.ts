@@ -128,3 +128,31 @@ export function ApiDocsGetQueueStats() {
 		}),
 	);
 }
+
+export function ApiDocsGetStuckEntities() {
+	return applyDecorators(
+		ApiOperation({
+			summary: 'Get stuck processing entities',
+			description:
+				'Retrieve chapters and covers stuck in processing or error state for a given amount of hours (Admin only)',
+		}),
+		ApiResponse({
+			status: 200,
+			description: 'Stuck entities retrieved successfully',
+		}),
+	);
+}
+
+export function ApiDocsGetBooksWithCoverIssues() {
+	return applyDecorators(
+		ApiOperation({
+			summary: 'Get books with cover issues',
+			description:
+				'Retrieve books that have no covers or their covers failed to process (Admin only)',
+		}),
+		ApiResponse({
+			status: 200,
+			description: 'Books retrieved successfully',
+		}),
+	);
+}

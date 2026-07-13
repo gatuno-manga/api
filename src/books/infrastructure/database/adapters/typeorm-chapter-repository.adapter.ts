@@ -324,15 +324,6 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 			.select(['chapter.id'])
 			.getOne();
 
-		const maxIndexChapter = await this.repository
-			.createQueryBuilder('chapter')
-			.where('chapter.bookId = :bookId', { bookId: chapter.book.id })
-			.andWhere('chapter.languageCode = :languageCode', {
-				languageCode: chapter.languageCode,
-			})
-			.select('MAX(chapter.index)', 'max')
-			.getRawOne<{ max: string | number | null }>();
-
 		const domainChapter = new DomainChapter();
 		Object.assign(domainChapter, chapter);
 
@@ -340,9 +331,7 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 			chapter: domainChapter,
 			previousId: previousChapter?.id,
 			nextId: nextChapter?.id,
-			totalChapters: maxIndexChapter?.max
-				? Number(maxIndexChapter.max)
-				: 0,
+			totalChapters: chapter.book?.totalChapters ?? 0,
 		};
 	}
 
@@ -375,5 +364,25 @@ export class TypeOrmChapterRepositoryAdapter implements IChapterRepository {
 
 	createQueryBuilder(alias: string): unknown {
 		return this.repository.createQueryBuilder(alias);
+	}
+
+	async findStuckChapters(hours: number): Promise<DomainChapter[]> {
+		const chapters = await this.repository
+			.createQueryBuilder('chapter')
+			.leftJoinAndSelect('chapter.book', 'book')
+			.where('chapter.scrapingStatus IN (:...statuses)', {
+				statuses: ['process', 'error'],
+			})
+			.andWhere(
+				'chapter.updatedAt < DATE_SUB(NOW(), INTERVAL :hours HOUR)',
+				{ hours },
+			)
+			.getMany();
+
+		return chapters.map((c) => {
+			const result = new DomainChapter();
+			Object.assign(result, c);
+			return result;
+		});
 	}
 }

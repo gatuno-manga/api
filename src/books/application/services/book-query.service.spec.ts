@@ -2,6 +2,7 @@ import { MEILI_CLIENT } from '@/infrastructure/meilisearch/meilisearch.constants
 import { I_AUTHOR_REPOSITORY } from '@books/application/ports/author-repository.interface';
 import { I_BOOK_REPOSITORY } from '@books/application/ports/book-repository.interface';
 import { I_CHAPTER_REPOSITORY } from '@books/application/ports/chapter-repository.interface';
+import { I_COVER_REPOSITORY } from '@books/application/ports/cover-repository.interface';
 import { I_PAGE_REPOSITORY } from '@books/application/ports/page-repository.interface';
 import { I_SENSITIVE_CONTENT_REPOSITORY } from '@books/application/ports/sensitive-content-repository.interface';
 import { I_TAG_REPOSITORY } from '@books/application/ports/tag-repository.interface';
@@ -17,6 +18,8 @@ describe('BookQueryService (Search Optimization)', () => {
 	let service: BookQueryService;
 	let meiliClient: any;
 	let bookRepository: any;
+	let chapterRepository: any;
+	let coverRepository: any;
 	let userAccessPolicyService: any;
 
 	beforeEach(async () => {
@@ -36,12 +39,21 @@ describe('BookQueryService (Search Optimization)', () => {
 					{ id: 'book-1', title: 'Solo Leveling', covers: [] },
 				]),
 			findWithFilters: jest.fn(),
+			findBooksWithCoverIssues: jest.fn(),
 		};
 
 		userAccessPolicyService = {
 			evaluateListAccessContext: jest.fn().mockResolvedValue({
 				effectiveMaxWeightSensitiveContent: 0,
 			}),
+		};
+
+		chapterRepository = {
+			findStuckChapters: jest.fn().mockResolvedValue([]),
+		};
+
+		coverRepository = {
+			findStuckCovers: jest.fn().mockResolvedValue([]),
 		};
 
 		const module: TestingModule = await Test.createTestingModule({
@@ -57,7 +69,8 @@ describe('BookQueryService (Search Optimization)', () => {
 					provide: MediaUrlService,
 					useValue: { resolveUrl: jest.fn() },
 				},
-				{ provide: I_CHAPTER_REPOSITORY, useValue: {} },
+				{ provide: I_CHAPTER_REPOSITORY, useValue: chapterRepository },
+				{ provide: I_COVER_REPOSITORY, useValue: coverRepository },
 				{ provide: I_PAGE_REPOSITORY, useValue: {} },
 				{ provide: I_TAG_REPOSITORY, useValue: {} },
 				{ provide: I_AUTHOR_REPOSITORY, useValue: {} },
@@ -134,5 +147,42 @@ describe('BookQueryService (Search Optimization)', () => {
 
 		expect(bookRepository.findWithFilters).toHaveBeenCalled();
 		expect(result.data[0].id).toBe('fallback-book');
+	});
+
+	describe('getStuckEntities', () => {
+		it('should return stuck chapters and covers', async () => {
+			chapterRepository.findStuckChapters.mockResolvedValue([
+				{ id: 'chapter-1' },
+			]);
+			coverRepository.findStuckCovers.mockResolvedValue([
+				{ id: 'cover-1' },
+			]);
+
+			const result = await service.getStuckEntities(24);
+
+			expect(result.chapters).toEqual([{ id: 'chapter-1' }]);
+			expect(result.covers).toEqual([{ id: 'cover-1' }]);
+			expect(chapterRepository.findStuckChapters).toHaveBeenCalledWith(
+				24,
+			);
+			expect(coverRepository.findStuckCovers).toHaveBeenCalledWith(24);
+		});
+	});
+
+	describe('getBooksWithCoverIssues', () => {
+		it('should return books with missing or failed covers', async () => {
+			bookRepository.findBooksWithCoverIssues.mockResolvedValue([
+				[{ id: 'book-1', originalLanguageCode: 'ko' }],
+				1,
+			]);
+
+			const result = await service.getBooksWithCoverIssues(1, 10);
+
+			expect(result.data[0].id).toBe('book-1');
+			expect(result.metadata.total).toBe(1);
+			expect(
+				bookRepository.findBooksWithCoverIssues,
+			).toHaveBeenCalledWith(1, 10);
+		});
 	});
 });

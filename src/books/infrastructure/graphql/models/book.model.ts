@@ -132,9 +132,24 @@ export class BookModel {
 	@Field(() => ScrapingStatus)
 	scrapingStatus: ScrapingStatus;
 
+	@Field(() => [LanguageChapterCountModel], { nullable: 'itemsAndList' })
+	chaptersPerLanguage?: LanguageChapterCountModel[];
+
+	@Field(() => Int, { defaultValue: 0 })
+	totalChapters: number;
+
 	@Field()
 	createdAt: Date;
 
 	@Field()
 	updatedAt: Date;
+}
+
+@ObjectType('LanguageChapterCount')
+export class LanguageChapterCountModel {
+	@Field()
+	language: string;
+
+	@Field(() => Int)
+	count: number;
 }
