@@ -1,3 +1,4 @@
+import { DEFAULT_LANGUAGE_CODE } from '@books/domain/constants/chapter.constants';
 import { AlternativeTitle } from '@books/domain/entities/alternative-title';
 import { Author } from '@books/domain/entities/author';
 import { Book } from '@books/domain/entities/book';
@@ -54,7 +55,7 @@ export class BookBuilder {
 			originalUrl: [],
 			originalLanguageCode: null,
 			availableChapterLanguages: [],
-			allowedScrapingLanguages: [],
+			allowedScrapingLanguages: [DEFAULT_LANGUAGE_CODE],
 		};
 	}
 
@@ -333,7 +334,7 @@ export class BookBuilder {
 			originalUrl: [],
 			originalLanguageCode: null,
 			availableChapterLanguages: [],
-			allowedScrapingLanguages: [],
+			allowedScrapingLanguages: [DEFAULT_LANGUAGE_CODE],
 		};
 		return this;
 	}

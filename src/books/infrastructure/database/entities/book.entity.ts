@@ -1,3 +1,4 @@
+import { DEFAULT_LANGUAGE_CODE } from '@books/domain/constants/chapter.constants';
 import { BookType } from '@books/domain/enums/book-type.enum';
 import { ExportFormat } from '@books/domain/enums/export-format.enum';
 import { PublicationStatus } from '@books/domain/enums/publication-status.enum';
@@ -138,7 +139,11 @@ export class Book {
 	@Column({ type: 'simple-array', nullable: true })
 	availableChapterLanguages: string[];
 
-	@Column({ type: 'simple-array', nullable: true, default: ['pt-br'] })
+	@Column({
+		type: 'simple-array',
+		nullable: true,
+		default: DEFAULT_LANGUAGE_CODE,
+	})
 	allowedScrapingLanguages: string[];
 
 	@Column({

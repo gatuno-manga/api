@@ -291,7 +291,7 @@ describe('BookContentUpdateService', () => {
 				autoUpdate: true,
 			} as Book;
 
-			await service.scheduleNextScrape(book);
+			await (service as any).scheduleNextScrape(book);
 
 			expect(mockBookRepository.update).toHaveBeenCalledTimes(1);
 			const updateArgs = mockBookRepository.update.mock.calls[0][1];
@@ -315,7 +315,7 @@ describe('BookContentUpdateService', () => {
 				autoUpdate: true,
 			} as Book;
 
-			await service.scheduleNextScrape(book);
+			await (service as any).scheduleNextScrape(book);
 
 			expect(mockBookRepository.update).toHaveBeenCalledTimes(1);
 			const updateArgs = mockBookRepository.update.mock.calls[0][1];
@@ -334,7 +334,7 @@ describe('BookContentUpdateService', () => {
 				autoUpdate: true,
 			} as Book;
 
-			await service.scheduleNextScrape(book);
+			await (service as any).scheduleNextScrape(book);
 
 			expect(mockBookRepository.update).toHaveBeenCalledTimes(1);
 			const updateArgs = mockBookRepository.update.mock.calls[0][1];
@@ -354,7 +354,7 @@ describe('BookContentUpdateService', () => {
 				autoUpdate: true,
 			} as Book;
 
-			await service.scheduleNextScrape(book);
+			await (service as any).scheduleNextScrape(book);
 
 			expect(mockBookRepository.update).toHaveBeenCalledTimes(1);
 			const updateArgs = mockBookRepository.update.mock.calls[0][1];
@@ -374,7 +374,7 @@ describe('BookContentUpdateService', () => {
 				autoUpdate: true,
 			} as Book;
 
-			await service.scheduleNextScrape(book);
+			await (service as any).scheduleNextScrape(book);
 
 			expect(mockBookRepository.update).toHaveBeenCalledTimes(1);
 			const updateArgs = mockBookRepository.update.mock.calls[0][1];
