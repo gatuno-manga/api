@@ -138,7 +138,7 @@ export class Book {
 	@Column({ type: 'simple-array', nullable: true })
 	availableChapterLanguages: string[];
 
-	@Column({ type: 'simple-array', nullable: true })
+	@Column({ type: 'simple-array', nullable: true, default: ['pt-br'] })
 	allowedScrapingLanguages: string[];
 
 	@Column({
