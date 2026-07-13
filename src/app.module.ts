@@ -20,6 +20,7 @@ import { BooksModule } from './books/books.module';
 import { CollectionsModule } from './collections/collections.module';
 import { CommonModule } from './common/common.module';
 import { SystemEvents } from './common/domain/constants/events.constant';
+import { MaxRootFieldsRule } from './common/graphql/rules/max-root-fields.rule';
 import { AdaptiveThrottlerGuard } from './common/guards/adaptive-throttler.guard';
 import { EtagInterceptor } from './common/interceptors/etag.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
@@ -71,6 +72,7 @@ import { WebsitesModule } from './websites/websites.module';
 				sortSchema: true,
 				playground: configService.nodeEnv !== 'production',
 				useGlobalPrefix: true,
+				validationRules: [MaxRootFieldsRule(5)],
 				context: ({ req, res }: { req: Request; res: Response }) => ({
 					req,
 					res,
