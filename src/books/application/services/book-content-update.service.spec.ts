@@ -4,6 +4,7 @@ import { I_CHAPTER_REPOSITORY } from '@books/application/ports/chapter-repositor
 import { I_COVER_REPOSITORY } from '@books/application/ports/cover-repository.interface';
 import { Book } from '@books/domain/entities/book';
 import { Chapter } from '@books/domain/entities/chapter';
+import { PublicationStatus } from '@books/domain/enums/publication-status.enum';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { CoverImageService } from '@books/infrastructure/jobs/cover-image.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -255,6 +256,131 @@ describe('BookContentUpdateService', () => {
 
 			expect(result).toHaveLength(1);
 			expect(result[0].index).toBe(2);
+		});
+	});
+
+	describe('scheduleNextScrape', () => {
+		let originalMathRandom: () => number;
+
+		beforeAll(() => {
+			jest.useFakeTimers();
+			// Mock system time to a known value
+			jest.setSystemTime(new Date('2026-07-13T12:00:00.000Z'));
+
+			originalMathRandom = Math.random;
+			// Mock Math.random to return 0.5 so randomHour = 12, randomMinute = 30
+			Math.random = jest.fn(() => 0.5);
+		});
+
+		afterAll(() => {
+			jest.useRealTimers();
+			Math.random = originalMathRandom;
+		});
+
+		afterEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it('should schedule next scrape to 3 days for ONGOING book with recent chapters (<= 30 days)', async () => {
+			const book = {
+				id: 'book-1',
+				publicationStatus: PublicationStatus.ONGOING,
+				lastChapterAddedAt: new Date(
+					Date.now() - 3 * 24 * 60 * 60 * 1000,
+				), // 3 days ago
+				autoUpdate: true,
+			} as Book;
+
+			await service.scheduleNextScrape(book);
+
+			expect(mockBookRepository.update).toHaveBeenCalledTimes(1);
+			const updateArgs = mockBookRepository.update.mock.calls[0][1];
+			expect(updateArgs.autoUpdate).toBe(true);
+
+			const nextScrapeAt: Date = updateArgs.nextScrapeAt;
+			// Current date is 13, + 3 days = 16
+			expect(nextScrapeAt.getDate()).toBe(16);
+			// Jitter applied
+			expect(nextScrapeAt.getHours()).toBe(12);
+			expect(nextScrapeAt.getMinutes()).toBe(30);
+		});
+
+		it('should schedule next scrape to 7 days for ONGOING book with old chapters (> 30 days)', async () => {
+			const book = {
+				id: 'book-1',
+				publicationStatus: PublicationStatus.ONGOING,
+				lastChapterAddedAt: new Date(
+					Date.now() - 35 * 24 * 60 * 60 * 1000,
+				), // 35 days ago
+				autoUpdate: true,
+			} as Book;
+
+			await service.scheduleNextScrape(book);
+
+			expect(mockBookRepository.update).toHaveBeenCalledTimes(1);
+			const updateArgs = mockBookRepository.update.mock.calls[0][1];
+
+			const nextScrapeAt: Date = updateArgs.nextScrapeAt;
+			// Current date is 13, + 7 days = 20
+			expect(nextScrapeAt.getDate()).toBe(20);
+			expect(nextScrapeAt.getHours()).toBe(12);
+		});
+
+		it('should schedule next scrape to 1 month for COMPLETED book (check count < 3)', async () => {
+			const book = {
+				id: 'book-1',
+				publicationStatus: PublicationStatus.COMPLETED,
+				completedCheckCount: 1,
+				autoUpdate: true,
+			} as Book;
+
+			await service.scheduleNextScrape(book);
+
+			expect(mockBookRepository.update).toHaveBeenCalledTimes(1);
+			const updateArgs = mockBookRepository.update.mock.calls[0][1];
+			expect(updateArgs.completedCheckCount).toBe(2);
+
+			const nextScrapeAt: Date = updateArgs.nextScrapeAt;
+			// July (6) + 1 month = August (7)
+			expect(nextScrapeAt.getMonth()).toBe(7);
+			expect(nextScrapeAt.getDate()).toBe(13);
+		});
+
+		it('should schedule next scrape to 3 months for CANCELLED book (check count between 3 and 5)', async () => {
+			const book = {
+				id: 'book-1',
+				publicationStatus: PublicationStatus.CANCELLED,
+				completedCheckCount: 4,
+				autoUpdate: true,
+			} as Book;
+
+			await service.scheduleNextScrape(book);
+
+			expect(mockBookRepository.update).toHaveBeenCalledTimes(1);
+			const updateArgs = mockBookRepository.update.mock.calls[0][1];
+			expect(updateArgs.completedCheckCount).toBe(5);
+
+			const nextScrapeAt: Date = updateArgs.nextScrapeAt;
+			// July (6) + 3 months = October (9)
+			expect(nextScrapeAt.getMonth()).toBe(9);
+			expect(nextScrapeAt.getDate()).toBe(13);
+		});
+
+		it('should stop auto update for COMPLETED book after 6 checks', async () => {
+			const book = {
+				id: 'book-1',
+				publicationStatus: PublicationStatus.COMPLETED,
+				completedCheckCount: 6,
+				autoUpdate: true,
+			} as Book;
+
+			await service.scheduleNextScrape(book);
+
+			expect(mockBookRepository.update).toHaveBeenCalledTimes(1);
+			const updateArgs = mockBookRepository.update.mock.calls[0][1];
+			expect(updateArgs.completedCheckCount).toBe(7);
+			expect(updateArgs.autoUpdate).toBe(false);
+			expect(updateArgs.nextScrapeAt).toBeNull();
 		});
 	});
 });
