@@ -32,7 +32,7 @@ import { Tag } from './tags.entity';
 @Index(['deletedAt'])
 @Index(['title', 'alternative_titles_text'], { fulltext: true })
 @Check(
-	`"publication" IS NULL OR ("publication" >= 1980 AND "publication" <= ${new Date().getFullYear() + 2})`,
+	`"publication" IS NULL OR ("publication" <= ${new Date().getFullYear() + 2})`,
 )
 export class Book {
 	@PrimaryGeneratedColumn('uuid')
