@@ -246,7 +246,7 @@ services:
       - RUSTFS_EXTRA_REFERERS=${ALLOWED_URL}
       - RUSTFS_PUBLIC_BUCKETS=${RUSTFS_PUBLIC_BUCKETS:-books users processing system}
     volumes:
-      - ./scripts/init-rustfs.sh:/usr/local/bin/init-rustfs.sh:ro
+      - ./scripts/infra/init-rustfs.sh:/usr/local/bin/init-rustfs.sh:ro
     entrypoint: /usr/local/bin/init-rustfs.sh
     networks:
       - gatuno-net
