@@ -1,8 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { DataSource } from 'typeorm';
-import { AppModule } from '../src/app.module';
-import { PasswordEncryption } from '../src/infrastructure/encryption/password-encryption.provider';
-import { User } from '../src/users/infrastructure/database/entities/user.entity';
+import { AppModule } from '../../src/app.module';
+import { PasswordEncryption } from '../../src/infrastructure/encryption/password-encryption.provider';
+import { User } from '../../src/users/infrastructure/database/entities/user.entity';
 
 async function bootstrap() {
 	const email = process.argv[2];

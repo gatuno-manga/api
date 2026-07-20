@@ -1,44 +1,54 @@
+# syntax=docker/dockerfile:1.4
 ARG NODE_VERSION=24.11.1
 
 # ─── Estágio base ─────────────────────────────────────────────────────────────
 FROM node:${NODE_VERSION}-bookworm-slim AS base
 WORKDIR /usr/src/app
+ENV NODE_ENV=production
 
 # ─── Estágio de dependências (cache isolado do npm ci) ────────────────────────
 FROM base AS deps
 # Ferramentas nativas para módulos como sharp e bcrypt
-RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json* ./
-RUN npm ci --ignore-scripts
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --ignore-scripts --include=dev
 
 # ─── Estágio de build ─────────────────────────────────────────────────────────
 FROM deps AS builder
+# Instalar jemalloc aqui apenas para podermos extrair a lib para o distroless
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends libjemalloc2 && rm -rf /var/lib/apt/lists/*
 COPY . .
 RUN npm run build
 # Eliminar devDependencies para preparar node_modules de produção
-RUN npm prune --omit=dev
+RUN --mount=type=cache,target=/root/.npm \
+    npm prune --omit=dev
 
 # ─── Estágio de produção ──────────────────────────────────────────────────────
-FROM node:${NODE_VERSION}-bookworm-slim AS production
+# Usando distroless para máxima segurança (sem shell, zero attack surface)
+FROM gcr.io/distroless/cc-debian12 AS production
 
-# Instalar jemalloc para melhor gerenciamento de memória e procps para o comando ps
-RUN apt-get update && apt-get install -y libjemalloc2 procps && rm -rf /var/lib/apt/lists/*
+ENV NODE_ENV=production
+# Mantendo o jemalloc para evitar vazamentos de memória
 ENV LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libjemalloc.so.2"
 
 WORKDIR /usr/src/app
 
-# Criar grupo/usuário não-root ANTES das cópias pesadas
-# Isso permite usar --chown nos comandos COPY
-RUN groupadd -r -g 1001 appgroup && \
-    useradd -r -u 1001 -g appgroup -d /home/appuser -m appuser && \
-    mkdir -p /usr/src/app/data && \
-    chown -R appuser:appgroup /usr/src/app/data
+# Copiar Node.js e a biblioteca do jemalloc
+COPY --from=base /usr/local/bin/node /usr/local/bin/node
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libjemalloc.so.2 /usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
-# Copiar dependências e código com ownership correto para evitar camadas extras
-COPY --from=builder --chown=appuser:appgroup /usr/src/app/node_modules ./node_modules
-COPY --from=builder --chown=appuser:appgroup /usr/src/app/package.json ./package.json
-COPY --from=builder --chown=appuser:appgroup /usr/src/app/dist ./dist
+# O Distroless possui o usuário seguro 'nonroot'
+USER nonroot
 
-USER appuser
+# Copiar dependências e código compilado com as permissões corretas
+COPY --from=builder --chown=nonroot:nonroot /usr/src/app/node_modules ./node_modules
+COPY --from=builder --chown=nonroot:nonroot /usr/src/app/package.json ./package.json
+COPY --from=builder --chown=nonroot:nonroot /usr/src/app/dist ./dist
 
-CMD ["node", "--max-old-space-size=3072", "dist/main.js"]
+CMD ["/usr/local/bin/node", "--max-old-space-size=3072", "dist/main.js"]
+

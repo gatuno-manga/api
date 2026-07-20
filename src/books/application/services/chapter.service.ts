@@ -48,6 +48,9 @@ export class ChapterService {
 		const previousChapter = await this.chapterRepository
 			.createQueryBuilder('chapter')
 			.where('chapter.bookId = :bookId', { bookId: chapter.book.id })
+			.andWhere('chapter.languageCode = :lang', {
+				lang: chapter.languageCode,
+			})
 			.andWhere('chapter.index < :currentIndex', {
 				currentIndex: chapter.index,
 			})
@@ -57,13 +60,57 @@ export class ChapterService {
 		const nextChapter = await this.chapterRepository
 			.createQueryBuilder('chapter')
 			.where('chapter.bookId = :bookId', { bookId: chapter.book.id })
+			.andWhere('chapter.languageCode = :lang', {
+				lang: chapter.languageCode,
+			})
 			.andWhere('chapter.index > :currentIndex', {
 				currentIndex: chapter.index,
 			})
 			.orderBy('chapter.index', 'ASC')
 			.select(['chapter.id'])
 			.getOne();
-		const totalChapters = chapter.book.totalChapters ?? 0;
+
+		const sameIndexChapters = await this.chapterRepository
+			.createQueryBuilder('chapter')
+			.where('chapter.bookId = :bookId', { bookId: chapter.book.id })
+			.andWhere('chapter.index = :currentIndex', {
+				currentIndex: chapter.index,
+			})
+			.andWhere('chapter.languageCode != :lang', {
+				lang: chapter.languageCode,
+			})
+			.select(['chapter.id', 'chapter.languageCode'])
+			.getMany();
+
+		const nextOfOtherLanguagesRaw = await this.chapterRepository
+			.createQueryBuilder('chapter')
+			.where('chapter.bookId = :bookId', { bookId: chapter.book.id })
+			.andWhere('chapter.languageCode != :lang', {
+				lang: chapter.languageCode,
+			})
+			.andWhere('chapter.index > :currentIndex', {
+				currentIndex: chapter.index,
+			})
+			.orderBy('chapter.index', 'ASC')
+			.select(['chapter.id', 'chapter.languageCode'])
+			.getMany();
+
+		const nextOfOtherMap = new Map<string, string>();
+		for (const ch of nextOfOtherLanguagesRaw) {
+			if (!nextOfOtherMap.has(ch.languageCode)) {
+				nextOfOtherMap.set(ch.languageCode, ch.id);
+			}
+		}
+		const nextOfOtherLanguages = Array.from(nextOfOtherMap.entries()).map(
+			([lang, id]) => ({ id, languageCode: lang }),
+		);
+
+		const langStats = chapter.book.chaptersPerLanguage?.find(
+			(c) => c.language === chapter.languageCode,
+		);
+		const totalChapters = langStats
+			? langStats.count
+			: (chapter.book.totalChapters ?? 0);
 		const { book, ...chapterWithoutBook } = chapter;
 
 		// Monta resposta baseada no tipo de conteúdo
@@ -74,6 +121,8 @@ export class ChapterService {
 			bookTitle: string;
 			totalChapters: number;
 			documentPath?: string | null;
+			otherLanguages?: Array<{ id: string; languageCode: string }>;
+			nextOfOtherLanguages?: Array<{ id: string; languageCode: string }>;
 		} = {
 			...chapterWithoutBook,
 			previous: previousChapter?.id,
@@ -81,6 +130,14 @@ export class ChapterService {
 			bookId: book.id,
 			bookTitle: book.title,
 			totalChapters,
+			otherLanguages: sameIndexChapters.map((ch) => ({
+				id: ch.id,
+				languageCode: ch.languageCode,
+			})),
+			nextOfOtherLanguages: nextOfOtherLanguages.map((ch) => ({
+				id: ch.id,
+				languageCode: ch.languageCode,
+			})),
 		};
 
 		// Para IMAGE: retorna pages com URLs completas

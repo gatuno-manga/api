@@ -9,7 +9,7 @@
 
 set -euo pipefail
 
-DEFAULT_VOLUME_NAME="gatuno_api-data"
+DEFAULT_VOLUME_NAME="gatuno_rustfs_data"
 DEFAULT_CONTAINER_PATH="/data"
 DEFAULT_IMAGE="bash:5.2"
 

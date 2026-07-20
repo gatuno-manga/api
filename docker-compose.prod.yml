@@ -6,6 +6,8 @@ services:
       dockerfile: Dockerfile.prod
     env_file:
       - ./.env
+    environment:
+      - NODE_ENV=production
     ports:
       - "${API_PORT}:3000"
     restart: always
