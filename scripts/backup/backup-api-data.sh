@@ -9,7 +9,7 @@
 # Opções:
 #   -r N    Manter apenas os últimos N backups (padrão: 5)
 #   -s      Parar container do RustFS durante backup (consistência total)
-#   -q      Modo silencioso (sem barra de progresso)
+#   -q      Modo silencioso
 #   -h      Mostrar ajuda
 #
 # Estrutura de saída:
@@ -75,28 +75,18 @@ log() {
     fi
 }
 
-log_inline() {
-    local message="${1:-}"
-    if [ "${QUIET:-false}" = false ]; then
-        echo -ne "$message"
-    fi
-}
-
-# Spinner animado
 spinner() {
     local pid=${1:-}
     local desc="${2:-Processando}"
     local chars='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
     local i=0
-
     if [ -z "$pid" ]; then return; fi
-
     while kill -0 "$pid" 2>/dev/null; do
         printf "\r%s %s" "${chars:$i:1}" "$desc"
         i=$(( (i + 1) % ${#chars} ))
         sleep 0.1
     done
-    printf "\r✓ %s          \n" "$desc"
+    printf "\r✓ %-50s\n" "$desc"
 }
 
 cleanup() {
@@ -105,39 +95,31 @@ cleanup() {
     # Reiniciar container se foi parado
     if [ "${STOP_CONTAINER}" = true ] && [ "${CONTAINER_STOPPED:-false}" = true ]; then
         log "🔄 Reiniciando container do RustFS..."
-        docker compose -f docker-compose.dev.yml start rustfs 2>/dev/null || true
+        docker compose stop -t 0 rustfs 2>/dev/null || true
+        docker compose start rustfs 2>/dev/null || true
     fi
 
     # Limpar diretório incompleto se o backup falhou
-    if [ $exit_code -ne 0 ] && [ -n "${BACKUP_DIR:-}" ] && [ -n "${BACKUP_NAME:-}" ]; then
-        local incomplete_dir="${BACKUP_DIR}/${BACKUP_NAME}"
-        if [ -d "${incomplete_dir}.inprogress" ]; then
+    if [ $exit_code -ne 0 ] && [ -n "${INPROGRESS_PATH:-}" ]; then
+        if [ -d "${INPROGRESS_PATH}" ]; then
             log "⚠️  Falha detectada (código: $exit_code). Removendo backup incompleto..."
-            rm -rf "${incomplete_dir}.inprogress" 2>/dev/null || true
+            rm -rf "${INPROGRESS_PATH}" 2>/dev/null || true
         fi
     fi
 }
 
-# Calcula o tamanho real em disco (considera hardlinks uma vez só)
-du_real() {
-    du -sh --apparent-size "$1" 2>/dev/null | cut -f1
-}
-
-du_disk() {
-    du -sh "$1" 2>/dev/null | cut -f1
-}
+du_real() { du -sh --apparent-size "$1" 2>/dev/null | cut -f1; }
+du_disk() { du -sh "$1" 2>/dev/null | cut -f1; }
 
 # ============================================
 # Parse de argumentos
 # ============================================
 
-# Primeiro argumento pode ser o diretório
 if [ $# -gt 0 ] && [[ ! "${1:-}" =~ ^- ]]; then
     BACKUP_DIR="$1"
     shift
 fi
 
-# Parse das opções
 while getopts "r:sqh" opt; do
     case $opt in
         r) MAX_BACKUPS=$OPTARG ;;
@@ -154,14 +136,11 @@ done
 
 log "🔍 Verificando pré-requisitos..."
 
-# Verificar se Docker está rodando
 if ! docker info >/dev/null 2>&1; then
     log "❌ Erro: Docker não está rodando ou sem permissão"
     exit 1
 fi
 
-# Verificar e instalar rsync se necessário
-# (zstd não é necessário aqui — a extração do volume é feita dentro do container Docker)
 ensure_tools rsync sha256sum
 
 # Verificar se o volume existe
@@ -172,13 +151,23 @@ if ! docker volume inspect "${VOLUME_NAME}" >/dev/null 2>&1; then
     exit 1
 fi
 
-# Criar diretório de backup se não existir
-mkdir -p "${BACKUP_DIR}"
+# ─────────────────────────────────────────────────────────
+# Obter path real do volume no host (elimina overhead Docker)
+# ─────────────────────────────────────────────────────────
+VOLUME_HOST_PATH=$(docker volume inspect "${VOLUME_NAME}" --format '{{.Mountpoint}}' 2>/dev/null)
 
-# Configurar arquivo de log
+if [ -z "${VOLUME_HOST_PATH}" ] || [ ! -d "${VOLUME_HOST_PATH}" ]; then
+    log "❌ Erro: Não foi possível localizar o path do volume no host"
+    log "   Volume inspect retornou: '${VOLUME_HOST_PATH:-<vazio>}'"
+    log "   Verifique se o Docker tem permissão para inspecionar volumes"
+    exit 1
+fi
+
+log "   📂 Volume host path: ${VOLUME_HOST_PATH}"
+
+mkdir -p "${BACKUP_DIR}"
 LOG_FILE="${BACKUP_DIR}/backup-${TIMESTAMP}.log"
 log "📝 Log: ${LOG_FILE}"
-
 log "✅ Pré-requisitos OK"
 log ""
 
@@ -188,42 +177,28 @@ log ""
 
 log "📊 Analisando volume ${VOLUME_NAME}..."
 
-VOLUME_KB=$(docker run --rm -v "${VOLUME_NAME}:/data" alpine sh -c "du -sk /data 2>/dev/null | cut -f1" || echo 0)
+VOLUME_KB=$(du -sk "${VOLUME_HOST_PATH}" 2>/dev/null | cut -f1 || echo 0)
 VOLUME_KB=${VOLUME_KB:-0}
-
-if [ "$VOLUME_KB" -eq 0 ]; then
-    log "⚠️  Aviso: Volume vazio ou não foi possível ler o tamanho"
-fi
-
-TOTAL_SIZE="$((VOLUME_KB / 1024))MB"
-
-# Contar arquivos no volume
-FILE_COUNT=$(docker run --rm -v "${VOLUME_NAME}:/data" alpine sh -c "find /data -type f | wc -l" || echo 0)
+FILE_COUNT=$(find "${VOLUME_HOST_PATH}" -type f 2>/dev/null | wc -l || echo 0)
 FILE_COUNT=${FILE_COUNT:-0}
 
 log "📊 Informações do volume:"
-log "   💾 Tamanho total: ${TOTAL_SIZE}"
+log "   💾 Tamanho total: $((VOLUME_KB / 1024))MB"
 log "   📄 Arquivos: ${FILE_COUNT}"
 
-# Calcular quanto já está deduplicado (comparar com backup anterior)
-LATEST_BACKUP=$(ls -1dt "${BACKUP_DIR}"/rustfs-backup-*/data 2>/dev/null | head -n1 || true)
-if [ -n "${LATEST_BACKUP}" ]; then
-    PREV_FILE_COUNT=$(find "${LATEST_BACKUP}" -type f 2>/dev/null | wc -l || echo 0)
-    log "   📦 Backup anterior: ${PREV_FILE_COUNT} arquivos (hardlinks serão reutilizados)"
+LATEST_BACKUP_DATA=$(ls -1dt "${BACKUP_DIR}"/rustfs-backup-*/data 2>/dev/null | head -n1 || true)
+if [ -n "${LATEST_BACKUP_DATA}" ]; then
+    PREV_FILE_COUNT=$(find "${LATEST_BACKUP_DATA}" -type f 2>/dev/null | wc -l || echo 0)
+    log "   📦 Backup anterior: ${PREV_FILE_COUNT} arquivos (hardlinks reutilizados)"
 fi
-
 log ""
 
-# Verificar espaço em disco disponível
-# Na pior hipótese (todos os arquivos são novos), precisamos do tamanho do volume
 AVAILABLE_KB=$(df -Pk "${BACKUP_DIR}" | tail -n1 | awk '{print $4}')
-
 if [ "${VOLUME_KB}" -gt "${AVAILABLE_KB}" ]; then
     log "❌ Erro: Espaço em disco potencialmente insuficiente"
     log "   Volume: $((VOLUME_KB / 1024))MB"
     log "   Disponível: $((AVAILABLE_KB / 1024))MB"
-    log "   Nota: Com deduplicação, o espaço real necessário pode ser menor"
-    log "   Use -f para forçar (não implementado, considere liberar espaço)"
+    log "   Nota: Com deduplicação o espaço real necessário pode ser menor"
     exit 1
 fi
 
@@ -235,11 +210,12 @@ log ""
 # ============================================
 
 CONTAINER_STOPPED=false
+INPROGRESS_PATH=""
 trap cleanup EXIT
 
 if [ "$STOP_CONTAINER" = true ]; then
     log "⏸️  Parando container do RustFS para consistência..."
-    if docker compose -f docker-compose.dev.yml stop rustfs 2>/dev/null; then
+    if docker compose stop rustfs 2>/dev/null; then
         CONTAINER_STOPPED=true
         log "   Container parado com sucesso"
     else
@@ -249,62 +225,40 @@ if [ "$STOP_CONTAINER" = true ]; then
 fi
 
 # ============================================
-# Extrair volume para staging temporário no host
-# ============================================
-
-STAGING_DIR="${BACKUP_DIR}/.staging-${TIMESTAMP}"
-mkdir -p "${STAGING_DIR}"
-
-log "📤 Extraindo dados do volume Docker para staging..."
-
-docker run --rm \
-  -v "${VOLUME_NAME}:/source:ro" \
-  -v "${STAGING_DIR}:/target" \
-  alpine \
-  sh -c '
-    apk add --no-cache rsync >/dev/null 2>&1
-    rsync -a --no-owner --no-group /source/ /target/
-    echo "✓ Extração concluída: $(find /target -type f | wc -l) arquivos"
-  '
-
-log ""
-
-# ============================================
 # Criar backup com deduplicação via hardlinks
+# Uma única passagem de rsync — sem staging intermediário
 # ============================================
 
 BACKUP_PATH="${BACKUP_DIR}/${BACKUP_NAME}"
 INPROGRESS_PATH="${BACKUP_PATH}.inprogress"
-
 mkdir -p "${INPROGRESS_PATH}/data"
 
 log "🔗 Criando backup com deduplicação via hardlinks..."
 
-# Encontrar o backup mais recente para usar como base de deduplicação
 LINK_DEST_ARG=""
-LATEST_BACKUP_DATA=$(ls -1dt "${BACKUP_DIR}"/rustfs-backup-*/data 2>/dev/null | head -n1 || true)
-
-if [ -n "${LATEST_BACKUP_DATA}" ]; then
-    log "   Referência de deduplicação: $(dirname "${LATEST_BACKUP_DATA}" | xargs basename)"
-    LINK_DEST_ARG="--link-dest=${LATEST_BACKUP_DATA}"
-fi
-
-# Usar rsync do host ou fallback Docker Alpine (hardlinks via bind mount funcionam igual)
-if [ -n "${LINK_DEST_ARG}" ]; then
-    rsync_with_fallback -a --no-owner --no-group \
-        "${LINK_DEST_ARG}" \
-        "${STAGING_DIR}/" \
-        "${INPROGRESS_PATH}/data/"
+if [ -n "${LATEST_BACKUP_DATA}" ] && [ -d "${LATEST_BACKUP_DATA}" ]; then
+    log "   Referência: $(dirname "${LATEST_BACKUP_DATA}" | xargs basename)"
+    LINK_DEST_ARG="--link-dest=$(realpath "${LATEST_BACKUP_DATA}")"
 else
-    rsync_with_fallback -a --no-owner --no-group \
-        "${STAGING_DIR}/" \
-        "${INPROGRESS_PATH}/data/"
+    log "   🔗 Primeiro backup (sem deduplicação)"
 fi
 
+log "   Origem: ${VOLUME_HOST_PATH}"
+log "   Destino: ${INPROGRESS_PATH}/data/"
 log ""
 
-# Limpar staging
-rm -rf "${STAGING_DIR}"
+START_TS=$(date +%s)
+
+# rsync direto: host path → backup dir, sem container intermediário
+rsync -a --no-owner --no-group \
+    ${LINK_DEST_ARG} \
+    "${VOLUME_HOST_PATH}/" \
+    "${INPROGRESS_PATH}/data/"
+
+END_TS=$(date +%s)
+ELAPSED=$((END_TS - START_TS))
+log "   ✓ rsync concluído em ${ELAPSED}s"
+log ""
 
 # ============================================
 # Gerar manifesto de checksums
@@ -313,9 +267,9 @@ rm -rf "${STAGING_DIR}"
 log "🔐 Gerando manifesto de checksums..."
 
 find "${INPROGRESS_PATH}/data" -type f | sort | \
-  xargs sha256sum 2>/dev/null | \
-  sed "s|${INPROGRESS_PATH}/data/||" \
-  > "${INPROGRESS_PATH}/manifest.sha256" &
+    xargs sha256sum 2>/dev/null | \
+    sed "s|${INPROGRESS_PATH}/data/||" \
+    > "${INPROGRESS_PATH}/manifest.sha256" &
 
 HASH_PID=$!
 if [ "$QUIET" = false ]; then
@@ -335,8 +289,10 @@ DISK_SIZE=$(du_disk "${INPROGRESS_PATH}/data")
 cat > "${INPROGRESS_PATH}/info.txt" << EOF
 backup_name:      ${BACKUP_NAME}
 volume_name:      ${VOLUME_NAME}
+volume_host_path: ${VOLUME_HOST_PATH}
 timestamp:        ${TIMESTAMP}
 created_at:       $(date -Iseconds)
+elapsed_seconds:  ${ELAPSED}
 total_files:      ${TOTAL_FILES}
 apparent_size:    ${APPARENT_SIZE}
 disk_size:        ${DISK_SIZE}
@@ -348,6 +304,7 @@ EOF
 # ============================================
 
 mv "${INPROGRESS_PATH}" "${BACKUP_PATH}"
+INPROGRESS_PATH=""  # limpar para não deletar no cleanup
 
 log "   ✅ Backup finalizado"
 log ""
@@ -356,35 +313,28 @@ log ""
 # Política de retenção
 # ============================================
 
-# Contar apenas diretórios de backup válidos (sem .inprogress)
 mapfile -t ALL_BACKUPS < <(ls -1dt "${BACKUP_DIR}"/rustfs-backup-* 2>/dev/null | grep -v '\.inprogress$' || true)
 BACKUP_COUNT=${#ALL_BACKUPS[@]}
 
 if [ "$BACKUP_COUNT" -gt "$MAX_BACKUPS" ]; then
     log "🗑️  Aplicando política de retenção (máximo: ${MAX_BACKUPS})..."
-
-    # Backups a remover (os mais antigos)
     TO_REMOVE=("${ALL_BACKUPS[@]:$MAX_BACKUPS}")
-
     for old_backup in "${TO_REMOVE[@]}"; do
         FREED=$(du_disk "${old_backup}")
         log "   Removendo: $(basename "${old_backup}") (${FREED} em disco)"
         rm -rf "${old_backup}"
     done
-
     log "   ✅ ${BACKUP_COUNT} → ${MAX_BACKUPS} backups"
     log ""
 fi
 
 # ============================================
-# Relatório de deduplicação
+# Relatório final
 # ============================================
 
 FINAL_APPARENT=$(du_real "${BACKUP_PATH}/data")
 FINAL_DISK=$(du_disk "${BACKUP_PATH}/data")
 MANIFEST_LINES=$(wc -l < "${BACKUP_PATH}/manifest.sha256")
-
-# Calcular uso total de todos os backups retidos
 TOTAL_DISK=$(du -sh "${BACKUP_DIR}" 2>/dev/null | cut -f1 || echo "N/A")
 
 log "════════════════════════════════════════════════════"
@@ -392,12 +342,11 @@ log "✅ BACKUP CONCLUÍDO COM SUCESSO!"
 log "════════════════════════════════════════════════════"
 log "📦 Backup:           ${BACKUP_PATH}"
 log "📄 Arquivos:         ${MANIFEST_LINES}"
-log "📐 Tamanho aparente: ${FINAL_APPARENT}  (tamanho real dos dados)"
-log "💾 Tamanho em disco: ${FINAL_DISK}  (espaço ocupado por este backup)"
+log "⏱️  Tempo:            ${ELAPSED}s"
+log "📐 Tamanho aparente: ${FINAL_APPARENT}"
+log "💾 Tamanho em disco: ${FINAL_DISK}"
 log ""
-log "📊 Uso total dos ${#ALL_BACKUPS[@]} backups retidos:"
-log "   Espaço em disco real: ${TOTAL_DISK}"
-log "   (sem deduplicação seria ~$((${#ALL_BACKUPS[@]})) × ${FINAL_APPARENT})"
+log "📊 Uso total dos ${#ALL_BACKUPS[@]} backups retidos: ${TOTAL_DISK}"
 log ""
 log "📝 Log:              ${LOG_FILE}"
 log "📋 Manifesto:        ${BACKUP_PATH}/manifest.sha256"
