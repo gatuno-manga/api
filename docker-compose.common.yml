@@ -30,9 +30,6 @@ services:
     restart: on-failure:3
     deploy:
       resources:
-        limits:
-          cpus: '1.0'
-          memory: 2G
         reservations:
           cpus: '0.2'
           memory: 512M
@@ -75,10 +72,6 @@ services:
       - EMQX_NODE__NAME=emqx@127.0.0.1
     restart: on-failure:3
     deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
     ports:
       - "${NANOMQ_PORT:-1883}:1883"
       - "${NANOMQ_WS_PORT:-8083}:8083"
@@ -105,10 +98,6 @@ services:
       --maxmemory 512mb
     restart: on-failure:3
     deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 1G
     healthcheck:
       test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
       interval: 10s
@@ -148,9 +137,6 @@ services:
       DB_REPL_PASS: ${DB_REPL_PASS}
     deploy:
       resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
         reservations:
           cpus: '0.2'
           memory: 512M
@@ -219,10 +205,6 @@ services:
       - DB_PASS=${DB_PASS}
     restart: on-failure:3
     deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
     ports:
       - "6032:6032"
       - "6033:6033"
@@ -256,10 +238,6 @@ services:
       - RUSTFS_SECRET_KEY=${RUSTFS_SECRET_KEY:-rustfsadmin}
     restart: on-failure:3
     deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
     volumes:
       - rustfs_data:/data
     networks:
@@ -282,10 +260,6 @@ services:
       - RUSTFS_PUBLIC_BUCKETS=${RUSTFS_PUBLIC_BUCKETS:-books users processing system}
     restart: on-failure:3
     deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 256M
     volumes:
       - ./scripts/infra/init-rustfs.sh:/usr/local/bin/init-rustfs.sh:ro
     entrypoint: /usr/local/bin/init-rustfs.sh
@@ -315,10 +289,6 @@ services:
       - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
     restart: on-failure:3
     deploy:
-      resources:
-        limits:
-          cpus: '1.5'
-          memory: 2G
     healthcheck:
       test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092"]
       interval: 10s
@@ -338,10 +308,6 @@ services:
       - MEILI_ENV=${NODE_ENV:-development}
     restart: on-failure:3
     deploy:
-      resources:
-        limits:
-          cpus: '1.5'
-          memory: 2G
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
       interval: 10s
@@ -369,10 +335,6 @@ services:
       - REDIS_DSN=redis://:${REDIS_PASSWORD}@redis:6379/0
     restart: on-failure:3
     deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
     command: >
       sh -c "python3 /meilisync/patch.py && python3 -c \"import os, sys; print(os.path.expandvars(sys.stdin.read()))\" < /meilisync/config.yml > /tmp/config.yml && meilisync -c /tmp/config.yml start"
     depends_on:
