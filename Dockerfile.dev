@@ -1,17 +1,21 @@
+# syntax=docker/dockerfile:1.4
 ARG NODE_VERSION=24.11.1
 
 # Usar imagem node slim padrão
 FROM node:${NODE_VERSION}-bookworm-slim AS development
 
 # Instalar jemalloc para melhor gerenciamento de memória e procps para o comando ps
-RUN apt-get update && apt-get install -y libjemalloc2 procps && rm -rf /var/lib/apt/lists/*
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends libjemalloc2 procps && rm -rf /var/lib/apt/lists/*
 ENV LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libjemalloc.so.2"
 
 WORKDIR /usr/src/app
 
 COPY package*.json ./
-RUN npm ci --ignore-scripts
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --ignore-scripts
 
 COPY . .
 
-CMD ["npm", "run", "start:dev"]
+CMD ["node_modules/.bin/nest", "start", "--watch"]
