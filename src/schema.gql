@@ -8,6 +8,7 @@ input AdminBookFilterInput {
 	cursor: String
 	excludeTags: [ID]
 	excludeTagsLogic: FilterLogic = OR
+	ids: [ID]
 	lang: String
 	limit: Int = 20
 	order: OrderDirection = DESC
@@ -38,9 +39,12 @@ type Author {
 }
 
 type Book {
+	allowedScrapingLanguages: [String!]
 	alternativeTitles: [AlternativeTitle]!
 	authors(lang: String): [Author!]!
+	availableChapterLanguages: [String!]
 	chapters(filter: ChapterFilterInput): PaginatedChapterResponse!
+	chaptersPerLanguage: [LanguageChapterCount]
 	cover: String
 	covers: [Cover!]!
 	createdAt: DateTime!
@@ -52,6 +56,7 @@ type Book {
 	scrapingStatus: ScrapingStatus!
 	tags: [Tag!]!
 	title: String!
+	totalChapters: Int!
 	type: BookType!
 	updatedAt: DateTime!
 }
@@ -62,6 +67,7 @@ input BookFilterInput {
 	cursor: String
 	excludeTags: [ID]
 	excludeTagsLogic: FilterLogic = OR
+	ids: [ID]
 	lang: String
 	limit: Int = 20
 	order: OrderDirection = DESC
@@ -100,6 +106,7 @@ type Chapter {
 	id: ID!
 	index: Int!
 	isFinal: Boolean!
+	languageCode: String!
 	pages: [Page]
 	scrapingStatus: ScrapingStatus
 	title: String
@@ -120,6 +127,7 @@ type ChapterComment {
 
 input ChapterFilterInput {
 	cursor: String
+	languageCode: String = "pt-BR"
 	limit: Int = 100
 	order: OrderDirection = ASC
 	page: Int = 1
@@ -248,6 +256,11 @@ The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://
 """
 scalar JSON
 
+type LanguageChapterCount {
+	count: Int!
+	language: String!
+}
+
 type LocalizedBiography {
 	biography: String!
 	languageCode: String!
@@ -261,6 +274,11 @@ type LocalizedDescription {
 }
 
 type Mutation {
+	customizeBook(
+		bookId: String!
+		customCoverUrl: String
+		customTitle: String
+	): UserBookCustomization!
 	sync(input: SyncInput!): SyncResult!
 }
 
@@ -286,6 +304,7 @@ type PaginatedBookResponse {
 }
 
 type PaginatedChapterResponse {
+	availableLanguages: [String!]
 	data: [Chapter!]!
 	hasNextPage: Boolean
 	lastPage: Int
@@ -409,6 +428,7 @@ type Tag {
 }
 
 type User {
+	contentLanguages: [String!]
 	createdAt: DateTime!
 	email: String!
 	groups: [UserGroup]
@@ -425,6 +445,15 @@ type User {
 	suspensionReason: String
 	updatedAt: DateTime!
 	userName: String!
+}
+
+type UserBookCustomization {
+	bookId: ID!
+	createdAt: DateTime!
+	customCoverUrl: String
+	customTitle: String
+	updatedAt: DateTime!
+	userId: ID!
 }
 
 input UserFilter {

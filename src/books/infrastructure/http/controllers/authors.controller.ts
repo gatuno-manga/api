@@ -2,9 +2,11 @@ import { AuthorsOptions } from '@books/application/dto/authors-options.dto';
 import { AuthorsService } from '@books/application/services/authors.service';
 import { CacheTTL } from '@nestjs/cache-manager';
 import {
+	Body,
 	Controller,
 	Get,
 	Param,
+	ParseArrayPipe,
 	Patch,
 	Query,
 	UseGuards,
@@ -54,7 +56,10 @@ export class AuthorsController {
 	@Permissions(PermissionsEnum.BOOKS_MAINTENANCE)
 	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
 	@ApiDocsMergeAuthors()
-	mergeAuthors(@Param('authorId') authorId: string, @Query() dto: string[]) {
+	mergeAuthors(
+		@Param('authorId') authorId: string,
+		@Body(new ParseArrayPipe({ items: String })) dto: string[],
+	) {
 		return this.authorsService.mergeAuthors(authorId, dto);
 	}
 }

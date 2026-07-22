@@ -6,6 +6,7 @@ import {
 	Controller,
 	Get,
 	Param,
+	ParseArrayPipe,
 	Patch,
 	Query,
 	UseGuards,
@@ -49,7 +50,10 @@ export class TagsController {
 	@UseGuards(JwtAuthGuard, PermissionsGuard)
 	@Permissions(PermissionsEnum.BOOKS_MAINTENANCE)
 	@ApiDocsMergeTags()
-	mergeTags(@Param('tagId') tagId: string, @Body() dto: string[]) {
+	mergeTags(
+		@Param('tagId') tagId: string,
+		@Body(new ParseArrayPipe({ items: String })) dto: string[],
+	) {
 		return this.tagsService.mergeTags(tagId, dto);
 	}
 }
