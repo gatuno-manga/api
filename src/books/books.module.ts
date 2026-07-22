@@ -81,6 +81,7 @@ import { AdminBooksDashboardController } from './infrastructure/http/controllers
 import { AdminBooksUploadController } from './infrastructure/http/controllers/admin-books-upload.controller';
 import { AdminBooksController } from './infrastructure/http/controllers/admin-books.controller';
 import { AdminSystemManagementController } from './infrastructure/http/controllers/admin-system-management.controller';
+import { AuthorsController } from './infrastructure/http/controllers/authors.controller';
 import { BooksController } from './infrastructure/http/controllers/books.controller';
 import { ChapterCommentsController } from './infrastructure/http/controllers/chapter-comments.controller';
 import { ChapterController } from './infrastructure/http/controllers/chapter.controller';
@@ -200,6 +201,7 @@ import { ContentUploadedListener } from './infrastructure/notifiers/content-uplo
 		ChapterCommentsController,
 		SensitiveContentController,
 		TagsController,
+		AuthorsController,
 		AdminBooksController,
 		AdminBookRelationshipsController,
 		AdminBooksUploadController,
