@@ -1,4 +1,5 @@
 import { CreateSensitiveContentDto } from '@books/application/dto/create-sensitive-content.dto';
+import { UpdateSensitiveContentBatchDto } from '@books/application/dto/update-sensitive-content-batch.dto';
 import { UpdateSensitiveContentDto } from '@books/application/dto/update-sensitive-content.dto';
 import { SensitiveContentService } from '@books/application/services/sensitive-content.service';
 import { CacheTTL } from '@nestjs/cache-manager';
@@ -8,6 +9,7 @@ import {
 	Delete,
 	Get,
 	Param,
+	ParseArrayPipe,
 	Patch,
 	Post,
 	Put,
@@ -32,6 +34,7 @@ import {
 	ApiDocsMergeSensitiveContent,
 	ApiDocsRemove,
 	ApiDocsUpdate,
+	ApiDocsUpdateBatch,
 } from './swagger/sensitive-content.swagger';
 
 @ApiTags('Sensitive Content')
@@ -72,8 +75,29 @@ export class SensitiveContentController {
 	@UseGuards(JwtAuthGuard, PermissionsGuard)
 	@Permissions(PermissionsEnum.SENSITIVE_CONTENT_MANAGE)
 	@ApiDocsCreate()
-	create(@Body() dto: CreateSensitiveContentDto) {
-		return this.sensitiveContentService.create(dto);
+	create(
+		@Body() dto: CreateSensitiveContentDto,
+		@CurrentUser() user: CurrentUserDto,
+	) {
+		return this.sensitiveContentService.create(
+			dto,
+			user.maxWeightSensitiveContent,
+		);
+	}
+
+	@Patch('batch')
+	@ApiBearerAuth(SWAGGER_AUTH_SCHEME)
+	@UseGuards(JwtAuthGuard, PermissionsGuard)
+	@Permissions(PermissionsEnum.SENSITIVE_CONTENT_MANAGE)
+	@ApiDocsUpdateBatch()
+	updateBatch(
+		@Body() dto: UpdateSensitiveContentBatchDto,
+		@CurrentUser() user: CurrentUserDto,
+	) {
+		return this.sensitiveContentService.updateMultiple(
+			dto.items,
+			user.maxWeightSensitiveContent,
+		);
 	}
 
 	@Put(':id')
@@ -81,8 +105,16 @@ export class SensitiveContentController {
 	@UseGuards(JwtAuthGuard, PermissionsGuard)
 	@Permissions(PermissionsEnum.SENSITIVE_CONTENT_MANAGE)
 	@ApiDocsUpdate()
-	update(@Param('id') id: string, @Body() dto: UpdateSensitiveContentDto) {
-		return this.sensitiveContentService.update(id, dto);
+	update(
+		@Param('id') id: string,
+		@Body() dto: UpdateSensitiveContentDto,
+		@CurrentUser() user: CurrentUserDto,
+	) {
+		return this.sensitiveContentService.update(
+			id,
+			dto,
+			user.maxWeightSensitiveContent,
+		);
 	}
 
 	@Delete(':id')
@@ -101,7 +133,7 @@ export class SensitiveContentController {
 	@ApiDocsMergeSensitiveContent()
 	mergeSensitiveContent(
 		@Param('contentId') contentId: string,
-		@Body() dto: string[],
+		@Body(new ParseArrayPipe({ items: String })) dto: string[],
 	) {
 		return this.sensitiveContentService.mergeSensitiveContent(
 			contentId,

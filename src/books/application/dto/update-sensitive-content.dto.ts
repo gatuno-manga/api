@@ -1,4 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import { IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class UpdateSensitiveContentDto {
@@ -19,5 +20,23 @@ export class UpdateSensitiveContentDto {
 	@IsInt()
 	@Min(0)
 	@IsOptional()
+	@Type(() => Number)
 	weight?: number;
+
+	@ApiPropertyOptional({
+		description: 'Alternative aliases for the sensitive content',
+		example: ['Gore', 'Blood'],
+		isArray: true,
+	})
+	@IsString({ each: true })
+	@IsOptional()
+	aliases?: string[];
+
+	@ApiPropertyOptional({
+		description: 'Localized alternative names',
+		example: [{ name: 'Violência', languageCode: 'pt' }],
+		isArray: true,
+	})
+	@IsOptional()
+	altNames?: { name: string; languageCode: string }[];
 }

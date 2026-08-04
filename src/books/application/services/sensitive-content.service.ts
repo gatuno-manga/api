@@ -9,7 +9,12 @@ import {
 	I_SENSITIVE_CONTENT_REPOSITORY,
 } from '@books/application/ports/sensitive-content-repository.interface';
 import { SensitiveContent } from '@books/domain/entities/sensitive-content';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+	ForbiddenException,
+	Inject,
+	Injectable,
+	NotFoundException,
+} from '@nestjs/common';
 import { SelectQueryBuilder } from 'typeorm';
 
 @Injectable()
@@ -37,7 +42,19 @@ export class SensitiveContentService {
 		return sensitiveContent;
 	}
 
-	async create(dto: CreateSensitiveContentDto): Promise<SensitiveContent> {
+	async create(
+		dto: CreateSensitiveContentDto,
+		maxWeightSensitiveContent = 0,
+	): Promise<SensitiveContent> {
+		if (
+			dto.weight !== undefined &&
+			dto.weight > maxWeightSensitiveContent
+		) {
+			throw new ForbiddenException(
+				`Cannot create sensitive content with weight greater than your allowed limit (${maxWeightSensitiveContent})`,
+			);
+		}
+
 		const existing =
 			await this.sensitiveContentRepository.findByNameOrAlias(dto.name);
 		if (existing) {
@@ -52,10 +69,43 @@ export class SensitiveContentService {
 	async update(
 		id: string,
 		dto: UpdateSensitiveContentDto,
+		maxWeightSensitiveContent = 0,
 	): Promise<SensitiveContent> {
+		if (
+			dto.weight !== undefined &&
+			dto.weight > maxWeightSensitiveContent
+		) {
+			throw new ForbiddenException(
+				`Cannot update sensitive content with weight greater than your allowed limit (${maxWeightSensitiveContent})`,
+			);
+		}
+
 		const sensitiveContent = await this.getOne(id);
 		Object.assign(sensitiveContent, dto);
 		return this.sensitiveContentRepository.save(sensitiveContent);
+	}
+
+	async updateMultiple(
+		dtos: ({ id: string } & UpdateSensitiveContentDto)[],
+		maxWeightSensitiveContent = 0,
+	): Promise<SensitiveContent[]> {
+		const results: SensitiveContent[] = [];
+		for (const dto of dtos) {
+			if (
+				dto.weight !== undefined &&
+				dto.weight > maxWeightSensitiveContent
+			) {
+				throw new ForbiddenException(
+					`Cannot update sensitive content with weight greater than your allowed limit (${maxWeightSensitiveContent})`,
+				);
+			}
+			const sensitiveContent = await this.getOne(dto.id);
+			Object.assign(sensitiveContent, dto);
+			const saved =
+				await this.sensitiveContentRepository.save(sensitiveContent);
+			results.push(saved);
+		}
+		return results;
 	}
 
 	async remove(id: string): Promise<void> {

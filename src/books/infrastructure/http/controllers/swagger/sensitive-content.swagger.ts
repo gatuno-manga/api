@@ -121,3 +121,19 @@ export function ApiDocsMergeSensitiveContent() {
 		ApiResponse({ status: 401, description: 'Unauthorized' }),
 	);
 }
+
+export function ApiDocsUpdateBatch() {
+	return applyDecorators(
+		ApiOperation({
+			summary: 'Update multiple sensitive content tags simultaneously',
+			description:
+				'Update a batch of sensitive content categories (Admin only)',
+		}),
+		ApiResponse({
+			status: 200,
+			description: 'Sensitive content updated successfully',
+		}),
+		ApiResponse({ status: 401, description: 'Unauthorized' }),
+		ApiResponse({ status: 403, description: 'Forbidden' }),
+	);
+}

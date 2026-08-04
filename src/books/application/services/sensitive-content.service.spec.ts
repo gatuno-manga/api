@@ -1,7 +1,7 @@
 import { I_BOOK_REPOSITORY } from '@books/application/ports/book-repository.interface';
 import { I_SENSITIVE_CONTENT_REPOSITORY } from '@books/application/ports/sensitive-content-repository.interface';
 import { SensitiveContent } from '@books/domain/entities/sensitive-content';
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { SensitiveContentService } from './sensitive-content.service';
 
@@ -68,13 +68,100 @@ describe('SensitiveContentService', () => {
 			saved.name = 'Violence';
 			mockSensitiveContentRepository.save.mockResolvedValue(saved);
 
-			const result = await service.create({
-				name: 'Violence',
-				weight: 5,
-			});
+			const result = await service.create(
+				{
+					name: 'Violence',
+					weight: 5,
+				},
+				10, // maxWeightSensitiveContent
+			);
 
 			expect(result).toEqual(saved);
 			expect(mockSensitiveContentRepository.save).toHaveBeenCalled();
+		});
+
+		it('should throw ForbiddenException if weight is greater than maxWeight', async () => {
+			await expect(
+				service.create({ name: 'Gore', weight: 10 }, 5),
+			).rejects.toThrow(ForbiddenException);
+		});
+	});
+
+	describe('update', () => {
+		it('should update and save sensitive content', async () => {
+			const existing = new SensitiveContent();
+			existing.id = '1';
+			existing.name = 'Gore';
+			existing.weight = 0;
+			mockSensitiveContentRepository.findById.mockResolvedValue(existing);
+			mockSensitiveContentRepository.save.mockResolvedValue(existing);
+
+			const result = await service.update(
+				'1',
+				{ name: 'Gore updated', weight: 5 },
+				10, // maxWeightSensitiveContent
+			);
+
+			expect(result.name).toBe('Gore updated');
+			expect(result.weight).toBe(5);
+			expect(mockSensitiveContentRepository.save).toHaveBeenCalledWith(
+				existing,
+			);
+		});
+
+		it('should throw ForbiddenException if weight is greater than maxWeight', async () => {
+			await expect(
+				service.update('1', { name: 'Gore', weight: 10 }, 5),
+			).rejects.toThrow(ForbiddenException);
+		});
+	});
+
+	describe('updateMultiple', () => {
+		it('should update and save multiple sensitive contents', async () => {
+			const existing1 = new SensitiveContent();
+			existing1.id = '1';
+			existing1.name = 'Tag1';
+			existing1.weight = 0;
+
+			const existing2 = new SensitiveContent();
+			existing2.id = '2';
+			existing2.name = 'Tag2';
+			existing2.weight = 0;
+
+			mockSensitiveContentRepository.findById
+				.mockResolvedValueOnce(existing1)
+				.mockResolvedValueOnce(existing2);
+
+			mockSensitiveContentRepository.save
+				.mockResolvedValueOnce(existing1)
+				.mockResolvedValueOnce(existing2);
+
+			const result = await service.updateMultiple(
+				[
+					{ id: '1', name: 'Tag1 updated', weight: 5 },
+					{ id: '2', name: 'Tag2 updated', weight: 2 },
+				],
+				10, // maxWeightSensitiveContent
+			);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].name).toBe('Tag1 updated');
+			expect(result[1].name).toBe('Tag2 updated');
+			expect(mockSensitiveContentRepository.save).toHaveBeenCalledTimes(
+				2,
+			);
+		});
+
+		it('should throw ForbiddenException if any item has weight greater than maxWeight', async () => {
+			await expect(
+				service.updateMultiple(
+					[
+						{ id: '1', name: 'Tag1 updated', weight: 5 },
+						{ id: '2', name: 'Tag2 updated', weight: 10 },
+					],
+					5, // maxWeightSensitiveContent
+				),
+			).rejects.toThrow(ForbiddenException);
 		});
 	});
 

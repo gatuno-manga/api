@@ -96,6 +96,13 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 				? await this.websiteService.getByUrl(host)
 				: null;
 
+			if (websiteConfig && !websiteConfig.isActive) {
+				this.logger.warn(
+					`Website ${host} is inactive for scraping. Skipping covers for book: ${bookId}.`,
+				);
+				return;
+			}
+
 			const payload = {
 				jobId: job.id,
 				bookId: bookId,

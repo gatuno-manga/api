@@ -64,7 +64,13 @@ export class BookCreationService implements OnModuleInit {
 
 		if (!websiteConfig) {
 			throw new BadRequestException(
-				`Não há configuração de scraping para o site: ${host}`,
+				`No scraping configuration found for website: ${host}`,
+			);
+		}
+
+		if (!websiteConfig.isActive) {
+			throw new BadRequestException(
+				`Website ${host} is inactive for scraping.`,
 			);
 		}
 

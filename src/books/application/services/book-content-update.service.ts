@@ -125,7 +125,14 @@ export class BookContentUpdateService implements OnModuleInit {
 
 				if (!websiteConfig) {
 					this.logger.warn(
-						`Não há configuração de scraping para o site: ${host}`,
+						`No scraping configuration found for website: ${host}`,
+					);
+					continue;
+				}
+
+				if (!websiteConfig.isActive) {
+					this.logger.warn(
+						`Website ${host} is inactive for scraping. Skipping update.`,
 					);
 					continue;
 				}
