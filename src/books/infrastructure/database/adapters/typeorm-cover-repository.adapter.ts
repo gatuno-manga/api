@@ -145,17 +145,33 @@ export class TypeOrmCoverRepositoryAdapter implements ICoverRepository {
 	}
 
 	async updateBatch(
-		updates: { oldPath: string; newPath: string; metadata?: unknown }[],
+		updates: {
+			oldPath: string;
+			newPath: string;
+			metadata?: unknown;
+			originalUrl?: string;
+		}[],
 	): Promise<void> {
 		const oldPaths = updates.map((u) => u.oldPath);
+		const originalUrls = updates
+			.map((u) => u.originalUrl)
+			.filter(Boolean) as string[];
+
 		const covers = await this.repository.find({
-			where: {
-				url: In(oldPaths),
-			} as unknown as FindOptionsWhere<InfrastructureCover>,
+			where: [
+				{ url: In(oldPaths) },
+				...(originalUrls.length > 0
+					? [{ originalUrl: In(originalUrls) }]
+					: []),
+			] as unknown as FindOptionsWhere<InfrastructureCover>[],
 		});
 
 		for (const cover of covers) {
-			const update = updates.find((u) => u.oldPath === cover.url);
+			const update = updates.find(
+				(u) =>
+					(u.originalUrl && u.originalUrl === cover.originalUrl) ||
+					u.oldPath === cover.url,
+			);
 			if (update) {
 				cover.url = update.newPath;
 				if (update.metadata) {

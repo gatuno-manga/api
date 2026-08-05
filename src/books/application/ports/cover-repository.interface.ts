@@ -13,7 +13,12 @@ export interface ICoverRepository {
 	create(data: Partial<Cover>): Cover;
 	update(criteria: Partial<Cover>, data: Partial<Cover>): Promise<void>;
 	updateBatch(
-		updates: { oldPath: string; newPath: string; metadata?: unknown }[],
+		updates: {
+			oldPath: string;
+			newPath: string;
+			metadata?: unknown;
+			originalUrl?: string;
+		}[],
 	): Promise<void>;
 	findStuckCovers(hours: number): Promise<Cover[]>;
 }

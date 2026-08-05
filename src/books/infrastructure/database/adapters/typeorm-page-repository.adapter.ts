@@ -86,7 +86,12 @@ export class TypeOrmPageRepositoryAdapter implements IPageRepository {
 	}
 
 	async updateBatch(
-		updates: { oldPath: string; newPath: string; metadata?: unknown }[],
+		updates: {
+			oldPath: string;
+			newPath: string;
+			metadata?: unknown;
+			originalUrl?: string;
+		}[],
 	): Promise<void> {
 		const oldPaths = updates.map((u) => u.oldPath);
 		const pages = await this.repository.find({
