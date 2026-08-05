@@ -91,7 +91,9 @@ interface BatchCoversCompletedPayload {
 	jobId?: string;
 	job_id?: string;
 	bookId: string;
-	results: string[];
+	results: Array<
+		string | { originalUrl?: string; original_url?: string; path: string }
+	>;
 }
 
 interface TextMirroringCompletedPayload {
@@ -433,8 +435,30 @@ export class BooksKafkaConsumer {
 				}
 
 				for (let i = 0; i < results.length; i++) {
+					const resultItem = results[i];
+					const isObject =
+						typeof resultItem === 'object' && resultItem !== null;
+					const pathValue = isObject
+						? (resultItem as { path?: string }).path
+						: (resultItem as string);
+					const payloadOriginalUrl = isObject
+						? (
+								resultItem as {
+									originalUrl?: string;
+									original_url?: string;
+								}
+							).originalUrl ||
+							(
+								resultItem as {
+									originalUrl?: string;
+									original_url?: string;
+								}
+							).original_url
+						: undefined;
+
+					// Prioritize mapping by originalUrl provided in payload, then fallback to Redis cached array
+					const originalUrl = payloadOriginalUrl || originalUrls[i];
 					let cover: Cover | undefined;
-					const originalUrl = originalUrls[i];
 
 					if (originalUrl) {
 						cover = processingCovers.find(
@@ -442,18 +466,17 @@ export class BooksKafkaConsumer {
 						);
 					}
 
+					// Fallback based on order (dangerous if length mismatch or out of order)
 					if (!cover) {
 						cover = processingCovers[i];
 					}
 
 					if (!cover) continue;
 
-					const resultPath = results[i];
-					if (resultPath) {
-						let path: string = resultPath;
+					if (pathValue) {
+						let path: string = pathValue;
 
 						// Normalização robusta: garante que o path usado no Redis comece com 'processing/'
-						// e não tenha prefixos de buckets conhecidos duplicados.
 						let lookupPath = path.replace(
 							/^(books|processing)\//,
 							'',
@@ -469,12 +492,13 @@ export class BooksKafkaConsumer {
 						const cached = await redis.get(cacheKey);
 						if (cached) {
 							try {
-								const optimized = JSON.parse(
-									cached,
-								) as ImageMetadata & { path: string };
+								const optimized = JSON.parse(cached) as {
+									path: string;
+									metadata?: ImageMetadata;
+								};
 								path = optimized.path;
-								if (optimized) {
-									cover.metadata = optimized;
+								if (optimized?.metadata) {
+									cover.metadata = optimized.metadata;
 								}
 							} catch (_e) {
 								this.logger.warn(
@@ -494,8 +518,16 @@ export class BooksKafkaConsumer {
 				);
 
 				// Cleanup do cache de otimização
-				for (const path of results) {
-					let lookupPath = path.replace(/^(books|processing)\//, '');
+				for (const resultItem of results) {
+					const pathValue =
+						typeof resultItem === 'object' && resultItem !== null
+							? (resultItem as { path?: string }).path
+							: (resultItem as string);
+					if (!pathValue) continue;
+					let lookupPath = pathValue.replace(
+						/^(books|processing)\//,
+						'',
+					);
 					if (!lookupPath.startsWith('processing/')) {
 						lookupPath = `processing/${lookupPath}`;
 					}

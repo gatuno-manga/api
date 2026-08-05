@@ -45,6 +45,7 @@ export class BooksImageUpdateStrategy implements ImageUpdateStrategy {
 					oldPath,
 					newPath: event.results[0].targetPath,
 					metadata: event.results[0].metadata,
+					originalUrl: event.originalUrl,
 				};
 			});
 

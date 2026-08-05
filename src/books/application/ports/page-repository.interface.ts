@@ -13,7 +13,12 @@ export interface IPageRepository {
 	create(data: Partial<Page>): Page;
 	update(criteria: PageCriteria, data: Partial<Page>): Promise<void>;
 	updateBatch(
-		updates: { oldPath: string; newPath: string; metadata?: unknown }[],
+		updates: {
+			oldPath: string;
+			newPath: string;
+			metadata?: unknown;
+			originalUrl?: string;
+		}[],
 	): Promise<void>;
 }
 

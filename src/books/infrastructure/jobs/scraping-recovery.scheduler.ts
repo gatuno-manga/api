@@ -193,6 +193,7 @@ export class ScrapingRecoveryScheduler implements OnModuleInit {
 	private async cleanStuckJobs(): Promise<void> {
 		const thresholdHours =
 			this.configService.scrapingRecovery.stuckThresholdHours;
+		const maxRetries = this.configService.scrapingRecovery.maxRetries;
 		const stuckDate = new Date();
 		stuckDate.setHours(stuckDate.getHours() - thresholdHours);
 
@@ -202,14 +203,32 @@ export class ScrapingRecoveryScheduler implements OnModuleInit {
 				scrapingStatus: ScrapingStatus.PROCESS,
 				updatedAt: LessThan(stuckDate),
 			},
+			relations: ['book'],
 		});
 
 		if (stuckChapters.length > 0) {
 			this.logger.warn(
-				`Found ${stuckChapters.length} stuck chapters. Re-enqueuing...`,
+				`Found ${stuckChapters.length} stuck chapters. Processing recovery...`,
 			);
 			for (const chapter of stuckChapters) {
-				await this.chapterScrapingService.addChapterToQueue(chapter.id);
+				if (chapter.retries < maxRetries) {
+					await this.chapterScrapingService.addChapterToQueue(
+						chapter.id,
+					);
+				} else {
+					chapter.scrapingStatus = ScrapingStatus.ERROR;
+					await this.chapterRepository.save(chapter);
+					this.eventEmitter.emit(
+						BookEvents.SCRAPING_PERMANENT_FAILURE,
+						{
+							entityType: 'chapter',
+							entityId: chapter.id,
+							bookId: chapter.book?.id,
+							retries: chapter.retries,
+							error: 'Max retries reached from stuck PROCESS state',
+						},
+					);
+				}
 			}
 		}
 
@@ -219,14 +238,30 @@ export class ScrapingRecoveryScheduler implements OnModuleInit {
 				scrapingStatus: ScrapingStatus.PROCESS,
 				updatedAt: LessThan(stuckDate),
 			},
+			relations: ['book'],
 		});
 
 		if (stuckCovers.length > 0) {
 			this.logger.warn(
-				`Found ${stuckCovers.length} stuck covers. Re-enqueuing...`,
+				`Found ${stuckCovers.length} stuck covers. Processing recovery...`,
 			);
 			for (const cover of stuckCovers) {
-				await this.coverImageService.addCoverToQueueById(cover.id);
+				if (cover.retries < maxRetries) {
+					await this.coverImageService.addCoverToQueueById(cover.id);
+				} else {
+					cover.scrapingStatus = ScrapingStatus.ERROR;
+					await this.coverRepository.save(cover);
+					this.eventEmitter.emit(
+						BookEvents.SCRAPING_PERMANENT_FAILURE,
+						{
+							entityType: 'cover',
+							entityId: cover.id,
+							bookId: cover.book?.id,
+							retries: cover.retries,
+							error: 'Max retries reached from stuck PROCESS state',
+						},
+					);
+				}
 			}
 		}
 	}
