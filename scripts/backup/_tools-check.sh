@@ -245,6 +245,57 @@ rsync_with_fallback() {
     "${docker_args[@]}"
 }
 
+# ============================================
+# Resolução de arquivos docker compose
+# ============================================
+
+# resolve_compose_args <root_dir>
+# Preenche a variável global COMPOSE_ARGS (array) com os "-f <arquivo>"
+# apropriados, já que o projeto não tem docker-compose.yml na raiz (apenas
+# docker-compose.common.yml + overrides). Usa GATUNO_COMPOSE_FILES (lista de
+# caminhos relativos à raiz do projeto, separados por ':') se definida;
+# senão usa common+dev como padrão de desenvolvimento.
+resolve_compose_args() {
+    local root_dir="$1"
+    COMPOSE_ARGS=()
+    if [ -n "${GATUNO_COMPOSE_FILES:-}" ]; then
+        local f
+        local IFS=':'
+        for f in ${GATUNO_COMPOSE_FILES}; do
+            COMPOSE_ARGS+=("-f" "${root_dir}/${f}")
+        done
+    elif [ -f "${root_dir}/docker-compose.common.yml" ] && [ -f "${root_dir}/docker-compose.dev.yml" ]; then
+        COMPOSE_ARGS=("-f" "${root_dir}/docker-compose.common.yml" "-f" "${root_dir}/docker-compose.dev.yml")
+    fi
+}
+
+# ============================================
+# Hash seguro de uma lista de arquivos
+# ============================================
+
+# hash_filelist <lista-de-caminhos-relativos> <diretório-base> <arquivo-saída>
+# Roda sha256sum sobre os caminhos listados (relativos, um por linha), a
+# partir do diretório-base. Usa xargs -r para nunca invocar sha256sum sem
+# argumentos (sha256sum sem args lê da stdin e trava o script esperando
+# entrada) e -d '\n' para lidar com espaços/aspas em nomes de arquivo.
+hash_filelist() {
+    local list="$1"
+    local workdir="$2"
+    local out="$3"
+
+    if [ -s "${list}" ]; then
+        # Resolver list/out para caminho absoluto ANTES do cd: são relativos
+        # ao cwd de quem chamou, e o `cd "$workdir"` abaixo mudaria o que
+        # esses caminhos relativos apontam.
+        local list_abs out_abs
+        list_abs="$(realpath "${list}")"
+        out_abs="$(realpath -m "${out}")"
+        (cd "${workdir}" && xargs -r -d '\n' -a "${list_abs}" sha256sum) > "${out_abs}"
+    else
+        : > "${out}"
+    fi
+}
+
 # extract_zst_with_fallback <arquivo.tar.zst> <destino/>
 # Extrai um .tar.zst usando zstd+tar do host, ou Docker Alpine como fallback.
 extract_zst_with_fallback() {

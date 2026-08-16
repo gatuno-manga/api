@@ -26,7 +26,6 @@ source "$(dirname "$0")/_tools-check.sh"
 # ============================================
 
 VOLUME_NAME="gatuno_rustfs_data"
-COMPOSE_FILE="docker-compose.dev.yml"
 STOP_CONTAINER=false
 FORCE=false
 VERIFY_MANIFEST=false
@@ -35,6 +34,7 @@ BACKUP_DIR=""
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 LOG_FILE=""
 CONTAINER_STOPPED=false
+ROOT_DIR="$(cd "$(dirname "$(realpath "$0")")/../.." && pwd)"
 
 # ============================================
 # Funções utilitárias
@@ -76,6 +76,10 @@ Exemplos:
   $0 ./backups
   $0 ./backups/rustfs-backup-20260717_120000
   $0 ./backups/rustfs-backup-20260717_120000 -s -v -f
+
+Docker Compose:
+  Defina GATUNO_COMPOSE_FILES (ex: 'docker-compose.common.yml:docker-compose.prod.yml')
+  para -s funcionar em produção. Sem isso, assume common+dev.
 EOF
 }
 
@@ -131,7 +135,7 @@ cleanup() {
     if [ "$STOP_CONTAINER" = true ] && [ "$CONTAINER_STOPPED" = true ]; then
         log ""
         log "🔄 Reiniciando container rustfs..."
-        docker compose -f "$COMPOSE_FILE" start rustfs 2>/dev/null || true
+        docker compose "${COMPOSE_ARGS[@]}" start rustfs 2>/dev/null || true
     fi
 }
 
@@ -155,6 +159,8 @@ while getopts "sfvqh" opt; do
         *) show_help; exit 1 ;;
     esac
 done
+
+resolve_compose_args "${ROOT_DIR}"
 
 # ============================================
 # Resolução do diretório de backup
@@ -233,9 +239,12 @@ log ""
 if [ "$VERIFY_MANIFEST" = true ]; then
     log "🔐 Verificando integridade via manifest.sha256..."
 
-    # sha256sum -c espera que os caminhos no manifest sejam relativos ao CWD
-    pushd "${BACKUP_ABS}" > /dev/null
-    if sha256sum -c "manifest.sha256" --quiet 2>&1 | tee -a "$LOG_FILE"; then
+    # sha256sum -c espera que os caminhos no manifest sejam relativos ao CWD.
+    # O manifest é gerado com caminhos relativos a data/ (não à raiz do
+    # backup) — rodar a partir de ${BACKUP_ABS} faz todo arquivo dar "No such
+    # file or directory" e a verificação nunca detecta corrupção de verdade.
+    pushd "${BACKUP_ABS}/data" > /dev/null
+    if sha256sum -c "../manifest.sha256" --quiet 2>&1 | tee -a "$LOG_FILE"; then
         log "   ✅ Todos os arquivos verificados com sucesso."
     else
         log "❌ Falha na verificação do manifest.sha256. Abort."
@@ -307,11 +316,11 @@ log ""
 # Parar container rustfs (se -s)
 # ============================================
 
-trap cleanup EXIT
+trap cleanup EXIT INT TERM
 
 if [ "$STOP_CONTAINER" = true ]; then
     log "⏸️  Parando container rustfs..."
-    if docker compose -f "$COMPOSE_FILE" stop rustfs 2>/dev/null; then
+    if docker compose "${COMPOSE_ARGS[@]}" stop rustfs 2>/dev/null; then
         CONTAINER_STOPPED=true
         log "   ✅ Container parado."
     else
@@ -321,28 +330,39 @@ if [ "$STOP_CONTAINER" = true ]; then
 fi
 
 # ============================================
-# Restauração: copiar data/ para o volume via Docker
+# Restauração: copiar data/ para o volume
 # ============================================
 #
-# Estratégia: montar o diretório de backup do host e o volume Docker no mesmo
-# container Alpine e usar rsync -a --delete para sincronizar /source/ → /target/.
-# Isso evita qualquer extração intermediária e aproveita rsync_with_fallback.
+# Estratégia preferida: rsync direto do host para o mountpoint real do
+# volume (mesma abordagem do backup — sem container intermediário, sem
+# depender de internet para `apk add`). Cai para o caminho via Alpine
+# apenas se o mountpoint não puder ser lido diretamente pelo host.
 
 log "💾 Restaurando ${BACKUP_NAME} → ${VOLUME_NAME}..."
 
 DATA_ABS="${BACKUP_ABS}/data"
+VOLUME_HOST_PATH=$(docker volume inspect "${VOLUME_NAME}" --format '{{.Mountpoint}}' 2>/dev/null || true)
 
-docker run --rm \
-    -v "${VOLUME_NAME}:/target" \
-    -v "${DATA_ABS}:/source:ro" \
-    alpine \
-    sh -c 'apk add --no-cache rsync > /dev/null 2>&1 && rsync -a --delete /source/ /target/'
+RESTORE_OK=false
+if [ -n "${VOLUME_HOST_PATH}" ] && [ -d "${VOLUME_HOST_PATH}" ] && [ -r "${VOLUME_HOST_PATH}" ]; then
+    log "   Caminho: rsync direto (host → ${VOLUME_HOST_PATH})"
+    if rsync -a --delete --no-owner --no-group "${DATA_ABS}/" "${VOLUME_HOST_PATH}/"; then
+        RESTORE_OK=true
+    fi
+else
+    log "   Caminho: via container Alpine (mountpoint do host não acessível)"
+    if docker run --rm \
+        -v "${VOLUME_NAME}:/target" \
+        -v "${DATA_ABS}:/source:ro" \
+        alpine \
+        sh -c 'apk add --no-cache rsync > /dev/null 2>&1 && rsync -a --delete /source/ /target/'; then
+        RESTORE_OK=true
+    fi
+fi
 
-RESTORE_EXIT=$?
-
-if [ "$RESTORE_EXIT" -ne 0 ]; then
-    log "❌ ERRO: Restauração falhou (rsync retornou ${RESTORE_EXIT})."
-    exit "$RESTORE_EXIT"
+if [ "$RESTORE_OK" != true ]; then
+    log "❌ ERRO: Restauração falhou (rsync)."
+    exit 1
 fi
 
 log "   ✅ Cópia concluída."
@@ -415,7 +435,7 @@ if [ "$CONTAINER_STOPPED" = true ]; then
 else
     log ""
     log "💡 Reinicie o container para aplicar as mudanças:"
-    log "   docker compose -f ${COMPOSE_FILE} restart rustfs"
+    log "   docker compose ${COMPOSE_ARGS[*]} restart rustfs"
 fi
 
 log "════════════════════════════════════════════"

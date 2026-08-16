@@ -160,26 +160,28 @@ DATABASE_ARGS=("${COMMON_ARGS[@]}" "${DATABASE_EXTRA_ARGS[@]}")
 # Executar backups em paralelo
 # ============================================
 
-# Arquivos de status para comunicação com sub-shells
-STATUS_DIR="${BACKUP_DIR}/.backup-all-${TIMESTAMP}"
+# Diretório de logs/status dos sub-processos. Só é removido no final se
+# TUDO deu certo — em caso de falha, é o único lugar com o log bruto do
+# sub-script (o log próprio do sub-script só existe se ele chegou a
+# inicializar seu próprio arquivo de log).
+STATUS_DIR="${BACKUP_DIR}/backup-all-${TIMESTAMP}"
 mkdir -p "${STATUS_DIR}"
 
 BINARY_PID=""
 DATABASE_PID=""
-BINARY_START=""
-DATABASE_START=""
 
 # --- Binários (RustFS) ---
 if [ "$SKIP_BINARIES" = false ]; then
     log "🖼️  Iniciando backup de binários em background..."
-    BINARY_START=$(date +%s)
     (
+        _t0=$(date +%s)
         if "${SCRIPT_DIR}/backup-api-data.sh" "${BINARY_ARGS[@]}" \
             >> "${STATUS_DIR}/binary.log" 2>&1; then
             echo "0" > "${STATUS_DIR}/binary.exit"
         else
             echo "$?" > "${STATUS_DIR}/binary.exit"
         fi
+        echo "$(( $(date +%s) - _t0 ))" > "${STATUS_DIR}/binary.duration"
     ) &
     BINARY_PID=$!
 fi
@@ -187,14 +189,15 @@ fi
 # --- Banco de dados ---
 if [ "$SKIP_DATABASE" = false ]; then
     log "🗄️  Iniciando backup do banco de dados em background..."
-    DATABASE_START=$(date +%s)
     (
+        _t0=$(date +%s)
         if "${SCRIPT_DIR}/backup-database.sh" "${DATABASE_ARGS[@]}" \
             >> "${STATUS_DIR}/database.log" 2>&1; then
             echo "0" > "${STATUS_DIR}/database.exit"
         else
             echo "$?" > "${STATUS_DIR}/database.exit"
         fi
+        echo "$(( $(date +%s) - _t0 ))" > "${STATUS_DIR}/database.duration"
     ) &
     DATABASE_PID=$!
 fi
@@ -250,19 +253,14 @@ DATABASE_DURATION=0
 if [ -n "$BINARY_PID" ]; then
     wait "$BINARY_PID" 2>/dev/null || true
     BINARY_EXIT=$(cat "${STATUS_DIR}/binary.exit" 2>/dev/null || echo "1")
-    BINARY_END=$(date +%s)
-    BINARY_DURATION=$((BINARY_END - BINARY_START))
+    BINARY_DURATION=$(cat "${STATUS_DIR}/binary.duration" 2>/dev/null || echo 0)
 fi
 
 if [ -n "$DATABASE_PID" ]; then
     wait "$DATABASE_PID" 2>/dev/null || true
     DATABASE_EXIT=$(cat "${STATUS_DIR}/database.exit" 2>/dev/null || echo "1")
-    DATABASE_END=$(date +%s)
-    DATABASE_DURATION=$((DATABASE_END - DATABASE_START))
+    DATABASE_DURATION=$(cat "${STATUS_DIR}/database.duration" 2>/dev/null || echo 0)
 fi
-
-# Limpar arquivos de status
-rm -rf "${STATUS_DIR}"
 
 # ============================================
 # Coletar tamanhos dos backups criados
@@ -322,6 +320,7 @@ if [ "$SKIP_DATABASE" = false ]; then
         log "   Tempo:    $(duration_human $DATABASE_DURATION)"
     else
         log "🗄️  Banco de dados:      ❌ FALHA (código: ${DATABASE_EXIT})"
+        log "   Log: ${STATUS_DIR}/database.log"
         ALL_OK=false
     fi
     log ""
@@ -349,6 +348,30 @@ hr
     echo "duration: $(duration_human $TOTAL_DURATION)"
     echo "total_usage: ${TOTAL_BACKUP_USAGE}"
 } >> "${ORCHESTRATOR_LOG}"
+
+# Logs dos sub-processos (STATUS_DIR) só são descartados em caso de sucesso
+# total — em falha, ficam disponíveis para diagnóstico (ver linhas "Log:" acima).
+if [ "$ALL_OK" = true ]; then
+    rm -rf "${STATUS_DIR}"
+else
+    log "📁 Logs dos sub-processos preservados em: ${STATUS_DIR}"
+
+    # Alerta opcional: se BACKUP_ALERT_CMD estiver definido no .env, o resumo
+    # da falha é enviado via stdin ao comando configurado (ex: um webhook,
+    # um `mail`, um `curl` para um endpoint de notificação).
+    BACKUP_ALERT_CMD=""
+    if [ -f "${ENV_FILE}" ]; then
+        BACKUP_ALERT_CMD=$(grep -E '^BACKUP_ALERT_CMD=' "${ENV_FILE}" 2>/dev/null | head -n1 | sed "s/^BACKUP_ALERT_CMD=//;s/^['\"]//;s/['\"]$//" || true)
+    fi
+    if [ -n "${BACKUP_ALERT_CMD}" ]; then
+        {
+            echo "Backup gatuno falhou em $(date '+%Y-%m-%d %H:%M:%S')"
+            echo "binaries: $([ "$SKIP_BINARIES" = true ] && echo "skipped" || echo "exit=${BINARY_EXIT}")"
+            echo "database: $([ "$SKIP_DATABASE" = true ] && echo "skipped" || echo "exit=${DATABASE_EXIT}")"
+            echo "logs: ${STATUS_DIR}"
+        } | eval "${BACKUP_ALERT_CMD}" || log "   ⚠️  Falha ao executar BACKUP_ALERT_CMD"
+    fi
+fi
 
 if [ "$ALL_OK" = false ]; then
     exit 1

@@ -1,0 +1,32 @@
+# Unit systemd para rodar o backup completo (binários + banco) via
+# backup-all.sh, disparado pelo gatuno-backup.timer.
+#
+# Instalação (como root):
+#   cp scripts/backup/gatuno-backup.service /etc/systemd/system/
+#   cp scripts/backup/gatuno-backup.timer   /etc/systemd/system/
+#   # Editar WorkingDirectory abaixo para o caminho real do checkout
+#   systemctl daemon-reload
+#   systemctl enable --now gatuno-backup.timer
+#
+# Ver logs:
+#   journalctl -u gatuno-backup.service -f
+#
+# Alertas de falha: defina BACKUP_ALERT_CMD no .env do projeto (lido por
+# backup-all.sh) — ex: um `curl` para um webhook, ou `mail -s ...`.
+
+[Unit]
+Description=Backup completo do Gatuno (binários RustFS + MySQL + Redis)
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+# Ajuste para o caminho real do checkout do projeto em produção
+WorkingDirectory=/opt/gatuno/api
+ExecStart=/opt/gatuno/api/scripts/backup/backup-all.sh /opt/gatuno/api/backups -q
+# GATUNO_COMPOSE_FILES define quais docker-compose*.yml usar para -s
+# (parar containers). Sem isso, os scripts assumem common+dev.
+Environment=GATUNO_COMPOSE_FILES=docker-compose.common.yml:docker-compose.prod.yml
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
