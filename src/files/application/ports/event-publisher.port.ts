@@ -3,6 +3,7 @@ export interface ImageProcessingRequestEvent {
 	targetBucket: string;
 	targetPath: string;
 	isBackfill?: boolean;
+	widths?: number[];
 }
 
 export interface EventPublisherPort {

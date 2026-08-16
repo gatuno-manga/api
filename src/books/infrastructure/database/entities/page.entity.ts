@@ -8,6 +8,7 @@ import {
 	PrimaryGeneratedColumn,
 	Relation,
 	Unique,
+	UpdateDateColumn,
 } from 'typeorm';
 import { Chapter } from './chapter.entity';
 
@@ -31,6 +32,9 @@ export class Page {
 
 	@Column({ type: 'json', nullable: true })
 	metadata: ImageMetadata | null;
+
+	@UpdateDateColumn()
+	updatedAt: Date;
 
 	@DeleteDateColumn()
 	deletedAt: Date;

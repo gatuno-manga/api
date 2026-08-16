@@ -17,7 +17,9 @@ import { CoverImageService } from './cover-image.service';
 const CRON_JOB_NAME = 'scraping-recovery-cron';
 
 /**
- * Job agendado para recuperar scrapings que falharam ou travaram.
+ * Job agendado para recuperar scrapings que falharam ou travaram, re-scrapeando
+ * a partir da URL externa. Para reprocessar bytes que já estão no S3 (sem
+ * metadados/variantes), ver ImageReprocessingCron.
  */
 @Injectable()
 export class ScrapingRecoveryScheduler implements OnModuleInit {

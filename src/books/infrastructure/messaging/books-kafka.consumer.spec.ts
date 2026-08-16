@@ -156,5 +156,50 @@ describe('BooksKafkaConsumer', () => {
 			expect(cover1.metadata).toEqual({ width: 100, height: 200 });
 			expect(cover1.scrapingStatus).toBe(ScrapingStatus.READY);
 		});
+
+		it('should apply variants from the pending_optimization Redis bridge', async () => {
+			const bookId = 'book-123';
+			const cover1 = new Cover();
+			cover1.id = 'cover-1';
+			cover1.scrapingStatus = ScrapingStatus.PROCESS;
+			cover1.originalUrl = 'https://source/cover1.jpg';
+			cover1.url = '';
+
+			coverRepositoryMock.findByBookId.mockResolvedValue([cover1]);
+
+			const message = {
+				value: Buffer.from(
+					JSON.stringify({
+						bookId,
+						results: [
+							{
+								originalUrl: 'https://source/cover1.jpg',
+								path: 'processing/uuid-1.webp',
+							},
+						],
+					}),
+				),
+			};
+
+			const expectedVariants = [
+				{ width: 600, path: 'ab/uuid-1_w600.webp' },
+				{ width: 300, path: 'ab/uuid-1_w300.webp' },
+			];
+
+			redisClientMock.get.mockImplementation(async (key: string) => {
+				if (key === 'pending_optimization:processing/uuid-1.webp') {
+					return JSON.stringify({
+						path: 'books/uuid-1.webp',
+						metadata: { width: 1920, height: 2841 },
+						variants: expectedVariants,
+					});
+				}
+				return null;
+			});
+
+			await consumer.handleCoversScrapingCompleted([message as any]);
+
+			expect(cover1.variants).toEqual(expectedVariants);
+		});
 	});
 });

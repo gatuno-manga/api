@@ -19,7 +19,7 @@ import { User } from 'src/users/infrastructure/database/entities/user.entity';
 import { IFileCompressor } from './application/ports/file-compressor.interface';
 import { FileCleanupService } from './application/services/file-cleanup.service';
 import { FilesService } from './application/services/files.service';
-import { ImageMetadataBackfillService } from './application/services/image-metadata-backfill.service';
+import { ImageReprocessingService } from './application/services/image-reprocessing.service';
 import { BooksImageUpdateStrategy } from './application/strategies/image-update/books-image-update.strategy';
 import { UsersImageUpdateStrategy } from './application/strategies/image-update/users-image-update.strategy';
 import {
@@ -36,6 +36,7 @@ import { FilesController } from './infrastructure/controllers/files.controller';
 import { ImageBackfillController } from './infrastructure/controllers/image-backfill.controller';
 import { ImageProcessingController } from './infrastructure/controllers/image-processing.controller';
 import { FileCleanupCron } from './infrastructure/framework/file-cleanup.cron';
+import { ImageReprocessingCron } from './infrastructure/framework/image-reprocessing.cron';
 
 @Module({
 	controllers: [
@@ -47,8 +48,9 @@ import { FileCleanupCron } from './infrastructure/framework/file-cleanup.cron';
 	providers: [
 		FilesService,
 		FileCleanupService,
-		ImageMetadataBackfillService,
+		ImageReprocessingService,
 		FileCleanupCron,
+		ImageReprocessingCron,
 		FileCompressorFactory,
 		SharpAdapter,
 		NoCompressionAdapter,

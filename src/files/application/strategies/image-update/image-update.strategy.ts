@@ -4,6 +4,7 @@ import { StorageBucket } from '@common/enum/storage-bucket.enum';
 export interface ImageProcessingResult {
 	targetPath: string;
 	metadata: ImageMetadata;
+	kind?: 'original' | 'variant' | 'part';
 }
 
 export interface ImageProcessingCompletedEvent {

@@ -411,6 +411,22 @@ export class AppConfigService {
 		};
 	}
 
+	get imageReprocessing() {
+		return {
+			enabled:
+				this.config.get<boolean>('IMAGE_REPROCESSING_ENABLED') ?? true,
+			cronExpression:
+				this.config.get<string>('IMAGE_REPROCESSING_CRON') ||
+				'0 3 * * *',
+			batchSize:
+				this.config.get<number>('IMAGE_REPROCESSING_BATCH_SIZE') || 200,
+			stuckThresholdHours:
+				this.config.get<number>(
+					'IMAGE_REPROCESSING_STUCK_THRESHOLD_HOURS',
+				) || 6,
+		};
+	}
+
 	get webPush() {
 		return {
 			vapidPublicKey: this.config.get<string>('VAPID_PUBLIC_KEY') || '',

@@ -20,6 +20,7 @@ import {
 	FORMAT_TO_EXTENSION,
 	MIMETYPE_TO_FORMAT,
 } from '@books/domain/constants/content-types.constants';
+import { COVER_VARIANT_WIDTHS } from '@books/domain/constants/cover.constants';
 import { BookEvents } from '@books/domain/constants/events.constant';
 import { Chapter } from '@books/domain/entities/chapter';
 import { Cover } from '@books/domain/entities/cover';
@@ -129,6 +130,7 @@ export class BookUploadService {
 				file.buffer,
 				extension,
 				StorageBucket.BOOKS,
+				COVER_VARIANT_WIDTHS,
 			);
 
 			const cover = this.coverRepository.create({
@@ -265,6 +267,7 @@ export class BookUploadService {
 				file.buffer,
 				extension,
 				StorageBucket.BOOKS,
+				COVER_VARIANT_WIDTHS,
 			);
 
 			cover.url = savedPath;
@@ -390,6 +393,7 @@ export class BookUploadService {
 								file.buffer,
 								extension,
 								StorageBucket.BOOKS,
+								COVER_VARIANT_WIDTHS,
 							);
 						savedPaths.push(savedPath);
 

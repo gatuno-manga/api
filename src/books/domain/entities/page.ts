@@ -7,5 +7,6 @@ export class Page {
 	chapter: Chapter;
 	path: string;
 	metadata: ImageMetadata | null;
+	updatedAt: Date;
 	deletedAt: Date | null;
 }

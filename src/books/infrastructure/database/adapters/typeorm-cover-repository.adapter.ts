@@ -4,6 +4,7 @@ import { Cover as InfrastructureCover } from '@books/infrastructure/database/ent
 import { Injectable, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ImageMetadata } from '@src/common/domain/value-objects/image-metadata.vo';
+import { ImageVariant } from '@src/common/domain/value-objects/image-variant.vo';
 import {
 	EntityManager,
 	FindOptionsOrder,
@@ -150,6 +151,7 @@ export class TypeOrmCoverRepositoryAdapter implements ICoverRepository {
 			newPath: string;
 			metadata?: unknown;
 			originalUrl?: string;
+			variants?: ImageVariant[];
 		}[],
 	): Promise<void> {
 		const oldPaths = updates.map((u) => u.oldPath);
@@ -176,6 +178,9 @@ export class TypeOrmCoverRepositoryAdapter implements ICoverRepository {
 				cover.url = update.newPath;
 				if (update.metadata) {
 					cover.metadata = update.metadata as ImageMetadata;
+				}
+				if (update.variants) {
+					cover.variants = update.variants;
 				}
 			}
 		}
