@@ -98,18 +98,19 @@ export class TypeOrmPageRepositoryAdapter implements IPageRepository {
 			where: {
 				path: In(oldPaths),
 			} as FindOptionsWhere<InfrastructurePage>,
+			comment: 'force_master',
 		});
 
 		for (const page of pages) {
 			const update = updates.find((u) => u.oldPath === page.path);
 			if (update) {
-				page.path = update.newPath;
-				if (update.metadata) {
-					page.metadata = update.metadata as ImageMetadata;
-				}
+				await this.repository.update(page.id, {
+					path: update.newPath,
+					...(update.metadata
+						? { metadata: update.metadata as ImageMetadata }
+						: {}),
+				} as Parameters<Repository<InfrastructurePage>['update']>[1]);
 			}
 		}
-
-		await this.repository.save(pages);
 	}
 }

@@ -413,8 +413,10 @@ export class BooksKafkaConsumer {
 			const jobId = data.jobId || data.job_id;
 
 			try {
-				const allCovers =
-					await this.coverRepository.findByBookId(bookId);
+				const allCovers = await this.coverRepository.findByBookId(
+					bookId,
+					'force_master',
+				);
 				const processingCovers = allCovers.filter(
 					(c) => c.scrapingStatus === ScrapingStatus.PROCESS,
 				);

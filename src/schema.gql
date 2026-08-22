@@ -3,210 +3,210 @@
 # ------------------------------------------------------
 
 input AdminBookFilterInput {
-	authors: [ID]
-	authorsLogic: FilterLogic = AND
-	cursor: String
-	excludeTags: [ID]
-	excludeTagsLogic: FilterLogic = OR
-	ids: [ID]
-	lang: String
-	limit: Int = 20
-	order: OrderDirection = DESC
-	orderBy: BookOrderField = CREATED_AT
-	page: Int = 1
-	publication: Int
-	publicationOperator: FilterOperator = EQ
-	scrapingStatus: [ScrapingStatus]
-	search: String
-	sensitiveContent: [String]
-	sites: [String]
-	tags: [ID]
-	tagsLogic: FilterLogic = AND
-	type: [BookType]
+  authors: [ID]
+  authorsLogic: FilterLogic = AND
+  cursor: String
+  excludeTags: [ID]
+  excludeTagsLogic: FilterLogic = OR
+  ids: [ID]
+  lang: String
+  limit: Int = 20
+  order: OrderDirection = DESC
+  orderBy: BookOrderField = CREATED_AT
+  page: Int = 1
+  publication: Int
+  publicationOperator: FilterOperator = EQ
+  scrapingStatus: [ScrapingStatus]
+  search: String
+  sensitiveContent: [String]
+  sites: [String]
+  tags: [ID]
+  tagsLogic: FilterLogic = AND
+  type: [BookType]
 }
 
 type AlternativeTitle {
-	languageCode: String
-	rank: Int!
-	title: String!
+  languageCode: String
+  rank: Int!
+  title: String!
 }
 
 type Author {
-	biography: String
-	id: ID!
-	localizedBiographies: [LocalizedBiography]!
-	name: String!
+  biography: String
+  id: ID!
+  localizedBiographies: [LocalizedBiography]!
+  name: String!
 }
 
 type Book {
-	allowedScrapingLanguages: [String!]
-	alternativeTitles: [AlternativeTitle]!
-	authors(lang: String): [Author!]!
-	availableChapterLanguages: [String!]
-	chapters(filter: ChapterFilterInput): PaginatedChapterResponse!
-	chaptersPerLanguage: [LanguageChapterCount]
-	cover: String
-	covers: [Cover!]!
-	createdAt: DateTime!
-	description: String
-	id: ID!
-	localizedDescriptions: [LocalizedDescription]!
-	originalLanguageCode: String
-	publication: Int
-	scrapingStatus: ScrapingStatus!
-	tags: [Tag!]!
-	title: String!
-	totalChapters: Int!
-	type: BookType!
-	updatedAt: DateTime!
+  allowedScrapingLanguages: [String!]
+  alternativeTitles: [AlternativeTitle]!
+  authors(lang: String): [Author!]!
+  availableChapterLanguages: [String!]
+  chapters(filter: ChapterFilterInput): PaginatedChapterResponse!
+  chaptersPerLanguage: [LanguageChapterCount]
+  cover: String
+  covers: [Cover!]!
+  createdAt: DateTime!
+  description: String
+  id: ID!
+  localizedDescriptions: [LocalizedDescription]!
+  originalLanguageCode: String
+  publication: Int
+  scrapingStatus: ScrapingStatus!
+  tags: [Tag!]!
+  title: String!
+  totalChapters: Int!
+  type: BookType!
+  updatedAt: DateTime!
 }
 
 input BookFilterInput {
-	authors: [ID]
-	authorsLogic: FilterLogic = AND
-	cursor: String
-	excludeTags: [ID]
-	excludeTagsLogic: FilterLogic = OR
-	ids: [ID]
-	lang: String
-	limit: Int = 20
-	order: OrderDirection = DESC
-	orderBy: BookOrderField = CREATED_AT
-	page: Int = 1
-	publication: Int
-	publicationOperator: FilterOperator = EQ
-	search: String
-	sensitiveContent: [String]
-	sites: [String]
-	tags: [ID]
-	tagsLogic: FilterLogic = AND
-	type: [BookType]
+  authors: [ID]
+  authorsLogic: FilterLogic = AND
+  cursor: String
+  excludeTags: [ID]
+  excludeTagsLogic: FilterLogic = OR
+  ids: [ID]
+  lang: String
+  limit: Int = 20
+  order: OrderDirection = DESC
+  orderBy: BookOrderField = CREATED_AT
+  page: Int = 1
+  publication: Int
+  publicationOperator: FilterOperator = EQ
+  search: String
+  sensitiveContent: [String]
+  sites: [String]
+  tags: [ID]
+  tagsLogic: FilterLogic = AND
+  type: [BookType]
 }
 
 enum BookOrderField {
-	CREATED_AT
-	PUBLICATION
-	TITLE
-	UPDATED_AT
+  CREATED_AT
+  PUBLICATION
+  TITLE
+  UPDATED_AT
 }
 
 enum BookType {
-	BOOK
-	MANGA
-	MANHUA
-	MANHWA
-	OTHER
+  BOOK
+  MANGA
+  MANHUA
+  MANHWA
+  OTHER
 }
 
 type Chapter {
-	content: String
-	contentFormat: ContentFormat
-	contentType: ContentType!
-	documentFormat: DocumentFormat
-	id: ID!
-	index: Int!
-	isFinal: Boolean!
-	languageCode: String!
-	pages: [Page]
-	scrapingStatus: ScrapingStatus
-	title: String
+  content: String
+  contentFormat: ContentFormat
+  contentType: ContentType!
+  documentFormat: DocumentFormat
+  id: ID!
+  index: Int!
+  isFinal: Boolean!
+  languageCode: String!
+  pages: [Page]
+  scrapingStatus: ScrapingStatus
+  title: String
 }
 
 type ChapterComment {
-	content: String!
-	createdAt: DateTime!
-	id: ID!
-	isDeleted: Boolean!
-	isPublic: Boolean!
-	profileImageUrl: String
-	replies: [ChapterComment]!
-	updatedAt: DateTime!
-	userId: ID!
-	userName: String!
+  content: String!
+  createdAt: DateTime!
+  id: ID!
+  isDeleted: Boolean!
+  isPublic: Boolean!
+  profileImageUrl: String
+  replies: [ChapterComment]!
+  updatedAt: DateTime!
+  userId: ID!
+  userName: String!
 }
 
 input ChapterFilterInput {
-	cursor: String
-	languageCode: String = "pt-BR"
-	limit: Int = 100
-	order: OrderDirection = ASC
-	page: Int = 1
+  cursor: String
+  languageCode: String = "pt-BR"
+  limit: Int = 100
+  order: OrderDirection = ASC
+  page: Int = 1
 }
 
 type Collection {
-	bookCovers(limit: Int = 4): [[Cover!]!]!
-	books: [String!]!
-	collaborators: [String!]!
-	coverUrl: String
-	createdAt: DateTime!
-	description: String
-	id: ID!
-	ownerId: String!
-	title: String!
-	updatedAt: DateTime!
-	visibility: String!
+  bookCovers(limit: Int = 4): [[Cover!]!]!
+  books: [String!]!
+  collaborators: [String!]!
+  coverUrl: String
+  createdAt: DateTime!
+  description: String
+  id: ID!
+  ownerId: String!
+  title: String!
+  updatedAt: DateTime!
+  visibility: String!
 }
 
 input CommentInput {
-	chapterId: ID!
-	content: String!
-	isPublic: Boolean
-	parentId: ID
+  chapterId: ID!
+  content: String!
+  isPublic: Boolean
+  parentId: ID
 }
 
 enum ContentFormat {
-	HTML
-	MARKDOWN
-	PLAIN
+  HTML
+  MARKDOWN
+  PLAIN
 }
 
 enum ContentType {
-	DOCUMENT
-	IMAGE
-	TEXT
+  DOCUMENT
+  IMAGE
+  TEXT
 }
 
 type Cover {
-	id: ID!
-	isMain: Boolean!
-	metadata: ImageMetadata
-	url: String!
+  id: ID!
+  isMain: Boolean!
+  metadata: ImageMetadata
+  url: String!
 }
 
 type DashboardCountsType {
-	authors: Int!
-	books: Int!
-	chapters: Int!
-	pages: Int!
-	sensitiveContent: Int!
-	tags: Int!
-	users: Int!
+  authors: Int!
+  books: Int!
+  chapters: Int!
+  pages: Int!
+  sensitiveContent: Int!
+  tags: Int!
+  users: Int!
 }
 
 input DashboardFilterInput {
-	sensitiveContent: String = "all"
+  sensitiveContent: String = "all"
 }
 
 type DashboardNameCountItemType {
-	count: Int!
-	name: String!
+  count: Int!
+  name: String!
 }
 
 type DashboardOverviewType {
-	counts: DashboardCountsType!
-	sensitiveContent: [DashboardNameCountItemType!]!
-	status: DashboardStatusType!
-	tags: [DashboardNameCountItemType!]!
+  counts: DashboardCountsType!
+  sensitiveContent: [DashboardNameCountItemType!]!
+  status: DashboardStatusType!
+  tags: [DashboardNameCountItemType!]!
 }
 
 type DashboardStatusItemType {
-	count: Int!
-	status: String!
+  count: Int!
+  status: String!
 }
 
 type DashboardStatusType {
-	books: [DashboardStatusItemType!]!
-	chapters: [DashboardStatusItemType!]!
+  books: [DashboardStatusItemType!]!
+  chapters: [DashboardStatusItemType!]!
 }
 
 """
@@ -215,40 +215,40 @@ A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date
 scalar DateTime
 
 enum DocumentFormat {
-	EPUB
-	PDF
+  EPUB
+  PDF
 }
 
 type Favorite {
-	book: Book!
-	bookId: String!
-	createdAt: DateTime!
-	userId: String!
+  book: Book!
+  bookId: String!
+  createdAt: DateTime!
+  userId: String!
 }
 
 enum FilterLogic {
-	AND
-	OR
+  AND
+  OR
 }
 
 enum FilterOperator {
-	EQ
-	GT
-	GTE
-	LT
-	LTE
+  EQ
+  GT
+  GTE
+  LT
+  LTE
 }
 
 type ImageMetadata {
-	blurHash: String
-	dominantColor: String
-	entropy: Float
-	formatOrigin: String
-	height: Int!
-	mimeType: String
-	pHash: String
-	sizeBytes: Int
-	width: Int!
+  blurHash: String
+  dominantColor: String
+  entropy: Float
+  formatOrigin: String
+  height: Int!
+  mimeType: String
+  pHash: String
+  sizeBytes: Int
+  width: Int!
 }
 
 """
@@ -257,222 +257,206 @@ The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://
 scalar JSON
 
 type LanguageChapterCount {
-	count: Int!
-	language: String!
+  count: Int!
+  language: String!
 }
 
 type LocalizedBiography {
-	biography: String!
-	languageCode: String!
-	rank: Int!
+  biography: String!
+  languageCode: String!
+  rank: Int!
 }
 
 type LocalizedDescription {
-	description: String!
-	languageCode: String!
-	rank: Int!
+  description: String!
+  languageCode: String!
+  rank: Int!
 }
 
 type Mutation {
-	customizeBook(
-		bookId: String!
-		customCoverUrl: String
-		customTitle: String
-	): UserBookCustomization!
-	sync(input: SyncInput!): SyncResult!
+  customizeBook(bookId: String!, customCoverUrl: String, customTitle: String): UserBookCustomization!
+  sync(input: SyncInput!): SyncResult!
 }
 
 enum OrderDirection {
-	ASC
-	DESC
+  ASC
+  DESC
 }
 
 type Page {
-	id: Int!
-	index: Int!
-	metadata: ImageMetadata
-	path: String!
+  id: Int!
+  index: Int!
+  metadata: ImageMetadata
+  path: String!
 }
 
 type PaginatedBookResponse {
-	data: [Book!]!
-	hasNextPage: Boolean
-	lastPage: Int
-	nextCursor: String
-	page: Int
-	total: Int
+  data: [Book!]!
+  hasNextPage: Boolean
+  lastPage: Int
+  nextCursor: String
+  page: Int
+  total: Int
 }
 
 type PaginatedChapterResponse {
-	availableLanguages: [String!]
-	data: [Chapter!]!
-	hasNextPage: Boolean
-	lastPage: Int
-	nextCursor: String
-	page: Int
-	total: Int
+  availableLanguages: [String!]
+  data: [Chapter!]!
+  hasNextPage: Boolean
+  lastPage: Int
+  nextCursor: String
+  page: Int
+  total: Int
 }
 
 type PaginatedCollectionResponse {
-	data: [Collection!]!
-	hasNextPage: Boolean!
-	lastPage: Int
-	nextCursor: String
-	page: Int
-	total: Int
+  data: [Collection!]!
+  hasNextPage: Boolean!
+  lastPage: Int
+  nextCursor: String
+  page: Int
+  total: Int
 }
 
 type PaginatedCommentResponse {
-	data: [ChapterComment!]!
-	hasNextPage: Boolean
-	lastPage: Int
-	nextCursor: String
-	page: Int
-	total: Int
+  data: [ChapterComment!]!
+  hasNextPage: Boolean
+  lastPage: Int
+  nextCursor: String
+  page: Int
+  total: Int
 }
 
 type PaginatedFavoriteResponse {
-	data: [Favorite!]!
-	hasNextPage: Boolean!
-	lastPage: Int
-	nextCursor: String
-	page: Int
-	total: Int
+  data: [Favorite!]!
+  hasNextPage: Boolean!
+  lastPage: Int
+  nextCursor: String
+  page: Int
+  total: Int
 }
 
 type PaginatedUserResponse {
-	data: [User!]!
-	hasNextPage: Boolean
-	lastPage: Int
-	nextCursor: String
-	page: Int
-	total: Int
+  data: [User!]!
+  hasNextPage: Boolean
+  lastPage: Int
+  nextCursor: String
+  page: Int
+  total: Int
 }
 
 type Query {
-	adminBooksWithErrors(filter: AdminBookFilterInput): PaginatedBookResponse!
-	book(id: ID!, lang: String): Book
-	bookComments(
-		chapterId: ID!
-		limit: Int = 20
-		page: Int = 1
-	): PaginatedCommentResponse!
-	books(filter: BookFilterInput): PaginatedBookResponse!
-	chapter(id: ID!): Chapter
-	dashboardOverview(filter: DashboardFilterInput): DashboardOverviewType!
-	myCollections(
-		cursor: String
-		limit: Int = 20
-		page: Int
-	): PaginatedCollectionResponse!
-	myFavorites(
-		cursor: String
-		limit: Int = 20
-		page: Int
-	): PaginatedFavoriteResponse!
-	searchAuthors(query: String!): [Author!]!
-	searchTags(query: String!): [Tag!]!
-	user(id: ID!): User!
-	users(filter: UserFilter): PaginatedUserResponse!
+  adminBooksWithErrors(filter: AdminBookFilterInput): PaginatedBookResponse!
+  book(id: ID!, lang: String): Book
+  bookComments(chapterId: ID!, limit: Int = 20, page: Int = 1): PaginatedCommentResponse!
+  books(filter: BookFilterInput): PaginatedBookResponse!
+  chapter(id: ID!): Chapter
+  dashboardOverview(filter: DashboardFilterInput): DashboardOverviewType!
+  myCollections(cursor: String, limit: Int = 20, page: Int): PaginatedCollectionResponse!
+  myFavorites(cursor: String, limit: Int = 20, page: Int): PaginatedFavoriteResponse!
+  searchAuthors(query: String!): [Author!]!
+  searchTags(query: String!): [Tag!]!
+  user(id: ID!): User!
+  users(filter: UserFilter): PaginatedUserResponse!
 }
 
 input ReadingProgressInput {
-	bookId: ID!
-	chapterId: ID!
-	pageIndex: Float!
-	updatedAt: DateTime!
+  bookId: ID!
+  chapterId: ID!
+  pageIndex: Float!
+  updatedAt: DateTime!
 }
 
 type ReadingProgressModel {
-	bookId: ID!
-	chapterId: ID!
-	pageIndex: Float!
-	updatedAt: DateTime!
+  bookId: ID!
+  chapterId: ID!
+  pageIndex: Float!
+  updatedAt: DateTime!
 }
 
 type Role {
-	id: ID!
-	maxWeightSensitiveContent: Int!
-	name: String!
+  id: ID!
+  maxWeightSensitiveContent: Int!
+  name: String!
 }
 
 input SavedPageInput {
-	bookId: ID!
-	chapterId: ID!
-	pageIndex: Float!
+  bookId: ID!
+  chapterId: ID!
+  pageIndex: Float!
 }
 
 enum ScrapingStatus {
-	ERROR
-	PROCESS
-	READY
+  ERROR
+  PROCESS
+  READY
 }
 
 input SyncInput {
-	comments: [CommentInput]
-	lastSyncAt: DateTime
-	readingProgress: [ReadingProgressInput]
-	savedPages: [SavedPageInput]
+  comments: [CommentInput]
+  lastSyncAt: DateTime
+  readingProgress: [ReadingProgressInput]
+  savedPages: [SavedPageInput]
 }
 
 type SyncResult {
-	comments: [ChapterComment!]!
-	readingProgress: [ReadingProgressModel!]!
-	savedPagesIds: [ID!]!
-	syncedAt: DateTime!
+  comments: [ChapterComment!]!
+  readingProgress: [ReadingProgressModel!]!
+  savedPagesIds: [ID!]!
+  syncedAt: DateTime!
 }
 
 type Tag {
-	id: ID!
-	name: String!
+  id: ID!
+  name: String!
 }
 
 type User {
-	contentLanguages: [String!]
-	createdAt: DateTime!
-	email: String!
-	groups: [UserGroup]
-	id: ID!
-	isBanned: Boolean!
-	maxWeightSensitiveContent: Int!
-	name: String
-	preferences: JSON
-	preferredLanguage: String!
-	profileBanner: UserImage
-	profilePicture: UserImage
-	roles: [Role]
-	suspendedUntil: DateTime
-	suspensionReason: String
-	updatedAt: DateTime!
-	userName: String!
+  contentLanguages: [String!]
+  createdAt: DateTime!
+  email: String!
+  groups: [UserGroup]
+  id: ID!
+  isBanned: Boolean!
+  maxWeightSensitiveContent: Int!
+  name: String
+  preferences: JSON
+  preferredLanguage: String!
+  profileBanner: UserImage
+  profilePicture: UserImage
+  roles: [Role]
+  suspendedUntil: DateTime
+  suspensionReason: String
+  updatedAt: DateTime!
+  userName: String!
 }
 
 type UserBookCustomization {
-	bookId: ID!
-	createdAt: DateTime!
-	customCoverUrl: String
-	customTitle: String
-	updatedAt: DateTime!
-	userId: ID!
+  bookId: ID!
+  createdAt: DateTime!
+  customCoverUrl: String
+  customTitle: String
+  updatedAt: DateTime!
+  userId: ID!
 }
 
 input UserFilter {
-	cursor: String
-	isBanned: Boolean
-	isSuspended: Boolean
-	limit: Int = 20
-	page: Int = 1
-	role: String
-	search: String
+  cursor: String
+  isBanned: Boolean
+  isSuspended: Boolean
+  limit: Int = 20
+  page: Int = 1
+  role: String
+  search: String
 }
 
 type UserGroup {
-	description: String
-	id: ID!
-	name: String!
+  description: String
+  id: ID!
+  name: String!
 }
 
 type UserImage {
-	id: ID!
-	url: String!
+  id: ID!
+  url: String!
 }
