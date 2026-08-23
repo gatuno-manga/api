@@ -89,22 +89,37 @@ BACKUP_ALERT_CMD="mail -s 'Backup gatuno falhou' ops@exemplo.com"
 O comando é executado com `eval`, então tem acesso a pipes/redirecionamentos —
 trate-o com o mesmo cuidado que outras credenciais do `.env`.
 
-## Agendamento
+## Agendamento Automático
 
-Duas opções, escolha uma:
+Você pode escolher a melhor opção de acordo com o seu ambiente de produção:
 
-**systemd timer** (recomendado em produção):
+### Opção 1: Container Docker `backup-cron` (Recomendado / 100% Portátil / Alpine)
+O serviço `backup-cron` já vem integrado no `docker-compose.yml` e roda de forma isolada em um container Alpine com crond:
+
 ```bash
-sudo cp scripts/backup/gatuno-backup.service scripts/backup/gatuno-backup.timer /etc/systemd/system/
-sudo systemctl edit gatuno-backup.service   # ajuste WorkingDirectory/ExecStart para o path real
-sudo systemctl daemon-reload
-sudo systemctl enable --now gatuno-backup.timer
-journalctl -u gatuno-backup.service -f      # acompanhar logs
+# Iniciar o container de backup
+docker compose up -d backup-cron
+
+# Acompanhar logs do cron e das execuções
+docker logs -f gatuno-backup-cron
 ```
 
-**cron** (alternativa):
+Variáveis de ambiente suportadas no `.env`:
+- `BACKUP_CRON_SCHEDULE="0 3 * * *"` (Horário de execução, padrão diário às 03:00)
+- `BACKUP_RETENTION="5"` (Número de backups mantidos por tipo)
+- `TZ="America/Sao_Paulo"` (Fuso horário do cron)
+
+### Opção 2: Crontab nativo do Host
 ```cron
-0 3 * * * cd /opt/gatuno/api && GATUNO_COMPOSE_FILES="docker-compose.common.yml:docker-compose.prod.yml" ./scripts/backup/backup-all.sh ./backups -q >> ./backups/cron.log 2>&1
+0 3 * * * cd /opt/gatuno/infra && ./scripts/backup.sh all /backups -q >> /backups/cron.log 2>&1
+```
+
+### Opção 3: Systemd Timer (Hosts Debian/Ubuntu)
+```bash
+sudo cp scripts/backup/gatuno-backup.service scripts/backup/gatuno-backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now gatuno-backup.timer
+journalctl -u gatuno-backup.service -f
 ```
 
 ## Primeira limpeza dos backups legados em produção

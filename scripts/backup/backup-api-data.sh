@@ -241,15 +241,22 @@ fi
 # ─────────────────────────────────────────────────────────
 # Obter path real do volume no host ou usar fallback Docker
 # ─────────────────────────────────────────────────────────
-VOLUME_HOST_PATH=$(docker volume inspect "${VOLUME_NAME}" --format '{{.Mountpoint}}' 2>/dev/null || true)
+VOLUME_MOUNT_PATH="${RUSTFS_MOUNT_PATH:-}"
 USE_DOCKER_VOLUME=false
 
-if [ -n "${VOLUME_HOST_PATH}" ] && [ -d "${VOLUME_HOST_PATH}" ] && [ -r "${VOLUME_HOST_PATH}" ]; then
-    log "   📂 Volume host path: ${VOLUME_HOST_PATH}"
+if [ -n "${VOLUME_MOUNT_PATH}" ] && [ -d "${VOLUME_MOUNT_PATH}" ] && [ -r "${VOLUME_MOUNT_PATH}" ]; then
+    VOLUME_HOST_PATH="${VOLUME_MOUNT_PATH}"
+    log "   📂 Volume direto montado: ${VOLUME_HOST_PATH}"
 else
-    log "   🐳 Volume acessado via container Docker (mountpoint restrito no host)"
-    USE_DOCKER_VOLUME=true
-    VOLUME_HOST_PATH="docker://${VOLUME_NAME}"
+    VOLUME_HOST_PATH=$(docker volume inspect "${VOLUME_NAME}" --format '{{.Mountpoint}}' 2>/dev/null || true)
+
+    if [ -n "${VOLUME_HOST_PATH}" ] && [ -d "${VOLUME_HOST_PATH}" ] && [ -r "${VOLUME_HOST_PATH}" ]; then
+        log "   📂 Volume host path: ${VOLUME_HOST_PATH}"
+    else
+        log "   🐳 Volume acessado via container Docker (mountpoint restrito no host)"
+        USE_DOCKER_VOLUME=true
+        VOLUME_HOST_PATH="docker://${VOLUME_NAME}"
+    fi
 fi
 
 mkdir -p "${BACKUP_DIR}"
