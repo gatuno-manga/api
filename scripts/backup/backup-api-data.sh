@@ -114,7 +114,7 @@ cleanup() {
     if [ $exit_code -ne 0 ] && [ -n "${INPROGRESS_PATH:-}" ]; then
         if [ -d "${INPROGRESS_PATH}" ]; then
             log "⚠️  Falha detectada (código: $exit_code). Removendo backup incompleto..."
-            rm -rf "${INPROGRESS_PATH}" 2>/dev/null || true
+            rm -rf "${INPROGRESS_PATH}" 2>/dev/null || docker run --rm -v "$(realpath "${BACKUP_DIR}"):/backups" alpine rm -rf "/backups/$(basename "${INPROGRESS_PATH}")" 2>/dev/null || true
         fi
     fi
 }
@@ -140,6 +140,7 @@ find_latest_complete_backup() {
 # reaproveitam o hash do manifesto anterior. Só os transferidos/novos são
 # relidos do disco. Se algo não bater, recalcula tudo (rede de segurança).
 build_manifest() {
+    export LC_ALL=C
     local data_dir="$1"
     local out_manifest="$2"
     local prev_manifest="$3"
@@ -148,7 +149,7 @@ build_manifest() {
     work_dir="$(dirname "${data_dir}")"
 
     local filelist="${work_dir}/.filelist.tmp"
-    find "${data_dir}" -type f -printf '%P\n' | LC_ALL=C sort > "${filelist}"
+    find "${data_dir}" -type f -printf '%P\n' | sort > "${filelist}"
     local total_files
     total_files=$(wc -l < "${filelist}")
 
@@ -238,18 +239,18 @@ if ! docker volume inspect "${VOLUME_NAME}" >/dev/null 2>&1; then
 fi
 
 # ─────────────────────────────────────────────────────────
-# Obter path real do volume no host (elimina overhead Docker)
+# Obter path real do volume no host ou usar fallback Docker
 # ─────────────────────────────────────────────────────────
-VOLUME_HOST_PATH=$(docker volume inspect "${VOLUME_NAME}" --format '{{.Mountpoint}}' 2>/dev/null)
+VOLUME_HOST_PATH=$(docker volume inspect "${VOLUME_NAME}" --format '{{.Mountpoint}}' 2>/dev/null || true)
+USE_DOCKER_VOLUME=false
 
-if [ -z "${VOLUME_HOST_PATH}" ] || [ ! -d "${VOLUME_HOST_PATH}" ]; then
-    log "❌ Erro: Não foi possível localizar o path do volume no host"
-    log "   Volume inspect retornou: '${VOLUME_HOST_PATH:-<vazio>}'"
-    log "   Verifique se o Docker tem permissão para inspecionar volumes"
-    exit 1
+if [ -n "${VOLUME_HOST_PATH}" ] && [ -d "${VOLUME_HOST_PATH}" ] && [ -r "${VOLUME_HOST_PATH}" ]; then
+    log "   📂 Volume host path: ${VOLUME_HOST_PATH}"
+else
+    log "   🐳 Volume acessado via container Docker (mountpoint restrito no host)"
+    USE_DOCKER_VOLUME=true
+    VOLUME_HOST_PATH="docker://${VOLUME_NAME}"
 fi
-
-log "   📂 Volume host path: ${VOLUME_HOST_PATH}"
 
 mkdir -p "${BACKUP_DIR}"
 LOG_FILE="${BACKUP_DIR}/backup-${TIMESTAMP}.log"
@@ -268,7 +269,7 @@ if [ ${#ORPHANED[@]} -gt 0 ]; then
     log "🧹 Removendo ${#ORPHANED[@]} backup(s) .inprogress órfão(s) de execuções anteriores..."
     for orphan in "${ORPHANED[@]}"; do
         log "   $(basename "${orphan}")"
-        rm -rf "${orphan}"
+        rm -rf "${orphan}" 2>/dev/null || docker run --rm -v "$(realpath "${BACKUP_DIR}"):/backups" alpine rm -rf "/backups/$(basename "${orphan}")" 2>/dev/null || true
     done
     log ""
 fi
@@ -279,7 +280,11 @@ fi
 
 log "📊 Analisando volume ${VOLUME_NAME}..."
 
-VOLUME_KB=$(du -sk "${VOLUME_HOST_PATH}" 2>/dev/null | cut -f1 || echo 0)
+if [ "$USE_DOCKER_VOLUME" = true ]; then
+    VOLUME_KB=$(docker run --rm -v "${VOLUME_NAME}:/src:ro" alpine du -sk /src 2>/dev/null | cut -f1 || echo 0)
+else
+    VOLUME_KB=$(du -sk "${VOLUME_HOST_PATH}" 2>/dev/null | cut -f1 || echo 0)
+fi
 VOLUME_KB=${VOLUME_KB:-0}
 
 log "📊 Informações do volume:"
@@ -361,17 +366,35 @@ log ""
 
 START_TS=$(date +%s)
 
-# rsync direto: host path → backup dir, sem container intermediário.
+# rsync direto ou via container Docker (se host path for restrito).
 # --out-format='%n' registra os arquivos efetivamente transferidos (novos ou
 # alterados); arquivos que só foram hardlinked via --link-dest não aparecem
 # aqui — é essa lista que torna o manifesto incremental.
-if ! rsync -a --no-owner --no-group \
-    ${LINK_DEST_ARG} \
-    --out-format='%n' \
-    "${VOLUME_HOST_PATH}/" \
-    "${INPROGRESS_PATH}/data/" > "${INPROGRESS_PATH}/.transferred"; then
-    log "❌ Erro: rsync falhou"
-    exit 1
+if [ "$USE_DOCKER_VOLUME" = true ]; then
+    DOCKER_LINK_MOUNT=()
+    DOCKER_LINK_OPT=""
+    if [ -n "${LATEST_BACKUP_DATA}" ] && [ -d "${LATEST_BACKUP_DATA}" ]; then
+        DOCKER_LINK_MOUNT=("-v" "$(realpath "${LATEST_BACKUP_DATA}"):/link-dest:ro")
+        DOCKER_LINK_OPT="--link-dest=/link-dest"
+    fi
+
+    if ! docker run --rm \
+        -v "${VOLUME_NAME}:/volume-src:ro" \
+        -v "$(realpath "${INPROGRESS_PATH}/data"):/volume-dest" \
+        "${DOCKER_LINK_MOUNT[@]}" \
+        alpine sh -c "apk add --no-cache rsync >/dev/null 2>&1 && rsync -a --no-owner --no-group ${DOCKER_LINK_OPT} --out-format='%n' /volume-src/ /volume-dest/ && chmod -R u+rwX,go+rX /volume-dest"; then
+        log "❌ Erro: rsync via Docker falhou"
+        exit 1
+    fi > "${INPROGRESS_PATH}/.transferred"
+else
+    if ! rsync -a --no-owner --no-group \
+        ${LINK_DEST_ARG} \
+        --out-format='%n' \
+        "${VOLUME_HOST_PATH}/" \
+        "${INPROGRESS_PATH}/data/" > "${INPROGRESS_PATH}/.transferred"; then
+        log "❌ Erro: rsync falhou"
+        exit 1
+    fi
 fi
 
 END_TS=$(date +%s)

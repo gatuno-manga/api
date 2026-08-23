@@ -267,7 +267,7 @@ fi
 # ============================================
 
 # Backup de binários mais recente
-LATEST_BINARY=$(ls -1dt "${BACKUP_DIR}"/rustfs-backup-* 2>/dev/null | grep -v '\.inprogress$' | head -n1 || true)
+LATEST_BINARY=$(find "${BACKUP_DIR}" -maxdepth 1 -type d -name 'rustfs-backup-*' ! -name '*.inprogress' 2>/dev/null | sort -r | head -n1 || true)
 BINARY_SIZE=""
 if [ -n "$LATEST_BINARY" ] && [ -d "$LATEST_BINARY" ]; then
     BINARY_APPARENT=$(du -sh --apparent-size "${LATEST_BINARY}/data" 2>/dev/null | cut -f1 || echo "?")
@@ -276,7 +276,7 @@ if [ -n "$LATEST_BINARY" ] && [ -d "$LATEST_BINARY" ]; then
 fi
 
 # Backup de banco mais recente
-LATEST_DB=$(ls -1dt "${BACKUP_DIR}"/db-backup-* 2>/dev/null | grep -v '\.inprogress$' | head -n1 || true)
+LATEST_DB=$(find "${BACKUP_DIR}" -maxdepth 1 -type d -name 'db-backup-*' ! -name '*.inprogress' 2>/dev/null | sort -r | head -n1 || true)
 DB_SIZE=""
 if [ -n "$LATEST_DB" ] && [ -d "$LATEST_DB" ]; then
     DB_SIZE=$(du -sh "${LATEST_DB}" 2>/dev/null | cut -f1 || echo "?")

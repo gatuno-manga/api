@@ -264,6 +264,8 @@ resolve_compose_args() {
         for f in ${GATUNO_COMPOSE_FILES}; do
             COMPOSE_ARGS+=("-f" "${root_dir}/${f}")
         done
+    elif [ -f "${root_dir}/docker-compose.yml" ]; then
+        COMPOSE_ARGS=("-f" "${root_dir}/docker-compose.yml")
     elif [ -f "${root_dir}/docker-compose.common.yml" ] && [ -f "${root_dir}/docker-compose.dev.yml" ]; then
         COMPOSE_ARGS=("-f" "${root_dir}/docker-compose.common.yml" "-f" "${root_dir}/docker-compose.dev.yml")
     fi

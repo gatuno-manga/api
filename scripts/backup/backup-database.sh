@@ -250,18 +250,33 @@ if [ "$SKIP_MYSQL" = false ]; then
     DUMP_ERR="${INPROGRESS_PATH}/mysqldump.err"
     DUMP_LINES_FILE="${INPROGRESS_PATH}/.dump_lines"
 
-    # --master-data foi renomeado para --source-data no MySQL 8.4+; detectar
-    # qual a flag suportada em vez de assumir uma delas (evita falha silenciosa).
+    # --master-data foi renomeado para --source-data no MySQL 8.4+.
+    # Requer privilégio global RELOAD ou FLUSH_TABLES em *.*; se não tiver, roda sem para não falhar.
     MYSQLDUMP_ARGS=(--user="${DB_USER}" --single-transaction --quick --lock-tables=false \
-        --routines --events --triggers --set-gtid-purged=OFF)
-    HELP_OUTPUT=$(docker exec -e MYSQL_PWD="${DB_PASS}" "$MYSQL_CONTAINER" mysqldump --help 2>/dev/null || true)
-    if echo "${HELP_OUTPUT}" | grep -q -- '--source-data'; then
-        MYSQLDUMP_ARGS+=(--source-data=2)
-    elif echo "${HELP_OUTPUT}" | grep -q -- '--master-data'; then
-        MYSQLDUMP_ARGS+=(--master-data=2)
-    else
-        log "   ⚠️  mysqldump sem suporte a --source-data/--master-data — posição binlog não incluída"
+        --routines --events --triggers --set-gtid-purged=OFF --no-tablespaces)
+    HAS_RELOAD=false
+    if docker exec -e MYSQL_PWD="${DB_PASS}" "$MYSQL_CONTAINER" mysql -u "${DB_USER}" -e "SHOW GRANTS FOR CURRENT_USER;" 2>/dev/null | grep -E -q 'ALL PRIVILEGES ON \*\.\*|RELOAD ON \*\.\*|FLUSH_TABLES ON \*\.\*'; then
+        HAS_RELOAD=true
     fi
+
+    if [ "$HAS_RELOAD" = true ]; then
+        HELP_OUTPUT=$(docker exec -e MYSQL_PWD="${DB_PASS}" "$MYSQL_CONTAINER" mysqldump --help 2>/dev/null || true)
+        if echo "${HELP_OUTPUT}" | grep -q -- '--source-data'; then
+            MYSQLDUMP_ARGS+=(--source-data=2)
+        elif echo "${HELP_OUTPUT}" | grep -q -- '--master-data'; then
+            MYSQLDUMP_ARGS+=(--master-data=2)
+        fi
+    fi
+
+    # Detectar e ignorar views corrompidas/inválidas que quebram o mysqldump
+    VIEWS=$(docker exec -e MYSQL_PWD="${DB_PASS}" "$MYSQL_CONTAINER" mysql -u "${DB_USER}" -N -s -e \
+        "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA='${DB_NAME}' AND TABLE_TYPE='VIEW';" 2>/dev/null || true)
+    for view in $VIEWS; do
+        if ! docker exec -e MYSQL_PWD="${DB_PASS}" "$MYSQL_CONTAINER" mysql -u "${DB_USER}" "${DB_NAME}" -e "SHOW CREATE TABLE \`${view}\`;" >/dev/null 2>&1; then
+            log "   ⚠️  View inválida ignorada no dump: ${view}"
+            MYSQLDUMP_ARGS+=(--ignore-table="${DB_NAME}.${view}")
+        fi
+    done
 
     log "   📤 Executando mysqldump (single-transaction)..."
 
