@@ -1,4 +1,5 @@
 import { BookChaptersCursorPageDto } from '@books/application/dto/book-chapters-cursor-page.dto';
+import { BookListPageDto } from '@books/application/dto/book-list-page.dto';
 import { BookRelationshipsPageDto } from '@books/application/dto/book-relationships-page.dto';
 import { applyDecorators } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
@@ -14,6 +15,7 @@ export function ApiDocsGetAllBooks() {
 		ApiResponse({
 			status: 200,
 			description: 'Livros retornados com sucesso',
+			type: BookListPageDto,
 		}),
 		ApiResponse(COMMON_RESPONSES.TOO_MANY_REQUESTS),
 	);

@@ -34,6 +34,11 @@ export interface IBookRepository {
 	): Promise<Book | null>;
 	findAllInProcess(): Promise<Book[]>;
 	findByIdsPreservingOrder(ids: string[]): Promise<Book[]>;
+	/**
+	 * Returns copies of the given books with `tags`, `authors` (without
+	 * biographies) and `sensitiveContent` loaded; `[]` when a book has none.
+	 */
+	loadListRelations(books: Book[]): Promise<Book[]>;
 	checkBookTitleConflict(
 		title: string,
 		alternativeTitles: string[],

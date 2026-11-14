@@ -21,6 +21,7 @@ describe('TypeOrmBookRepositoryAdapter', () => {
 		take: jest.fn().mockReturnThis(),
 		getOne: jest.fn(),
 		getManyAndCount: jest.fn(),
+		getMany: jest.fn(),
 		getSql: jest.fn().mockReturnValue('SELECT * FROM book'),
 		subQuery: jest.fn().mockReturnThis(),
 		select: jest.fn().mockReturnThis(),
@@ -149,6 +150,78 @@ describe('TypeOrmBookRepositoryAdapter', () => {
 					id: '1',
 				},
 			);
+		});
+	});
+
+	describe('loadListRelations', () => {
+		it('should not query the database when there are no books', async () => {
+			// Arrange
+			const books: DomainBook[] = [];
+
+			// Act
+			const result = await adapter.loadListRelations(books);
+
+			// Assert
+			expect(result).toEqual([]);
+			expect(mockQueryBuilder.getMany).not.toHaveBeenCalled();
+		});
+
+		it('should load each relation in its own query so list rows do not multiply per book', async () => {
+			// Arrange
+			const books = [{ id: '1' }, { id: '2' }] as DomainBook[];
+			mockQueryBuilder.getMany.mockResolvedValue([]);
+
+			// Act
+			await adapter.loadListRelations(books);
+
+			// Assert
+			expect(mockQueryBuilder.leftJoinAndSelect.mock.calls).toEqual([
+				['book.tags', 'tags'],
+				['book.authors', 'authors'],
+				['book.sensitiveContent', 'sensitiveContent'],
+			]);
+			expect(mockQueryBuilder.where).toHaveBeenCalledWith(
+				'book.id IN (:...ids)',
+				{ ids: ['1', '2'] },
+			);
+		});
+
+		it('should attach the relations to each book and use [] when a book has none, so clients can tell "none" from "unknown"', async () => {
+			// Arrange
+			const books = [
+				{ id: '1', title: 'Tagged' },
+				{ id: '2', title: 'Bare' },
+			] as DomainBook[];
+			const tag = { id: 't1', name: 'Action' };
+			const author = { id: 'a1', name: 'Author' };
+			const sensitiveContent = { id: 's1', name: 'Gore', weight: 3 };
+			mockQueryBuilder.getMany
+				.mockResolvedValueOnce([{ id: '1', tags: [tag] }])
+				.mockResolvedValueOnce([{ id: '1', authors: [author] }])
+				.mockResolvedValueOnce([
+					{ id: '1', sensitiveContent: [sensitiveContent] },
+				]);
+
+			// Act
+			const result = await adapter.loadListRelations(books);
+
+			// Assert
+			expect(result).toEqual([
+				{
+					id: '1',
+					title: 'Tagged',
+					tags: [tag],
+					authors: [author],
+					sensitiveContent: [sensitiveContent],
+				},
+				{
+					id: '2',
+					title: 'Bare',
+					tags: [],
+					authors: [],
+					sensitiveContent: [],
+				},
+			]);
 		});
 	});
 

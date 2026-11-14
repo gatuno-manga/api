@@ -40,6 +40,14 @@ describe('BookQueryService (Search Optimization)', () => {
 				]),
 			findWithFilters: jest.fn(),
 			findBooksWithCoverIssues: jest.fn(),
+			loadListRelations: jest.fn(async (books: object[]) =>
+				books.map((book) => ({
+					...book,
+					tags: [],
+					authors: [],
+					sensitiveContent: [],
+				})),
+			),
 		};
 
 		userAccessPolicyService = {
@@ -147,6 +155,91 @@ describe('BookQueryService (Search Optimization)', () => {
 
 		expect(bookRepository.findWithFilters).toHaveBeenCalled();
 		expect(result.data[0].id).toBe('fallback-book');
+	});
+
+	describe('classification on list items (offline filtering)', () => {
+		const tag = { id: 'tag-1', name: 'Action' };
+		const author = { id: 'author-1', name: 'Chugong' };
+		const sensitiveContent = { id: 'sc-1', name: 'Gore', weight: 3 };
+
+		beforeEach(() => {
+			bookRepository.loadListRelations.mockImplementation(
+				async (books: object[]) =>
+					books.map((book) => ({
+						...book,
+						tags: [tag],
+						authors: [author],
+						sensitiveContent: [sensitiveContent],
+					})),
+			);
+		});
+
+		it('should return tags, authors and sensitiveContent on search results so clients can filter them locally', async () => {
+			// Arrange
+			const options = new BookPageOptionsDto();
+			options.search = 'Solo';
+
+			// Act
+			const result = await service.getAllBooks(options, 0, 'user-1', []);
+
+			// Assert
+			expect(bookRepository.loadListRelations).toHaveBeenCalledWith([
+				expect.objectContaining({ id: 'book-1' }),
+			]);
+			expect(result.data[0]).toEqual(
+				expect.objectContaining({
+					id: 'book-1',
+					tags: [tag],
+					authors: [author],
+					sensitiveContent: [sensitiveContent],
+				}),
+			);
+		});
+
+		it('should return tags, authors and sensitiveContent on database results so clients can filter them locally', async () => {
+			// Arrange
+			const options = new BookPageOptionsDto();
+			options.search = undefined;
+			bookRepository.findWithFilters.mockResolvedValue([
+				[{ id: 'db-book', covers: [] }],
+				1,
+			]);
+
+			// Act
+			const result = await service.getAllBooks(options, 0, 'user-1', []);
+
+			// Assert
+			expect(bookRepository.loadListRelations).toHaveBeenCalledWith([
+				expect.objectContaining({ id: 'db-book' }),
+			]);
+			expect(result.data[0]).toEqual(
+				expect.objectContaining({
+					id: 'db-book',
+					tags: [tag],
+					authors: [author],
+					sensitiveContent: [sensitiveContent],
+				}),
+			);
+		});
+
+		it('should fail the request when the classification cannot be loaded, instead of returning items a client would misfilter', async () => {
+			// Arrange
+			const options = new BookPageOptionsDto();
+			options.search = undefined;
+			bookRepository.findWithFilters.mockResolvedValue([
+				[{ id: 'db-book', covers: [] }],
+				1,
+			]);
+			bookRepository.loadListRelations.mockRejectedValue(
+				new Error('relation query failed'),
+			);
+
+			// Act
+			const request = service.getAllBooks(options, 0, 'user-1', []);
+
+			// Assert
+			await expect(request).rejects.toThrow('relation query failed');
+		});
 	});
 
 	describe('cover variant selection on listing', () => {

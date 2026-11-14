@@ -281,8 +281,9 @@ export class BookQueryService {
 				const ids = searchResult.hits.map((hit) => hit.id as string);
 				const total = searchResult.estimatedTotalHits || 0;
 
-				const books =
-					await this.bookRepository.findByIdsPreservingOrder(ids);
+				const books = await this.bookRepository.loadListRelations(
+					await this.bookRepository.findByIdsPreservingOrder(ids),
+				);
 
 				const data = books.map((b) => {
 					const mappedBook = this.mapBookLocalizations(
@@ -312,11 +313,12 @@ export class BookQueryService {
 		}
 
 		// CAMINHO 2: Navegação via MySQL (Catálogo ou Fallback)
-		const [books, total] = await this.bookRepository.findWithFilters(
+		const [pageBooks, total] = await this.bookRepository.findWithFilters(
 			options,
 			accessContext,
 			filterStrategies,
 		);
+		const books = await this.bookRepository.loadListRelations(pageBooks);
 		const data = books.map((b) => {
 			const mappedBook = this.mapBookLocalizations(
 				b,

@@ -513,6 +513,43 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 		return books as unknown as DomainBook[];
 	}
 
+	async loadListRelations(books: DomainBook[]): Promise<DomainBook[]> {
+		if (books.length === 0) return [];
+
+		const ids = books.map((book) => book.id);
+		// One query per relation keeps the rows linear in the relation sizes;
+		// joining all three at once would multiply them per book.
+		const [tagsByBookId, authorsByBookId, sensitiveContentByBookId] =
+			await Promise.all([
+				this.findRelationByBookId(ids, 'tags'),
+				this.findRelationByBookId(ids, 'authors'),
+				this.findRelationByBookId(ids, 'sensitiveContent'),
+			]);
+
+		return books.map((book) => ({
+			...book,
+			tags: tagsByBookId.get(book.id) ?? [],
+			authors: authorsByBookId.get(book.id) ?? [],
+			sensitiveContent: sensitiveContentByBookId.get(book.id) ?? [],
+		})) as unknown as DomainBook[];
+	}
+
+	private async findRelationByBookId<
+		Relation extends 'tags' | 'authors' | 'sensitiveContent',
+	>(
+		ids: string[],
+		relation: Relation,
+	): Promise<Map<string, InfrastructureBook[Relation]>> {
+		const books = await this.repository
+			.createQueryBuilder('book')
+			.select('book.id')
+			.leftJoinAndSelect(`book.${relation}`, relation)
+			.where('book.id IN (:...ids)', { ids })
+			.getMany();
+
+		return new Map(books.map((book) => [book.id, book[relation]]));
+	}
+
 	async checkBookTitleConflict(
 		title: string,
 		alternativeTitles: string[] = [],

@@ -28,6 +28,32 @@ describe('Books Filters (e2e)', () => {
 			expect(Array.isArray(response.body.data)).toBeTruthy();
 		});
 
+		// Clients (the app's offline mode) filter cached list items locally,
+		// so every item must carry its classification, [] when it has none.
+		const expectListClassification = (items: Record<string, unknown>[]) => {
+			for (const item of items) {
+				expect(Array.isArray(item.tags)).toBe(true);
+				expect(Array.isArray(item.authors)).toBe(true);
+				expect(Array.isArray(item.sensitiveContent)).toBe(true);
+			}
+		};
+
+		it('should return tags, authors and sensitiveContent on every database list item', async () => {
+			const response = await request(app.getHttpServer())
+				.get('/api/books')
+				.expect(200);
+
+			expectListClassification(response.body.data);
+		});
+
+		it('should return tags, authors and sensitiveContent on every search list item', async () => {
+			const response = await request(app.getHttpServer())
+				.get('/api/books?search=a')
+				.expect(200);
+
+			expectListClassification(response.body.data);
+		});
+
 		it('should filter books by type', async () => {
 			const response = await request(app.getHttpServer())
 				.get('/api/books?type=MANGA')
