@@ -1,4 +1,5 @@
 import { BadRequestException, INestApplication } from '@nestjs/common';
+import { authenticator } from 'otplib';
 import { AuthService } from 'src/auth/auth.service';
 import request from 'supertest';
 import { v7 as uuidv7 } from 'uuid';
@@ -15,6 +16,13 @@ interface AuthResultPayload {
 	accessToken: string;
 	refreshToken?: string;
 	sessionId: string;
+}
+
+interface MfaChallengePayload {
+	mfaRequired: boolean;
+	mfaType: string;
+	mfaToken: string;
+	accessToken?: string;
 }
 
 interface CreateLoginApiKeyPayload {
@@ -145,6 +153,63 @@ describe('Auth login API (e2e)', () => {
 		expect(payload.accessToken).toEqual(expect.any(String));
 		expect(payload.sessionId).toEqual(expect.any(String));
 		expect(payload.refreshToken).toEqual(expect.any(String));
+	});
+
+	it('challenges a mobile client with TOTP enabled on an unknown device and completes sign-in via verify-login', async () => {
+		const { email, password } = await createUser();
+		const signInMobile = (deviceId: string) =>
+			request(app.getHttpServer())
+				.post('/api/auth/signin')
+				.set('x-client-platform', 'mobile')
+				.set('x-device-id', deviceId)
+				.send({ email, password });
+
+		const firstSignIn = await signInMobile(`mobile-${uuidv7()}`);
+		expect([200, 201]).toContain(firstSignIn.status);
+		const { accessToken } = extractPayload<AuthResultPayload>(
+			firstSignIn.body,
+		);
+
+		const setupResponse = await request(app.getHttpServer())
+			.post('/api/auth/mfa/totp/setup')
+			.set('authorization', `Bearer ${accessToken}`)
+			.set('x-client-platform', 'mobile');
+		expect([200, 201]).toContain(setupResponse.status);
+		const { secret } = extractPayload<{ secret: string }>(
+			setupResponse.body,
+		);
+
+		const verifySetupResponse = await request(app.getHttpServer())
+			.post('/api/auth/mfa/totp/verify-setup')
+			.set('authorization', `Bearer ${accessToken}`)
+			.set('x-client-platform', 'mobile')
+			.send({ code: authenticator.generate(secret) });
+		expect([200, 201]).toContain(verifySetupResponse.status);
+		const { backupCodes } = extractPayload<{ backupCodes: string[] }>(
+			verifySetupResponse.body,
+		);
+
+		const challengedSignIn = await signInMobile(`mobile-${uuidv7()}`);
+		expect([200, 201]).toContain(challengedSignIn.status);
+		const challenge = extractPayload<MfaChallengePayload>(
+			challengedSignIn.body,
+		);
+		expect(challenge.mfaRequired).toBe(true);
+		expect(challenge.mfaType).toBe('totp');
+		expect(challenge.mfaToken).toEqual(expect.any(String));
+		expect(challenge.accessToken).toBeUndefined();
+
+		const verifyLoginResponse = await request(app.getHttpServer())
+			.post('/api/auth/mfa/verify-login')
+			.set('x-client-platform', 'mobile')
+			.send({ mfaToken: challenge.mfaToken, code: backupCodes[0] });
+		expect([200, 201]).toContain(verifyLoginResponse.status);
+		const session = extractPayload<AuthResultPayload>(
+			verifyLoginResponse.body,
+		);
+		expect(session.accessToken).toEqual(expect.any(String));
+		expect(session.sessionId).toEqual(expect.any(String));
+		expect(session.refreshToken).toEqual(expect.any(String));
 	});
 
 	it('supports single-use API key login and blocks reuse', async () => {

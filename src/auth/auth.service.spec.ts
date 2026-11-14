@@ -8,6 +8,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Role } from 'src/users/infrastructure/database/entities/role.entity';
 import { User } from 'src/users/infrastructure/database/entities/user.entity';
+import type { UserAuthData } from './application/ports/user-repository.port';
 import { ApiKeyUseCase } from './application/use-cases/api-key.use-case';
 import { RefreshTokenUseCase } from './application/use-cases/refresh-token.use-case';
 import { RevokeSessionUseCase } from './application/use-cases/revoke-session.use-case';
@@ -337,6 +338,109 @@ describe('AuthService', () => {
 				expect.any(Function),
 			);
 			expect(result).toEqual(tokens);
+		});
+	});
+
+	describe('MFA step-up at sign-in', () => {
+		const user = { id: 'user-1', email: 'mfa@example.com' };
+		const mobileContext = {
+			ipAddress: '10.0.0.1',
+			userAgent: 'Dart/3.5 (dart:io)',
+			clientPlatform: 'mobile',
+			deviceId: null,
+			deviceLabel: null,
+		};
+		const tokens = {
+			accessToken: 'access_token',
+			refreshToken: 'refresh_token',
+			sessionId: 'session-1',
+		};
+
+		const signInWithPassword = async () => {
+			const signInUseCase = module.get<SignInUseCase>(SignInUseCase);
+			jest.spyOn(signInUseCase, 'execute').mockImplementation(
+				async (_email, _password, context, issueAuthFlow) => {
+					if (!issueAuthFlow) {
+						throw new Error('sign-in callback was not provided');
+					}
+					return issueAuthFlow(
+						user as UserAuthData,
+						'password',
+						context,
+					);
+				},
+			);
+			return service.signIn(user.email, 'password123', mobileContext);
+		};
+
+		beforeEach(() => {
+			userRepository.createQueryBuilder = jest.fn().mockReturnValue({
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				addSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(null),
+			});
+			jwtService.signAsync.mockResolvedValue('mfa-challenge-token');
+			jest.spyOn(service, 'generateTokensForUser').mockResolvedValue(
+				tokens as any,
+			);
+			_mfaService.isTotpEnabled.mockResolvedValue(true);
+			_sessionManagement.hasKnownDevice.mockResolvedValue(false);
+		});
+
+		it('challenges a mobile client signing in from an unknown device, so mobile cannot bypass TOTP', async () => {
+			const result = await signInWithPassword();
+
+			expect(result).toEqual({
+				mfaRequired: true,
+				mfaType: 'totp',
+				mfaToken: 'mfa-challenge-token',
+			});
+			expect(service.generateTokensForUser).not.toHaveBeenCalled();
+			expect(jwtService.signAsync).toHaveBeenCalledWith(
+				expect.objectContaining({
+					sub: user.id,
+					purpose: 'mfa-login',
+					authMethod: 'password',
+					context: expect.objectContaining({
+						clientPlatform: 'mobile',
+					}),
+				}),
+				expect.any(Object),
+			);
+		});
+
+		it('issues tokens to a mobile client on a known device, matching the web risk rule', async () => {
+			_sessionManagement.hasKnownDevice.mockResolvedValue(true);
+
+			const result = await signInWithPassword();
+
+			expect(result).toEqual(tokens);
+			expect(jwtService.signAsync).not.toHaveBeenCalled();
+		});
+
+		it('issues tokens to a mobile client when step-up is disabled by configuration', async () => {
+			_appConfigService.security.mfaStepUpEnabled = false;
+
+			const result = await signInWithPassword();
+
+			expect(result).toEqual(tokens);
+			expect(jwtService.signAsync).not.toHaveBeenCalled();
+		});
+
+		it('challenges a mobile passkey sign-in from an unknown device, since passkeys share the same step-up rule', async () => {
+			const result = await service.completePasskeySignIn(
+				user as User,
+				mobileContext,
+			);
+
+			expect(result).toEqual(
+				expect.objectContaining({ mfaRequired: true }),
+			);
+			expect(jwtService.signAsync).toHaveBeenCalledWith(
+				expect.objectContaining({ authMethod: 'passkey' }),
+				expect.any(Object),
+			);
 		});
 	});
 
