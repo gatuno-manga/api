@@ -542,6 +542,9 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 	): Promise<Map<string, InfrastructureBook[Relation]>> {
 		const books = await this.repository
 			.createQueryBuilder('book')
+			// The ids come from a page that already excluded deleted books; a
+			// book soft-deleted since then must not come back as "has none".
+			.withDeleted()
 			.select('book.id')
 			.leftJoinAndSelect(`book.${relation}`, relation)
 			.where('book.id IN (:...ids)', { ids })

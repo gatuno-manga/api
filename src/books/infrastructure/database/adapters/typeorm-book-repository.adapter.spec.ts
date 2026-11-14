@@ -22,6 +22,7 @@ describe('TypeOrmBookRepositoryAdapter', () => {
 		getOne: jest.fn(),
 		getManyAndCount: jest.fn(),
 		getMany: jest.fn(),
+		withDeleted: jest.fn().mockReturnThis(),
 		getSql: jest.fn().mockReturnValue('SELECT * FROM book'),
 		subQuery: jest.fn().mockReturnThis(),
 		select: jest.fn().mockReturnThis(),
@@ -186,6 +187,18 @@ describe('TypeOrmBookRepositoryAdapter', () => {
 			);
 		});
 
+		it('should include books soft-deleted after the page query, so their classification is never reported as empty', async () => {
+			// Arrange
+			const books = [{ id: '1' }] as DomainBook[];
+			mockQueryBuilder.getMany.mockResolvedValue([]);
+
+			// Act
+			await adapter.loadListRelations(books);
+
+			// Assert
+			expect(mockQueryBuilder.withDeleted).toHaveBeenCalledTimes(3);
+		});
+
 		it('should attach the relations to each book and use [] when a book has none, so clients can tell "none" from "unknown"', async () => {
 			// Arrange
 			const books = [
@@ -196,10 +209,17 @@ describe('TypeOrmBookRepositoryAdapter', () => {
 			const author = { id: 'a1', name: 'Author' };
 			const sensitiveContent = { id: 's1', name: 'Gore', weight: 3 };
 			mockQueryBuilder.getMany
-				.mockResolvedValueOnce([{ id: '1', tags: [tag] }])
-				.mockResolvedValueOnce([{ id: '1', authors: [author] }])
+				.mockResolvedValueOnce([
+					{ id: '1', tags: [tag] },
+					{ id: '2', tags: [] },
+				])
+				.mockResolvedValueOnce([
+					{ id: '1', authors: [author] },
+					{ id: '2', authors: [] },
+				])
 				.mockResolvedValueOnce([
 					{ id: '1', sensitiveContent: [sensitiveContent] },
+					{ id: '2', sensitiveContent: [] },
 				]);
 
 			// Act

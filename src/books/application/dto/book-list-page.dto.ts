@@ -88,6 +88,30 @@ class BookListCoverDto {
 
 	@ApiProperty({ type: [Object], nullable: true })
 	variants: Record<string, unknown>[] | null;
+
+	@ApiProperty({ example: 0 })
+	index: number;
+
+	@ApiProperty({ nullable: true })
+	imageHash: string | null;
+
+	@ApiProperty({ nullable: true, example: 'https://example.com/cover.jpg' })
+	originalUrl: string | null;
+
+	@ApiProperty({ enum: ScrapingStatus, nullable: true })
+	scrapingStatus: ScrapingStatus | null;
+
+	@ApiProperty({ example: 0 })
+	retries: number;
+
+	@ApiProperty()
+	createdAt: Date;
+
+	@ApiProperty()
+	updatedAt: Date;
+
+	@ApiProperty({ nullable: true })
+	deletedAt: Date | null;
 }
 
 class BookListAlternativeTitleDto {

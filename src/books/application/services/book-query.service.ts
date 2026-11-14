@@ -281,9 +281,10 @@ export class BookQueryService {
 				const ids = searchResult.hits.map((hit) => hit.id as string);
 				const total = searchResult.estimatedTotalHits || 0;
 
-				const books = await this.bookRepository.loadListRelations(
-					await this.bookRepository.findByIdsPreservingOrder(ids),
-				);
+				const searchBooks =
+					await this.bookRepository.findByIdsPreservingOrder(ids);
+				const books =
+					await this.bookRepository.loadListRelations(searchBooks);
 
 				const data = books.map((b) => {
 					const mappedBook = this.mapBookLocalizations(
@@ -307,7 +308,7 @@ export class BookQueryService {
 				return new PageDto(data, metadata);
 			} catch (error) {
 				this.logger.error(
-					`Meilisearch query failed, falling back to MySQL: ${error instanceof Error ? error.message : String(error)}`,
+					`Search path failed, falling back to MySQL: ${error instanceof Error ? error.message : String(error)}`,
 				);
 			}
 		}

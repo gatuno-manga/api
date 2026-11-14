@@ -222,6 +222,52 @@ describe('BookQueryService (Search Optimization)', () => {
 			);
 		});
 
+		it('should retry through the MySQL path when the search path cannot load the classification', async () => {
+			// Arrange
+			const options = new BookPageOptionsDto();
+			options.search = 'Solo';
+			bookRepository.findWithFilters.mockResolvedValue([
+				[{ id: 'db-book', covers: [] }],
+				1,
+			]);
+			bookRepository.loadListRelations.mockRejectedValueOnce(
+				new Error('relation query failed'),
+			);
+
+			// Act
+			const result = await service.getAllBooks(options, 0, 'user-1', []);
+
+			// Assert
+			expect(bookRepository.findWithFilters).toHaveBeenCalled();
+			expect(result.data[0]).toEqual(
+				expect.objectContaining({
+					id: 'db-book',
+					tags: [tag],
+					authors: [author],
+					sensitiveContent: [sensitiveContent],
+				}),
+			);
+		});
+
+		it('should fail a search request when the classification cannot be loaded on either path', async () => {
+			// Arrange
+			const options = new BookPageOptionsDto();
+			options.search = 'Solo';
+			bookRepository.findWithFilters.mockResolvedValue([
+				[{ id: 'db-book', covers: [] }],
+				1,
+			]);
+			bookRepository.loadListRelations.mockRejectedValue(
+				new Error('relation query failed'),
+			);
+
+			// Act
+			const request = service.getAllBooks(options, 0, 'user-1', []);
+
+			// Assert
+			await expect(request).rejects.toThrow('relation query failed');
+		});
+
 		it('should fail the request when the classification cannot be loaded, instead of returning items a client would misfilter', async () => {
 			// Arrange
 			const options = new BookPageOptionsDto();
@@ -240,6 +286,41 @@ describe('BookQueryService (Search Optimization)', () => {
 			// Assert
 			await expect(request).rejects.toThrow('relation query failed');
 		});
+	});
+
+	describe('unclassified books on list items', () => {
+		it.each([
+			['search', 'Solo'],
+			['database', undefined],
+		])(
+			'should send empty arrays on the %s path so clients read "none", not "unknown"',
+			async (_path, search) => {
+				// Arrange
+				const options = new BookPageOptionsDto();
+				options.search = search;
+				bookRepository.findWithFilters.mockResolvedValue([
+					[{ id: 'book-1', covers: [] }],
+					1,
+				]);
+
+				// Act
+				const result = await service.getAllBooks(
+					options,
+					0,
+					'user-1',
+					[],
+				);
+
+				// Assert
+				expect(result.data[0]).toEqual(
+					expect.objectContaining({
+						tags: [],
+						authors: [],
+						sensitiveContent: [],
+					}),
+				);
+			},
+		);
 	});
 
 	describe('cover variant selection on listing', () => {
