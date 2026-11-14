@@ -2,7 +2,7 @@
 # backup.sh — Gerenciador unificado de backups do ecossistema Gatuno
 #
 # Uso:
-#   ./scripts/backup.sh [comando] [opções]
+#   ./scripts/backup.sh [comando] [diretório] [opções]
 #
 # Comandos disponíveis:
 #   all            (Padrão) Executa backup completo (binários RustFS + MySQL + Redis)
@@ -47,7 +47,10 @@ show_help() {
 Gatuno Backup Manager — CLI de gerenciamento de backups
 
 Uso:
-  $0 [comando] [opções]
+  $0 [comando] [diretório] [opções]
+
+  [diretório] é opcional e substitui o diretório de backups padrão
+  (em "restore", é o caminho do backup a restaurar).
 
 Comandos:
   all              Backup completo (RustFS + MySQL + Redis em paralelo)
@@ -69,6 +72,7 @@ Opções comuns repassadas aos scripts:
 Exemplos rápidos:
   $0                                # Backup completo padrão
   $0 db                             # Apenas MySQL + Redis
+  $0 all /backups -q                # Backup completo em /backups, silencioso
   $0 pre-migration                  # Snapshot rápido pré-migration
   $0 list                           # Ver histórico e espaço ocupado
   $0 restore db                     # Menu interativo de restauração de banco
@@ -151,6 +155,20 @@ cmd_schedule() {
 CMD="${1:-all}"
 shift || true
 
+RESTORE_TYPE=""
+if [ "$CMD" = "restore" ]; then
+    RESTORE_TYPE="${1:-}"
+    shift || true
+fi
+
+# Um diretório posicional (ex: "all /backups -q") substitui o padrão. Ele é
+# consumido aqui porque os scripts esperam o diretório como primeiro argumento
+# e as flags depois — repassá-lo no meio das flags interrompe o getopts deles.
+if [ $# -gt 0 ] && [[ ! "$1" =~ ^- ]]; then
+    BACKUPS_DIR="$1"
+    shift
+fi
+
 case "$CMD" in
     all)
         "${BACKUP_SCRIPTS_DIR}/backup-all.sh" "${BACKUPS_DIR}" -e "${ENV_FILE}" "$@"
@@ -173,11 +191,9 @@ case "$CMD" in
         cmd_list
         ;;
     restore)
-        SUB_TYPE="${1:-}"
-        shift || true
-        if [ "$SUB_TYPE" = "db" ]; then
+        if [ "$RESTORE_TYPE" = "db" ]; then
             "${BACKUP_SCRIPTS_DIR}/restore-database.sh" "${BACKUPS_DIR}" -e "${ENV_FILE}" "$@"
-        elif [ "$SUB_TYPE" = "data" ]; then
+        elif [ "$RESTORE_TYPE" = "data" ]; then
             "${BACKUP_SCRIPTS_DIR}/restore-api-data.sh" "${BACKUPS_DIR}" "$@"
         else
             echo "Uso: $0 restore [db|data] [opções]"

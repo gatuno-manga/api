@@ -384,7 +384,7 @@ describe('Cover Variants and Reprocessing Pipeline (e2e)', () => {
 			const response = await request(app.getHttpServer())
 				.post(`/api/admin/images/covers/${cover.id}/reprocess`)
 				.set('Authorization', `Bearer ${adminToken}`)
-				.expect(201);
+				.expect(202);
 
 			expect(response.body).toEqual({
 				message: `Reprocessing requested for cover ${cover.id}.`,

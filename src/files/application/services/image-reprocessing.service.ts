@@ -14,20 +14,42 @@ interface ReprocessTable {
 	name: string;
 	pathColumn: string;
 	bucket: StorageBucket;
+	/** A tabela tem coluna deletedAt; o SQL cru não aplica esse filtro sozinho. */
+	softDeletes: boolean;
 	/** Só capas recebem variantes por enquanto (ver cover.constants.ts). */
 	widths?: number[];
 }
 
 const TABLES: ReprocessTable[] = [
-	{ name: 'user_images', pathColumn: 'path', bucket: StorageBucket.USERS },
+	{
+		name: 'user_images',
+		pathColumn: 'path',
+		bucket: StorageBucket.USERS,
+		softDeletes: false,
+	},
 	{
 		name: 'covers',
 		pathColumn: 'url',
 		bucket: StorageBucket.BOOKS,
+		softDeletes: true,
 		widths: COVER_VARIANT_WIDTHS,
 	},
-	{ name: 'pages', pathColumn: 'path', bucket: StorageBucket.BOOKS },
+	{
+		name: 'pages',
+		pathColumn: 'path',
+		bucket: StorageBucket.BOOKS,
+		softDeletes: true,
+	},
 ];
+
+/**
+ * As varreduras não avançam cursor (ORDER BY id LIMIT n), então uma linha que
+ * nunca sai do filtro — como uma soft-deletada cujo arquivo já foi removido —
+ * ficaria para sempre na frente do lote.
+ */
+function notDeletedClause(table: ReprocessTable): string {
+	return table.softDeletes ? ' AND deletedAt IS NULL' : '';
+}
 
 /**
  * Identifica e reenvia ao file-processor imagens que precisam de processamento:
@@ -88,7 +110,7 @@ export class ImageReprocessingService {
 
 		const sql = [
 			`SELECT id, ${table.pathColumn} as path FROM ${table.name}`,
-			`WHERE ${table.pathColumn} LIKE 'processing/%' AND updatedAt < ?`,
+			`WHERE ${table.pathColumn} LIKE 'processing/%' AND updatedAt < ?${notDeletedClause(table)}`,
 			'ORDER BY id ASC LIMIT ?',
 		].join(' ');
 
@@ -134,8 +156,9 @@ export class ImageReprocessingService {
 
 		const sql = [
 			`SELECT id, ${table.pathColumn} as path FROM ${table.name}`,
-			`WHERE ${table.pathColumn} NOT LIKE 'processing/%'`,
-			`AND ${table.pathColumn} NOT LIKE 'http%'`,
+			`WHERE ${table.pathColumn} != ''`,
+			`AND ${table.pathColumn} NOT LIKE 'processing/%'`,
+			`AND ${table.pathColumn} NOT LIKE 'http%'${notDeletedClause(table)}`,
 			`AND ((metadata IS NULL OR JSON_EXTRACT(metadata, '$.pHash') IS NULL)${missingVariantsClause})`,
 			'ORDER BY id ASC LIMIT ?',
 		].join(' ');
@@ -189,8 +212,13 @@ export class ImageReprocessingService {
 	 * esperar o cron.
 	 */
 	async reprocessCoverById(coverId: string): Promise<boolean> {
+		const coversTable = TABLES.find((t) => t.name === 'covers');
+		if (!coversTable) {
+			throw new Error('Configuração da tabela "covers" não encontrada.');
+		}
+
 		const [cover]: ReprocessRecord[] = await this.dataSource.query(
-			'SELECT id, url as path FROM covers WHERE id = ?',
+			`SELECT id, url as path FROM covers WHERE id = ?${notDeletedClause(coversTable)}`,
 			[coverId],
 		);
 
@@ -201,9 +229,11 @@ export class ImageReprocessingService {
 			return false;
 		}
 
-		const coversTable = TABLES.find((t) => t.name === 'covers');
-		if (!coversTable) {
-			throw new Error('Configuração da tabela "covers" não encontrada.');
+		if (!cover.path) {
+			this.logger.warn(
+				`Capa ${coverId} não tem imagem salva, não pode ser reprocessada.`,
+			);
+			return false;
 		}
 
 		if (cover.path.startsWith('http')) {

@@ -1,6 +1,8 @@
 import { ImageReprocessingService } from '@files/application/services/image-reprocessing.service';
 import {
 	Controller,
+	HttpCode,
+	HttpStatus,
 	Logger,
 	NotFoundException,
 	Param,
@@ -32,6 +34,7 @@ export class ImageBackfillController {
 	) {}
 
 	@Post('backfill')
+	@HttpCode(HttpStatus.ACCEPTED)
 	@ApiDocsBackfill()
 	backfill() {
 		// Inicia em background para não travar a requisição HTTP
@@ -46,6 +49,7 @@ export class ImageBackfillController {
 	}
 
 	@Post('covers/:id/reprocess')
+	@HttpCode(HttpStatus.ACCEPTED)
 	@ApiDocsReprocessCover()
 	async reprocessCover(@Param('id') id: string) {
 		const published = await this.reprocessingService.reprocessCoverById(id);

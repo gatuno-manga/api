@@ -93,28 +93,15 @@ trate-o com o mesmo cuidado que outras credenciais do `.env`.
 
 Você pode escolher a melhor opção de acordo com o seu ambiente de produção:
 
-### Opção 1: Container Docker `backup-cron` (Recomendado / 100% Portátil / Alpine)
-O serviço `backup-cron` já vem integrado no `docker-compose.yml` e roda de forma isolada em um container Alpine com crond:
-
-```bash
-# Iniciar o container de backup
-docker compose up -d backup-cron
-
-# Acompanhar logs do cron e das execuções
-docker logs -f gatuno-backup-cron
-```
-
-Variáveis de ambiente suportadas no `.env`:
-- `BACKUP_CRON_SCHEDULE="0 3 * * *"` (Horário de execução, padrão diário às 03:00)
-- `BACKUP_RETENTION="5"` (Número de backups mantidos por tipo)
-- `TZ="America/Sao_Paulo"` (Fuso horário do cron)
-
-### Opção 2: Crontab nativo do Host
+### Opção 1: Crontab nativo do Host
 ```cron
 0 3 * * * cd /opt/gatuno/infra && ./scripts/backup.sh all /backups -q >> /backups/cron.log 2>&1
 ```
 
-### Opção 3: Systemd Timer (Hosts Debian/Ubuntu)
+O diretório (`/backups`) é opcional e, quando informado, vem logo depois do
+comando e antes das flags.
+
+### Opção 2: Systemd Timer (Hosts Debian/Ubuntu)
 ```bash
 sudo cp scripts/backup/gatuno-backup.service scripts/backup/gatuno-backup.timer /etc/systemd/system/
 sudo systemctl daemon-reload

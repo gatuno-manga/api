@@ -43,6 +43,11 @@ describe('ImageReprocessingService', () => {
 		);
 	});
 
+	const queriesFor = (table: string): string[] =>
+		dataSourceMock.query.mock.calls
+			.map((call: unknown[]) => call[0] as string)
+			.filter((sql: string) => sql.includes(`FROM ${table} `));
+
 	describe('reprocessAll', () => {
 		it('respects the configured batch size on every query', async () => {
 			await service.reprocessAll();
@@ -63,6 +68,44 @@ describe('ImageReprocessingService', () => {
 			expect(outdatedQueries.length).toBeGreaterThan(0);
 			for (const sql of outdatedQueries) {
 				expect(sql).toContain("NOT LIKE 'http%'");
+			}
+		});
+
+		it('skips soft-deleted rows on every query of the tables that support soft delete', async () => {
+			await service.reprocessAll();
+
+			for (const table of ['covers', 'pages']) {
+				const queries = queriesFor(table);
+				expect(queries).toHaveLength(2);
+				for (const sql of queries) {
+					expect(sql).toContain('AND deletedAt IS NULL');
+				}
+			}
+		});
+
+		it('does not filter user_images by deletedAt, a column that table does not have', async () => {
+			await service.reprocessAll();
+
+			const queries = queriesFor('user_images');
+			expect(queries).toHaveLength(2);
+			for (const sql of queries) {
+				expect(sql).not.toContain('deletedAt');
+			}
+		});
+
+		it('skips rows with an empty path in the outdated-images query for every table', async () => {
+			await service.reprocessAll();
+
+			const expectedGuards = {
+				user_images: "path != ''",
+				covers: "url != ''",
+				pages: "path != ''",
+			};
+			for (const [table, guard] of Object.entries(expectedGuards)) {
+				const [outdatedQuery] = queriesFor(table).filter((sql) =>
+					sql.includes('NOT LIKE'),
+				);
+				expect(outdatedQuery).toContain(guard);
 			}
 		});
 
@@ -174,6 +217,26 @@ describe('ImageReprocessingService', () => {
 			expect(
 				eventPublisherMock.publishImageProcessingRequest,
 			).not.toHaveBeenCalled();
+		});
+
+		it('returns false and does not publish when the cover has no stored path', async () => {
+			dataSourceMock.query.mockResolvedValueOnce([
+				{ id: 'cover-4', path: '' },
+			]);
+
+			const result = await service.reprocessCoverById('cover-4');
+
+			expect(result).toBe(false);
+			expect(
+				eventPublisherMock.publishImageProcessingRequest,
+			).not.toHaveBeenCalled();
+		});
+
+		it('does not look up soft-deleted covers', async () => {
+			await service.reprocessCoverById('cover-5');
+
+			const [sql] = dataSourceMock.query.mock.calls[0];
+			expect(sql).toContain('AND deletedAt IS NULL');
 		});
 
 		it('returns false when the cover does not exist', async () => {

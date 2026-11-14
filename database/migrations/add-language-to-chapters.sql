@@ -14,15 +14,19 @@ PREPARE stmt FROM @s;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
--- 2. Drop the old unique index (index, bookId) if exists
+-- 2. Drop the old unique index (index, bookId) if exists.
+-- It must be a unique index covering exactly those two columns: the new index
+-- from step 3 also contains both, and matching it would drop and rebuild it on
+-- every run.
 SET @constraint_name = (
-    SELECT CONSTRAINT_NAME
-    FROM information_schema.KEY_COLUMN_USAGE
+    SELECT INDEX_NAME
+    FROM information_schema.STATISTICS
     WHERE TABLE_SCHEMA = DATABASE() 
       AND TABLE_NAME = 'chapters' 
-      AND COLUMN_NAME IN ('index', 'bookId')
-    GROUP BY CONSTRAINT_NAME
-    HAVING COUNT(COLUMN_NAME) = 2
+      AND NON_UNIQUE = 0
+    GROUP BY INDEX_NAME
+    HAVING COUNT(*) = 2
+       AND SUM(COLUMN_NAME IN ('index', 'bookId')) = 2
     LIMIT 1
 );
 

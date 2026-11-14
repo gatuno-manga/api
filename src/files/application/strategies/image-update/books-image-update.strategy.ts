@@ -13,6 +13,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
 	ImageProcessingCompletedEvent,
 	ImageUpdateStrategy,
+	stripTargetBucketPrefix,
 } from './image-update.strategy';
 
 @Injectable()
@@ -31,14 +32,13 @@ export class BooksImageUpdateStrategy implements ImageUpdateStrategy {
 
 	/**
 	 * Deriva o path usado como chave de busca no banco (cover.url / page.path).
-	 * Reprocessamento in-place (isBackfill) envia o rawPath já no bucket final
-	 * (ex: "books/ab/uuid.webp"), que deve bater com o valor já salvo, sem o
-	 * prefixo do bucket. O fluxo normal envia o rawPath no bucket "processing".
+	 * Reprocessamento in-place (isBackfill) já chega com o prefixo do bucket
+	 * final; o fluxo normal envia o rawPath no bucket "processing".
 	 */
 	private resolveOldPath(rawPath: string, targetBucket: string): string {
-		const bucketPrefix = `${targetBucket}/`;
-		if (rawPath.startsWith(bucketPrefix)) {
-			return rawPath.substring(bucketPrefix.length);
+		const storedPath = stripTargetBucketPrefix(rawPath, targetBucket);
+		if (storedPath !== rawPath) {
+			return storedPath;
 		}
 
 		let oldPath = rawPath.replace(/^(books|processing)\//, '');
