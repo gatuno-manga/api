@@ -1,4 +1,5 @@
 import { QueueCoverProcessorDto } from '@books/application/dto/queue-cover-processor.dto';
+import { COVER_VARIANT_WIDTHS } from '@books/domain/constants/cover.constants';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { Book } from '@books/infrastructure/database/entities/book.entity';
 import { Cover } from '@books/infrastructure/database/entities/cover.entity';
@@ -115,6 +116,7 @@ export class CoverImageProcessor extends WorkerHost implements OnModuleInit {
 				uploadTarget: {
 					bucket: StorageBucket.PROCESSING,
 				},
+				widths: COVER_VARIANT_WIDTHS,
 			};
 
 			const requestedUrls = covers.map((c) => c.url);

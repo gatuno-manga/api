@@ -4,6 +4,7 @@ import { Cover as InfrastructureCover } from '@books/infrastructure/database/ent
 import { Injectable, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ImageMetadata } from '@src/common/domain/value-objects/image-metadata.vo';
+import { ImageVariant } from '@src/common/domain/value-objects/image-variant.vo';
 import {
 	EntityManager,
 	FindOptionsOrder,
@@ -42,6 +43,21 @@ export class TypeOrmCoverRepositoryAdapter implements ICoverRepository {
 	}
 
 	async save(cover: DomainCover): Promise<DomainCover> {
+		if (cover.id) {
+			await this.repository.update(cover.id, {
+				url: cover.url,
+				title: cover.title,
+				index: cover.index,
+				metadata: cover.metadata,
+				variants: cover.variants,
+				imageHash: cover.imageHash,
+				originalUrl: cover.originalUrl,
+				selected: cover.selected,
+				scrapingStatus: cover.scrapingStatus,
+				retries: cover.retries,
+			} as Parameters<Repository<InfrastructureCover>['update']>[1]);
+			return cover;
+		}
 		const entity = this.repository.create();
 		Object.assign(entity, cover);
 		const saved = await this.repository.save(entity);
@@ -150,6 +166,7 @@ export class TypeOrmCoverRepositoryAdapter implements ICoverRepository {
 			newPath: string;
 			metadata?: unknown;
 			originalUrl?: string;
+			variants?: ImageVariant[];
 		}[],
 	): Promise<void> {
 		const oldPaths = updates.map((u) => u.oldPath);
@@ -164,6 +181,7 @@ export class TypeOrmCoverRepositoryAdapter implements ICoverRepository {
 					? [{ originalUrl: In(originalUrls) }]
 					: []),
 			] as unknown as FindOptionsWhere<InfrastructureCover>[],
+			comment: 'force_master',
 		});
 
 		for (const cover of covers) {
@@ -173,14 +191,15 @@ export class TypeOrmCoverRepositoryAdapter implements ICoverRepository {
 					u.oldPath === cover.url,
 			);
 			if (update) {
-				cover.url = update.newPath;
-				if (update.metadata) {
-					cover.metadata = update.metadata as ImageMetadata;
-				}
+				await this.repository.update(cover.id, {
+					url: update.newPath,
+					...(update.metadata
+						? { metadata: update.metadata as ImageMetadata }
+						: {}),
+					...(update.variants ? { variants: update.variants } : {}),
+				} as Parameters<Repository<InfrastructureCover>['update']>[1]);
 			}
 		}
-
-		await this.repository.save(covers);
 	}
 
 	async findStuckCovers(hours: number): Promise<DomainCover[]> {

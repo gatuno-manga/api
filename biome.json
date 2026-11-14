@@ -31,7 +31,13 @@
 		}
 	},
 	"files": {
-		"ignore": ["**/dist", "**/node_modules", "**/.angular", "**/coverage"]
+		"ignore": [
+			"**/dist",
+			"**/node_modules",
+			"**/.angular",
+			"**/coverage",
+			"src/schema.gql"
+		]
 	},
 	"overrides": [
 		{

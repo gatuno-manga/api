@@ -149,6 +149,99 @@ describe('BookQueryService (Search Optimization)', () => {
 		expect(result.data[0].id).toBe('fallback-book');
 	});
 
+	describe('cover variant selection on listing', () => {
+		it('should serve the smallest variant when the cover has variants', async () => {
+			const options = new BookPageOptionsDto();
+			options.search = undefined;
+
+			bookRepository.findWithFilters.mockResolvedValue([
+				[
+					{
+						id: 'book-1',
+						covers: [
+							{
+								url: 'ab/original.webp',
+								metadata: { width: 1920, height: 2841 },
+								variants: [
+									{
+										width: 600,
+										path: 'ab/original_w600.webp',
+										metadata: { width: 600, height: 888 },
+									},
+									{
+										width: 300,
+										path: 'ab/original_w300.webp',
+										metadata: { width: 300, height: 444 },
+									},
+								],
+							},
+						],
+					},
+				],
+				1,
+			]);
+
+			const mediaUrlService = (service as any).mediaUrlService;
+			mediaUrlService.resolveUrl.mockImplementation(
+				(path: string) => `https://cdn/${path}`,
+			);
+
+			const result = await service.getAllBooks(options, 0, 'user-1', []);
+
+			expect(mediaUrlService.resolveUrl).toHaveBeenCalledWith(
+				'ab/original_w300.webp',
+				'books',
+			);
+			expect((result.data[0] as any).cover).toBe(
+				'https://cdn/ab/original_w300.webp',
+			);
+			expect((result.data[0] as any).coverMetadata).toEqual({
+				width: 300,
+				height: 444,
+			});
+		});
+
+		it('should fall back to the original cover when there are no variants', async () => {
+			const options = new BookPageOptionsDto();
+			options.search = undefined;
+
+			bookRepository.findWithFilters.mockResolvedValue([
+				[
+					{
+						id: 'book-1',
+						covers: [
+							{
+								url: 'ab/original.webp',
+								metadata: { width: 1920, height: 2841 },
+								variants: null,
+							},
+						],
+					},
+				],
+				1,
+			]);
+
+			const mediaUrlService = (service as any).mediaUrlService;
+			mediaUrlService.resolveUrl.mockImplementation(
+				(path: string) => `https://cdn/${path}`,
+			);
+
+			const result = await service.getAllBooks(options, 0, 'user-1', []);
+
+			expect(mediaUrlService.resolveUrl).toHaveBeenCalledWith(
+				'ab/original.webp',
+				'books',
+			);
+			expect((result.data[0] as any).cover).toBe(
+				'https://cdn/ab/original.webp',
+			);
+			expect((result.data[0] as any).coverMetadata).toEqual({
+				width: 1920,
+				height: 2841,
+			});
+		});
+	});
+
 	describe('getStuckEntities', () => {
 		it('should return stuck chapters and covers', async () => {
 			chapterRepository.findStuckChapters.mockResolvedValue([

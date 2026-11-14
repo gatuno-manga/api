@@ -62,7 +62,7 @@ describe('BooksImageUpdateStrategy', () => {
 
 		const events: ImageProcessingCompletedEvent[] = [
 			{
-				rawPath: 'books/uuid-1.webp',
+				rawPath: 'processing/uuid-1.webp',
 				originalUrl: 'https://source/cover1.jpg',
 				targetBucket: StorageBucket.BOOKS,
 				results: [
@@ -82,6 +82,7 @@ describe('BooksImageUpdateStrategy', () => {
 				newPath: 'books/optimized-uuid-1.webp',
 				metadata: mockMetadata,
 				originalUrl: 'https://source/cover1.jpg',
+				variants: undefined,
 			},
 		];
 
@@ -97,9 +98,101 @@ describe('BooksImageUpdateStrategy', () => {
 			JSON.stringify({
 				path: 'books/optimized-uuid-1.webp',
 				metadata: mockMetadata,
+				variants: undefined,
 			}),
 			'EX',
 			3600,
+		);
+	});
+
+	it('should treat rawPath already in the target bucket as an in-place reprocess (backfill), matching the path already stored in the DB', async () => {
+		const mockMetadata = { width: 1920, height: 2841 } as ImageMetadata;
+
+		const events: ImageProcessingCompletedEvent[] = [
+			{
+				rawPath: 'books/ab/uuid.webp',
+				targetBucket: StorageBucket.BOOKS,
+				results: [
+					{
+						targetPath: 'ab/uuid.webp',
+						metadata: mockMetadata,
+						kind: 'original',
+					},
+				],
+			},
+		];
+
+		await strategy.updateBatch(events);
+
+		const expectedUpdates = [
+			{
+				oldPath: 'ab/uuid.webp',
+				newPath: 'ab/uuid.webp',
+				metadata: mockMetadata,
+				originalUrl: undefined,
+				variants: undefined,
+			},
+		];
+
+		expect(coverRepositoryMock.updateBatch).toHaveBeenCalledWith(
+			expectedUpdates,
+		);
+	});
+
+	it('should split variant results from the original and pass them separately to the cover repository', async () => {
+		const originalMetadata = { width: 1920, height: 2841 } as ImageMetadata;
+		const variant600Metadata = { width: 600, height: 888 } as ImageMetadata;
+		const variant300Metadata = { width: 300, height: 444 } as ImageMetadata;
+
+		const events: ImageProcessingCompletedEvent[] = [
+			{
+				rawPath: 'processing/ab/uuid.jpg',
+				targetBucket: StorageBucket.BOOKS,
+				results: [
+					{
+						targetPath: 'ab/uuid.webp',
+						metadata: originalMetadata,
+						kind: 'original',
+					},
+					{
+						targetPath: 'ab/uuid_w600.webp',
+						metadata: variant600Metadata,
+						kind: 'variant',
+					},
+					{
+						targetPath: 'ab/uuid_w300.webp',
+						metadata: variant300Metadata,
+						kind: 'variant',
+					},
+				],
+			},
+		];
+
+		await strategy.updateBatch(events);
+
+		const expectedUpdates = [
+			{
+				oldPath: 'processing/ab/uuid.jpg',
+				newPath: 'ab/uuid.webp',
+				metadata: originalMetadata,
+				originalUrl: undefined,
+				variants: [
+					{
+						width: 600,
+						path: 'ab/uuid_w600.webp',
+						metadata: variant600Metadata,
+					},
+					{
+						width: 300,
+						path: 'ab/uuid_w300.webp',
+						metadata: variant300Metadata,
+					},
+				],
+			},
+		];
+
+		expect(coverRepositoryMock.updateBatch).toHaveBeenCalledWith(
+			expectedUpdates,
 		);
 	});
 });

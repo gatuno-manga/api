@@ -25,6 +25,11 @@
 		"test:memory": "node --expose-gc node_modules/.bin/jest --testPathPattern=memory --no-coverage --runInBand",
 		"test:load": "k6 run test/load/basic.js",
 		"test:load:flow": "k6 run test/load/reading-flow.js",
+		"backup": "bash scripts/backup.sh all",
+		"backup:db": "bash scripts/backup.sh db",
+		"backup:data": "bash scripts/backup.sh data",
+		"backup:list": "bash scripts/backup.sh list",
+		"backup:pre-migration": "bash scripts/backup.sh pre-migration",
 		"prepare": "lefthook install"
 	},
 	"dependencies": {

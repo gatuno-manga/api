@@ -1,4 +1,5 @@
 import { Cover } from '@books/domain/entities/cover';
+import { ImageVariant } from 'src/common/domain/value-objects/image-variant.vo';
 
 export interface ICoverRepository {
 	findById(id: string, relations?: string[]): Promise<Cover | null>;
@@ -18,6 +19,7 @@ export interface ICoverRepository {
 			newPath: string;
 			metadata?: unknown;
 			originalUrl?: string;
+			variants?: ImageVariant[];
 		}[],
 	): Promise<void>;
 	findStuckCovers(hours: number): Promise<Cover[]>;

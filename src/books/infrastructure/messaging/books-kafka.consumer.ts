@@ -33,6 +33,7 @@ import { Controller, Inject, Logger } from '@nestjs/common';
 import { EventPattern, Payload } from '@nestjs/microservices';
 import { KafkaMessage } from 'kafkajs';
 import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
+import { ImageVariant } from 'src/common/domain/value-objects/image-variant.vo';
 
 interface ScrapingBookCompletedPayload {
 	jobId?: string;
@@ -412,8 +413,10 @@ export class BooksKafkaConsumer {
 			const jobId = data.jobId || data.job_id;
 
 			try {
-				const allCovers =
-					await this.coverRepository.findByBookId(bookId);
+				const allCovers = await this.coverRepository.findByBookId(
+					bookId,
+					'force_master',
+				);
 				const processingCovers = allCovers.filter(
 					(c) => c.scrapingStatus === ScrapingStatus.PROCESS,
 				);
@@ -495,10 +498,14 @@ export class BooksKafkaConsumer {
 								const optimized = JSON.parse(cached) as {
 									path: string;
 									metadata?: ImageMetadata;
+									variants?: ImageVariant[];
 								};
 								path = optimized.path;
 								if (optimized?.metadata) {
 									cover.metadata = optimized.metadata;
+								}
+								if (optimized?.variants) {
+									cover.variants = optimized.variants;
 								}
 							} catch (_e) {
 								this.logger.warn(

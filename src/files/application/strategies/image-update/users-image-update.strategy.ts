@@ -7,6 +7,7 @@ import {
 import {
 	ImageProcessingCompletedEvent,
 	ImageUpdateStrategy,
+	stripTargetBucketPrefix,
 } from './image-update.strategy';
 
 @Injectable()
@@ -23,15 +24,14 @@ export class UsersImageUpdateStrategy implements ImageUpdateStrategy {
 	async updateBatch(events: ImageProcessingCompletedEvent[]): Promise<void> {
 		const updates = events
 			.filter((event) => event.results && event.results.length > 0)
-			.map((event) => {
-				const oldPath = event.rawPath;
-
-				return {
-					oldPath,
-					newPath: event.results[0].targetPath,
-					metadata: event.results[0].metadata,
-				};
-			});
+			.map((event) => ({
+				oldPath: stripTargetBucketPrefix(
+					event.rawPath,
+					event.targetBucket,
+				),
+				newPath: event.results[0].targetPath,
+				metadata: event.results[0].metadata,
+			}));
 
 		await this.userImageRepository.updateBatch(updates);
 	}

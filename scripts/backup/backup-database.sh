@@ -106,6 +106,17 @@ env_var() {
     echo "${value:-$default}"
 }
 
+# Loga as primeiras linhas de um arquivo de erro, com indentação
+log_error_excerpt() {
+    local err_file="$1"
+    if [ -s "${err_file}" ]; then
+        log "   Erro:"
+        while IFS= read -r line; do
+            log "      ${line}"
+        done < <(head -n 20 "${err_file}")
+    fi
+}
+
 # ============================================
 # Parse de argumentos
 # ============================================
@@ -195,6 +206,20 @@ log "📝 Log: ${LOG_FILE}"
 log ""
 
 # ============================================
+# Limpar backups .inprogress órfãos de execuções anteriores
+# ============================================
+
+mapfile -t ORPHANED < <(find "${BACKUP_DIR}" -maxdepth 1 -type d -name 'db-backup-*.inprogress' 2>/dev/null || true)
+if [ ${#ORPHANED[@]} -gt 0 ]; then
+    log "🧹 Removendo ${#ORPHANED[@]} backup(s) .inprogress órfão(s) de execuções anteriores..."
+    for orphan in "${ORPHANED[@]}"; do
+        log "   $(basename "${orphan}")"
+        rm -rf "${orphan}"
+    done
+    log ""
+fi
+
+# ============================================
 # Criar diretório de backup
 # ============================================
 
@@ -202,7 +227,7 @@ BACKUP_PATH="${BACKUP_DIR}/${BACKUP_NAME}"
 INPROGRESS_PATH="${BACKUP_PATH}.inprogress"
 mkdir -p "${INPROGRESS_PATH}"
 
-trap cleanup EXIT
+trap cleanup EXIT INT TERM
 
 log "════════════════════════════════════════════════════"
 log "🗄️  Iniciando backup do banco de dados"
@@ -221,58 +246,86 @@ MYSQL_SIZE=""
 if [ "$SKIP_MYSQL" = false ]; then
     log "🐬 MySQL — database: ${DB_NAME} (container: ${MYSQL_CONTAINER})"
 
-    MYSQL_DUMP_FILE="${INPROGRESS_PATH}/mysql-${DB_NAME}-${TIMESTAMP}.sql"
-    MYSQL_FILE_COMPRESSED="${MYSQL_DUMP_FILE}.zst"
+    MYSQL_FILE_COMPRESSED="${INPROGRESS_PATH}/mysql-${DB_NAME}-${TIMESTAMP}.sql.zst"
+    DUMP_ERR="${INPROGRESS_PATH}/mysqldump.err"
+    DUMP_LINES_FILE="${INPROGRESS_PATH}/.dump_lines"
 
-    # mysqldump com --single-transaction para consistência sem bloquear
-    # --master-data=2: inclui posição binlog como comentário (útil para replicação)
-    # --routines --events --triggers: inclui objetos armazenados
+    # --master-data foi renomeado para --source-data no MySQL 8.4+.
+    # Requer privilégio global RELOAD ou FLUSH_TABLES em *.*; se não tiver, roda sem para não falhar.
+    MYSQLDUMP_ARGS=(--user="${DB_USER}" --single-transaction --quick --lock-tables=false \
+        --routines --events --triggers --set-gtid-purged=OFF --no-tablespaces)
+    HAS_RELOAD=false
+    if docker exec -e MYSQL_PWD="${DB_PASS}" "$MYSQL_CONTAINER" mysql -u "${DB_USER}" -e "SHOW GRANTS FOR CURRENT_USER;" 2>/dev/null | grep -E -q 'ALL PRIVILEGES ON \*\.\*|RELOAD ON \*\.\*|FLUSH_TABLES ON \*\.\*'; then
+        HAS_RELOAD=true
+    fi
+
+    if [ "$HAS_RELOAD" = true ]; then
+        HELP_OUTPUT=$(docker exec -e MYSQL_PWD="${DB_PASS}" "$MYSQL_CONTAINER" mysqldump --help 2>/dev/null || true)
+        if echo "${HELP_OUTPUT}" | grep -q -- '--source-data'; then
+            MYSQLDUMP_ARGS+=(--source-data=2)
+        elif echo "${HELP_OUTPUT}" | grep -q -- '--master-data'; then
+            MYSQLDUMP_ARGS+=(--master-data=2)
+        fi
+    fi
+
+    # Detectar e ignorar views corrompidas/inválidas que quebram o mysqldump
+    VIEWS=$(docker exec -e MYSQL_PWD="${DB_PASS}" "$MYSQL_CONTAINER" mysql -u "${DB_USER}" -N -s -e \
+        "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA='${DB_NAME}' AND TABLE_TYPE='VIEW';" 2>/dev/null || true)
+    for view in $VIEWS; do
+        if ! docker exec -e MYSQL_PWD="${DB_PASS}" "$MYSQL_CONTAINER" mysql -u "${DB_USER}" "${DB_NAME}" -e "SHOW CREATE TABLE \`${view}\`;" >/dev/null 2>&1; then
+            log "   ⚠️  View inválida ignorada no dump: ${view}"
+            MYSQLDUMP_ARGS+=(--ignore-table="${DB_NAME}.${view}")
+        fi
+    done
+
     log "   📤 Executando mysqldump (single-transaction)..."
 
-    if docker exec "$MYSQL_CONTAINER" \
-        mysqldump \
-            --user="${DB_USER}" \
-            "--password=${DB_PASS}" \
-            --single-transaction \
-            --quick \
-            --lock-tables=false \
-            --routines \
-            --events \
-            --triggers \
-            --set-gtid-purged=OFF \
-            --master-data=2 \
-            "${DB_NAME}" \
-        > "${MYSQL_DUMP_FILE}" 2>/dev/null; then
+    # Comprimir em pipe direto (sem arquivo .sql intermediário) quando zstd
+    # está disponível no host — metade do IO e do pico de espaço em disco.
+    # A senha vai via variável de ambiente (não aparece em `docker top`/`ps`).
+    set +e
+    if command -v zstd >/dev/null 2>&1; then
+        docker exec -e MYSQL_PWD="${DB_PASS}" "$MYSQL_CONTAINER" \
+            mysqldump "${MYSQLDUMP_ARGS[@]}" "${DB_NAME}" \
+            2> "${DUMP_ERR}" \
+            | tee >(wc -l > "${DUMP_LINES_FILE}") \
+            | zstd -T0 -3 -q -o "${MYSQL_FILE_COMPRESSED}"
+        MYSQLDUMP_EXIT="${PIPESTATUS[0]}"
+    else
+        MYSQL_DUMP_FILE_RAW="${INPROGRESS_PATH}/mysql-${DB_NAME}-${TIMESTAMP}.sql"
+        docker exec -e MYSQL_PWD="${DB_PASS}" "$MYSQL_CONTAINER" \
+            mysqldump "${MYSQLDUMP_ARGS[@]}" "${DB_NAME}" \
+            > "${MYSQL_DUMP_FILE_RAW}" 2> "${DUMP_ERR}"
+        MYSQLDUMP_EXIT=$?
+        if [ "$MYSQLDUMP_EXIT" -eq 0 ]; then
+            wc -l < "${MYSQL_DUMP_FILE_RAW}" > "${DUMP_LINES_FILE}"
+            docker run --rm \
+                -v "${INPROGRESS_PATH}:/work" \
+                alpine \
+                sh -c "apk add --no-cache zstd >/dev/null 2>&1 && zstd -T0 -3 /work/$(basename "${MYSQL_DUMP_FILE_RAW}") -o /work/$(basename "${MYSQL_FILE_COMPRESSED}") && rm /work/$(basename "${MYSQL_DUMP_FILE_RAW}")"
+        fi
+    fi
+    set -e
 
-        # Verificar que o dump não está vazio
-        DUMP_LINES=$(wc -l < "${MYSQL_DUMP_FILE}")
+    if [ "$MYSQLDUMP_EXIT" -ne 0 ]; then
+        log "   ❌ Falha no mysqldump (código ${MYSQLDUMP_EXIT})"
+        log_error_excerpt "${DUMP_ERR}"
+        rm -f "${MYSQL_FILE_COMPRESSED}"
+    else
+        DUMP_LINES=$(cat "${DUMP_LINES_FILE}" 2>/dev/null || echo 0)
         if [ "$DUMP_LINES" -lt 10 ]; then
             log "   ❌ Dump gerado está vazio ou incompleto (${DUMP_LINES} linhas)"
-            rm -f "${MYSQL_DUMP_FILE}"
+            log_error_excerpt "${DUMP_ERR}"
+            rm -f "${MYSQL_FILE_COMPRESSED}"
         else
             log "   ✅ Dump concluído (${DUMP_LINES} linhas)"
-
-            # Comprimir com zstd
-            log "   🗜️  Comprimindo..."
-            if command -v zstd >/dev/null 2>&1; then
-                zstd -T0 -3 --rm "${MYSQL_DUMP_FILE}" -o "${MYSQL_FILE_COMPRESSED}" >/dev/null 2>&1
-            else
-                # Fallback Docker para compressão
-                docker run --rm \
-                    -v "${INPROGRESS_PATH}:/work" \
-                    alpine \
-                    sh -c "apk add --no-cache zstd >/dev/null 2>&1 && zstd -T0 -3 /work/$(basename "${MYSQL_DUMP_FILE}") -o /work/$(basename "${MYSQL_FILE_COMPRESSED}") && rm /work/$(basename "${MYSQL_DUMP_FILE}")"
-            fi
-
             MYSQL_SIZE=$(du -sh "${MYSQL_FILE_COMPRESSED}" 2>/dev/null | cut -f1)
             MYSQL_FILE=$(basename "${MYSQL_FILE_COMPRESSED}")
             log "   ✅ MySQL backup: ${MYSQL_FILE} (${MYSQL_SIZE})"
             MYSQL_SUCCESS=true
         fi
-    else
-        log "   ❌ Falha no mysqldump"
-        rm -f "${MYSQL_DUMP_FILE}"
     fi
+    rm -f "${DUMP_LINES_FILE}"
 
     log ""
 fi
@@ -288,66 +341,92 @@ REDIS_SIZE=""
 if [ "$SKIP_REDIS" = false ]; then
     log "🔴 Redis (container: ${REDIS_CONTAINER})"
 
-    REDIS_RDB_FILE="${INPROGRESS_PATH}/redis-${TIMESTAMP}.rdb"
-    REDIS_FILE_COMPRESSED="${REDIS_RDB_FILE}.zst"
+    REDIS_FILE_COMPRESSED="${INPROGRESS_PATH}/redis-${TIMESTAMP}.rdb.zst"
 
-    # Disparar BGSAVE e aguardar conclusão
-    log "   📸 Disparando BGSAVE..."
-
+    REDIS_ENV_ARGS=()
     if [ -n "$REDIS_PASSWORD" ]; then
-        REDIS_CLI_CMD="redis-cli -a ${REDIS_PASSWORD}"
-    else
-        REDIS_CLI_CMD="redis-cli"
+        REDIS_ENV_ARGS=(-e "REDISCLI_AUTH=${REDIS_PASSWORD}")
     fi
 
-    docker exec "$REDIS_CONTAINER" sh -c "${REDIS_CLI_CMD} BGSAVE" >/dev/null 2>&1
+    redis_cli() {
+        docker exec "${REDIS_ENV_ARGS[@]}" "$REDIS_CONTAINER" redis-cli "$@"
+    }
 
-    # Aguardar BGSAVE terminar (polling com timeout de 120s)
-    TIMEOUT=120
-    ELAPSED=0
-    while true; do
-        STATUS=$(docker exec "$REDIS_CONTAINER" sh -c "${REDIS_CLI_CMD} LASTSAVE" 2>/dev/null || echo "0")
-        BGSAVE_STATUS=$(docker exec "$REDIS_CONTAINER" sh -c "${REDIS_CLI_CMD} INFO persistence" 2>/dev/null | grep "rdb_bgsave_in_progress" | tr -d '\r' | cut -d: -f2 || echo "0")
+    # Confirma que o BGSAVE realmente gerou um snapshot NOVO: espera
+    # rdb_bgsave_in_progress voltar a 0, e exige que LASTSAVE tenha avançado
+    # e que rdb_last_bgsave_status não seja "err". Sem isso, um BGSAVE que
+    # falha silenciosamente resultaria em cópia de um RDB antigo reportado
+    # como sucesso.
+    REDIS_LASTSAVE_BEFORE=$(redis_cli LASTSAVE 2>/dev/null || echo "")
+    REDIS_BGSAVE_CONFIRMED=false
 
-        if [ "${BGSAVE_STATUS}" = "0" ]; then
+    for attempt in 1 2; do
+        log "   📸 Disparando BGSAVE (tentativa ${attempt}/2)..."
+        redis_cli BGSAVE >/dev/null 2>&1
+
+        TIMEOUT=120
+        ELAPSED=0
+        while true; do
+            IN_PROGRESS=$(redis_cli INFO persistence 2>/dev/null | grep "^rdb_bgsave_in_progress:" | tr -d '\r' | cut -d: -f2 || echo "1")
+            if [ "${IN_PROGRESS}" = "0" ]; then break; fi
+            sleep 2
+            ELAPSED=$((ELAPSED + 2))
+            if [ $ELAPSED -ge $TIMEOUT ]; then
+                log "   ⚠️  Timeout aguardando BGSAVE (${TIMEOUT}s)"
+                break
+            fi
+            log "   ⏳ Aguardando BGSAVE... (${ELAPSED}s)"
+        done
+
+        REDIS_LASTSAVE_AFTER=$(redis_cli LASTSAVE 2>/dev/null || echo "")
+        REDIS_LAST_STATUS=$(redis_cli INFO persistence 2>/dev/null | grep "^rdb_last_bgsave_status:" | tr -d '\r' | cut -d: -f2 || echo "")
+
+        if [ "${REDIS_LASTSAVE_AFTER}" != "${REDIS_LASTSAVE_BEFORE}" ] && [ "${REDIS_LAST_STATUS}" != "err" ]; then
+            REDIS_BGSAVE_CONFIRMED=true
             break
         fi
-
-        sleep 2
-        ELAPSED=$((ELAPSED + 2))
-        if [ $ELAPSED -ge $TIMEOUT ]; then
-            log "   ⚠️  Timeout aguardando BGSAVE — copiando RDB mesmo assim"
-            break
-        fi
-        log "   ⏳ Aguardando BGSAVE... (${ELAPSED}s)"
+        log "   ⚠️  BGSAVE não confirmado (LASTSAVE inalterado ou status de erro)"
     done
 
-    # Copiar o arquivo RDB do container
-    REDIS_DATA_DIR=$(docker exec "$REDIS_CONTAINER" sh -c "${REDIS_CLI_CMD} CONFIG GET dir 2>/dev/null | tail -n1" || echo "/data")
-    REDIS_RDB_NAME=$(docker exec "$REDIS_CONTAINER" sh -c "${REDIS_CLI_CMD} CONFIG GET dbfilename 2>/dev/null | tail -n1" || echo "dump.rdb")
-
-    if docker cp "${REDIS_CONTAINER}:${REDIS_DATA_DIR}/${REDIS_RDB_NAME}" "${REDIS_RDB_FILE}" 2>/dev/null; then
-        RDB_SIZE=$(du -sh "${REDIS_RDB_FILE}" 2>/dev/null | cut -f1)
-        log "   ✅ RDB copiado (${RDB_SIZE})"
-
-        # Comprimir
-        log "   🗜️  Comprimindo RDB..."
-        if command -v zstd >/dev/null 2>&1; then
-            zstd -T0 -3 --rm "${REDIS_RDB_FILE}" -o "${REDIS_FILE_COMPRESSED}" >/dev/null 2>&1
-        else
-            docker run --rm \
-                -v "${INPROGRESS_PATH}:/work" \
-                alpine \
-                sh -c "apk add --no-cache zstd >/dev/null 2>&1 && zstd -T0 -3 /work/$(basename "${REDIS_RDB_FILE}") -o /work/$(basename "${REDIS_FILE_COMPRESSED}") && rm /work/$(basename "${REDIS_RDB_FILE}")"
-        fi
-
-        REDIS_SIZE=$(du -sh "${REDIS_FILE_COMPRESSED}" 2>/dev/null | cut -f1)
-        REDIS_FILE=$(basename "${REDIS_FILE_COMPRESSED}")
-        log "   ✅ Redis backup: ${REDIS_FILE} (${REDIS_SIZE})"
-        REDIS_SUCCESS=true
+    if [ "$REDIS_BGSAVE_CONFIRMED" != true ]; then
+        log "   ❌ Não foi possível confirmar snapshot novo do Redis — pulando cópia do RDB"
     else
-        log "   ❌ Falha ao copiar RDB do container"
-        rm -f "${REDIS_RDB_FILE}"
+        REDIS_DATA_DIR=$(redis_cli CONFIG GET dir 2>/dev/null | tail -n1)
+        REDIS_RDB_NAME=$(redis_cli CONFIG GET dbfilename 2>/dev/null | tail -n1)
+        REDIS_DATA_DIR="${REDIS_DATA_DIR:-/data}"
+        REDIS_RDB_NAME="${REDIS_RDB_NAME:-dump.rdb}"
+
+        log "   🗜️  Copiando e comprimindo RDB..."
+        set +e
+        if command -v zstd >/dev/null 2>&1; then
+            # Stream direto do container para zstd — evita cópia intermediária no host
+            docker exec "${REDIS_ENV_ARGS[@]}" "$REDIS_CONTAINER" \
+                cat "${REDIS_DATA_DIR}/${REDIS_RDB_NAME}" \
+                | zstd -T0 -3 -q -o "${REDIS_FILE_COMPRESSED}"
+            COPY_EXIT="${PIPESTATUS[0]}"
+        else
+            REDIS_RDB_FILE_RAW="${INPROGRESS_PATH}/redis-${TIMESTAMP}.rdb"
+            if docker cp "${REDIS_CONTAINER}:${REDIS_DATA_DIR}/${REDIS_RDB_NAME}" "${REDIS_RDB_FILE_RAW}" 2>/dev/null; then
+                docker run --rm \
+                    -v "${INPROGRESS_PATH}:/work" \
+                    alpine \
+                    sh -c "apk add --no-cache zstd >/dev/null 2>&1 && zstd -T0 -3 /work/$(basename "${REDIS_RDB_FILE_RAW}") -o /work/$(basename "${REDIS_FILE_COMPRESSED}") && rm /work/$(basename "${REDIS_RDB_FILE_RAW}")"
+                COPY_EXIT=$?
+            else
+                COPY_EXIT=1
+            fi
+        fi
+        set -e
+
+        if [ "$COPY_EXIT" -eq 0 ] && [ -s "${REDIS_FILE_COMPRESSED}" ]; then
+            REDIS_SIZE=$(du -sh "${REDIS_FILE_COMPRESSED}" 2>/dev/null | cut -f1)
+            REDIS_FILE=$(basename "${REDIS_FILE_COMPRESSED}")
+            log "   ✅ Redis backup: ${REDIS_FILE} (${REDIS_SIZE})"
+            REDIS_SUCCESS=true
+        else
+            log "   ❌ Falha ao copiar/comprimir RDB do container"
+            rm -f "${REDIS_FILE_COMPRESSED}"
+        fi
     fi
 
     log ""
@@ -363,16 +442,16 @@ if [ "$MYSQL_SUCCESS" = false ] && [ "$REDIS_SUCCESS" = false ]; then
 fi
 
 log "🔐 Gerando manifest.sha256..."
-find "${INPROGRESS_PATH}" -type f | sort | \
-    xargs sha256sum 2>/dev/null | \
-    sed "s|${INPROGRESS_PATH}/||" \
-    > "${INPROGRESS_PATH}/manifest.sha256" &
+find "${INPROGRESS_PATH}" -mindepth 1 -maxdepth 1 -type f ! -name '.*' ! -name 'manifest.sha256' -printf '%P\n' | \
+    LC_ALL=C sort > "${INPROGRESS_PATH}/.filelist.tmp"
+
+hash_filelist "${INPROGRESS_PATH}/.filelist.tmp" "${INPROGRESS_PATH}" "${INPROGRESS_PATH}/manifest.sha256" &
 HASH_PID=$!
 if [ "$QUIET" = false ]; then
     spinner "$HASH_PID" "Calculando checksums..."
-else
-    wait "$HASH_PID"
 fi
+wait "$HASH_PID"
+rm -f "${INPROGRESS_PATH}/.filelist.tmp"
 
 # Info
 cat > "${INPROGRESS_PATH}/info.txt" << EOF
@@ -395,7 +474,7 @@ log ""
 # Política de retenção
 # ============================================
 
-mapfile -t ALL_BACKUPS < <(ls -1dt "${BACKUP_DIR}"/db-backup-* 2>/dev/null | grep -v '\.inprogress$' || true)
+mapfile -t ALL_BACKUPS < <(find "${BACKUP_DIR}" -maxdepth 1 -type d -name 'db-backup-*' ! -name '*.inprogress' 2>/dev/null | sort -r || true)
 BACKUP_COUNT=${#ALL_BACKUPS[@]}
 
 if [ "$BACKUP_COUNT" -gt "$MAX_BACKUPS" ]; then
@@ -408,6 +487,16 @@ if [ "$BACKUP_COUNT" -gt "$MAX_BACKUPS" ]; then
     done
     log "   ✅ ${BACKUP_COUNT} → ${MAX_BACKUPS} backups"
     log ""
+fi
+
+# Poda de logs de execuções antigas (db-backup-*.log soltos no diretório),
+# mesma retenção dos backups. O glob antigo (sem -type d) apagava esses
+# logs junto com os diretórios, inflando a contagem de retenção pela metade.
+mapfile -t OLD_LOGS < <(find "${BACKUP_DIR}" -maxdepth 1 -type f -name 'db-backup-*.log' 2>/dev/null | sort -r || true)
+if [ "${#OLD_LOGS[@]}" -gt "$MAX_BACKUPS" ]; then
+    for old_log in "${OLD_LOGS[@]:$MAX_BACKUPS}"; do
+        rm -f "${old_log}"
+    done
 fi
 
 # ============================================
@@ -426,13 +515,13 @@ log ""
 if [ "$MYSQL_SUCCESS" = true ]; then
     log "🐬 MySQL:  ✅ ${MYSQL_FILE} (${MYSQL_SIZE})"
 else
-    log "🐬 MySQL:  ⏭️  pulado"
+    log "🐬 MySQL:  ⏭️  pulado ou falhou"
 fi
 
 if [ "$REDIS_SUCCESS" = true ]; then
     log "🔴 Redis:  ✅ ${REDIS_FILE} (${REDIS_SIZE})"
 else
-    log "🔴 Redis:  ⏭️  pulado"
+    log "🔴 Redis:  ⏭️  pulado ou falhou"
 fi
 
 log ""

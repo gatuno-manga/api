@@ -1,5 +1,6 @@
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
+import { ImageVariant } from 'src/common/domain/value-objects/image-variant.vo';
 import {
 	Column,
 	CreateDateColumn,
@@ -29,6 +30,9 @@ export class Cover {
 
 	@Column({ type: 'json', nullable: true })
 	metadata: ImageMetadata | null;
+
+	@Column({ type: 'json', nullable: true })
+	variants: ImageVariant[] | null;
 
 	@Column({ type: 'varchar', length: 255, nullable: true })
 	@Index()

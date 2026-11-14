@@ -94,10 +94,37 @@ fi
 ensure_tools rsync zstd tar sha256sum
 
 # ============================================
+# Limpar backups .inprogress órfãos de migrações interrompidas
+# ============================================
+
+mapfile -t ORPHANED < <(find "${BACKUP_DIR}" -maxdepth 1 -type d -name 'rustfs-backup-*.inprogress' 2>/dev/null || true)
+if [ ${#ORPHANED[@]} -gt 0 ]; then
+    log "🧹 Removendo ${#ORPHANED[@]} backup(s) .inprogress órfão(s) de migrações interrompidas anteriormente..."
+    for orphan in "${ORPHANED[@]}"; do
+        if [ "$DRY_RUN" = true ]; then
+            log_dry "remover órfão: $(basename "${orphan}")"
+        else
+            log "   $(basename "${orphan}")"
+            rm -rf "${orphan}"
+        fi
+    done
+    log ""
+fi
+
+# ============================================
 # Descobrir backups antigos
 # ============================================
 
-mapfile -t OLD_BACKUPS < <(ls -1t "${BACKUP_DIR}"/rustfs-data-backup-*.tar.zst 2>/dev/null | sort || true)
+# O script de backup já teve dois nomes ao longo do tempo (api-data-backup-*
+# e rustfs-data-backup-*) — cobrir os dois evita deixar backups antigos de
+# fora da migração. Ordenar por mtime (não por nome): os dois prefixos
+# colidem alfabeticamente sem refletir a ordem cronológica real, e a ordem
+# aqui importa — o loop encadeia cada migração via --link-dest na anterior.
+mapfile -t OLD_BACKUPS < <(
+    find "${BACKUP_DIR}" -maxdepth 1 -type f \
+        \( -name 'rustfs-data-backup-*.tar.zst' -o -name 'api-data-backup-*.tar.zst' \) \
+        -printf '%T@\t%p\n' 2>/dev/null | sort -n | cut -f2-
+)
 
 if [ ${#OLD_BACKUPS[@]} -eq 0 ]; then
     log "✅ Nenhum backup antigo (.tar.zst) encontrado em: ${BACKUP_DIR}"
@@ -162,6 +189,7 @@ EXTRACT_BASE="${BACKUP_DIR}/.migration-staging"
 MIGRATED=()
 FAILED=()
 PREV_DATA_DIR=""
+CURRENT_INPROGRESS=""
 
 cleanup_migration() {
     if [ -d "${EXTRACT_BASE}" ]; then
@@ -169,8 +197,15 @@ cleanup_migration() {
         log "🧹 Limpando staging temporário..."
         rm -rf "${EXTRACT_BASE}"
     fi
+    # Remove o backup .inprogress da iteração corrente se a migração foi
+    # interrompida no meio (o loop, por não rodar dentro de um subshell,
+    # nunca chegava a limpar isso antes — deixava diretórios órfãos).
+    if [ -n "${CURRENT_INPROGRESS}" ] && [ -d "${CURRENT_INPROGRESS}" ]; then
+        log "🧹 Removendo backup incompleto: $(basename "${CURRENT_INPROGRESS}")"
+        rm -rf "${CURRENT_INPROGRESS}"
+    fi
 }
-trap cleanup_migration EXIT
+trap cleanup_migration EXIT INT TERM
 
 for backup in "${OLD_BACKUPS[@]}"; do
     FNAME=$(basename "$backup")
@@ -181,6 +216,7 @@ for backup in "${OLD_BACKUPS[@]}"; do
     NEW_NAME="rustfs-backup-${TS}"
     NEW_PATH="${BACKUP_DIR}/${NEW_NAME}"
     INPROGRESS_PATH="${NEW_PATH}.inprogress"
+    CURRENT_INPROGRESS="${INPROGRESS_PATH}"
 
     log "🔄 Migrando: ${FNAME}"
     log "   → Destino: ${NEW_NAME}/"
@@ -202,7 +238,7 @@ for backup in "${OLD_BACKUPS[@]}"; do
         fi
         log_dry "gerar manifest.sha256"
         if [ "$KEEP_ORIGINALS" = false ]; then
-            log_dry "remover ${FNAME} e ${FNAME%.tar.zst}.sha256"
+            log_dry "remover ${FNAME} e ${FNAME}.sha256"
         fi
         PREV_DATA_DIR="${NEW_PATH}/data"
         continue
@@ -251,13 +287,12 @@ for backup in "${OLD_BACKUPS[@]}"; do
 
     # --- Manifesto ---
     log "   🔐 Gerando manifest.sha256..."
-    find "${INPROGRESS_PATH}/data" -type f | sort | \
-        xargs sha256sum 2>/dev/null | \
-        sed "s|${INPROGRESS_PATH}/data/||" \
-        > "${INPROGRESS_PATH}/manifest.sha256"
+    find "${INPROGRESS_PATH}/data" -type f -printf '%P\n' | LC_ALL=C sort > "${INPROGRESS_PATH}/.filelist.tmp"
+    hash_filelist "${INPROGRESS_PATH}/.filelist.tmp" "${INPROGRESS_PATH}/data" "${INPROGRESS_PATH}/manifest.sha256"
+    TOTAL_FILES=$(wc -l < "${INPROGRESS_PATH}/.filelist.tmp")
+    rm -f "${INPROGRESS_PATH}/.filelist.tmp"
 
     # --- Info ---
-    TOTAL_FILES=$(find "${INPROGRESS_PATH}/data" -type f | wc -l)
     APPARENT=$(du -sh --apparent-size "${INPROGRESS_PATH}/data" 2>/dev/null | cut -f1)
     DISK=$(du -sh "${INPROGRESS_PATH}/data" 2>/dev/null | cut -f1)
 
@@ -274,6 +309,7 @@ EOF
 
     # --- Finalizar ---
     mv "${INPROGRESS_PATH}" "${NEW_PATH}"
+    CURRENT_INPROGRESS=""  # limpar para não deletar no cleanup_migration
     PREV_DATA_DIR="${NEW_PATH}/data"
     MIGRATED+=("${NEW_NAME}")
 
@@ -284,8 +320,10 @@ EOF
     if [ "$KEEP_ORIGINALS" = false ]; then
         log "   🗑️  Removendo original: ${FNAME}"
         rm -f "$backup"
-        rm -f "${backup%.tar.zst}.sha256" 2>/dev/null || true
-        rm -f "${BACKUP_DIR}/${FNAME%.tar.zst}.sha256" 2>/dev/null || true
+        # O sidecar de checksum é "<nome>.tar.zst.sha256" (sufixo anexado ao
+        # nome completo, não uma troca de extensão) — ver scripts antigos de
+        # backup, que geravam `sha256sum > ${BACKUP_FILE}.sha256`.
+        rm -f "${backup}.sha256" 2>/dev/null || true
     fi
 done
 

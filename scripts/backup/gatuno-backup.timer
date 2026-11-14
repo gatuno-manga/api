@@ -1,0 +1,13 @@
+# Dispara gatuno-backup.service diariamente. Ajuste OnCalendar conforme a
+# janela de menor tráfego do ambiente.
+
+[Unit]
+Description=Agendamento diário do backup do Gatuno
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+RandomizedDelaySec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

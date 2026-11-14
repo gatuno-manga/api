@@ -42,6 +42,7 @@ export class FilesService {
 		buffer: Buffer,
 		extension: string,
 		targetBucket: StorageBucket = StorageBucket.BOOKS,
+		widths?: number[],
 	): Promise<string> {
 		const cleanExtension = extension.startsWith('.')
 			? extension
@@ -74,6 +75,7 @@ export class FilesService {
 			rawPath: `processing/${rawKey}`,
 			targetBucket: targetBucket,
 			targetPath: targetKey,
+			widths,
 		});
 
 		this.logger.log(
@@ -94,8 +96,9 @@ export class FilesService {
 		buffer: Buffer,
 		extension: string,
 		bucket?: StorageBucket,
+		widths?: number[],
 	): Promise<string> {
-		return this.saveFileInternal(buffer, extension, bucket);
+		return this.saveFileInternal(buffer, extension, bucket, widths);
 	}
 
 	/**
@@ -105,8 +108,9 @@ export class FilesService {
 		buffer: Buffer,
 		extension: string,
 		bucket: StorageBucket = StorageBucket.BOOKS,
+		widths?: number[],
 	): Promise<string> {
-		return this.saveFileInternal(buffer, extension, bucket);
+		return this.saveFileInternal(buffer, extension, bucket, widths);
 	}
 
 	/**
@@ -116,9 +120,10 @@ export class FilesService {
 		base64Data: string,
 		extension: string,
 		bucket?: StorageBucket,
+		widths?: number[],
 	): Promise<string> {
 		const buffer = Buffer.from(base64Data, 'base64');
-		return this.saveFileInternal(buffer, extension, bucket);
+		return this.saveFileInternal(buffer, extension, bucket, widths);
 	}
 
 	/**

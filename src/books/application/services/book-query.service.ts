@@ -41,6 +41,7 @@ import { AlternativeTitle } from '@books/domain/entities/alternative-title';
 import { AuthorBiography } from '@books/domain/entities/author-biography';
 import { Book } from '@books/domain/entities/book';
 import { BookDescription } from '@books/domain/entities/book-description';
+import { Cover } from '@books/domain/entities/cover';
 import { ContentType } from '@books/domain/enums/content-type.enum';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -54,6 +55,7 @@ import {
 import { Job, Queue } from 'bullmq';
 import { Meilisearch } from 'meilisearch';
 import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
+import { ImageVariant } from 'src/common/domain/value-objects/image-variant.vo';
 import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 import { MetadataPageDto } from 'src/common/pagination/metadata-page.dto';
@@ -193,6 +195,48 @@ export class BookQueryService {
 		return book;
 	}
 
+	/**
+	 * Escolhe a rendition a ser servida na listagem: a menor variante disponível
+	 * (imagem cheia é desnecessária em um card de lista), com fallback para a
+	 * capa original quando não há variantes (ex: capas ainda não reprocessadas).
+	 */
+	private resolveListCover(cover: Cover | null): {
+		url: string;
+		metadata: ImageMetadata | null;
+	} {
+		if (!cover) {
+			return {
+				url: this.mediaUrlService.resolveUrl(null, StorageBucket.BOOKS),
+				metadata: null,
+			};
+		}
+
+		const smallestVariant = (
+			cover.variants || []
+		).reduce<ImageVariant | null>((smallest, variant) => {
+			if (!smallest || variant.width < smallest.width) return variant;
+			return smallest;
+		}, null);
+
+		if (smallestVariant) {
+			return {
+				url: this.mediaUrlService.resolveUrl(
+					smallestVariant.path,
+					StorageBucket.BOOKS,
+				),
+				metadata: smallestVariant.metadata || cover.metadata,
+			};
+		}
+
+		return {
+			url: this.mediaUrlService.resolveUrl(
+				cover.url,
+				StorageBucket.BOOKS,
+			),
+			metadata: cover.metadata,
+		};
+	}
+
 	async getAllBooks(
 		options: BookPageOptionsDto,
 		maxWeightSensitiveContent: number,
@@ -246,13 +290,11 @@ export class BookQueryService {
 						targetLang || options.lang,
 					);
 					const selectedCover = mappedBook.covers?.[0] || null;
+					const listCover = this.resolveListCover(selectedCover);
 					return {
 						...mappedBook,
-						cover: this.mediaUrlService.resolveUrl(
-							selectedCover?.url || null,
-							StorageBucket.BOOKS,
-						),
-						coverMetadata: selectedCover?.metadata || null,
+						cover: listCover.url,
+						coverMetadata: listCover.metadata,
 					} as BookListItem;
 				});
 
@@ -281,13 +323,11 @@ export class BookQueryService {
 				targetLang || options.lang,
 			);
 			const selectedCover = mappedBook.covers?.[0] || null;
+			const listCover = this.resolveListCover(selectedCover);
 			return {
 				...mappedBook,
-				cover: this.mediaUrlService.resolveUrl(
-					selectedCover?.url || null,
-					StorageBucket.BOOKS,
-				),
-				coverMetadata: selectedCover?.metadata || null,
+				cover: listCover.url,
+				coverMetadata: listCover.metadata,
 			};
 		});
 

@@ -12,6 +12,7 @@ import {
 	ICoverRepository,
 	I_COVER_REPOSITORY,
 } from '@books/application/ports/cover-repository.interface';
+import { COVER_VARIANT_WIDTHS } from '@books/domain/constants/cover.constants';
 import { AlternativeTitle } from '@books/domain/entities/alternative-title';
 import { Book } from '@books/domain/entities/book';
 import { BookDescription } from '@books/domain/entities/book-description';
@@ -432,6 +433,7 @@ export class BookUpdateService {
 			file.buffer,
 			extension,
 			StorageBucket.BOOKS,
+			COVER_VARIANT_WIDTHS,
 		);
 
 		const cover = this.coverRepository.create({
