@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsISO8601, IsObject } from 'class-validator';
+import { IsISO8601, IsObject, Matches } from 'class-validator';
 
 export class PutPreferenceSectionDto {
 	@ApiProperty({
@@ -21,9 +21,12 @@ export class PutPreferenceSectionDto {
 
 	@ApiProperty({
 		description:
-			'Client time of the change (ISO-8601). The newest write wins; more than 5 minutes in the future is rejected.',
+			'Client time of the change (ISO-8601 with an explicit offset or Z). The newest write wins; more than 5 minutes in the future is rejected.',
 		example: '2026-11-14T12:00:00.000Z',
 	})
 	@IsISO8601({ strict: true })
+	@Matches(/T.*(Z|[+-]\d{2}:\d{2})$/, {
+		message: 'updatedAt must include a time and an explicit offset or Z',
+	})
 	updatedAt: string;
 }

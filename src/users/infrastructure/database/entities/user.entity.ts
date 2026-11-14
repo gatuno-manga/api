@@ -70,7 +70,11 @@ export class User {
 	@Column({ type: 'simple-array', nullable: true })
 	contentLanguages: string[];
 
-	@Column({ type: 'json', nullable: true })
+	/**
+	 * Written only by the user preferences adapter under a row lock. Not
+	 * updatable through entity saves, which would write back a stale copy.
+	 */
+	@Column({ type: 'json', nullable: true, update: false })
 	preferences: Record<string, unknown> = {};
 
 	@ManyToMany(() => Role, { eager: true })

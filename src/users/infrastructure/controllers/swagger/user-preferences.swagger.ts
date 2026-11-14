@@ -1,11 +1,12 @@
 import { applyDecorators } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
+import { PREFERENCE_SECTION_NAMES } from '@users/domain/value-objects/preference-section-name.vo';
 import { COMMON_RESPONSES } from 'src/common/swagger/common-responses';
 
 const SECTION_PARAM = ApiParam({
 	name: 'section',
 	description: 'Preference section name',
-	enum: ['reader'],
+	enum: [...PREFERENCE_SECTION_NAMES],
 });
 
 export function ApiDocsGetPreferences() {

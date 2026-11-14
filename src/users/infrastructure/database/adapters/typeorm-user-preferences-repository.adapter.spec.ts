@@ -2,7 +2,7 @@ import { UserId } from '@common/domain/value-objects/user-id.vo';
 import { PreferenceSectionName } from '@users/domain/value-objects/preference-section-name.vo';
 import { PreferenceSection } from '@users/domain/value-objects/preference-section.vo';
 import { User } from '@users/infrastructure/database/entities/user.entity';
-import { Repository } from 'typeorm';
+import { Repository, getMetadataArgsStorage } from 'typeorm';
 import { TypeOrmUserPreferencesRepositoryAdapter } from './typeorm-user-preferences-repository.adapter';
 
 const USER_ID = UserId.create('0193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b');
@@ -15,10 +15,8 @@ const STORED_READER = {
 describe('TypeOrmUserPreferencesRepositoryAdapter', () => {
 	let lockedUser: Partial<User> | null;
 	let queryBuilder: Record<string, jest.Mock>;
-	let transactionalRepository: {
-		createQueryBuilder: jest.Mock;
-		update: jest.Mock;
-	};
+	let transactionalRepository: { createQueryBuilder: jest.Mock };
+	let manager: { getRepository: jest.Mock; query: jest.Mock };
 	let repository: { findOne: jest.Mock; manager: { transaction: jest.Mock } };
 	let adapter: TypeOrmUserPreferencesRepositoryAdapter;
 
@@ -35,10 +33,10 @@ describe('TypeOrmUserPreferencesRepositoryAdapter', () => {
 		};
 		transactionalRepository = {
 			createQueryBuilder: jest.fn(() => queryBuilder),
-			update: jest.fn(),
 		};
-		const manager = {
+		manager = {
 			getRepository: jest.fn(() => transactionalRepository),
+			query: jest.fn(),
 		};
 		repository = {
 			findOne: jest.fn(),
@@ -111,21 +109,19 @@ describe('TypeOrmUserPreferencesRepositoryAdapter', () => {
 
 			// Assert
 			expect(winner).toBe(incoming);
-			expect(transactionalRepository.update).toHaveBeenCalledWith(
-				{ id: USER_ID.toString() },
-				{
-					preferences: {
-						theme: 'dark',
-						reader: {
-							data: { fontSize: 22 },
-							updatedAt: '2026-11-14T11:30:00.000Z',
-						},
-					},
+			const [sql, [json, id]] = manager.query.mock.calls[0];
+			expect(sql).toBe('UPDATE users SET preferences = ? WHERE id = ?');
+			expect(id).toBe(USER_ID.toString());
+			expect(JSON.parse(json)).toEqual({
+				theme: 'dark',
+				reader: {
+					data: { fontSize: 22 },
+					updatedAt: '2026-11-14T11:30:00.000Z',
 				},
-			);
+			});
 		});
 
-		it('skips the write when the stored section wins', async () => {
+		it('returns the stored section when it wins, leaving its content unchanged', async () => {
 			// Act
 			const winner = await adapter.updateSection(
 				USER_ID,
@@ -135,7 +131,8 @@ describe('TypeOrmUserPreferencesRepositoryAdapter', () => {
 
 			// Assert
 			expect(winner?.toSnapshot()).toEqual(STORED_READER);
-			expect(transactionalRepository.update).not.toHaveBeenCalled();
+			const [, [json]] = manager.query.mock.calls[0];
+			expect(JSON.parse(json).reader).toEqual(STORED_READER);
 		});
 
 		it('returns null when the user does not exist', async () => {
@@ -151,7 +148,21 @@ describe('TypeOrmUserPreferencesRepositoryAdapter', () => {
 
 			// Assert
 			expect(winner).toBeNull();
-			expect(transactionalRepository.update).not.toHaveBeenCalled();
+			expect(manager.query).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('User entity mapping', () => {
+		it('keeps preferences out of entity saves so a stale user copy cannot undo a section write', () => {
+			// Act
+			const column = getMetadataArgsStorage().columns.find(
+				(candidate) =>
+					candidate.target === User &&
+					candidate.propertyName === 'preferences',
+			);
+
+			// Assert
+			expect(column?.options.update).toBe(false);
 		});
 	});
 });

@@ -15,9 +15,6 @@ import { PreferenceSection } from '@users/domain/value-objects/preference-sectio
 import { User } from '@users/infrastructure/database/entities/user.entity';
 import { EntityManager, Repository } from 'typeorm';
 
-/** TypeORM's deep-partial typing cannot express a free-form JSON column. */
-type UserColumnsUpdate = Parameters<Repository<User>['update']>[1];
-
 @Injectable()
 export class TypeOrmUserPreferencesRepositoryAdapter
 	implements IUserPreferencesRepository
@@ -51,18 +48,16 @@ export class TypeOrmUserPreferencesRepositoryAdapter
 			}
 			const stored = UserPreferences.fromDocument(document).section(name);
 			const winner = resolve(stored);
-			if (winner === stored) {
-				return stored;
-			}
 			const preferences: PreferenceDocument = {
 				...document,
 				[name.toString()]: winner.toSnapshot(),
 			};
-			await manager
-				.getRepository(User)
-				.update({ id: userId.toString() }, {
-					preferences,
-				} as UserColumnsUpdate);
+			// The column is `update: false` on the entity so whole-entity saves
+			// cannot write back a stale copy; this is its only writer.
+			await manager.query(
+				'UPDATE users SET preferences = ? WHERE id = ?',
+				[JSON.stringify(preferences), userId.toString()],
+			);
 			return winner;
 		});
 	}

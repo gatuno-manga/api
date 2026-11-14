@@ -132,6 +132,25 @@ describe('UserPreferencesController (HTTP)', () => {
 			updatedAt: '2026-11-14T12:00:00.000Z',
 		};
 
+		it('accepts an explicit non-UTC offset', async () => {
+			// Arrange
+			service.putSection.mockResolvedValue(body);
+
+			// Act
+			const response = await request(app.getHttpServer())
+				.put('/users/me/preferences/reader')
+				.send({ ...body, updatedAt: '2026-11-14T09:00:00-03:00' });
+
+			// Assert
+			expect(response.status).toBe(200);
+			expect(service.putSection).toHaveBeenCalledWith(
+				USER_ID,
+				'reader',
+				body.data,
+				new Date('2026-11-14T12:00:00.000Z'),
+			);
+		});
+
 		it('passes the opaque data and client timestamp through untouched', async () => {
 			// Arrange
 			service.putSection.mockResolvedValue(body);
@@ -157,6 +176,11 @@ describe('UserPreferencesController (HTTP)', () => {
 			['data is missing', { updatedAt: body.updatedAt }],
 			['updatedAt is missing', { data: body.data }],
 			['updatedAt is not ISO-8601', { ...body, updatedAt: 'yesterday' }],
+			[
+				'updatedAt has no offset (server-timezone dependent)',
+				{ ...body, updatedAt: '2026-11-14T12:00:00' },
+			],
+			['updatedAt is a date only', { ...body, updatedAt: '2026-11-14' }],
 			['an unknown field is sent', { ...body, extra: true }],
 		])(
 			'rejects the request with 400 when %s',
