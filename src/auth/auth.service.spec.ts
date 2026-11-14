@@ -21,6 +21,7 @@ import { SessionAuditService } from './infrastructure/adapters/session-audit.ser
 import { SessionManagementService } from './infrastructure/adapters/session-management.service';
 import { TokenStoreService } from './infrastructure/adapters/token-store.service';
 import { LoginApiKey } from './infrastructure/database/entities/login-api-key.entity';
+import type { SuccessfulAuthResult } from './types/auth-security.types';
 
 describe('AuthService', () => {
 	let service: AuthService;
@@ -350,7 +351,7 @@ describe('AuthService', () => {
 			deviceId: null,
 			deviceLabel: null,
 		};
-		const tokens = {
+		const tokens: SuccessfulAuthResult = {
 			accessToken: 'access_token',
 			refreshToken: 'refresh_token',
 			sessionId: 'session-1',
@@ -382,7 +383,7 @@ describe('AuthService', () => {
 			});
 			jwtService.signAsync.mockResolvedValue('mfa-challenge-token');
 			jest.spyOn(service, 'generateTokensForUser').mockResolvedValue(
-				tokens as any,
+				tokens,
 			);
 			_mfaService.isTotpEnabled.mockResolvedValue(true);
 			_sessionManagement.hasKnownDevice.mockResolvedValue(false);

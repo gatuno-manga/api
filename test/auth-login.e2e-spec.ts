@@ -199,6 +199,8 @@ describe('Auth login API (e2e)', () => {
 		expect(challenge.mfaToken).toEqual(expect.any(String));
 		expect(challenge.accessToken).toBeUndefined();
 
+		// Backup code on purpose: the TOTP code consumed by verify-setup is
+		// replay-locked for the current 30s window.
 		const verifyLoginResponse = await request(app.getHttpServer())
 			.post('/api/auth/mfa/verify-login')
 			.set('x-client-platform', 'mobile')
