@@ -2,7 +2,6 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
 	IsArray,
 	IsInt,
-	IsObject,
 	IsOptional,
 	IsString,
 	Max,
@@ -54,12 +53,4 @@ export class UpdateUserDto {
 	@IsArray()
 	@IsString({ each: true })
 	contentLanguages?: string[];
-
-	@ApiPropertyOptional({
-		description: 'User settings and preferences in JSON format',
-		example: { theme: 'dark' },
-	})
-	@IsOptional()
-	@IsObject()
-	preferences?: Record<string, unknown>;
 }

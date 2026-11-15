@@ -13,6 +13,7 @@ import { EncryptionModule } from 'src/infrastructure/encryption/encryption.modul
 import { UserResourcesMapper } from './application/mappers/user-resources.mapper';
 import { I_SAVED_PAGES_REPOSITORY } from './application/ports/saved-pages-repository.interface';
 import { I_USER_IMAGE_REPOSITORY } from './application/ports/user-image-repository.interface';
+import { I_USER_PREFERENCES_REPOSITORY } from './application/ports/user-preferences-repository.interface';
 import { I_USER_REPOSITORY } from './application/ports/user-repository.interface';
 import { ReadingProgressSyncProvider } from './application/providers/reading-progress-sync.provider';
 import { SavedPagesSyncProvider } from './application/providers/saved-pages-sync.provider';
@@ -22,6 +23,7 @@ import { SyncStrategyResolver } from './application/strategies/sync-strategy.res
 import { AdminUsersService } from './application/use-cases/admin-users.service';
 import { ReadingProgressService } from './application/use-cases/reading-progress.service';
 import { UserAccessPolicyService } from './application/use-cases/user-access-policy.service';
+import { UserPreferencesService } from './application/use-cases/user-preferences.service';
 import { UsersService } from './application/use-cases/users.service';
 import { AdminAccessPoliciesController } from './infrastructure/controllers/admin-access-policies.controller';
 import { AdminGroupsController } from './infrastructure/controllers/admin-groups.controller';
@@ -34,9 +36,11 @@ import {
 	SavedPagesService,
 } from './infrastructure/controllers/saved-pages.index';
 import { UserBookSavedPagesController } from './infrastructure/controllers/user-book-saved-pages.controller';
+import { UserPreferencesController } from './infrastructure/controllers/user-preferences.controller';
 import { UserPublicResourcesController } from './infrastructure/controllers/user-public-resources.controller';
 import { UsersController } from './infrastructure/controllers/users.controller';
 import { TypeOrmUserImageRepositoryAdapter } from './infrastructure/database/adapters/typeorm-user-image-repository.adapter';
+import { TypeOrmUserPreferencesRepositoryAdapter } from './infrastructure/database/adapters/typeorm-user-preferences-repository.adapter';
 import { TypeOrmUserRepositoryAdapter } from './infrastructure/database/adapters/typeorm-user-repository.adapter';
 import { AccessPolicy } from './infrastructure/database/entities/access-policy.entity';
 import { Permission } from './infrastructure/database/entities/permission.entity';
@@ -91,6 +95,7 @@ import { RbacModule } from './rbac.module';
 		UserBookSavedPagesController,
 		ReadingProgressController,
 		SavedPagesController,
+		UserPreferencesController,
 		WebPushController,
 	],
 	providers: [
@@ -107,6 +112,11 @@ import { RbacModule } from './rbac.module';
 		ReadingProgressGateway,
 		ReadingProgressNotifier,
 		SavedPagesService,
+		UserPreferencesService,
+		{
+			provide: I_USER_PREFERENCES_REPOSITORY,
+			useClass: TypeOrmUserPreferencesRepositoryAdapter,
+		},
 		UserResourcesMapper,
 		LastWriteWinsStrategy,
 		HighestPageWinsStrategy,
