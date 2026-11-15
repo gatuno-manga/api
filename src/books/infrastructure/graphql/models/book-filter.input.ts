@@ -3,6 +3,7 @@ import { BookType } from '@books/domain/enums/book-type.enum';
 import { FilterLogic } from '@common/enum/filter-logic.enum';
 import { FilterOperator } from '@common/enum/filter-operator.enum';
 import { OrderDirection } from '@common/enum/order-direction.enum';
+import { PaginationMode } from '@common/enum/pagination-mode.enum';
 import { Field, ID, InputType, Int, registerEnumType } from '@nestjs/graphql';
 import {
 	IsArray,
@@ -19,6 +20,7 @@ registerEnumType(FilterLogic, { name: 'FilterLogic' });
 registerEnumType(FilterOperator, { name: 'FilterOperator' });
 registerEnumType(OrderDirection, { name: 'OrderDirection' });
 registerEnumType(BookOrderField, { name: 'BookOrderField' });
+registerEnumType(PaginationMode, { name: 'PaginationMode' });
 
 @InputType('BookFilterInput')
 export class BookFilterInput {
@@ -33,6 +35,14 @@ export class BookFilterInput {
 	@IsInt()
 	@IsPositive()
 	limit?: number;
+
+	@Field(() => PaginationMode, {
+		nullable: true,
+		defaultValue: PaginationMode.OFFSET,
+	})
+	@IsOptional()
+	@IsEnum(PaginationMode)
+	paginationMode?: PaginationMode;
 
 	@Field({ nullable: true })
 	@IsOptional()
