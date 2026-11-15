@@ -22,10 +22,11 @@ import { ChapterCommentModel } from '@books/infrastructure/graphql/models/commen
 import { PaginatedBookResponseModel } from '@books/infrastructure/graphql/models/paginated-book-response.model';
 import { PaginatedChapterResponseModel } from '@books/infrastructure/graphql/models/paginated-chapter-response.model';
 import { PaginatedCommentResponseModel } from '@books/infrastructure/graphql/models/paginated-comment-response.model';
+import { InvalidBookListCursorFilter } from '@books/infrastructure/http/filters/invalid-book-list-cursor.filter';
 import { StorageBucket } from '@common/enum/storage-bucket.enum';
 import { ImageMetadataModel } from '@common/infrastructure/graphql/models/image-metadata.model';
 import { CacheTTL } from '@nestjs/cache-manager';
-import { UseGuards, UseInterceptors } from '@nestjs/common';
+import { UseFilters, UseGuards, UseInterceptors } from '@nestjs/common';
 import {
 	Args,
 	ID,
@@ -73,6 +74,7 @@ export class BookResolver {
 	@UseGuards(OptionalGqlJwtAuthGuard)
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(180)
+	@UseFilters(InvalidBookListCursorFilter)
 	async getBooks(
 		@Args('filter', { type: () => BookFilterInput, nullable: true })
 		filter?: BookFilterInput,

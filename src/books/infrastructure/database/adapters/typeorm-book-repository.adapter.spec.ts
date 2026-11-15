@@ -1,7 +1,9 @@
 import { Book as DomainBook } from '@books/domain/entities/book';
+import { BookOrderField } from '@books/domain/enums/book-order-field.enum';
 import { Book as InfrastructureBook } from '@books/infrastructure/database/entities/book.entity';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { OrderDirection } from 'src/common/enum/order-direction.enum';
 import { Repository } from 'typeorm';
 import { TypeOrmBookRepositoryAdapter } from './typeorm-book-repository.adapter';
 
@@ -22,6 +24,8 @@ describe('TypeOrmBookRepositoryAdapter', () => {
 		getOne: jest.fn(),
 		getManyAndCount: jest.fn(),
 		getMany: jest.fn(),
+		getRawAndEntities: jest.fn(),
+		addSelect: jest.fn().mockReturnThis(),
 		withDeleted: jest.fn().mockReturnThis(),
 		getSql: jest.fn().mockReturnValue('SELECT * FROM book'),
 		subQuery: jest.fn().mockReturnThis(),
@@ -301,6 +305,213 @@ describe('TypeOrmBookRepositoryAdapter', () => {
 				10,
 			);
 		});
+
+		it('should break ties by id so equal sort values never swap between two pages', async () => {
+			// Arrange
+			const options = {
+				page: 1,
+				limit: 10,
+				orderBy: BookOrderField.TITLE,
+				order: OrderDirection.ASC,
+			} as any;
+			mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
+
+			// Act
+			await adapter.findWithFilters(
+				options,
+				{ effectiveMaxWeightSensitiveContent: 0 },
+				[],
+			);
+
+			// Assert
+			expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
+				'book.title',
+				'ASC',
+			);
+			expect(mockQueryBuilder.addOrderBy.mock.calls).toEqual([
+				['book.createdAt', 'DESC'],
+				['book.id', 'DESC'],
+			]);
+		});
+	});
+
+	describe('findWithFiltersAfter', () => {
+		const accessContext = { effectiveMaxWeightSensitiveContent: 0 };
+		const position = {
+			sortValue: 'Solo Leveling',
+			createdAt: '2026-01-01 10:00:00.123456',
+			id: '0190a2b4-0000-7000-8000-000000000001',
+		};
+		const keysetCondition = () =>
+			mockQueryBuilder.andWhere.mock.calls
+				.map(([condition]) => condition)
+				.find(
+					(condition) =>
+						typeof condition === 'string' &&
+						condition.includes(':cursorKey'),
+				);
+
+		beforeEach(() => {
+			mockQueryBuilder.getRawAndEntities.mockResolvedValue({
+				entities: [],
+				raw: [],
+			});
+		});
+
+		it('should start at the top of the list without a position', async () => {
+			// Act
+			await adapter.findWithFiltersAfter(
+				{ orderBy: BookOrderField.TITLE } as any,
+				accessContext,
+				[],
+				null,
+				6,
+			);
+
+			// Assert
+			expect(keysetCondition()).toBeUndefined();
+			expect(mockQueryBuilder.take).toHaveBeenCalledWith(6);
+		});
+
+		it('should return each book with its database timestamps, so rows within one millisecond are not skipped', async () => {
+			// Arrange
+			mockQueryBuilder.getRawAndEntities.mockResolvedValue({
+				entities: [{ id: position.id, title: 'Solo Leveling' }],
+				raw: [
+					{
+						book_id: position.id,
+						cursor_created_at: '2026-01-01 10:00:00.123456',
+						cursor_updated_at: '2026-02-01 08:00:00.654321',
+					},
+				],
+			});
+
+			// Act
+			const [titleSorted] = await adapter.findWithFiltersAfter(
+				{ orderBy: BookOrderField.TITLE } as any,
+				accessContext,
+				[],
+				null,
+				6,
+			);
+			const [updatedSorted] = await adapter.findWithFiltersAfter(
+				{ orderBy: BookOrderField.UPDATED_AT } as any,
+				accessContext,
+				[],
+				null,
+				6,
+			);
+
+			// Assert
+			expect(titleSorted.position).toEqual(position);
+			expect(updatedSorted.position.sortValue).toBe(
+				'2026-02-01 08:00:00.654321',
+			);
+		});
+
+		it('should return nothing when the access policy blocks every book', async () => {
+			// Act
+			const result = await adapter.findWithFiltersAfter(
+				{} as any,
+				{ blockedAll: true, effectiveMaxWeightSensitiveContent: 0 },
+				[],
+				position,
+				6,
+			);
+
+			// Assert
+			expect(result).toEqual([]);
+			expect(mockQueryBuilder.getRawAndEntities).not.toHaveBeenCalled();
+		});
+
+		it('should continue strictly after the position in title, then createdAt DESC, then id DESC order', async () => {
+			// Act
+			await adapter.findWithFiltersAfter(
+				{
+					orderBy: BookOrderField.TITLE,
+					order: OrderDirection.ASC,
+				} as any,
+				accessContext,
+				[],
+				position,
+				6,
+			);
+
+			// Assert
+			expect(keysetCondition()).toBe(
+				'(book.title > :cursorKey0 OR (book.title = :cursorKey0 AND (book.createdAt < :cursorKey1 OR (book.createdAt = :cursorKey1 AND (book.id < :cursorKey2)))))',
+			);
+			expect(mockQueryBuilder.setParameter).toHaveBeenCalledWith(
+				'cursorKey0',
+				'Solo Leveling',
+			);
+			expect(mockQueryBuilder.setParameter).toHaveBeenCalledWith(
+				'cursorKey1',
+				position.createdAt,
+			);
+			expect(mockQueryBuilder.setParameter).toHaveBeenCalledWith(
+				'cursorKey2',
+				position.id,
+			);
+		});
+
+		it('should not repeat createdAt as a tiebreaker when it is already the sort field', async () => {
+			// Act
+			await adapter.findWithFiltersAfter(
+				{} as any,
+				accessContext,
+				[],
+				{ ...position, sortValue: position.createdAt },
+				6,
+			);
+
+			// Assert
+			expect(keysetCondition()).toBe(
+				'(book.createdAt < :cursorKey0 OR (book.createdAt = :cursorKey0 AND (book.id < :cursorKey1)))',
+			);
+		});
+
+		it.each([
+			[
+				'DESC from a year: smaller years, then the NULLs MySQL puts last',
+				OrderDirection.DESC,
+				1997,
+				'(book.publication < :cursorKey0 OR book.publication IS NULL) OR (book.publication = :cursorKey0 AND',
+			],
+			[
+				'DESC from NULL: only other NULL rows, since NULLs are last',
+				OrderDirection.DESC,
+				null,
+				'(1 = 0 OR (book.publication IS NULL AND',
+			],
+			[
+				'ASC from NULL: every year, since NULLs are first',
+				OrderDirection.ASC,
+				null,
+				'(book.publication IS NOT NULL OR (book.publication IS NULL AND',
+			],
+			[
+				'ASC from a year: only larger years',
+				OrderDirection.ASC,
+				1997,
+				'(book.publication > :cursorKey0 OR (book.publication = :cursorKey0 AND',
+			],
+		])(
+			'should place publication %s',
+			async (_case, order, sortValue, expectedStart) => {
+				// Act
+				await adapter.findWithFiltersAfter(
+					{ orderBy: BookOrderField.PUBLICATION, order } as any,
+					accessContext,
+					[],
+					{ ...position, sortValue },
+					6,
+				);
+
+				// Assert
+				expect(keysetCondition()).toContain(expectedStart);
+			},
+		);
 	});
 
 	describe('findRandom', () => {

@@ -4,12 +4,14 @@ import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto
 import { BookRelationshipsQueryDto } from '@books/application/dto/book-relationships-query.dto';
 import { OfflineSyncQueryDto } from '@books/application/dto/offline-sync-query.dto';
 import { BooksService } from '@books/application/services/books.service';
+import { InvalidBookListCursorFilter } from '@books/infrastructure/http/filters/invalid-book-list-cursor.filter';
 import { CacheTTL } from '@nestjs/cache-manager';
 import {
 	Controller,
 	Get,
 	Param,
 	Query,
+	UseFilters,
 	UseGuards,
 	UseInterceptors,
 } from '@nestjs/common';
@@ -47,6 +49,7 @@ export class BooksController {
 	@CacheTTL(180)
 	@ApiDocsGetAllBooks()
 	@UseGuards(OptionalAuthGuard)
+	@UseFilters(InvalidBookListCursorFilter)
 	getAllBooks(
 		@Query() pageOptions: BookPageOptionsDto,
 		@Query('lang') queryLang?: string,

@@ -3,6 +3,7 @@ import { ExportFormat } from '@books/domain/enums/export-format.enum';
 import { PublicationStatus } from '@books/domain/enums/publication-status.enum';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 import { MetadataPageDto } from 'src/common/pagination/metadata-page.dto';
 import { PageDto } from 'src/common/pagination/page.dto';
 
@@ -275,4 +276,9 @@ export class BookListPageDto extends PageDto<BookListItemDto> {
 
 	@ApiProperty({ type: MetadataPageDto })
 	declare metadata: MetadataPageDto;
+}
+
+export class BookListCursorPageDto extends CursorPageDto<BookListItemDto> {
+	@ApiProperty({ type: [BookListItemDto] })
+	declare data: BookListItemDto[];
 }

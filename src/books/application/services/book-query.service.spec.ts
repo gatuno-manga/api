@@ -6,11 +6,22 @@ import { I_COVER_REPOSITORY } from '@books/application/ports/cover-repository.in
 import { I_PAGE_REPOSITORY } from '@books/application/ports/page-repository.interface';
 import { I_SENSITIVE_CONTENT_REPOSITORY } from '@books/application/ports/sensitive-content-repository.interface';
 import { I_TAG_REPOSITORY } from '@books/application/ports/tag-repository.interface';
+import { BookOrderField } from '@books/domain/enums/book-order-field.enum';
+import { InvalidBookListCursorException } from '@books/domain/exceptions/invalid-book-list-cursor.exception';
 import { getQueueToken } from '@nestjs/bullmq';
 import { Test, TestingModule } from '@nestjs/testing';
+import { OrderDirection } from 'src/common/enum/order-direction.enum';
+import { PaginationMode } from 'src/common/enum/pagination-mode.enum';
+import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
+import { PageDto } from 'src/common/pagination/page.dto';
 import { MediaUrlService } from 'src/common/services/media-url.service';
 import { UserAccessPolicyService } from 'src/users/application/use-cases/user-access-policy.service';
 import { BookPageOptionsDto } from '../dto/book-page-options.dto';
+import {
+	decodeBookListCursor,
+	encodeKeysetCursor,
+	encodeSearchCursor,
+} from '../utils/book-list-cursor';
 import { BookQueryService } from './book-query.service';
 import { SensitiveContentService } from './sensitive-content.service';
 
@@ -39,6 +50,7 @@ describe('BookQueryService (Search Optimization)', () => {
 					{ id: 'book-1', title: 'Solo Leveling', covers: [] },
 				]),
 			findWithFilters: jest.fn(),
+			findWithFiltersAfter: jest.fn().mockResolvedValue([]),
 			findBooksWithCoverIssues: jest.fn(),
 			loadListRelations: jest.fn(async (books: object[]) =>
 				books.map((book) => ({
@@ -412,6 +424,287 @@ describe('BookQueryService (Search Optimization)', () => {
 			expect((result.data[0] as any).coverMetadata).toEqual({
 				width: 1920,
 				height: 2841,
+			});
+		});
+	});
+
+	describe('cursor pagination', () => {
+		const createdAtDesc = {
+			orderBy: BookOrderField.CREATED_AT,
+			order: OrderDirection.DESC,
+		};
+		const positionOf = (index: number) => ({
+			sortValue: `2026-01-01 10:00:0${index}.000001`,
+			createdAt: `2026-01-01 10:00:0${index}.000001`,
+			id: `0190a2b4-0000-7000-8000-00000000000${index}`,
+		});
+		const positioned = (count: number) =>
+			Array.from({ length: count }, (_, index) => ({
+				book: { id: `book-${index}`, covers: [] },
+				position: positionOf(index),
+			}));
+		const cursorOptions = (overrides: Partial<BookPageOptionsDto> = {}) => {
+			const options = new BookPageOptionsDto();
+			Object.assign(options, {
+				limit: 5,
+				paginationMode: PaginationMode.CURSOR,
+				...overrides,
+			});
+			return options;
+		};
+
+		it('should keep offset paging with totals when cursor mode is not requested, so existing clients are unaffected', async () => {
+			// Arrange
+			const options = new BookPageOptionsDto();
+			bookRepository.findWithFilters.mockResolvedValue([[], 0]);
+
+			// Act
+			const result = await service.getAllBooks(options, 0, 'user-1', []);
+
+			// Assert
+			expect(result).toBeInstanceOf(PageDto);
+			expect(bookRepository.findWithFiltersAfter).not.toHaveBeenCalled();
+		});
+
+		it('should return the first cursor page without a cursor, fetching one extra row to know whether more exist, and run no COUNT', async () => {
+			// Arrange
+			bookRepository.findWithFiltersAfter.mockResolvedValue(
+				positioned(6),
+			);
+
+			// Act
+			const result = (await service.getAllBooks(
+				cursorOptions({ page: 3 }),
+				0,
+				'user-1',
+				[],
+			)) as CursorPageDto<{ id: string }>;
+
+			// Assert
+			expect(bookRepository.findWithFiltersAfter).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				[],
+				null,
+				6,
+			);
+			expect(bookRepository.findWithFilters).not.toHaveBeenCalled();
+			expect(result).toBeInstanceOf(CursorPageDto);
+			expect(result.data.map((book) => book.id)).toEqual([
+				'book-0',
+				'book-1',
+				'book-2',
+				'book-3',
+				'book-4',
+			]);
+			expect(result.hasNextPage).toBe(true);
+			expect(
+				decodeBookListCursor(
+					result.nextCursor ?? undefined,
+					createdAtDesc,
+					false,
+				),
+			).toEqual({ kind: 'keyset', position: positionOf(4) });
+		});
+
+		it('should continue after the position of the cursor it receives', async () => {
+			// Arrange
+			const cursor = encodeKeysetCursor(createdAtDesc, positionOf(4));
+
+			// Act
+			await service.getAllBooks(
+				cursorOptions({ paginationMode: undefined, cursor }),
+				0,
+				'user-1',
+				[],
+			);
+
+			// Assert
+			expect(bookRepository.findWithFiltersAfter).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				[],
+				positionOf(4),
+				6,
+			);
+		});
+
+		it('should end the walk with no cursor on the last page, so the client stops loading', async () => {
+			// Arrange
+			bookRepository.findWithFiltersAfter.mockResolvedValue(
+				positioned(2),
+			);
+
+			// Act
+			const result = (await service.getAllBooks(
+				cursorOptions(),
+				0,
+				'user-1',
+				[],
+			)) as CursorPageDto<{ id: string }>;
+
+			// Assert
+			expect(result.data).toHaveLength(2);
+			expect(result.hasNextPage).toBe(false);
+			expect(result.nextCursor).toBeNull();
+		});
+
+		it('should return the classification on cursor pages too, so offline filtering works for every list item', async () => {
+			// Arrange
+			bookRepository.findWithFiltersAfter.mockResolvedValue(
+				positioned(1),
+			);
+
+			// Act
+			const result = await service.getAllBooks(
+				cursorOptions(),
+				0,
+				'user-1',
+				[],
+			);
+
+			// Assert
+			expect(bookRepository.loadListRelations).toHaveBeenCalledWith([
+				expect.objectContaining({ id: 'book-0' }),
+			]);
+			expect(result.data[0]).toEqual(
+				expect.objectContaining({
+					tags: [],
+					authors: [],
+					sensitiveContent: [],
+				}),
+			);
+		});
+
+		it('should reject a cursor issued for another sort before touching the database', async () => {
+			// Arrange
+			const cursor = encodeKeysetCursor(createdAtDesc, positionOf(4));
+			const options = cursorOptions({
+				cursor,
+				orderBy: BookOrderField.TITLE,
+			});
+
+			// Act
+			const request = service.getAllBooks(options, 0, 'user-1', []);
+
+			// Assert
+			await expect(request).rejects.toThrow(
+				InvalidBookListCursorException,
+			);
+			expect(bookRepository.findWithFiltersAfter).not.toHaveBeenCalled();
+		});
+
+		describe('on the search path', () => {
+			const searchHits = (count: number) =>
+				Array.from({ length: count }, (_, index) => ({
+					id: `hit-${index}`,
+				}));
+
+			it('should page the search engine by offset, fetching one extra hit to know whether more exist', async () => {
+				// Arrange
+				meiliClient
+					.index()
+					.search.mockResolvedValue({ hits: searchHits(6) });
+				const options = cursorOptions({
+					search: 'Solo',
+					cursor: encodeSearchCursor(10),
+				});
+
+				// Act
+				const result = (await service.getAllBooks(
+					options,
+					0,
+					'user-1',
+					[],
+				)) as CursorPageDto<{ id: string }>;
+
+				// Assert
+				expect(meiliClient.index().search).toHaveBeenCalledWith(
+					'Solo',
+					expect.objectContaining({ limit: 6, offset: 10 }),
+				);
+				expect(
+					bookRepository.findByIdsPreservingOrder,
+				).toHaveBeenCalledWith([
+					'hit-0',
+					'hit-1',
+					'hit-2',
+					'hit-3',
+					'hit-4',
+				]);
+				expect(result.hasNextPage).toBe(true);
+				expect(result.nextCursor).toBe(encodeSearchCursor(15));
+			});
+
+			it('should end the search walk when the engine has no more hits', async () => {
+				// Arrange
+				meiliClient
+					.index()
+					.search.mockResolvedValue({ hits: searchHits(3) });
+
+				// Act
+				const result = (await service.getAllBooks(
+					cursorOptions({ search: 'Solo' }),
+					0,
+					'user-1',
+					[],
+				)) as CursorPageDto<{ id: string }>;
+
+				// Assert
+				expect(meiliClient.index().search).toHaveBeenCalledWith(
+					'Solo',
+					expect.objectContaining({ offset: 0 }),
+				);
+				expect(result.hasNextPage).toBe(false);
+				expect(result.nextCursor).toBeNull();
+			});
+
+			it('should restart at the first MySQL keyset page when the search engine fails, since a search offset means nothing there', async () => {
+				// Arrange
+				meiliClient
+					.index()
+					.search.mockRejectedValue(new Error('Meili Down'));
+				const options = cursorOptions({
+					search: 'Solo',
+					cursor: encodeSearchCursor(10),
+				});
+
+				// Act
+				await service.getAllBooks(options, 0, 'user-1', []);
+
+				// Assert
+				expect(
+					bookRepository.findWithFiltersAfter,
+				).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.anything(),
+					[],
+					null,
+					6,
+				);
+			});
+
+			it('should continue a fallback walk on MySQL when a search request brings a keyset cursor', async () => {
+				// Arrange
+				const options = cursorOptions({
+					search: 'Solo',
+					cursor: encodeKeysetCursor(createdAtDesc, positionOf(2)),
+				});
+
+				// Act
+				await service.getAllBooks(options, 0, 'user-1', []);
+
+				// Assert
+				expect(meiliClient.index().search).not.toHaveBeenCalled();
+				expect(
+					bookRepository.findWithFiltersAfter,
+				).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.anything(),
+					[],
+					positionOf(2),
+					6,
+				);
 			});
 		});
 	});

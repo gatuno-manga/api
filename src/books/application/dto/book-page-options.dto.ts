@@ -13,12 +13,24 @@ import {
 import { FilterLogic } from 'src/common/enum/filter-logic.enum';
 import { FilterOperator } from 'src/common/enum/filter-operator.enum';
 import { OrderDirection } from 'src/common/enum/order-direction.enum';
+import { PaginationMode } from 'src/common/enum/pagination-mode.enum';
 import { ToArray } from 'src/common/pagination/decorator/to-array.decorator';
 import { PageOptionsDto } from 'src/common/pagination/page-options.dto';
 
 export class BookPageOptionsDto extends PageOptionsDto {
 	@ApiPropertyOptional({
-		description: 'Cursor para navegação por cursor',
+		description:
+			'`cursor` returns `{ data, nextCursor, hasNextPage }` instead of page/total metadata; `page` is ignored. Sending a `cursor` also selects cursor mode.',
+		enum: PaginationMode,
+		default: PaginationMode.OFFSET,
+	})
+	@IsOptional()
+	@IsEnum(PaginationMode)
+	paginationMode?: PaginationMode = PaginationMode.OFFSET;
+
+	@ApiPropertyOptional({
+		description:
+			'`nextCursor` of the previous page. Only valid with the same orderBy, order and search as the request that produced it.',
 		example: 'eyJ2YWx1ZSI6IjIwMjYtMDEtMDEiLCJpZCI6IjU1MGU4NDAwIn0=',
 	})
 	@IsOptional()

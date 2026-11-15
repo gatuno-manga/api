@@ -36,6 +36,13 @@ import {
 	I_TAG_REPOSITORY,
 } from '@books/application/ports/tag-repository.interface';
 import { FilterStrategy } from '@books/application/strategies';
+import {
+	BookListCursorTarget,
+	decodeBookListCursor,
+	encodeKeysetCursor,
+	encodeSearchCursor,
+	resolveBookListSort,
+} from '@books/application/utils/book-list-cursor';
 import { resolveLocalizedField } from '@books/application/utils/localization.utils';
 import { AlternativeTitle } from '@books/domain/entities/alternative-title';
 import { AuthorBiography } from '@books/domain/entities/author-biography';
@@ -44,6 +51,7 @@ import { BookDescription } from '@books/domain/entities/book-description';
 import { Cover } from '@books/domain/entities/cover';
 import { ContentType } from '@books/domain/enums/content-type.enum';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
+import { AccessContext } from '@books/domain/types/criteria.types';
 import { InjectQueue } from '@nestjs/bullmq';
 import {
 	ForbiddenException,
@@ -56,6 +64,7 @@ import { Job, Queue } from 'bullmq';
 import { Meilisearch } from 'meilisearch';
 import { ImageMetadata } from 'src/common/domain/value-objects/image-metadata.vo';
 import { ImageVariant } from 'src/common/domain/value-objects/image-variant.vo';
+import { PaginationMode } from 'src/common/enum/pagination-mode.enum';
 import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
 import { MetadataPageDto } from 'src/common/pagination/metadata-page.dto';
@@ -244,61 +253,45 @@ export class BookQueryService {
 		filterStrategies: FilterStrategy[],
 		targetLang?: string,
 	): Promise<PageDto<BookListItem> | CursorPageDto<BookListItem>> {
+		const isCursorMode =
+			options.paginationMode === PaginationMode.CURSOR ||
+			Boolean(options.cursor);
+		const cursorTarget = isCursorMode
+			? decodeBookListCursor(
+					options.cursor,
+					resolveBookListSort(options),
+					Boolean(options.search?.trim()),
+				)
+			: null;
+
 		const accessContext =
 			await this.userAccessPolicyService.evaluateListAccessContext({
 				userId,
 				baseMaxWeightSensitiveContent: maxWeightSensitiveContent,
 			});
+		const lang = targetLang || options.lang;
+
+		if (cursorTarget) {
+			return this.getBooksCursorPage(
+				options,
+				accessContext,
+				filterStrategies,
+				cursorTarget,
+				lang,
+			);
+		}
 
 		// CAMINHO 1: Busca via Meilisearch (quando há termo de pesquisa)
 		if (options.search?.trim()) {
 			try {
-				const filter = MeilisearchFilterBuilder.build(
+				const limit = options.limit || 20;
+				const { ids, total } = await this.searchBookIds(
 					options,
 					accessContext,
+					limit,
+					(options.page - 1) * limit,
 				);
-				const limit = options.limit || 20;
-				const offset = (options.page - 1) * limit;
-
-				// Determina ordenação
-				const sort: string[] = [];
-				if (options.orderBy) {
-					sort.push(
-						`${options.orderBy}:${(options.order || 'desc').toLowerCase()}`,
-					);
-				}
-
-				const searchResult = await this.meiliClient
-					.index('books')
-					.search(options.search, {
-						limit,
-						offset,
-						filter,
-						sort: sort.length > 0 ? sort : undefined,
-						attributesToRetrieve: ['id'],
-					});
-
-				const ids = searchResult.hits.map((hit) => hit.id as string);
-				const total = searchResult.estimatedTotalHits || 0;
-
-				const searchBooks =
-					await this.bookRepository.findByIdsPreservingOrder(ids);
-				const books =
-					await this.bookRepository.loadListRelations(searchBooks);
-
-				const data = books.map((b) => {
-					const mappedBook = this.mapBookLocalizations(
-						b,
-						targetLang || options.lang,
-					);
-					const selectedCover = mappedBook.covers?.[0] || null;
-					const listCover = this.resolveListCover(selectedCover);
-					return {
-						...mappedBook,
-						cover: listCover.url,
-						coverMetadata: listCover.metadata,
-					} as BookListItem;
-				});
+				const data = await this.loadSearchListItems(ids, lang);
 
 				const metadata = new MetadataPageDto();
 				metadata.total = total;
@@ -307,9 +300,7 @@ export class BookQueryService {
 
 				return new PageDto(data, metadata);
 			} catch (error) {
-				this.logger.error(
-					`Search path failed, falling back to MySQL: ${error instanceof Error ? error.message : String(error)}`,
-				);
+				this.logSearchFallback(error);
 			}
 		}
 
@@ -320,34 +311,151 @@ export class BookQueryService {
 			filterStrategies,
 		);
 		const books = await this.bookRepository.loadListRelations(pageBooks);
-		const data = books.map((b) => {
-			const mappedBook = this.mapBookLocalizations(
-				b,
-				targetLang || options.lang,
-			);
-			const selectedCover = mappedBook.covers?.[0] || null;
-			const listCover = this.resolveListCover(selectedCover);
-			return {
-				...mappedBook,
-				cover: listCover.url,
-				coverMetadata: listCover.metadata,
-			};
-		});
-
-		if (options.cursor) {
-			return new CursorPageDto(
-				data as unknown as BookListItem[],
-				null,
-				false,
-			);
-		}
+		const data = this.toListItems(books, lang);
 
 		const metadata = new MetadataPageDto();
 		metadata.total = total;
 		metadata.page = options.page;
 		metadata.lastPage = Math.ceil(total / options.limit);
 
-		return new PageDto(data as unknown as BookListItem[], metadata);
+		return new PageDto(data, metadata);
+	}
+
+	/**
+	 * Cursor mode of `getAllBooks`. A search walks the search engine by offset;
+	 * when it fails, the MySQL keyset walk takes over from its first page.
+	 */
+	private async getBooksCursorPage(
+		options: BookPageOptionsDto,
+		accessContext: AccessContext,
+		filterStrategies: FilterStrategy[],
+		cursorTarget: BookListCursorTarget,
+		lang?: string,
+	): Promise<CursorPageDto<BookListItem>> {
+		const isSearchWalk =
+			Boolean(options.search?.trim()) && cursorTarget.kind !== 'keyset';
+		if (isSearchWalk) {
+			try {
+				return await this.getSearchCursorPage(
+					options,
+					accessContext,
+					cursorTarget.kind === 'search' ? cursorTarget.offset : 0,
+					lang,
+				);
+			} catch (error) {
+				this.logSearchFallback(error);
+			}
+		}
+
+		const after =
+			cursorTarget.kind === 'keyset' ? cursorTarget.position : null;
+		const positioned = await this.bookRepository.findWithFiltersAfter(
+			options,
+			accessContext,
+			filterStrategies,
+			after,
+			options.limit + 1,
+		);
+		const page = positioned.slice(0, options.limit);
+		const hasNextPage = positioned.length > options.limit;
+		const lastPosition = page[page.length - 1]?.position;
+		const nextCursor =
+			hasNextPage && lastPosition
+				? encodeKeysetCursor(resolveBookListSort(options), lastPosition)
+				: null;
+
+		const books = await this.bookRepository.loadListRelations(
+			page.map((item) => item.book),
+		);
+		return new CursorPageDto(
+			this.toListItems(books, lang),
+			nextCursor,
+			hasNextPage,
+		);
+	}
+
+	private async getSearchCursorPage(
+		options: BookPageOptionsDto,
+		accessContext: AccessContext,
+		offset: number,
+		lang?: string,
+	): Promise<CursorPageDto<BookListItem>> {
+		const { ids } = await this.searchBookIds(
+			options,
+			accessContext,
+			options.limit + 1,
+			offset,
+		);
+		const hasNextPage = ids.length > options.limit;
+		const data = await this.loadSearchListItems(
+			ids.slice(0, options.limit),
+			lang,
+		);
+		const nextCursor = hasNextPage
+			? encodeSearchCursor(offset + options.limit)
+			: null;
+		return new CursorPageDto(data, nextCursor, hasNextPage);
+	}
+
+	private async searchBookIds(
+		options: BookPageOptionsDto,
+		accessContext: AccessContext,
+		limit: number,
+		offset: number,
+	): Promise<{ ids: string[]; total: number }> {
+		const filter = MeilisearchFilterBuilder.build(options, accessContext);
+
+		// Determina ordenação
+		const sort: string[] = [];
+		if (options.orderBy) {
+			sort.push(
+				`${options.orderBy}:${(options.order || 'desc').toLowerCase()}`,
+			);
+		}
+
+		const searchResult = await this.meiliClient
+			.index('books')
+			.search(options.search, {
+				limit,
+				offset,
+				filter,
+				sort: sort.length > 0 ? sort : undefined,
+				attributesToRetrieve: ['id'],
+			});
+
+		return {
+			ids: searchResult.hits.map((hit) => hit.id as string),
+			total: searchResult.estimatedTotalHits || 0,
+		};
+	}
+
+	private async loadSearchListItems(
+		ids: string[],
+		lang?: string,
+	): Promise<BookListItem[]> {
+		const searchBooks =
+			await this.bookRepository.findByIdsPreservingOrder(ids);
+		const books = await this.bookRepository.loadListRelations(searchBooks);
+		return this.toListItems(books, lang);
+	}
+
+	private toListItems(books: Book[], lang?: string): BookListItem[] {
+		return books.map((b) => {
+			const mappedBook = this.mapBookLocalizations(b, lang);
+			const selectedCover = mappedBook.covers?.[0] || null;
+			const listCover = this.resolveListCover(selectedCover);
+			return {
+				...mappedBook,
+				cover: listCover.url,
+				coverMetadata: listCover.metadata,
+			} as BookListItem;
+		});
+	}
+
+	private logSearchFallback(error: unknown): void {
+		this.logger.error(
+			`Search path failed, falling back to MySQL: ${error instanceof Error ? error.message : String(error)}`,
+		);
 	}
 
 	async getRandomBook(

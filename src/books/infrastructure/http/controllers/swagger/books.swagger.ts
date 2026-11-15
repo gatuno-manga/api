@@ -1,8 +1,18 @@
 import { BookChaptersCursorPageDto } from '@books/application/dto/book-chapters-cursor-page.dto';
-import { BookListPageDto } from '@books/application/dto/book-list-page.dto';
+import {
+	BookListCursorPageDto,
+	BookListPageDto,
+} from '@books/application/dto/book-list-page.dto';
 import { BookRelationshipsPageDto } from '@books/application/dto/book-relationships-page.dto';
 import { applyDecorators } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import {
+	ApiExtraModels,
+	ApiOperation,
+	ApiParam,
+	ApiQuery,
+	ApiResponse,
+	getSchemaPath,
+} from '@nestjs/swagger';
 import { COMMON_RESPONSES } from 'src/common/swagger/common-responses';
 
 export function ApiDocsGetAllBooks() {
@@ -10,12 +20,28 @@ export function ApiDocsGetAllBooks() {
 		ApiOperation({
 			summary: 'Listar livros',
 			description:
-				'Retorna uma lista paginada de livros com filtros (page/limit ou cursor)',
+				'Retorna uma lista paginada de livros com filtros (page/limit ou cursor). ' +
+				'Com `paginationMode=cursor` (ou um `cursor`) a resposta é `{ data, nextCursor, hasNextPage }`, sem total; ' +
+				'envie `nextCursor` como `cursor` com os mesmos filtros, orderBy, order e search. ' +
+				'Um livro cuja chave de ordenação muda durante a navegação (ex.: `updatedAt`) pode não aparecer até a lista ser recarregada; ' +
+				'livros que não mudam nunca se repetem nem são pulados.',
 		}),
+		ApiExtraModels(BookListPageDto, BookListCursorPageDto),
 		ApiResponse({
 			status: 200,
-			description: 'Livros retornados com sucesso',
-			type: BookListPageDto,
+			description:
+				'Livros retornados com sucesso: BookListPageDto no modo offset, BookListCursorPageDto no modo cursor',
+			schema: {
+				oneOf: [
+					{ $ref: getSchemaPath(BookListPageDto) },
+					{ $ref: getSchemaPath(BookListCursorPageDto) },
+				],
+			},
+		}),
+		ApiResponse({
+			...COMMON_RESPONSES.BAD_REQUEST,
+			description:
+				'Cursor inválido, ou emitido para outro orderBy, order ou search',
 		}),
 		ApiResponse(COMMON_RESPONSES.TOO_MANY_REQUESTS),
 	);
