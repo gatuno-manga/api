@@ -71,8 +71,9 @@ export class User {
 	contentLanguages: string[];
 
 	/**
-	 * After insert, written only by the user preferences adapter under a row lock. Not
-	 * updatable through entity saves, which would write back a stale copy.
+	 * After insert, written only by the user preferences adapter under a row
+	 * lock. Not updatable through entity saves, which would write back a stale
+	 * copy.
 	 */
 	@Column({ type: 'json', nullable: true, update: false })
 	preferences: Record<string, unknown> = {};

@@ -82,14 +82,24 @@ describe('TypeOrmUserPreferencesRepositoryAdapter', () => {
 
 	describe('updateSection', () => {
 		it('locks the user row so concurrent section writes cannot drop each other', async () => {
+			// Arrange
+			const newerWrite = PreferenceSection.write(
+				{ fontSize: 22 },
+				new Date('2026-11-14T11:30:00.000Z'),
+				new Date('2026-11-14T12:00:00.000Z'),
+			);
+
 			// Act
-			await adapter.updateSection(USER_ID, READER, (stored) => stored);
+			await adapter.updateSection(USER_ID, READER, (stored) =>
+				newerWrite.resolveAgainst(stored),
+			);
 
 			// Assert
 			expect(repository.manager.transaction).toHaveBeenCalled();
 			expect(queryBuilder.setLock).toHaveBeenCalledWith(
 				'pessimistic_write',
 			);
+			expect(manager.query).toHaveBeenCalled();
 		});
 
 		it('writes the winner into its section and keeps every other key', async () => {
@@ -139,6 +149,56 @@ describe('TypeOrmUserPreferencesRepositoryAdapter', () => {
 			// Assert
 			expect(winner?.toSnapshot()).toEqual(STORED_READER);
 			expect(manager.query).not.toHaveBeenCalled();
+		});
+
+		it('skips the UPDATE on a tie even when the data differs, because ties keep the stored section', async () => {
+			// Arrange
+			const tiedWrite = PreferenceSection.write(
+				{ fontSize: 30 },
+				new Date(STORED_READER.updatedAt),
+				new Date('2026-11-14T12:00:00.000Z'),
+			);
+
+			// Act
+			const winner = await adapter.updateSection(
+				USER_ID,
+				READER,
+				(stored) => tiedWrite.resolveAgainst(stored),
+			);
+
+			// Assert
+			expect(winner?.toSnapshot()).toEqual(STORED_READER);
+			expect(manager.query).not.toHaveBeenCalled();
+		});
+
+		it('writes over malformed stored data even when it carries the same timestamp', async () => {
+			// Arrange
+			lockedUser = {
+				id: USER_ID.toString(),
+				preferences: {
+					reader: { data: 'x', updatedAt: STORED_READER.updatedAt },
+				},
+			};
+			const incoming = PreferenceSection.write(
+				{ fontSize: 22 },
+				new Date(STORED_READER.updatedAt),
+				new Date('2026-11-14T12:00:00.000Z'),
+			);
+
+			// Act
+			const winner = await adapter.updateSection(
+				USER_ID,
+				READER,
+				(stored) => incoming.resolveAgainst(stored),
+			);
+
+			// Assert
+			expect(winner).toBe(incoming);
+			const [, [json]] = manager.query.mock.calls[0];
+			expect(JSON.parse(json).reader).toEqual({
+				data: { fontSize: 22 },
+				updatedAt: STORED_READER.updatedAt,
+			});
 		});
 
 		it('skips the UPDATE based on the revision, not object identity', async () => {
