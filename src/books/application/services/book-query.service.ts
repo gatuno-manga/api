@@ -37,11 +37,12 @@ import {
 } from '@books/application/ports/tag-repository.interface';
 import { FilterStrategy } from '@books/application/strategies';
 import {
-	BookListCursorTarget,
+	BookListRequest,
+	BookListWalk,
 	decodeBookListCursor,
 	encodeKeysetCursor,
 	encodeSearchCursor,
-	resolveBookListSort,
+	resolveBookListRequest,
 } from '@books/application/utils/book-list-cursor';
 import { resolveLocalizedField } from '@books/application/utils/localization.utils';
 import { AlternativeTitle } from '@books/domain/entities/alternative-title';
@@ -51,7 +52,10 @@ import { BookDescription } from '@books/domain/entities/book-description';
 import { Cover } from '@books/domain/entities/cover';
 import { ContentType } from '@books/domain/enums/content-type.enum';
 import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
-import { AccessContext } from '@books/domain/types/criteria.types';
+import {
+	AccessContext,
+	BookListPosition,
+} from '@books/domain/types/criteria.types';
 import { InjectQueue } from '@nestjs/bullmq';
 import {
 	ForbiddenException,
@@ -91,6 +95,14 @@ interface RawChapterItem {
 	chapter_scrapingStatus?: ScrapingStatus;
 	readCount?: string | number;
 }
+
+/** One cursor page request of the book list, as resolved by `getAllBooks`. */
+type CursorQuery = {
+	options: BookPageOptionsDto;
+	listRequest: BookListRequest;
+	accessContext: AccessContext;
+	lang?: string;
+};
 
 type BookListItem = Omit<Book, 'covers'> & {
 	cover: string | null;
@@ -256,12 +268,9 @@ export class BookQueryService {
 		const isCursorMode =
 			options.paginationMode === PaginationMode.CURSOR ||
 			Boolean(options.cursor);
-		const cursorTarget = isCursorMode
-			? decodeBookListCursor(
-					options.cursor,
-					resolveBookListSort(options),
-					Boolean(options.search?.trim()),
-				)
+		const listRequest = resolveBookListRequest(options);
+		const walk = isCursorMode
+			? decodeBookListCursor(options.cursor, listRequest)
 			: null;
 
 		const accessContext =
@@ -271,14 +280,9 @@ export class BookQueryService {
 			});
 		const lang = targetLang || options.lang;
 
-		if (cursorTarget) {
-			return this.getBooksCursorPage(
-				options,
-				accessContext,
-				filterStrategies,
-				cursorTarget,
-				lang,
-			);
+		if (walk) {
+			const cursorQuery = { options, listRequest, accessContext, lang };
+			return this.getBooksCursorPage(cursorQuery, filterStrategies, walk);
 		}
 
 		// CAMINHO 1: Busca via Meilisearch (quando há termo de pesquisa)
@@ -326,73 +330,74 @@ export class BookQueryService {
 	 * when it fails, the MySQL keyset walk takes over from its first page.
 	 */
 	private async getBooksCursorPage(
-		options: BookPageOptionsDto,
-		accessContext: AccessContext,
+		query: CursorQuery,
 		filterStrategies: FilterStrategy[],
-		cursorTarget: BookListCursorTarget,
-		lang?: string,
+		walk: BookListWalk,
 	): Promise<CursorPageDto<BookListItem>> {
-		const isSearchWalk =
-			Boolean(options.search?.trim()) && cursorTarget.kind !== 'keyset';
-		if (isSearchWalk) {
-			try {
-				return await this.getSearchCursorPage(
-					options,
-					accessContext,
-					cursorTarget.kind === 'search' ? cursorTarget.offset : 0,
-					lang,
-				);
-			} catch (error) {
-				this.logSearchFallback(error);
-			}
+		if (walk.walk === 'keyset') {
+			return this.getKeysetCursorPage(
+				query,
+				filterStrategies,
+				walk.after,
+			);
 		}
+		try {
+			return await this.getSearchCursorPage(query, walk.offset);
+		} catch (error) {
+			this.logSearchFallback(error);
+			return this.getKeysetCursorPage(query, filterStrategies, null);
+		}
+	}
 
-		const after =
-			cursorTarget.kind === 'keyset' ? cursorTarget.position : null;
+	private async getKeysetCursorPage(
+		query: CursorQuery,
+		filterStrategies: FilterStrategy[],
+		after: BookListPosition | null,
+	): Promise<CursorPageDto<BookListItem>> {
+		const { limit } = query.options;
 		const positioned = await this.bookRepository.findWithFiltersAfter(
-			options,
-			accessContext,
+			query.options,
+			query.accessContext,
 			filterStrategies,
 			after,
-			options.limit + 1,
+			limit + 1,
 		);
-		const page = positioned.slice(0, options.limit);
-		const hasNextPage = positioned.length > options.limit;
+		const page = positioned.slice(0, limit);
+		const hasNextPage = positioned.length > limit;
 		const lastPosition = page[page.length - 1]?.position;
 		const nextCursor =
 			hasNextPage && lastPosition
-				? encodeKeysetCursor(resolveBookListSort(options), lastPosition)
+				? encodeKeysetCursor(query.listRequest, lastPosition)
 				: null;
 
 		const books = await this.bookRepository.loadListRelations(
 			page.map((item) => item.book),
 		);
 		return new CursorPageDto(
-			this.toListItems(books, lang),
+			this.toListItems(books, query.lang),
 			nextCursor,
 			hasNextPage,
 		);
 	}
 
 	private async getSearchCursorPage(
-		options: BookPageOptionsDto,
-		accessContext: AccessContext,
+		query: CursorQuery,
 		offset: number,
-		lang?: string,
 	): Promise<CursorPageDto<BookListItem>> {
+		const { limit } = query.options;
 		const { ids } = await this.searchBookIds(
-			options,
-			accessContext,
-			options.limit + 1,
+			query.options,
+			query.accessContext,
+			limit + 1,
 			offset,
 		);
-		const hasNextPage = ids.length > options.limit;
+		const hasNextPage = ids.length > limit;
 		const data = await this.loadSearchListItems(
-			ids.slice(0, options.limit),
-			lang,
+			ids.slice(0, limit),
+			query.lang,
 		);
 		const nextCursor = hasNextPage
-			? encodeSearchCursor(offset + options.limit)
+			? encodeSearchCursor(query.listRequest, offset + limit)
 			: null;
 		return new CursorPageDto(data, nextCursor, hasNextPage);
 	}

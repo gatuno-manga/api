@@ -409,6 +409,26 @@ describe('TypeOrmBookRepositoryAdapter', () => {
 			);
 		});
 
+		it('should fail instead of minting a cursor the next request would reject when a book has no timestamps row', async () => {
+			// Arrange
+			mockQueryBuilder.getRawAndEntities.mockResolvedValue({
+				entities: [{ id: position.id, title: 'Solo Leveling' }],
+				raw: [],
+			});
+
+			// Act
+			const request = adapter.findWithFiltersAfter(
+				{} as any,
+				accessContext,
+				[],
+				null,
+				6,
+			);
+
+			// Assert
+			await expect(request).rejects.toThrow(position.id);
+		});
+
 		it('should return nothing when the access policy blocks every book', async () => {
 			// Act
 			const result = await adapter.findWithFiltersAfter(

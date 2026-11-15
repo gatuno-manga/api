@@ -3,8 +3,7 @@ import { BooksService } from '@books/application/services/books.service';
 import { AdminBookFilterInput } from '@books/infrastructure/graphql/models/admin-book-filter.input';
 import { BookModel } from '@books/infrastructure/graphql/models/book.model';
 import { PaginatedBookResponseModel } from '@books/infrastructure/graphql/models/paginated-book-response.model';
-import { InvalidBookListCursorFilter } from '@books/infrastructure/http/filters/invalid-book-list-cursor.filter';
-import { UseFilters, UseGuards } from '@nestjs/common';
+import { UseGuards } from '@nestjs/common';
 import { Args, Query, Resolver } from '@nestjs/graphql';
 import { GqlJwtAuthGuard } from 'src/auth/infrastructure/framework/gql-jwt-auth.guard';
 import { CursorPageDto } from 'src/common/pagination/cursor-page.dto';
@@ -20,7 +19,6 @@ export class AdminTroubleshootingResolver {
 
 	@Query(() => PaginatedBookResponseModel, { name: 'adminBooksWithErrors' })
 	@Permissions(PermissionsEnum.BOOKS_MAINTENANCE)
-	@UseFilters(InvalidBookListCursorFilter)
 	async getAdminBooksWithErrors(
 		@Args('filter', { type: () => AdminBookFilterInput, nullable: true })
 		filter?: AdminBookFilterInput,

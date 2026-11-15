@@ -432,7 +432,9 @@ describe('BookQueryService (Search Optimization)', () => {
 		const createdAtDesc = {
 			orderBy: BookOrderField.CREATED_AT,
 			order: OrderDirection.DESC,
+			search: null,
 		};
+		const soloSearch = { ...createdAtDesc, search: 'Solo' };
 		const positionOf = (index: number) => ({
 			sortValue: `2026-01-01 10:00:0${index}.000001`,
 			createdAt: `2026-01-01 10:00:0${index}.000001`,
@@ -502,9 +504,8 @@ describe('BookQueryService (Search Optimization)', () => {
 				decodeBookListCursor(
 					result.nextCursor ?? undefined,
 					createdAtDesc,
-					false,
 				),
-			).toEqual({ kind: 'keyset', position: positionOf(4) });
+			).toEqual({ walk: 'keyset', after: positionOf(4) });
 		});
 
 		it('should continue after the position of the cursor it receives', async () => {
@@ -607,7 +608,7 @@ describe('BookQueryService (Search Optimization)', () => {
 					.search.mockResolvedValue({ hits: searchHits(6) });
 				const options = cursorOptions({
 					search: 'Solo',
-					cursor: encodeSearchCursor(10),
+					cursor: encodeSearchCursor(soloSearch, 10),
 				});
 
 				// Act
@@ -633,7 +634,9 @@ describe('BookQueryService (Search Optimization)', () => {
 					'hit-4',
 				]);
 				expect(result.hasNextPage).toBe(true);
-				expect(result.nextCursor).toBe(encodeSearchCursor(15));
+				expect(result.nextCursor).toBe(
+					encodeSearchCursor(soloSearch, 15),
+				);
 			});
 
 			it('should end the search walk when the engine has no more hits', async () => {
@@ -666,7 +669,7 @@ describe('BookQueryService (Search Optimization)', () => {
 					.search.mockRejectedValue(new Error('Meili Down'));
 				const options = cursorOptions({
 					search: 'Solo',
-					cursor: encodeSearchCursor(10),
+					cursor: encodeSearchCursor(soloSearch, 10),
 				});
 
 				// Act
@@ -688,7 +691,7 @@ describe('BookQueryService (Search Optimization)', () => {
 				// Arrange
 				const options = cursorOptions({
 					search: 'Solo',
-					cursor: encodeKeysetCursor(createdAtDesc, positionOf(2)),
+					cursor: encodeKeysetCursor(soloSearch, positionOf(2)),
 				});
 
 				// Act

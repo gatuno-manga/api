@@ -31,7 +31,8 @@ export class BookPageOptionsDto extends PageOptionsDto {
 	@ApiPropertyOptional({
 		description:
 			'`nextCursor` of the previous page. Only valid with the same orderBy, order and search as the request that produced it.',
-		example: 'eyJ2YWx1ZSI6IjIwMjYtMDEtMDEiLCJpZCI6IjU1MGU4NDAwIn0=',
+		example:
+			'eyJtb2RlIjoia2V5c2V0Iiwib3JkZXJCeSI6ImNyZWF0ZWRBdCIsIm9yZGVyIjoiREVTQyIsInNlYXJjaCI6bnVsbCwidmFsdWUiOiIyMDI2LTAxLTAxIDEwOjAwOjAwLjEyMzQ1NiIsImNyZWF0ZWRBdCI6IjIwMjYtMDEtMDEgMTA6MDA6MDAuMTIzNDU2IiwiaWQiOiIwMTkwYTJiNC03YzFkLTcwMDAtODAwMC0wMDAwMDAwMDAwMDEifQ',
 	})
 	@IsOptional()
 	@IsString()

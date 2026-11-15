@@ -36,7 +36,10 @@ export class BookFilterInput {
 	@IsPositive()
 	limit?: number;
 
-	@Field(() => PaginationMode, { nullable: true })
+	@Field(() => PaginationMode, {
+		nullable: true,
+		defaultValue: PaginationMode.OFFSET,
+	})
 	@IsOptional()
 	@IsEnum(PaginationMode)
 	paginationMode?: PaginationMode;

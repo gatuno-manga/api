@@ -14,7 +14,7 @@ input AdminBookFilterInput {
 	order: OrderDirection = DESC
 	orderBy: BookOrderField = CREATED_AT
 	page: Int = 1
-	paginationMode: PaginationMode
+	paginationMode: PaginationMode = OFFSET
 	publication: Int
 	publicationOperator: FilterOperator = EQ
 	scrapingStatus: [ScrapingStatus]
@@ -74,7 +74,7 @@ input BookFilterInput {
 	order: OrderDirection = DESC
 	orderBy: BookOrderField = CREATED_AT
 	page: Int = 1
-	paginationMode: PaginationMode
+	paginationMode: PaginationMode = OFFSET
 	publication: Int
 	publicationOperator: FilterOperator = EQ
 	search: String

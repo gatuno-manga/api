@@ -7,6 +7,7 @@ import { LoggingModule } from '@logging/logging.module';
 import { MetricsModule } from '@metrics/metrics.module';
 import { BullModule } from '@nestjs/bullmq';
 import { Module, forwardRef } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '@users/infrastructure/database/entities/user.entity';
@@ -69,6 +70,7 @@ import { ChapterSubscriber } from './infrastructure/database/subscribers/chapter
 import { BookInitEvents } from './infrastructure/events/book.init.events';
 import { BookScrapingEvents } from './infrastructure/events/book.scraping.events';
 import { FileDeletionEvents } from './infrastructure/events/file-deletion.events';
+import { InvalidBookListCursorFilter } from './infrastructure/filters/invalid-book-list-cursor.filter';
 import { BooksGateway } from './infrastructure/gateways/books.gateway';
 import { AdminTroubleshootingResolver } from './infrastructure/graphql/resolvers/admin-troubleshooting.resolver';
 import { BookResolver } from './infrastructure/graphql/resolvers/book.resolver';
@@ -210,6 +212,9 @@ import { ContentUploadedListener } from './infrastructure/notifiers/content-uplo
 		BooksKafkaConsumer,
 	],
 	providers: [
+		// Global, so every REST or GraphQL caller of the book list answers a
+		// bad cursor with 400; it catches nothing else.
+		{ provide: APP_FILTER, useClass: InvalidBookListCursorFilter },
 		{ provide: I_BOOK_REPOSITORY, useClass: TypeOrmBookRepositoryAdapter },
 		{
 			provide: I_CHAPTER_REPOSITORY,

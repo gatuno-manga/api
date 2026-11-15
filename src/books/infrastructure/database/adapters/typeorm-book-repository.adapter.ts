@@ -1,7 +1,7 @@
 import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
 import { IBookRepository } from '@books/application/ports/book-repository.interface';
 import { FilterStrategy } from '@books/application/strategies/filter-strategy.interface';
-import { resolveBookListSort } from '@books/application/utils/book-list-cursor';
+import { resolveBookListRequest } from '@books/application/utils/book-list-cursor';
 import { Book as DomainBook } from '@books/domain/entities/book';
 import { BookOrderField } from '@books/domain/enums/book-order-field.enum';
 import {
@@ -295,11 +295,16 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 			cursor_updated_at: string;
 		}>();
 		const timestampsById = new Map(raw.map((row) => [row.book_id, row]));
-		const { orderBy } = resolveBookListSort(options);
+		const { orderBy } = resolveBookListRequest(options);
 
 		return entities.map((book) => {
 			const timestamps = timestampsById.get(book.id);
-			const createdAt = timestamps?.cursor_created_at ?? '';
+			if (!timestamps) {
+				throw new Error(
+					`No list timestamps were read for book ${book.id}`,
+				);
+			}
+			const createdAt = timestamps.cursor_created_at;
 			const sortValueByField: Record<
 				BookOrderField,
 				string | number | null
@@ -307,8 +312,7 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 				[BookOrderField.TITLE]: book.title,
 				[BookOrderField.PUBLICATION]: book.publication ?? null,
 				[BookOrderField.CREATED_AT]: createdAt,
-				[BookOrderField.UPDATED_AT]:
-					timestamps?.cursor_updated_at ?? '',
+				[BookOrderField.UPDATED_AT]: timestamps.cursor_updated_at,
 			};
 			return {
 				book: book as unknown as DomainBook,
@@ -448,7 +452,7 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 
 		// 4. Sorting: id last makes the order total, so ties never swap
 		// between two pages.
-		const { orderBy, order } = resolveBookListSort(options);
+		const { orderBy, order } = resolveBookListRequest(options);
 		queryBuilder.orderBy(`book.${orderBy}`, order);
 		if (orderBy !== BookOrderField.CREATED_AT) {
 			queryBuilder.addOrderBy('book.createdAt', OrderDirection.DESC);
@@ -463,7 +467,7 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 		options: BookPageOptionsDto,
 		position: BookListPosition,
 	): ListOrderKey[] {
-		const { orderBy, order } = resolveBookListSort(options);
+		const { orderBy, order } = resolveBookListRequest(options);
 		const keys: ListOrderKey[] = [
 			{
 				column: `book.${orderBy}`,
