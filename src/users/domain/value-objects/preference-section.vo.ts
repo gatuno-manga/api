@@ -71,6 +71,18 @@ export class PreferenceSection {
 		return this.isNewerThan(stored) ? this : stored;
 	}
 
+	/**
+	 * True when both sections carry the same revision timestamp. Because only a
+	 * strictly newer write wins, a resolved winner with the stored revision means
+	 * the stored section was kept and nothing needs to be persisted.
+	 */
+	public hasSameRevisionAs(other: PreferenceSection): boolean {
+		if (!this.updatedAt || !other.updatedAt) {
+			return this.updatedAt === other.updatedAt;
+		}
+		return this.updatedAt.getTime() === other.updatedAt.getTime();
+	}
+
 	private isNewerThan(other: PreferenceSection): boolean {
 		if (!this.updatedAt) {
 			return false;

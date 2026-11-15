@@ -18,6 +18,7 @@ export function ApiDocsGetPreferences() {
 		}),
 		ApiResponse({ status: 200, description: 'Preferencias retornadas' }),
 		ApiResponse(COMMON_RESPONSES.UNAUTHORIZED),
+		ApiResponse(COMMON_RESPONSES.NOT_FOUND),
 	);
 }
 

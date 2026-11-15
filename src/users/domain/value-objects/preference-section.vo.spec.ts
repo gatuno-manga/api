@@ -188,6 +188,61 @@ describe('PreferenceSection', () => {
 		});
 	});
 
+	describe('revision comparison used to skip no-op writes', () => {
+		it('treats sections with the same timestamp as the same revision, even when built separately', () => {
+			// Arrange
+			const stored = storedSection('2026-11-14T11:00:00.000Z');
+			const sameInstant = storedSection('2026-11-14T08:00:00.000-03:00', {
+				fontSize: 30,
+			});
+
+			// Act
+			const same = sameInstant.hasSameRevisionAs(stored);
+
+			// Assert
+			expect(same).toBe(true);
+		});
+
+		it('treats a newer winner as a different revision so it gets persisted', () => {
+			// Arrange
+			const stored = storedSection('2026-11-14T11:00:00.000Z');
+			const incoming = PreferenceSection.write(
+				{ fontSize: 20 },
+				new Date('2026-11-14T11:00:00.001Z'),
+				NOW,
+			);
+
+			// Act
+			const same = incoming
+				.resolveAgainst(stored)
+				.hasSameRevisionAs(stored);
+
+			// Assert
+			expect(same).toBe(false);
+		});
+
+		it('treats a first write against a never-saved section as a different revision', () => {
+			// Arrange
+			const incoming = PreferenceSection.write({}, NOW, NOW);
+
+			// Act
+			const same = incoming.hasSameRevisionAs(PreferenceSection.empty());
+
+			// Assert
+			expect(same).toBe(false);
+		});
+
+		it('treats two never-saved sections as the same revision', () => {
+			// Act
+			const same = PreferenceSection.empty().hasSameRevisionAs(
+				PreferenceSection.empty(),
+			);
+
+			// Assert
+			expect(same).toBe(true);
+		});
+	});
+
 	describe('restoring stored sections', () => {
 		it('reports a never-saved section as nulls', () => {
 			// Act

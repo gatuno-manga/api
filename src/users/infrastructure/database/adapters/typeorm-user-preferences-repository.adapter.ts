@@ -48,12 +48,15 @@ export class TypeOrmUserPreferencesRepositoryAdapter
 			}
 			const stored = UserPreferences.fromDocument(document).section(name);
 			const winner = resolve(stored);
+			if (winner.hasSameRevisionAs(stored)) {
+				return winner;
+			}
 			const preferences: PreferenceDocument = {
 				...document,
 				[name.toString()]: winner.toSnapshot(),
 			};
 			// The column is `update: false` on the entity so whole-entity saves
-			// cannot write back a stale copy; this is its only writer.
+			// cannot write back a stale copy; after insert, this is its only writer.
 			await manager.query(
 				'UPDATE users SET preferences = ? WHERE id = ?',
 				[JSON.stringify(preferences), userId.toString()],

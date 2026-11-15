@@ -13,7 +13,8 @@ export interface IUserPreferencesRepository {
 
 	/**
 	 * Atomically reads the stored section, asks the resolver which section wins
-	 * and persists the winner without touching other sections. Returns the
+	 * and persists the winner without touching other sections; nothing is
+	 * written when the winner has the stored revision. Returns the
 	 * winner, or null when the user does not exist.
 	 */
 	updateSection(

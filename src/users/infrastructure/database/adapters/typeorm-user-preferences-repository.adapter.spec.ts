@@ -121,18 +121,40 @@ describe('TypeOrmUserPreferencesRepositoryAdapter', () => {
 			});
 		});
 
-		it('returns the stored section when it wins, leaving its content unchanged', async () => {
+		it('skips the UPDATE when an older offline write loses to the stored section', async () => {
+			// Arrange
+			const olderWrite = PreferenceSection.write(
+				{ fontSize: 22 },
+				new Date('2026-11-14T10:00:00.000Z'),
+				new Date('2026-11-14T12:00:00.000Z'),
+			);
+
 			// Act
 			const winner = await adapter.updateSection(
 				USER_ID,
 				READER,
-				(stored) => stored,
+				(stored) => olderWrite.resolveAgainst(stored),
 			);
 
 			// Assert
 			expect(winner?.toSnapshot()).toEqual(STORED_READER);
-			const [, [json]] = manager.query.mock.calls[0];
-			expect(JSON.parse(json).reader).toEqual(STORED_READER);
+			expect(manager.query).not.toHaveBeenCalled();
+		});
+
+		it('skips the UPDATE based on the revision, not object identity', async () => {
+			// Arrange: the resolver hands back a fresh copy of the stored revision
+			const storedCopy = PreferenceSection.restore(STORED_READER);
+
+			// Act
+			const winner = await adapter.updateSection(
+				USER_ID,
+				READER,
+				() => storedCopy,
+			);
+
+			// Assert
+			expect(winner).toBe(storedCopy);
+			expect(manager.query).not.toHaveBeenCalled();
 		});
 
 		it('returns null when the user does not exist', async () => {
