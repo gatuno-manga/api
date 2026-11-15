@@ -207,6 +207,16 @@ describe('book list cursor', () => {
 				}),
 			],
 			['an id that is not a UUID', keysetPayload({ id: '1 OR 1=1' })],
+			...[
+				'2026-13-01 10:00:00.000000',
+				'2026-02-30 10:00:00.000000',
+				'2026-01-45 10:00:00.000000',
+				'2026-01-01 24:00:00.000000',
+				'2026-01-01 10:60:00.000000',
+			].map((createdAt) => [
+				`an out-of-range calendar time (${createdAt}) that MySQL would choke on`,
+				keysetPayload({ value: createdAt, createdAt }),
+			]),
 		])(
 			'should reject %s, so a broken client fails loudly instead of restarting the list',
 			(_case, cursor) => {

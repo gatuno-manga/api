@@ -530,6 +530,24 @@ describe('BookQueryService (Search Optimization)', () => {
 			);
 		});
 
+		it('should fall back to a page of 20 when a caller passes no limit, instead of fetching NaN rows', async () => {
+			// Arrange
+			const options = cursorOptions();
+			Object.assign(options, { limit: undefined });
+
+			// Act
+			await service.getAllBooks(options, 0, 'user-1', []);
+
+			// Assert
+			expect(bookRepository.findWithFiltersAfter).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				[],
+				null,
+				21,
+			);
+		});
+
 		it('should end the walk with no cursor on the last page, so the client stops loading', async () => {
 			// Arrange
 			bookRepository.findWithFiltersAfter.mockResolvedValue(

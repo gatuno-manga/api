@@ -28,7 +28,8 @@ type CursorPayload = {
 	id?: unknown;
 };
 
-const DATABASE_TIMESTAMP = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d{1,6})?$/;
+const DATABASE_TIMESTAMP =
+	/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})(\.\d{1,6})?$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function resolveBookListRequest(
@@ -148,8 +149,27 @@ function decodeKeysetWalk(
 	};
 }
 
+/**
+ * The shape of MySQL DATETIME text, and a real calendar time: a tampered
+ * `2026-13-45 99:00:00` would otherwise reach MySQL instead of a 400.
+ */
 function isDatabaseTimestamp(value: unknown): value is string {
-	return typeof value === 'string' && DATABASE_TIMESTAMP.test(value);
+	if (typeof value !== 'string') return false;
+	const parts = DATABASE_TIMESTAMP.exec(value);
+	if (!parts) return false;
+
+	const [year, month, day, hour, minute, second] = parts
+		.slice(1, 7)
+		.map(Number);
+	const time = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+	return (
+		time.getUTCFullYear() === year &&
+		time.getUTCMonth() === month - 1 &&
+		time.getUTCDate() === day &&
+		time.getUTCHours() === hour &&
+		time.getUTCMinutes() === minute &&
+		time.getUTCSeconds() === second
+	);
 }
 
 /** Exhaustive, so a new sort field cannot ship without its cursor check. */

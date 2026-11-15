@@ -102,6 +102,7 @@ type CursorQuery = {
 	listRequest: BookListRequest;
 	accessContext: AccessContext;
 	lang?: string;
+	limit: number;
 };
 
 type BookListItem = Omit<Book, 'covers'> & {
@@ -281,7 +282,15 @@ export class BookQueryService {
 		const lang = targetLang || options.lang;
 
 		if (walk) {
-			const cursorQuery = { options, listRequest, accessContext, lang };
+			const cursorQuery = {
+				options,
+				listRequest,
+				accessContext,
+				lang,
+				// Normalized once, as the offset search path does, for callers
+				// that bypass the DTO defaults.
+				limit: options.limit || 20,
+			};
 			return this.getBooksCursorPage(cursorQuery, filterStrategies, walk);
 		}
 
@@ -354,7 +363,7 @@ export class BookQueryService {
 		filterStrategies: FilterStrategy[],
 		after: BookListPosition | null,
 	): Promise<CursorPageDto<BookListItem>> {
-		const { limit } = query.options;
+		const { limit } = query;
 		const positioned = await this.bookRepository.findWithFiltersAfter(
 			query.options,
 			query.accessContext,
@@ -384,7 +393,7 @@ export class BookQueryService {
 		query: CursorQuery,
 		offset: number,
 	): Promise<CursorPageDto<BookListItem>> {
-		const { limit } = query.options;
+		const { limit } = query;
 		const { ids } = await this.searchBookIds(
 			query.options,
 			query.accessContext,
