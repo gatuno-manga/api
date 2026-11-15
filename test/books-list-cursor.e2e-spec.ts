@@ -118,8 +118,10 @@ describe('Books list cursor pagination (e2e)', () => {
 			[`E2E Tie ${token}`, seededIds.slice(0, 4)],
 		);
 
-		// Production indexing runs in an external sync service, so the test
-		// indexes the seeded books itself to exercise the search path.
+		// Indexing runs in the meilisync service, which the e2e stack does not
+		// run, so the test indexes the seeded books itself to exercise the
+		// search path. With meilisync running (dev stack) it may rewrite these
+		// documents mid-walk and shift the search order between pages.
 		await meiliClient
 			.index('books')
 			.addDocuments(
@@ -136,20 +138,21 @@ describe('Books list cursor pagination (e2e)', () => {
 	});
 
 	afterAll(async () => {
-		if (meiliClient && seededIds.length) {
-			await meiliClient
-				.index('books')
-				.deleteDocuments(seededIds)
-				.waitTask();
-		}
-		if (dataSource) {
-			if (seededIds.length) {
-				await dataSource.getRepository(Book).delete(seededIds);
-			}
-			await dataSource.getRepository(Tag).delete(tagId);
-		}
-		if (app) {
-			await app.close();
+		// Each step runs even if another fails, so a search engine error
+		// never leaves tagged books in the shared database or the app open.
+		try {
+			await Promise.allSettled([
+				meiliClient
+					?.index('books')
+					.deleteDocuments(seededIds)
+					.waitTask(),
+				seededIds.length
+					? dataSource?.getRepository(Book).delete(seededIds)
+					: undefined,
+			]);
+			await dataSource?.getRepository(Tag).delete(tagId);
+		} finally {
+			await app?.close();
 		}
 	});
 
@@ -185,6 +188,7 @@ describe('Books list cursor pagination (e2e)', () => {
 
 		const walked = idsOf(pages);
 		expect(pages.length).toBe(3);
+		expect(pages[0].nextCursor).not.toBeNull();
 		expect(cursorMode(pages[0].nextCursor)).toBe('search');
 		expect(new Set(walked).size).toBe(walked.length);
 		expect([...walked].sort()).toEqual([...seededIds].sort());
@@ -280,6 +284,7 @@ describe('Books list cursor pagination (e2e)', () => {
 			};
 
 			const first = await postGraphql({ query, variables: { filter } });
+			expect(first.body.errors).toBeUndefined();
 			const second = await postGraphql({
 				query,
 				variables: {

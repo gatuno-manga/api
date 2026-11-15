@@ -113,6 +113,37 @@ describe('book list cursor', () => {
 			expect(walk).toEqual({ walk: 'keyset', after: position });
 		});
 
+		it.each(['2024-02-29 10:00:00.000000', '2000-02-29 10:00:00.000000'])(
+			'should accept the leap day %s, so a book created on Feb 29 never breaks a scroll',
+			(createdAt) => {
+				// Arrange
+				const cursor = keysetPayload({ value: createdAt, createdAt });
+
+				// Act
+				const walk = decodeBookListCursor(cursor, browse);
+
+				// Assert
+				expect(walk).toEqual({
+					walk: 'keyset',
+					after: { ...position, sortValue: createdAt, createdAt },
+				});
+			},
+		);
+
+		it.each(['2023-02-29 10:00:00.000000', '2100-02-29 10:00:00.000000'])(
+			'should reject %s, a Feb 29 outside a leap year',
+			(createdAt) => {
+				// Arrange
+				const cursor = keysetPayload({ value: createdAt, createdAt });
+
+				// Act
+				const decode = () => decodeBookListCursor(cursor, browse);
+
+				// Assert
+				expect(decode).toThrow(InvalidBookListCursorException);
+			},
+		);
+
 		it('should accept a null publication, because books without a year sit in the list too', () => {
 			// Arrange
 			const request = {
