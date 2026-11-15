@@ -79,7 +79,7 @@ export function decodeBookListCursor(
 	if (!payload) throw new InvalidBookListCursorException('malformed cursor');
 	ensureIssuedFor(payload, request);
 
-	if (payload.mode === 'search') return decodeSearchWalk(payload);
+	if (payload.mode === 'search') return decodeSearchWalk(payload, request);
 	if (payload.mode === 'keyset') {
 		return decodeKeysetWalk(payload, request.orderBy);
 	}
@@ -106,7 +106,16 @@ function ensureIssuedFor(
 	}
 }
 
-function decodeSearchWalk(payload: CursorPayload): BookListWalk {
+function decodeSearchWalk(
+	payload: CursorPayload,
+	request: BookListRequest,
+): BookListWalk {
+	// A walk without a search always runs on MySQL keyset.
+	if (!request.search) {
+		throw new InvalidBookListCursorException(
+			'a search cursor needs a search',
+		);
+	}
 	const offset = payload.offset;
 	if (typeof offset !== 'number' || !Number.isInteger(offset) || offset < 0) {
 		throw new InvalidBookListCursorException('malformed search offset');
@@ -124,7 +133,7 @@ function decodeKeysetWalk(
 	if (typeof payload.id !== 'string' || !UUID.test(payload.id)) {
 		throw new InvalidBookListCursorException('malformed id');
 	}
-	if (!isSortValueOf(orderBy, payload.value)) {
+	if (!IS_SORT_VALUE_OF[orderBy](payload.value)) {
 		throw new InvalidBookListCursorException(
 			`malformed value for ${orderBy}`,
 		);
@@ -143,16 +152,18 @@ function isDatabaseTimestamp(value: unknown): value is string {
 	return typeof value === 'string' && DATABASE_TIMESTAMP.test(value);
 }
 
-function isSortValueOf(
-	orderBy: BookOrderField,
-	value: unknown,
-): value is string | number | null {
-	if (orderBy === BookOrderField.TITLE) return typeof value === 'string';
-	if (orderBy === BookOrderField.PUBLICATION) {
-		return value === null || Number.isInteger(value);
-	}
-	return isDatabaseTimestamp(value);
-}
+/** Exhaustive, so a new sort field cannot ship without its cursor check. */
+const IS_SORT_VALUE_OF: Record<
+	BookOrderField,
+	(value: unknown) => value is string | number | null
+> = {
+	[BookOrderField.TITLE]: (value): value is string =>
+		typeof value === 'string',
+	[BookOrderField.PUBLICATION]: (value): value is number | null =>
+		value === null || Number.isInteger(value),
+	[BookOrderField.CREATED_AT]: isDatabaseTimestamp,
+	[BookOrderField.UPDATED_AT]: isDatabaseTimestamp,
+};
 
 /** base64url, so a cursor survives a query string that was not URL-encoded. */
 function encodeUrlSafe(payload: Record<string, unknown>): string {

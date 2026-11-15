@@ -30,6 +30,14 @@ type ListOrderKey = {
 	value: string | number | null;
 };
 
+/** Exhaustive, so a new sort field cannot ship without its NULL placement. */
+const NULLABLE_SORT_FIELD: Record<BookOrderField, boolean> = {
+	[BookOrderField.TITLE]: false,
+	[BookOrderField.PUBLICATION]: true,
+	[BookOrderField.CREATED_AT]: false,
+	[BookOrderField.UPDATED_AT]: false,
+};
+
 const LIST_TIMESTAMP_FORMAT = (column: string) =>
 	`DATE_FORMAT(${column}, '%Y-%m-%d %H:%i:%s.%f')`;
 
@@ -472,7 +480,7 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 			{
 				column: `book.${orderBy}`,
 				direction: order,
-				nullable: orderBy === BookOrderField.PUBLICATION,
+				nullable: NULLABLE_SORT_FIELD[orderBy],
 				value: position.sortValue,
 			},
 		];

@@ -178,6 +178,17 @@ describe('book list cursor', () => {
 			},
 		);
 
+		it('should reject a search cursor forged for no search, because a walk without a search always runs on MySQL keyset', () => {
+			// Arrange
+			const cursor = encodeSearchCursor(browse, 0);
+
+			// Act
+			const decode = () => decodeBookListCursor(cursor, browse);
+
+			// Assert
+			expect(decode).toThrow('a search cursor needs a search');
+		});
+
 		it.each([
 			['not base64 JSON', 'not-a-cursor'],
 			[
