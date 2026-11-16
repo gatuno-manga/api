@@ -6,7 +6,8 @@ export function ApiDocsGetChapter() {
 	return applyDecorators(
 		ApiOperation({
 			summary: 'Obter capitulo por ID',
-			description: 'Retorna conteudo e detalhes do capitulo',
+			description:
+				'Retorna conteudo e detalhes do capitulo. Leitura pura: nao marca o capitulo como lido, mesmo para usuario autenticado. Para marcar como lido, chame POST /chapters/{idChapter}/read.',
 		}),
 		ApiParam({
 			name: 'idChapter',
@@ -57,7 +58,8 @@ export function ApiDocsMarkChapterAsRead() {
 	return applyDecorators(
 		ApiOperation({
 			summary: 'Marcar capitulo como lido',
-			description: 'Marca um capitulo como lido para o usuario atual',
+			description:
+				'Marca um capitulo como lido para o usuario atual. Unica forma de marcar um capitulo como lido: GET /chapters/{idChapter} nao marca, e o progresso de leitura (/users/me/reading-progress, /sync) tambem nao. Idempotente.',
 		}),
 		ApiParam({
 			name: 'idChapter',

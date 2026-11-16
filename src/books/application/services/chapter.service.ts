@@ -30,7 +30,11 @@ export class ChapterService {
 		return error instanceof Error ? error.message : 'Unknown error';
 	}
 
-	async getChapter(idChapter: string, userId?: string) {
+	/**
+	 * Returns a chapter with its navigation and content. Pure read: it does not
+	 * mark the chapter read; clients call markChapterAsRead explicitly.
+	 */
+	async getChapter(idChapter: string) {
 		const chapter = await this.chapterRepository
 			.createQueryBuilder('chapter')
 			.leftJoinAndSelect('chapter.book', 'book')
@@ -167,12 +171,6 @@ export class ChapterService {
 		}
 
 		// Para TEXT: content já está no objeto, não precisa modificar
-
-		if (userId) {
-			this.markChapterAsRead(idChapter, userId).catch((err) =>
-				this.logger.error(err),
-			);
-		}
 
 		return baseResponse;
 	}
