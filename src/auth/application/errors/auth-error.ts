@@ -18,10 +18,12 @@ export const AuthErrorCode = {
 export type AuthErrorCode = (typeof AuthErrorCode)[keyof typeof AuthErrorCode];
 
 /** The refresh failures that mean the session is dead (answered with 401). */
-export type RefreshUnauthorizedCode = Exclude<
-	AuthErrorCode,
-	'REFRESH_IN_PROGRESS' | 'CSRF_TOKEN_INVALID'
->;
+export type RefreshUnauthorizedCode = (typeof AuthErrorCode)[
+	| 'REFRESH_TOKEN_MISSING'
+	| 'REFRESH_TOKEN_INVALID'
+	| 'REFRESH_SESSION_NOT_FOUND'
+	| 'REFRESH_TOKEN_REUSED'
+	| 'REFRESH_USER_NOT_FOUND'];
 
 /** A 401 with the default Nest body plus `code`. */
 export function refreshUnauthorized(

@@ -5,7 +5,11 @@ import {
 import { Injectable } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
-/** passport-jwt's failure reason when the request carries no token. */
+/**
+ * passport-jwt's failure reason when the request carries no token
+ * (`self.fail(new Error("No auth token"))` in passport-jwt/lib/strategy.js,
+ * v4). The e2e test for REFRESH_TOKEN_MISSING catches a wording change.
+ */
 const NO_TOKEN_REASON = 'No auth token';
 
 /**
