@@ -10,7 +10,7 @@ import { DataSource } from 'typeorm';
 import { v7 as uuidv7 } from 'uuid';
 import { createE2EApp } from './helpers/e2e-app.helper';
 
-jest.setTimeout(180000);
+jest.setTimeout(120000);
 
 // The app's infinite scroll walks GET /books with nextCursor: every book must
 // come exactly once, in the offset order, including ties and NULLs.
@@ -40,21 +40,11 @@ describe('Books list cursor pagination (e2e)', () => {
 		hasNextPage: boolean;
 	};
 
-	// The 'short' (3/1s), 'medium' (20/10s) and 'long' (100/60s) throttles
-	// count every request of this app; spacing them keeps a walk under all.
-	let lastRequestAt = 0;
-	const pace = async () => {
-		const wait = lastRequestAt + 650 - Date.now();
-		if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-		lastRequestAt = Date.now();
-	};
-	const getBooks = async (query: Record<string, string>) => {
-		await pace();
+	const getBooks = (query: Record<string, string>) => {
 		const search = new URLSearchParams(query).toString();
 		return request(app.getHttpServer()).get(`/api/books?${search}`);
 	};
-	const postGraphql = async (body: object) => {
-		await pace();
+	const postGraphql = (body: object) => {
 		return request(app.getHttpServer()).post('/api/graphql').send(body);
 	};
 
