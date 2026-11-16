@@ -1,6 +1,6 @@
-import { BookOrderField } from '@books/domain/enums/book-order-field.enum';
-import { BookType } from '@books/domain/enums/book-type.enum';
 import { INestApplication } from '@nestjs/common';
+import { BookOrderField } from 'src/books/domain/enums/book-order-field.enum';
+import { BookType } from 'src/books/domain/enums/book-type.enum';
 import { FilterLogic } from 'src/common/enum/filter-logic.enum';
 import { FilterOperator } from 'src/common/enum/filter-operator.enum';
 import { OrderDirection } from 'src/common/enum/order-direction.enum';
