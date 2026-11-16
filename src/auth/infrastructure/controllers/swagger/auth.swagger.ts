@@ -75,7 +75,7 @@ export function ApiDocsRefreshTokens() {
 		ApiResponse({
 			status: 401,
 			description:
-				'The session is dead; sign out. `code` is one of REFRESH_TOKEN_MISSING, REFRESH_TOKEN_INVALID, REFRESH_SESSION_NOT_FOUND, REFRESH_TOKEN_REUSED (the token family was revoked) or REFRESH_USER_NOT_FOUND.',
+				'The session is dead; sign out. `code` is one of: REFRESH_TOKEN_MISSING (no refresh cookie); REFRESH_TOKEN_INVALID (bad signature, expired, wrong issuer or audience, or a token that is not stored, e.g. one already rotated or revoked); REFRESH_SESSION_NOT_FOUND (the user has no live session); REFRESH_TOKEN_REUSED (reuse detected under the refresh lock; the token family was revoked); REFRESH_USER_NOT_FOUND (the user was deleted).',
 		}),
 		ApiResponse({
 			status: 403,
@@ -105,7 +105,11 @@ export function ApiDocsLogout() {
 			description: 'Invalidate the current refresh token',
 		}),
 		ApiResponse({ status: 200, description: 'Successfully logged out' }),
-		ApiResponse({ status: 401, description: 'Unauthorized' }),
+		ApiResponse({
+			status: 401,
+			description:
+				'Unauthorized. Refresh-cookie failures carry the same `code` values as POST /auth/refresh.',
+		}),
 		ApiResponse({
 			status: 403,
 			description:

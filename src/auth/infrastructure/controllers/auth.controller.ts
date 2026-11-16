@@ -2,7 +2,6 @@ import { randomBytes } from 'node:crypto';
 import { CurrentUserDto } from '@auth/application/dto/current-user.dto';
 import {
 	AuthErrorCode,
-	csrfTokenInvalid,
 	refreshUnauthorized,
 } from '@auth/application/errors/auth-error';
 import { AuthService } from '@auth/auth.service';
@@ -36,6 +35,7 @@ import {
 	Body,
 	Controller,
 	Delete,
+	ForbiddenException,
 	Get,
 	Logger,
 	NotFoundException,
@@ -174,7 +174,12 @@ export class AuthController {
 			this.logger.warn(
 				`CSRF validation failed for web auth request (cookie=${Boolean(csrfCookie)}, header=${Boolean(csrfHeader)})`,
 			);
-			throw csrfTokenInvalid();
+			throw new ForbiddenException({
+				statusCode: 403,
+				error: 'Forbidden',
+				message: 'Invalid CSRF token',
+				code: AuthErrorCode.CSRF_TOKEN_INVALID,
+			});
 		}
 	}
 

@@ -1,4 +1,4 @@
-import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException } from '@nestjs/common';
 
 /**
  * Machine-readable `code` on auth error bodies, so clients can branch
@@ -18,13 +18,9 @@ export const AuthErrorCode = {
 export type AuthErrorCode = (typeof AuthErrorCode)[keyof typeof AuthErrorCode];
 
 /** The refresh failures that mean the session is dead (answered with 401). */
-export type RefreshUnauthorizedCode = Extract<
+export type RefreshUnauthorizedCode = Exclude<
 	AuthErrorCode,
-	| 'REFRESH_TOKEN_MISSING'
-	| 'REFRESH_TOKEN_INVALID'
-	| 'REFRESH_SESSION_NOT_FOUND'
-	| 'REFRESH_TOKEN_REUSED'
-	| 'REFRESH_USER_NOT_FOUND'
+	'REFRESH_IN_PROGRESS' | 'CSRF_TOKEN_INVALID'
 >;
 
 /** A 401 with the default Nest body plus `code`. */
@@ -37,15 +33,5 @@ export function refreshUnauthorized(
 		error: 'Unauthorized',
 		message,
 		code,
-	});
-}
-
-/** A 403 for a web request whose CSRF header does not match its cookie. */
-export function csrfTokenInvalid(): ForbiddenException {
-	return new ForbiddenException({
-		statusCode: 403,
-		error: 'Forbidden',
-		message: 'Invalid CSRF token',
-		code: AuthErrorCode.CSRF_TOKEN_INVALID,
 	});
 }
