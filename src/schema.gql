@@ -110,6 +110,11 @@ type Chapter {
 	isFinal: Boolean!
 	languageCode: String!
 	pages: [Page]
+
+	"""
+	Whether the signed-in caller marked this chapter read; null for anonymous callers.
+	"""
+	read: Boolean
 	scrapingStatus: ScrapingStatus
 	title: String
 }
@@ -133,6 +138,12 @@ input ChapterFilterInput {
 	limit: Int = 100
 	order: OrderDirection = ASC
 	page: Int = 1
+}
+
+type ChapterReadResult {
+	chapterId: ID!
+	error: String
+	success: Boolean!
 }
 
 type Collection {
@@ -281,6 +292,10 @@ type Mutation {
 		customCoverUrl: String
 		customTitle: String
 	): UserBookCustomization!
+	markChapterRead(chapterId: ID!): Chapter!
+	markChapterUnread(chapterId: ID!): Chapter!
+	markChaptersRead(chapterIds: [ID!]!): [ChapterReadResult!]!
+	markChaptersUnread(chapterIds: [ID!]!): [ChapterReadResult!]!
 	sync(input: SyncInput!): SyncResult!
 }
 

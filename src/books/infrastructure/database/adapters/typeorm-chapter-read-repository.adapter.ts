@@ -37,6 +37,20 @@ export class TypeOrmChapterReadRepositoryAdapter
 		);
 	}
 
+	async findReadChapterIds(
+		userId: string,
+		chapterIds: string[],
+	): Promise<string[]> {
+		if (chapterIds.length === 0) return [];
+		const rows = await this.repository
+			.createQueryBuilder('cr')
+			.select('cr.chapterId', 'chapterId')
+			.where('cr.userId = :userId', { userId })
+			.andWhere('cr.chapterId IN (:...chapterIds)', { chapterIds })
+			.getRawMany<{ chapterId: string }>();
+		return rows.map((row) => row.chapterId);
+	}
+
 	create(data: Partial<DomainChapterRead>): DomainChapterRead {
 		return this.repository.create(
 			data as DeepPartial<InfrastructureChapterRead>,

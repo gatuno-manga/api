@@ -3,6 +3,10 @@ import {
 	I_AUTHOR_REPOSITORY,
 } from '@books/application/ports/author-repository.interface';
 import {
+	IChapterReadRepository,
+	I_CHAPTER_READ_REPOSITORY,
+} from '@books/application/ports/chapter-read-repository.interface';
+import {
 	IChapterRepository,
 	I_CHAPTER_REPOSITORY,
 } from '@books/application/ports/chapter-repository.interface';
@@ -32,7 +36,40 @@ export class BookDataLoaderService {
 		private readonly authorRepository: IAuthorRepository,
 		@Inject(I_TAG_REPOSITORY)
 		private readonly tagRepository: ITagRepository,
+		@Inject(I_CHAPTER_READ_REPOSITORY)
+		private readonly chapterReadRepository: IChapterReadRepository,
 	) {}
+
+	private readonly chapterReadLoaders = new Map<
+		string,
+		DataLoader<string, boolean>
+	>();
+
+	/**
+	 * DataLoader que diz, para um usuário, quais capítulos ele marcou como
+	 * lidos. Um loader por usuário, para que as respostas nunca se misturem.
+	 */
+	public chapterReadLoader(userId: string): DataLoader<string, boolean> {
+		let loader = this.chapterReadLoaders.get(userId);
+		if (!loader) {
+			loader = new DataLoader<string, boolean>(
+				async (chapterIds: readonly string[]) => {
+					const readIds = new Set(
+						await this.chapterReadRepository.findReadChapterIds(
+							userId,
+							[...chapterIds],
+						),
+					);
+					return chapterIds.map((id) => readIds.has(id));
+				},
+				// An unfiltered books -> chapters query can ask for thousands
+				// of ids at once; keep each IN list bounded.
+				{ maxBatchSize: 500 },
+			);
+			this.chapterReadLoaders.set(userId, loader);
+		}
+		return loader;
+	}
 
 	/**
 	 * DataLoader para buscar capítulos de vários livros em uma única query.

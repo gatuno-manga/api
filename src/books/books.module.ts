@@ -74,6 +74,7 @@ import { InvalidBookListCursorFilter } from './infrastructure/filters/invalid-bo
 import { BooksGateway } from './infrastructure/gateways/books.gateway';
 import { AdminTroubleshootingResolver } from './infrastructure/graphql/resolvers/admin-troubleshooting.resolver';
 import { BookResolver } from './infrastructure/graphql/resolvers/book.resolver';
+import { ChapterResolver } from './infrastructure/graphql/resolvers/chapter.resolver';
 import {
 	CoverResolver,
 	PageResolver,
@@ -291,6 +292,7 @@ import { ContentUploadedListener } from './infrastructure/notifiers/content-uplo
 		BooksGateway,
 		AdminTroubleshootingResolver,
 		BookResolver,
+		ChapterResolver,
 		CoverResolver,
 		PageResolver,
 		ChapterSubscriber,
