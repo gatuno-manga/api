@@ -6,6 +6,8 @@ export interface IChapterReadRepository {
 	findOneBy(criteria: ChapterReadCriteria): Promise<ChapterRead | null>;
 	delete(criteria: ChapterReadCriteria): Promise<void>;
 	create(data: Partial<ChapterRead>): ChapterRead;
+	/** Returns the subset of `chapterIds` the user has marked read. */
+	findReadChapterIds(userId: string, chapterIds: string[]): Promise<string[]>;
 }
 
 export const I_CHAPTER_READ_REPOSITORY = 'IChapterReadRepository';

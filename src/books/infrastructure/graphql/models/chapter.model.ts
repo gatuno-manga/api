@@ -43,4 +43,23 @@ export class ChapterModel {
 
 	@Field()
 	isFinal: boolean;
+
+	@Field(() => Boolean, {
+		nullable: true,
+		description:
+			'Whether the signed-in caller marked this chapter read; null for anonymous callers.',
+	})
+	read?: boolean | null;
+}
+
+@ObjectType('ChapterReadResult')
+export class ChapterReadResultModel {
+	@Field(() => ID)
+	chapterId: string;
+
+	@Field()
+	success: boolean;
+
+	@Field(() => String, { nullable: true })
+	error: string | null;
 }
