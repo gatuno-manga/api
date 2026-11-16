@@ -110,6 +110,10 @@ type Chapter {
 	isFinal: Boolean!
 	languageCode: String!
 	pages: [Page]
+
+	"""
+	Whether the signed-in caller marked this chapter read; null for anonymous callers.
+	"""
 	read: Boolean
 	scrapingStatus: ScrapingStatus
 	title: String

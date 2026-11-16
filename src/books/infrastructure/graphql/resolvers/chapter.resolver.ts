@@ -4,6 +4,7 @@ import {
 	ChapterService,
 } from '@books/application/services/chapter.service';
 import {
+	CHAPTER_READ_DESCRIPTION,
 	ChapterModel,
 	ChapterReadResultModel,
 } from '@books/infrastructure/graphql/models/chapter.model';
@@ -38,7 +39,11 @@ export class ChapterResolver {
 	// stale. A parent that already knows the answer (the mutations below, or
 	// the cursor chapter list's readCount subquery) wins: re-reading it here
 	// could hit a lagging replica and contradict a write just made.
-	@ResolveField(() => Boolean, { name: 'read', nullable: true })
+	@ResolveField(() => Boolean, {
+		name: 'read',
+		nullable: true,
+		description: CHAPTER_READ_DESCRIPTION,
+	})
 	async resolveRead(
 		@Parent() chapter: ChapterModel,
 		@GqlCurrentUser() user?: CurrentUserDto,

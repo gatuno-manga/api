@@ -18,8 +18,9 @@ describe('Chapter read state (e2e)', () => {
 	let userId: string;
 	const bookId = uuidv7();
 	// One chapter per scenario, so no test depends on another's state.
-	const chapterIds = Array.from({ length: 5 }, () => uuidv7());
-	const [restGetId, gqlGetId, restMarkId, gqlMarkId, gqlBatchId] = chapterIds;
+	const chapterIds = Array.from({ length: 6 }, () => uuidv7());
+	const [restGetId, gqlGetId, restMarkId, gqlMarkId, gqlBatchId, barrierId] =
+		chapterIds;
 
 	const server = () => app.getHttpServer();
 	const auth = (req: request.Test) =>
@@ -49,12 +50,10 @@ describe('Chapter read state (e2e)', () => {
 	// The old side effect ran after the response. Marking another chapter
 	// and waiting for it to show up lets any such write land first.
 	const settle = async () => {
-		await auth(request(server()).post(`/api/chapters/${restMarkId}/read`));
-		await eventuallyRead(restMarkId, true);
-		await auth(
-			request(server()).delete(`/api/chapters/${restMarkId}/read`),
-		);
-		await eventuallyRead(restMarkId, false);
+		await auth(request(server()).post(`/api/chapters/${barrierId}/read`));
+		await eventuallyRead(barrierId, true);
+		await auth(request(server()).delete(`/api/chapters/${barrierId}/read`));
+		await eventuallyRead(barrierId, false);
 	};
 
 	beforeAll(async () => {

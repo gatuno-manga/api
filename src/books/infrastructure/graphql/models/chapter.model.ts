@@ -5,6 +5,9 @@ import { ScrapingStatus } from '@books/domain/enums/scrapingStatus.enum';
 import { Field, ID, Int, ObjectType, registerEnumType } from '@nestjs/graphql';
 import { PageModel } from './page.model';
 
+export const CHAPTER_READ_DESCRIPTION =
+	'Whether the signed-in caller marked this chapter read; null for anonymous callers.';
+
 registerEnumType(ContentType, { name: 'ContentType' });
 registerEnumType(ContentFormat, { name: 'ContentFormat' });
 registerEnumType(DocumentFormat, { name: 'DocumentFormat' });
@@ -46,8 +49,7 @@ export class ChapterModel {
 
 	@Field(() => Boolean, {
 		nullable: true,
-		description:
-			'Whether the signed-in caller marked this chapter read; null for anonymous callers.',
+		description: CHAPTER_READ_DESCRIPTION,
 	})
 	read?: boolean | null;
 }

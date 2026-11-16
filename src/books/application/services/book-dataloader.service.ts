@@ -62,6 +62,9 @@ export class BookDataLoaderService {
 					);
 					return chapterIds.map((id) => readIds.has(id));
 				},
+				// An unfiltered books -> chapters query can ask for thousands
+				// of ids at once; keep each IN list bounded.
+				{ maxBatchSize: 500 },
 			);
 			this.chapterReadLoaders.set(userId, loader);
 		}
