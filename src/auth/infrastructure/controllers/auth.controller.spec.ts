@@ -3,11 +3,26 @@ import { AuthService } from '@auth/auth.service';
 import { WebauthnService } from '@auth/infrastructure/adapters/webauthn.service';
 import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
 import { RefreshTokenGuard } from '@auth/infrastructure/framework/jwt-refresh.guard';
-import { UnauthorizedException } from '@nestjs/common';
+import {
+	ForbiddenException,
+	HttpException,
+	UnauthorizedException,
+} from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { Request, Response } from 'express';
 import { PermissionsGuard } from 'src/users/application/services/permissions.guard';
 import { AuthController } from './auth.controller';
+
+async function rejectionOf(promise: Promise<unknown>): Promise<HttpException> {
+	const error = await promise.then(
+		() => {
+			throw new Error('Expected the promise to reject');
+		},
+		(rejection: unknown) => rejection,
+	);
+	expect(error).toBeInstanceOf(HttpException);
+	return error as HttpException;
+}
 
 describe('AuthController', () => {
 	let controller: AuthController;
@@ -406,7 +421,7 @@ describe('AuthController', () => {
 			maxWeightSensitiveContent: 5,
 		};
 
-		it('throws unauthorized when CSRF header is missing for web', async () => {
+		it('answers 403 CSRF_TOKEN_INVALID when the CSRF header is missing for web', async () => {
 			const req = createRequest(
 				{
 					'x-client-platform': 'web',
@@ -418,13 +433,20 @@ describe('AuthController', () => {
 			);
 			const res = createResponse();
 
-			await expect(
+			const error = await rejectionOf(
 				controller.refreshTokens(currentUser, req, res),
-			).rejects.toThrow(UnauthorizedException);
+			);
+			expect(error).toBeInstanceOf(ForbiddenException);
+			expect(error.getResponse()).toEqual({
+				statusCode: 403,
+				error: 'Forbidden',
+				message: 'Invalid CSRF token',
+				code: 'CSRF_TOKEN_INVALID',
+			});
 			expect(mockAuthService.refreshTokens).not.toHaveBeenCalled();
 		});
 
-		it('throws unauthorized when CSRF header does not match cookie for web', async () => {
+		it('answers 403 CSRF_TOKEN_INVALID when the CSRF header does not match the cookie for web', async () => {
 			const req = createRequest(
 				{
 					'x-client-platform': 'web',
@@ -437,9 +459,33 @@ describe('AuthController', () => {
 			);
 			const res = createResponse();
 
-			await expect(
+			const error = await rejectionOf(
 				controller.refreshTokens(currentUser, req, res),
-			).rejects.toThrow(UnauthorizedException);
+			);
+			expect(error).toBeInstanceOf(ForbiddenException);
+			expect(error.getResponse()).toEqual({
+				statusCode: 403,
+				error: 'Forbidden',
+				message: 'Invalid CSRF token',
+				code: 'CSRF_TOKEN_INVALID',
+			});
+			expect(mockAuthService.refreshTokens).not.toHaveBeenCalled();
+		});
+
+		it('answers 401 REFRESH_TOKEN_MISSING when the refresh cookie is absent', async () => {
+			const req = createRequest({ 'x-client-platform': 'mobile' }, {});
+			const res = createResponse();
+
+			const error = await rejectionOf(
+				controller.refreshTokens(currentUser, req, res),
+			);
+			expect(error).toBeInstanceOf(UnauthorizedException);
+			expect(error.getResponse()).toEqual({
+				statusCode: 401,
+				error: 'Unauthorized',
+				message: 'Refresh token not found in cookies',
+				code: 'REFRESH_TOKEN_MISSING',
+			});
 			expect(mockAuthService.refreshTokens).not.toHaveBeenCalled();
 		});
 
@@ -524,6 +570,33 @@ describe('AuthController', () => {
 				refreshToken: 'new-refresh-token',
 				sessionId: 'session-1',
 			});
+		});
+	});
+
+	describe('logout', () => {
+		const currentUser = {
+			userId: '550e8400-e29b-41d4-a716-446655440000',
+			username: 'user',
+			roles: ['user'],
+			permissions: [],
+			maxWeightSensitiveContent: 5,
+		};
+
+		it('answers 403 CSRF_TOKEN_INVALID when the CSRF header is missing for web', async () => {
+			const req = createRequest(
+				{ 'x-client-platform': 'web' },
+				{ refreshToken: 'refresh-token', csrfToken: 'csrf-cookie' },
+			);
+			const res = createResponse();
+
+			const error = await rejectionOf(
+				controller.logout(currentUser, req, res),
+			);
+			expect(error).toBeInstanceOf(ForbiddenException);
+			expect(error.getResponse()).toMatchObject({
+				code: 'CSRF_TOKEN_INVALID',
+			});
+			expect(mockAuthService.logout).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -1,7 +1,12 @@
 import { randomBytes } from 'node:crypto';
 import { CurrentUserDto } from '@auth/application/dto/current-user.dto';
+import {
+	AuthErrorCode,
+	refreshUnauthorized,
+} from '@auth/application/errors/auth-error';
 import { AuthService } from '@auth/auth.service';
 import { WebauthnService } from '@auth/infrastructure/adapters/webauthn.service';
+import { RefreshInProgressFilter } from '@auth/infrastructure/filters/refresh-in-progress.filter';
 import { CurrentUser } from '@auth/infrastructure/framework/current-user.decorator';
 import { JwtAuthGuard } from '@auth/infrastructure/framework/jwt-auth.guard';
 import { RefreshTokenGuard } from '@auth/infrastructure/framework/jwt-refresh.guard';
@@ -30,6 +35,7 @@ import {
 	Body,
 	Controller,
 	Delete,
+	ForbiddenException,
 	Get,
 	Logger,
 	NotFoundException,
@@ -39,6 +45,7 @@ import {
 	Req,
 	Res,
 	UnauthorizedException,
+	UseFilters,
 	UseGuards,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -167,7 +174,12 @@ export class AuthController {
 			this.logger.warn(
 				`CSRF validation failed for web auth request (cookie=${Boolean(csrfCookie)}, header=${Boolean(csrfHeader)})`,
 			);
-			throw new UnauthorizedException('Invalid CSRF token');
+			throw new ForbiddenException({
+				statusCode: 403,
+				error: 'Forbidden',
+				message: 'Invalid CSRF token',
+				code: AuthErrorCode.CSRF_TOKEN_INVALID,
+			});
 		}
 	}
 
@@ -311,6 +323,7 @@ export class AuthController {
 	@Throttle({ medium: { limit: 20, ttl: 60000 } })
 	@ApiDocsRefreshTokens()
 	@UseGuards(RefreshTokenGuard)
+	@UseFilters(RefreshInProgressFilter)
 	async refreshTokens(
 		@CurrentUser() user: CurrentUserDto,
 		@Req() req: Request,
@@ -323,7 +336,8 @@ export class AuthController {
 			this.logger.warn(
 				'Refresh endpoint called without refresh token cookie',
 			);
-			throw new UnauthorizedException(
+			throw refreshUnauthorized(
+				AuthErrorCode.REFRESH_TOKEN_MISSING,
 				'Refresh token not found in cookies',
 			);
 		}
@@ -356,7 +370,8 @@ export class AuthController {
 			this.logger.warn(
 				'Logout endpoint called without refresh token cookie',
 			);
-			throw new UnauthorizedException(
+			throw refreshUnauthorized(
+				AuthErrorCode.REFRESH_TOKEN_MISSING,
 				'Refresh token not found in cookies',
 			);
 		}
