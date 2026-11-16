@@ -57,6 +57,19 @@ describe('ChapterResolver', () => {
 			expect(chapterReadLoader).not.toHaveBeenCalled();
 		});
 
+		it('uses a read value the parent already resolved', async () => {
+			await expect(
+				resolver.resolveRead({ ...chapter, read: false }, user),
+			).resolves.toBe(false);
+			expect(chapterReadLoader).not.toHaveBeenCalled();
+		});
+
+		it('stays null for an anonymous caller even if the parent has a value', async () => {
+			await expect(
+				resolver.resolveRead({ ...chapter, read: true }),
+			).resolves.toBeNull();
+		});
+
 		it("goes through the caller's read loader", async () => {
 			load.mockResolvedValue(true);
 
@@ -70,9 +83,10 @@ describe('ChapterResolver', () => {
 
 	describe('markChapterRead', () => {
 		it('marks the chapter read and returns it', async () => {
+			// The mutation knows the new state; a re-read could hit a lagging replica.
 			await expect(
 				resolver.markChapterRead('chapter-1', user),
-			).resolves.toBe(chapter);
+			).resolves.toEqual({ ...chapter, read: true });
 			expect(chapterService.markChapterAsRead).toHaveBeenCalledWith(
 				'chapter-1',
 				'user-1',
@@ -96,7 +110,7 @@ describe('ChapterResolver', () => {
 		it('marks the chapter unread and returns it', async () => {
 			await expect(
 				resolver.markChapterUnread('chapter-1', user),
-			).resolves.toBe(chapter);
+			).resolves.toEqual({ ...chapter, read: false });
 			expect(chapterService.markChapterAsUnread).toHaveBeenCalledWith(
 				'chapter-1',
 				'user-1',

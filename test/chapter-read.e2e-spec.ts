@@ -154,14 +154,33 @@ describe('Chapter read state (e2e)', () => {
 			{ id: gqlMarkId },
 		);
 		expect(marked.body.errors).toBeUndefined();
-		expect(marked.body.data.markChapterRead.id).toBe(gqlMarkId);
+		expect(marked.body.data.markChapterRead).toEqual({
+			id: gqlMarkId,
+			read: true,
+		});
 		await eventuallyRead(gqlMarkId, true);
 
+		// The field resolver's own lookup (not the mutation's value) sees it too.
+		let queried: boolean | null = null;
+		for (let attempt = 0; attempt < 25 && queried !== true; attempt++) {
+			const response = await graphql(
+				'query ($id: ID!) { chapter(id: $id) { read } }',
+				{ id: gqlMarkId },
+			);
+			expect(response.body.errors).toBeUndefined();
+			queried = response.body.data.chapter.read;
+			if (queried !== true) {
+				await new Promise((resolve) => setTimeout(resolve, 200));
+			}
+		}
+		expect(queried).toBe(true);
+
 		const unmarked = await graphql(
-			'mutation ($id: ID!) { markChapterUnread(chapterId: $id) { id } }',
+			'mutation ($id: ID!) { markChapterUnread(chapterId: $id) { id read } }',
 			{ id: gqlMarkId },
 		);
 		expect(unmarked.body.errors).toBeUndefined();
+		expect(unmarked.body.data.markChapterUnread.read).toBe(false);
 		await eventuallyRead(gqlMarkId, false);
 	});
 

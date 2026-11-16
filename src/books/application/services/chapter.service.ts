@@ -8,7 +8,15 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
 import { MediaUrlService } from 'src/common/services/media-url.service';
-import { Brackets, In, Repository } from 'typeorm';
+import { Brackets, DeleteResult, In, Repository } from 'typeorm';
+
+/** Outcome for one id of a batch read/unread call. */
+export interface ChapterReadBatchResult<T> {
+	chapterId: string;
+	success: boolean;
+	result?: T;
+	error?: string;
+}
 
 interface ChapterIndexRaw {
 	max: string | number | null;
@@ -251,12 +259,7 @@ export class ChapterService {
 	}
 
 	async markChaptersAsRead(chapterIds: string[], userId: string) {
-		const results: {
-			chapterId: string;
-			success: boolean;
-			result?: ChapterRead;
-			error?: string;
-		}[] = [];
+		const results: ChapterReadBatchResult<ChapterRead>[] = [];
 		for (const chapterId of chapterIds) {
 			try {
 				const result = await this.markChapterAsRead(chapterId, userId);
@@ -276,12 +279,7 @@ export class ChapterService {
 	}
 
 	async markChaptersAsUnread(chapterIds: string[], userId: string) {
-		const results: {
-			chapterId: string;
-			success: boolean;
-			result?: import('typeorm').DeleteResult;
-			error?: string;
-		}[] = [];
+		const results: ChapterReadBatchResult<DeleteResult>[] = [];
 		for (const chapterId of chapterIds) {
 			try {
 				const result = await this.markChapterAsUnread(

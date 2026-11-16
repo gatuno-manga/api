@@ -59,7 +59,7 @@ export function ApiDocsMarkChapterAsRead() {
 		ApiOperation({
 			summary: 'Marcar capitulo como lido',
 			description:
-				'Marca um capitulo como lido para o usuario atual. Unica forma de marcar um capitulo como lido: GET /chapters/{idChapter} nao marca, e o progresso de leitura (/users/me/reading-progress, /sync) tambem nao. Idempotente.',
+				'Marca um capitulo como lido para o usuario atual. E a forma explicita de marcar via REST (equivalente GraphQL: markChapterRead): GET /chapters/{idChapter} nao marca, e o progresso de leitura (/users/me/reading-progress, /sync) tambem nao. Idempotente.',
 		}),
 		ApiParam({
 			name: 'idChapter',

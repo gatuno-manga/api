@@ -77,14 +77,9 @@ describe('ChapterService', () => {
 	});
 
 	describe('getChapter', () => {
-		it('returns the chapter without writing read state, even for a signed-in caller', async () => {
+		it('returns the chapter without writing read state', async () => {
 			const markSpy = jest.spyOn(service, 'markChapterAsRead');
-			// Callers used to pass the user id, which marked the chapter read.
-			const getChapter = service.getChapter.bind(service) as (
-				...args: unknown[]
-			) => ReturnType<ChapterService['getChapter']>;
-
-			const result = await getChapter('chapter-1', 'user-1');
+			const result = await service.getChapter('chapter-1');
 			await new Promise(setImmediate);
 
 			expect(result).toMatchObject({

@@ -1,5 +1,8 @@
 import { BookDataLoaderService } from '@books/application/services/book-dataloader.service';
-import { ChapterService } from '@books/application/services/chapter.service';
+import {
+	ChapterReadBatchResult,
+	ChapterService,
+} from '@books/application/services/chapter.service';
 import {
 	ChapterModel,
 	ChapterReadResultModel,
@@ -20,12 +23,6 @@ import { PermissionsGuard } from 'src/users/application/services/permissions.gua
 import { Permissions } from 'src/users/domain/decorators/permissions.decorator';
 import { PermissionsEnum } from 'src/users/domain/enums/permissions.enum';
 
-interface BatchReadResult {
-	chapterId: string;
-	success: boolean;
-	error?: string;
-}
-
 /**
  * Per-user read state of a chapter. Fetching a chapter never marks it read;
  * clients mark it explicitly with these mutations (or REST /chapters/:id/read).
@@ -37,13 +34,17 @@ export class ChapterResolver {
 		private readonly dataLoaderService: BookDataLoaderService,
 	) {}
 
-	// Resolved per request, outside the cached parent query, so it is never stale.
+	// Resolved per request, outside the cached parent query, so it is never
+	// stale. A parent that already knows the answer (the mutations below, or
+	// the cursor chapter list's readCount subquery) wins: re-reading it here
+	// could hit a lagging replica and contradict a write just made.
 	@ResolveField(() => Boolean, { name: 'read', nullable: true })
 	async resolveRead(
 		@Parent() chapter: ChapterModel,
 		@GqlCurrentUser() user?: CurrentUserDto,
 	): Promise<boolean | null> {
 		if (!user?.userId) return null;
+		if (typeof chapter.read === 'boolean') return chapter.read;
 		return this.dataLoaderService
 			.chapterReadLoader(user.userId)
 			.load(chapter.id);
@@ -57,7 +58,10 @@ export class ChapterResolver {
 		@GqlCurrentUser() user: CurrentUserDto,
 	) {
 		await this.chapterService.markChapterAsRead(chapterId, user.userId);
-		return this.chapterService.getChapter(chapterId);
+		return {
+			...(await this.chapterService.getChapter(chapterId)),
+			read: true,
+		};
 	}
 
 	@Mutation(() => ChapterModel, { name: 'markChapterUnread' })
@@ -68,7 +72,10 @@ export class ChapterResolver {
 		@GqlCurrentUser() user: CurrentUserDto,
 	) {
 		await this.chapterService.markChapterAsUnread(chapterId, user.userId);
-		return this.chapterService.getChapter(chapterId);
+		return {
+			...(await this.chapterService.getChapter(chapterId)),
+			read: false,
+		};
 	}
 
 	@Mutation(() => [ChapterReadResultModel], { name: 'markChaptersRead' })
@@ -102,7 +109,9 @@ export class ChapterResolver {
 	}
 }
 
-function toResultModels(results: BatchReadResult[]): ChapterReadResultModel[] {
+function toResultModels(
+	results: ChapterReadBatchResult<unknown>[],
+): ChapterReadResultModel[] {
 	return results.map(({ chapterId, success, error }) => ({
 		chapterId,
 		success,
