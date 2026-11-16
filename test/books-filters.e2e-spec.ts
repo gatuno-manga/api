@@ -1,5 +1,11 @@
+import { BookOrderField } from '@books/domain/enums/book-order-field.enum';
+import { BookType } from '@books/domain/enums/book-type.enum';
 import { INestApplication } from '@nestjs/common';
+import { FilterLogic } from 'src/common/enum/filter-logic.enum';
+import { FilterOperator } from 'src/common/enum/filter-operator.enum';
+import { OrderDirection } from 'src/common/enum/order-direction.enum';
 import request from 'supertest';
+import { v7 as uuidv7 } from 'uuid';
 import { createE2EApp } from './helpers/e2e-app.helper';
 
 jest.setTimeout(120000);
@@ -24,18 +30,18 @@ describe('Books Filters (e2e)', () => {
 				.expect(200);
 
 			expect(response.body).toHaveProperty('data');
-			expect(response.body).toHaveProperty('meta');
+			expect(response.body).toHaveProperty('metadata');
 			expect(Array.isArray(response.body.data)).toBeTruthy();
 		});
 
 		it('should filter books by type', async () => {
 			const response = await request(app.getHttpServer())
-				.get('/api/books?type=MANGA')
+				.get(`/api/books?type=${BookType.MANGA}`)
 				.expect(200);
 
 			expect(response.body).toHaveProperty('data');
 			if (response.body.data.length > 0) {
-				expect(response.body.data[0].type).toBe('MANGA');
+				expect(response.body.data[0].type).toBe(BookType.MANGA);
 			}
 		});
 
@@ -49,7 +55,9 @@ describe('Books Filters (e2e)', () => {
 
 		it('should filter books by publication year', async () => {
 			const response = await request(app.getHttpServer())
-				.get('/api/books?publication=2020&publicationOperator=GTE')
+				.get(
+					`/api/books?publication=2020&publicationOperator=${FilterOperator.GTE}`,
+				)
 				.expect(200);
 
 			expect(response.body).toHaveProperty('data');
@@ -57,9 +65,11 @@ describe('Books Filters (e2e)', () => {
 
 		it('should filter books by specific tags logic', async () => {
 			// Usando IDs fictícios (UUIDs) para testar a camada de validação (DTO e Filters)
-			const mockTagId = '00000000-0000-0000-0000-000000000001';
+			const mockTagId = uuidv7();
 			const response = await request(app.getHttpServer())
-				.get(`/api/books?tags=${mockTagId}&tagsLogic=AND`)
+				.get(
+					`/api/books?tags=${mockTagId}&tagsLogic=${FilterLogic.AND}`,
+				)
 				.expect(200);
 
 			expect(response.body).toHaveProperty('data');
@@ -68,11 +78,11 @@ describe('Books Filters (e2e)', () => {
 		it('should combine multiple filters safely (search, tags, types, order)', async () => {
 			const query = new URLSearchParams({
 				search: 'Naruto',
-				type: 'MANGA',
-				tagsLogic: 'AND',
-				excludeTagsLogic: 'OR',
-				orderBy: 'CREATED_AT',
-				order: 'DESC',
+				type: BookType.MANGA,
+				tagsLogic: FilterLogic.AND,
+				excludeTagsLogic: FilterLogic.OR,
+				orderBy: BookOrderField.CREATED_AT,
+				order: OrderDirection.DESC,
 				limit: '10',
 				page: '1',
 			});
@@ -82,8 +92,15 @@ describe('Books Filters (e2e)', () => {
 				.expect(200);
 
 			expect(response.body).toHaveProperty('data');
-			expect(response.body.meta.page).toBe(1);
-			expect(response.body.meta.limit).toBe(10);
+			// The page metadata has no `limit`; the limit shows in the page size.
+			expect(response.body.metadata).toEqual(
+				expect.objectContaining({
+					page: 1,
+					total: expect.any(Number),
+					lastPage: expect.any(Number),
+				}),
+			);
+			expect(response.body.data.length).toBeLessThanOrEqual(10);
 		});
 	});
 });
