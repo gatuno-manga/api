@@ -1,12 +1,7 @@
 import { StoredTokenDto } from '@auth/application/dto/stored-token.dto';
+import { RefreshInProgressException } from '@auth/domain/exceptions/refresh-in-progress.exception';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import {
-	Inject,
-	Injectable,
-	Logger,
-	Optional,
-	UnauthorizedException,
-} from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { Cache } from 'cache-manager';
 import { Redis } from 'ioredis';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
@@ -91,7 +86,7 @@ export class TokenStoreService {
 		const acquired = await this.acquireRefreshLock(userId, lockId);
 
 		if (!acquired) {
-			throw new UnauthorizedException('Refresh already in progress');
+			throw new RefreshInProgressException();
 		}
 
 		try {

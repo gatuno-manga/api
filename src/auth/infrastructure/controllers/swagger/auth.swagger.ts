@@ -74,7 +74,24 @@ export function ApiDocsRefreshTokens() {
 		}),
 		ApiResponse({
 			status: 401,
-			description: 'Invalid or expired refresh token',
+			description:
+				'The session is dead; sign out. `code` is one of REFRESH_TOKEN_MISSING, REFRESH_TOKEN_INVALID, REFRESH_SESSION_NOT_FOUND, REFRESH_TOKEN_REUSED (the token family was revoked) or REFRESH_USER_NOT_FOUND.',
+		}),
+		ApiResponse({
+			status: 403,
+			description:
+				'Web only: the CSRF header is missing or does not match the csrfToken cookie (`code`: CSRF_TOKEN_INVALID). The session is still alive.',
+		}),
+		ApiResponse({
+			status: 409,
+			description:
+				'Another refresh for this user is in progress (`code`: REFRESH_IN_PROGRESS). The session is alive; retry after the `Retry-After` header (seconds).',
+			headers: {
+				'Retry-After': {
+					description: 'Seconds to wait before retrying',
+					schema: { type: 'integer', example: 1 },
+				},
+			},
 		}),
 		ApiResponse({ status: 429, description: 'Too many requests' }),
 		ApiBearerAuth(SWAGGER_AUTH_SCHEME),
@@ -89,6 +106,11 @@ export function ApiDocsLogout() {
 		}),
 		ApiResponse({ status: 200, description: 'Successfully logged out' }),
 		ApiResponse({ status: 401, description: 'Unauthorized' }),
+		ApiResponse({
+			status: 403,
+			description:
+				'Web only: the CSRF header is missing or does not match the csrfToken cookie (`code`: CSRF_TOKEN_INVALID).',
+		}),
 		ApiResponse({ status: 429, description: 'Too many requests' }),
 		ApiBearerAuth(SWAGGER_AUTH_SCHEME),
 	);
