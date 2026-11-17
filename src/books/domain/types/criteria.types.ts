@@ -54,6 +54,22 @@ export type AccessContext = {
 	allowTagWeightById?: Record<string, number>;
 };
 
+/**
+ * Where a book sits in the book list order (`<orderBy> <order>, createdAt
+ * DESC, id DESC`). Timestamps are kept as the database's own text so that
+ * their sub-millisecond part survives the round trip through a cursor.
+ */
+export type BookListPosition = {
+	sortValue: string | number | null;
+	createdAt: string;
+	id: string;
+};
+
+export type PositionedBook = {
+	book: Book;
+	position: BookListPosition;
+};
+
 export type DeepPartial<T> = T extends (...args: unknown[]) => unknown
 	? T
 	: T extends Array<infer U>

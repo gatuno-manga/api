@@ -5,6 +5,8 @@ import { Book } from '@books/domain/entities/book';
 import {
 	AccessContext,
 	BookCriteria,
+	BookListPosition,
+	PositionedBook,
 } from '@books/domain/types/criteria.types';
 
 export interface IBookRepository {
@@ -27,6 +29,18 @@ export interface IBookRepository {
 		accessContext: AccessContext,
 		filterStrategies: FilterStrategy[],
 	): Promise<[Book[], number]>;
+	/**
+	 * Keyset page of `findWithFilters`: up to `take` books strictly after
+	 * `after` in the list order (from the start when `after` is null), each
+	 * with its position. Runs no COUNT.
+	 */
+	findWithFiltersAfter(
+		options: BookPageOptionsDto,
+		accessContext: AccessContext,
+		filterStrategies: FilterStrategy[],
+		after: BookListPosition | null,
+		take: number,
+	): Promise<PositionedBook[]>;
 	findRandom(
 		options: BookPageOptionsDto,
 		accessContext: AccessContext,
@@ -34,6 +48,11 @@ export interface IBookRepository {
 	): Promise<Book | null>;
 	findAllInProcess(): Promise<Book[]>;
 	findByIdsPreservingOrder(ids: string[]): Promise<Book[]>;
+	/**
+	 * Returns copies of the given books with `tags`, `authors` (without
+	 * biographies) and `sensitiveContent` loaded; `[]` when a book has none.
+	 */
+	loadListRelations(books: Book[]): Promise<Book[]>;
 	checkBookTitleConflict(
 		title: string,
 		alternativeTitles: string[],

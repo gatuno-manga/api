@@ -45,11 +45,8 @@ export class ChapterController {
 	@CacheTTL(600)
 	@ApiDocsGetChapter()
 	@UseGuards(OptionalAuthGuard)
-	getChapter(
-		@Param('idChapter') idChapter: string,
-		@CurrentUser() user?: CurrentUserDto,
-	) {
-		return this.chapterService.getChapter(idChapter, user?.userId);
+	getChapter(@Param('idChapter') idChapter: string) {
+		return this.chapterService.getChapter(idChapter);
 	}
 
 	@Patch(':idChapter/reset')

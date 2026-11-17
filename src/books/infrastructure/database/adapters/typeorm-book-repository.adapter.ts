@@ -1,11 +1,14 @@
 import { BookPageOptionsDto } from '@books/application/dto/book-page-options.dto';
 import { IBookRepository } from '@books/application/ports/book-repository.interface';
 import { FilterStrategy } from '@books/application/strategies/filter-strategy.interface';
+import { resolveBookListRequest } from '@books/application/utils/book-list-cursor';
 import { Book as DomainBook } from '@books/domain/entities/book';
 import { BookOrderField } from '@books/domain/enums/book-order-field.enum';
 import {
 	AccessContext,
 	BookCriteria,
+	BookListPosition,
+	PositionedBook,
 } from '@books/domain/types/criteria.types';
 import { Book as InfrastructureBook } from '@books/infrastructure/database/entities/book.entity';
 import { Injectable, Logger, Optional } from '@nestjs/common';
@@ -16,7 +19,27 @@ import {
 	EntityManager,
 	FindOptionsWhere,
 	Repository,
+	SelectQueryBuilder,
 } from 'typeorm';
+
+/** One column of the book list order, valued at a cursor position. */
+type ListOrderKey = {
+	column: string;
+	direction: OrderDirection;
+	nullable: boolean;
+	value: string | number | null;
+};
+
+/** Exhaustive, so a new sort field cannot ship without its NULL placement. */
+const NULLABLE_SORT_FIELD: Record<BookOrderField, boolean> = {
+	[BookOrderField.TITLE]: false,
+	[BookOrderField.PUBLICATION]: true,
+	[BookOrderField.CREATED_AT]: false,
+	[BookOrderField.UPDATED_AT]: false,
+};
+
+const LIST_TIMESTAMP_FORMAT = (column: string) =>
+	`DATE_FORMAT(${column}, '%Y-%m-%d %H:%i:%s.%f')`;
 
 @Injectable()
 export class TypeOrmBookRepositoryAdapter implements IBookRepository {
@@ -210,6 +233,115 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 		);
 		this.logger.debug(`accessContext: ${JSON.stringify(accessContext)}`);
 
+		const queryBuilder = await this.createFilteredListQuery(
+			options,
+			accessContext,
+			filterStrategies,
+		);
+		if (!queryBuilder) return [[], 0];
+
+		// 5. Pagination
+		queryBuilder
+			.skip((options.page - 1) * options.limit)
+			.take(options.limit);
+
+		this.logger.debug(`Generated SQL: ${queryBuilder.getSql()}`);
+
+		try {
+			const [books, total] = await queryBuilder.getManyAndCount();
+			this.logger.debug(
+				`Found ${books.length} books out of ${total} total`,
+			);
+			return [books as unknown as DomainBook[], total];
+		} catch (error) {
+			this.logger.error(
+				`Error in findWithFilters: ${error instanceof Error ? error.message : String(error)}`,
+				error instanceof Error ? error.stack : undefined,
+			);
+			return [[], 0];
+		}
+	}
+
+	async findWithFiltersAfter(
+		options: BookPageOptionsDto,
+		accessContext: AccessContext,
+		filterStrategies: FilterStrategy[],
+		after: BookListPosition | null,
+		take: number,
+	): Promise<PositionedBook[]> {
+		const queryBuilder = await this.createFilteredListQuery(
+			options,
+			accessContext,
+			filterStrategies,
+		);
+		if (!queryBuilder) return [];
+
+		if (after) {
+			const keys = this.listOrderKeys(options, after);
+			queryBuilder.andWhere(`(${this.afterKeysCondition(keys, 0)})`);
+			for (const [index, key] of keys.entries()) {
+				queryBuilder.setParameter(`cursorKey${index}`, key.value);
+			}
+		}
+
+		// mysql2 turns DATETIME(6) into a millisecond Date; the cursor keeps
+		// the database text so rows within the same millisecond are not skipped.
+		queryBuilder
+			.addSelect(
+				LIST_TIMESTAMP_FORMAT('book.createdAt'),
+				'cursor_created_at',
+			)
+			.addSelect(
+				LIST_TIMESTAMP_FORMAT('book.updatedAt'),
+				'cursor_updated_at',
+			)
+			.take(take);
+
+		const { entities, raw } = await queryBuilder.getRawAndEntities<{
+			book_id: string;
+			cursor_created_at: string;
+			cursor_updated_at: string;
+		}>();
+		const timestampsById = new Map(raw.map((row) => [row.book_id, row]));
+		const { orderBy } = resolveBookListRequest(options);
+
+		return entities.map((book) => {
+			const timestamps = timestampsById.get(book.id);
+			if (!timestamps) {
+				throw new Error(
+					`No list timestamps were read for book ${book.id}`,
+				);
+			}
+			const createdAt = timestamps.cursor_created_at;
+			const sortValueByField: Record<
+				BookOrderField,
+				string | number | null
+			> = {
+				[BookOrderField.TITLE]: book.title,
+				[BookOrderField.PUBLICATION]: book.publication ?? null,
+				[BookOrderField.CREATED_AT]: createdAt,
+				[BookOrderField.UPDATED_AT]: timestamps.cursor_updated_at,
+			};
+			return {
+				book: book as unknown as DomainBook,
+				position: {
+					sortValue: sortValueByField[orderBy],
+					createdAt,
+					id: book.id,
+				},
+			};
+		});
+	}
+
+	/**
+	 * The list query of `findWithFilters` without paging: joins, access policy,
+	 * filter strategies and the list order. `null` when access blocks everything.
+	 */
+	private async createFilteredListQuery(
+		options: BookPageOptionsDto,
+		accessContext: AccessContext,
+		filterStrategies: FilterStrategy[],
+	): Promise<SelectQueryBuilder<InfrastructureBook> | null> {
 		const queryBuilder = this.repository.createQueryBuilder('book');
 
 		// 1. Join covers and multi-language relations
@@ -229,7 +361,7 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 		// 2. Apply Access Policy Filters
 		if (accessContext.blockedAll) {
 			this.logger.debug('Blocked all by access context');
-			return [[], 0];
+			return null;
 		}
 
 		// Deny specific books
@@ -326,34 +458,83 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 			);
 		}
 
-		// 4. Sorting
-		const orderBy = options.orderBy || BookOrderField.CREATED_AT;
-		const orderDirection = options.order || OrderDirection.DESC;
-		queryBuilder.orderBy(`book.${orderBy}`, orderDirection);
+		// 4. Sorting: id last makes the order total, so ties never swap
+		// between two pages.
+		const { orderBy, order } = resolveBookListRequest(options);
+		queryBuilder.orderBy(`book.${orderBy}`, order);
 		if (orderBy !== BookOrderField.CREATED_AT) {
-			queryBuilder.addOrderBy('book.createdAt', 'DESC');
+			queryBuilder.addOrderBy('book.createdAt', OrderDirection.DESC);
 		}
+		queryBuilder.addOrderBy('book.id', OrderDirection.DESC);
 
-		// 5. Pagination
-		queryBuilder
-			.skip((options.page - 1) * options.limit)
-			.take(options.limit);
+		return queryBuilder;
+	}
 
-		this.logger.debug(`Generated SQL: ${queryBuilder.getSql()}`);
-
-		try {
-			const [books, total] = await queryBuilder.getManyAndCount();
-			this.logger.debug(
-				`Found ${books.length} books out of ${total} total`,
-			);
-			return [books as unknown as DomainBook[], total];
-		} catch (error) {
-			this.logger.error(
-				`Error in findWithFilters: ${error instanceof Error ? error.message : String(error)}`,
-				error instanceof Error ? error.stack : undefined,
-			);
-			return [[], 0];
+	/** The list order as keyset keys, valued at `position`. */
+	private listOrderKeys(
+		options: BookPageOptionsDto,
+		position: BookListPosition,
+	): ListOrderKey[] {
+		const { orderBy, order } = resolveBookListRequest(options);
+		const keys: ListOrderKey[] = [
+			{
+				column: `book.${orderBy}`,
+				direction: order,
+				nullable: NULLABLE_SORT_FIELD[orderBy],
+				value: position.sortValue,
+			},
+		];
+		if (orderBy !== BookOrderField.CREATED_AT) {
+			keys.push({
+				column: 'book.createdAt',
+				direction: OrderDirection.DESC,
+				nullable: false,
+				value: position.createdAt,
+			});
 		}
+		keys.push({
+			column: 'book.id',
+			direction: OrderDirection.DESC,
+			nullable: false,
+			value: position.id,
+		});
+		return keys;
+	}
+
+	/**
+	 * Rows strictly after the cursor: after on key `index`, or equal on it and
+	 * after on the remaining keys.
+	 */
+	private afterKeysCondition(keys: ListOrderKey[], index: number): string {
+		const strictlyAfter = this.strictlyAfterCondition(keys[index], index);
+		if (index === keys.length - 1) return strictlyAfter;
+
+		const equal = this.equalCondition(keys[index], index);
+		const rest = this.afterKeysCondition(keys, index + 1);
+		return `${strictlyAfter} OR (${equal} AND (${rest}))`;
+	}
+
+	/** MySQL sorts NULL first in ASC and last in DESC. */
+	private strictlyAfterCondition(key: ListOrderKey, index: number): string {
+		const parameter = `:cursorKey${index}`;
+		if (key.value === null) {
+			if (key.direction === OrderDirection.ASC) {
+				return `${key.column} IS NOT NULL`;
+			}
+			return '1 = 0';
+		}
+		if (key.direction === OrderDirection.ASC) {
+			return `${key.column} > ${parameter}`;
+		}
+		if (key.nullable) {
+			return `(${key.column} < ${parameter} OR ${key.column} IS NULL)`;
+		}
+		return `${key.column} < ${parameter}`;
+	}
+
+	private equalCondition(key: ListOrderKey, index: number): string {
+		if (key.value === null) return `${key.column} IS NULL`;
+		return `${key.column} = :cursorKey${index}`;
 	}
 
 	async findRandom(
@@ -511,6 +692,46 @@ export class TypeOrmBookRepositoryAdapter implements IBookRepository {
 			.getMany();
 
 		return books as unknown as DomainBook[];
+	}
+
+	async loadListRelations(books: DomainBook[]): Promise<DomainBook[]> {
+		if (books.length === 0) return [];
+
+		const ids = books.map((book) => book.id);
+		// One query per relation keeps the rows linear in the relation sizes;
+		// joining all three at once would multiply them per book.
+		const [tagsByBookId, authorsByBookId, sensitiveContentByBookId] =
+			await Promise.all([
+				this.findRelationByBookId(ids, 'tags'),
+				this.findRelationByBookId(ids, 'authors'),
+				this.findRelationByBookId(ids, 'sensitiveContent'),
+			]);
+
+		return books.map((book) => ({
+			...book,
+			tags: tagsByBookId.get(book.id) ?? [],
+			authors: authorsByBookId.get(book.id) ?? [],
+			sensitiveContent: sensitiveContentByBookId.get(book.id) ?? [],
+		})) as unknown as DomainBook[];
+	}
+
+	private async findRelationByBookId<
+		Relation extends 'tags' | 'authors' | 'sensitiveContent',
+	>(
+		ids: string[],
+		relation: Relation,
+	): Promise<Map<string, InfrastructureBook[Relation]>> {
+		const books = await this.repository
+			.createQueryBuilder('book')
+			// The ids come from a page that already excluded deleted books; a
+			// book soft-deleted since then must not come back as "has none".
+			.withDeleted()
+			.select('book.id')
+			.leftJoinAndSelect(`book.${relation}`, relation)
+			.where('book.id IN (:...ids)', { ids })
+			.getMany();
+
+		return new Map(books.map((book) => [book.id, book[relation]]));
 	}
 
 	async checkBookTitleConflict(

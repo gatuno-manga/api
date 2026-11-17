@@ -1,6 +1,10 @@
 import { PayloadAuthDto } from '@auth/application/dto/payload-auth.dto';
+import {
+	AuthErrorCode,
+	refreshUnauthorized,
+} from '@auth/application/errors/auth-error';
 import { TokenStoreService } from '@auth/infrastructure/adapters/token-store.service';
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Request } from 'express';
 import { ExtractJwt, Strategy } from 'passport-jwt';
@@ -39,17 +43,24 @@ export class JwtRefreshStrategy extends PassportStrategy(
 		const cookies = req.cookies as Record<string, string | undefined>;
 		const refreshToken = cookies?.refreshToken;
 		if (!refreshToken) {
-			throw new UnauthorizedException('No refresh token cookie');
+			throw refreshUnauthorized(
+				AuthErrorCode.REFRESH_TOKEN_MISSING,
+				'No refresh token cookie',
+			);
 		}
 
 		if (!payload.jti) {
-			throw new UnauthorizedException('Invalid refresh token payload');
+			throw refreshUnauthorized(
+				AuthErrorCode.REFRESH_TOKEN_INVALID,
+				'Invalid refresh token payload',
+			);
 		}
 
 		const userId = payload.sub;
 		const validTokens = await this.tokenStore.getValidTokens(userId);
 		if (validTokens.length === 0) {
-			throw new UnauthorizedException(
+			throw refreshUnauthorized(
+				AuthErrorCode.REFRESH_SESSION_NOT_FOUND,
 				'Access Denied. No valid session found.',
 			);
 		}
@@ -64,7 +75,10 @@ export class JwtRefreshStrategy extends PassportStrategy(
 				userId,
 				jti: payload.jti,
 			});
-			throw new UnauthorizedException('Access Denied. Invalid token.');
+			throw refreshUnauthorized(
+				AuthErrorCode.REFRESH_TOKEN_INVALID,
+				'Access Denied. Invalid token.',
+			);
 		}
 
 		const match = await this.DataEncryption.compare(
@@ -76,7 +90,10 @@ export class JwtRefreshStrategy extends PassportStrategy(
 				userId,
 				jti: payload.jti,
 			});
-			throw new UnauthorizedException('Access Denied. Invalid token.');
+			throw refreshUnauthorized(
+				AuthErrorCode.REFRESH_TOKEN_INVALID,
+				'Access Denied. Invalid token.',
+			);
 		}
 		return { userId: payload.sub, email: payload.email };
 	}

@@ -8,7 +8,15 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { StorageBucket } from 'src/common/enum/storage-bucket.enum';
 import { MediaUrlService } from 'src/common/services/media-url.service';
-import { Brackets, In, Repository } from 'typeorm';
+import { Brackets, DeleteResult, In, Repository } from 'typeorm';
+
+/** Outcome for one id of a batch read/unread call. */
+export interface ChapterReadBatchResult<T> {
+	chapterId: string;
+	success: boolean;
+	result?: T;
+	error?: string;
+}
 
 interface ChapterIndexRaw {
 	max: string | number | null;
@@ -30,7 +38,11 @@ export class ChapterService {
 		return error instanceof Error ? error.message : 'Unknown error';
 	}
 
-	async getChapter(idChapter: string, userId?: string) {
+	/**
+	 * Returns a chapter with its navigation and content. Pure read: it does not
+	 * mark the chapter read; clients call markChapterAsRead explicitly.
+	 */
+	async getChapter(idChapter: string) {
 		const chapter = await this.chapterRepository
 			.createQueryBuilder('chapter')
 			.leftJoinAndSelect('chapter.book', 'book')
@@ -168,12 +180,6 @@ export class ChapterService {
 
 		// Para TEXT: content já está no objeto, não precisa modificar
 
-		if (userId) {
-			this.markChapterAsRead(idChapter, userId).catch((err) =>
-				this.logger.error(err),
-			);
-		}
-
 		return baseResponse;
 	}
 
@@ -253,12 +259,7 @@ export class ChapterService {
 	}
 
 	async markChaptersAsRead(chapterIds: string[], userId: string) {
-		const results: {
-			chapterId: string;
-			success: boolean;
-			result?: ChapterRead;
-			error?: string;
-		}[] = [];
+		const results: ChapterReadBatchResult<ChapterRead>[] = [];
 		for (const chapterId of chapterIds) {
 			try {
 				const result = await this.markChapterAsRead(chapterId, userId);
@@ -278,12 +279,7 @@ export class ChapterService {
 	}
 
 	async markChaptersAsUnread(chapterIds: string[], userId: string) {
-		const results: {
-			chapterId: string;
-			success: boolean;
-			result?: import('typeorm').DeleteResult;
-			error?: string;
-		}[] = [];
+		const results: ChapterReadBatchResult<DeleteResult>[] = [];
 		for (const chapterId of chapterIds) {
 			try {
 				const result = await this.markChapterAsUnread(

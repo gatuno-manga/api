@@ -1,4 +1,8 @@
 import { StoredTokenDto } from '@auth/application/dto/stored-token.dto';
+import {
+	AuthErrorCode,
+	refreshUnauthorized,
+} from '@auth/application/errors/auth-error';
 import { SessionAuditService } from '@auth/infrastructure/adapters/session-audit.service';
 import { SessionManagementService } from '@auth/infrastructure/adapters/session-management.service';
 import { TokenStoreService } from '@auth/infrastructure/adapters/token-store.service';
@@ -7,7 +11,7 @@ import {
 	GenerateTokensOptions,
 	SuccessfulAuthResult,
 } from '@auth/types/auth-security.types';
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataEncryptionProvider } from 'src/infrastructure/encryption/data-encryption.provider';
@@ -39,7 +43,10 @@ export class RefreshTokenUseCase {
 		) => Promise<SuccessfulAuthResult>,
 	): Promise<SuccessfulAuthResult> {
 		if (!oldRefreshToken) {
-			throw new UnauthorizedException('Refresh token is required');
+			throw refreshUnauthorized(
+				AuthErrorCode.REFRESH_TOKEN_MISSING,
+				'Refresh token is required',
+			);
 		}
 
 		return this.tokenStore.runWithRefreshLock(userId, async () => {
@@ -47,13 +54,19 @@ export class RefreshTokenUseCase {
 
 			if (validTokens.length === 0) {
 				this.logger.warn('No valid session found for user', { userId });
-				throw new UnauthorizedException('No valid session found');
+				throw refreshUnauthorized(
+					AuthErrorCode.REFRESH_SESSION_NOT_FOUND,
+					'No valid session found',
+				);
 			}
 
 			const refreshTokenMeta =
 				this.getRefreshTokenMetadata(oldRefreshToken);
 			if (!refreshTokenMeta.jti) {
-				throw new UnauthorizedException('Invalid refresh token');
+				throw refreshUnauthorized(
+					AuthErrorCode.REFRESH_TOKEN_INVALID,
+					'Invalid refresh token',
+				);
 			}
 
 			const indexToRemove = validTokens.findIndex(
@@ -67,7 +80,10 @@ export class RefreshTokenUseCase {
 					validTokens,
 					context,
 				);
-				throw new UnauthorizedException('Refresh token reuse detected');
+				throw refreshUnauthorized(
+					AuthErrorCode.REFRESH_TOKEN_REUSED,
+					'Refresh token reuse detected',
+				);
 			}
 
 			const tokenMatch = await this.dataEncryption.compare(
@@ -83,7 +99,10 @@ export class RefreshTokenUseCase {
 					context,
 					'hash_mismatch',
 				);
-				throw new UnauthorizedException('Refresh token reuse detected');
+				throw refreshUnauthorized(
+					AuthErrorCode.REFRESH_TOKEN_REUSED,
+					'Refresh token reuse detected',
+				);
 			}
 
 			const rotatedToken = validTokens[indexToRemove];
@@ -98,7 +117,10 @@ export class RefreshTokenUseCase {
 				this.logger.error('User not found during token refresh', {
 					userId,
 				});
-				throw new UnauthorizedException('User not found');
+				throw refreshUnauthorized(
+					AuthErrorCode.REFRESH_USER_NOT_FOUND,
+					'User not found',
+				);
 			}
 
 			const currentFamilyId =

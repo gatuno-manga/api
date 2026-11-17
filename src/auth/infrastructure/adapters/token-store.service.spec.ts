@@ -1,3 +1,4 @@
+import { RefreshInProgressException } from '@auth/domain/exceptions/refresh-in-progress.exception';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { AppConfigService } from 'src/infrastructure/app-config/app-config.service';
@@ -337,7 +338,7 @@ describe('TokenStoreService', () => {
 	});
 
 	describe('runWithRefreshLock', () => {
-		it('should prevent concurrent refresh for the same user', async () => {
+		it('rejects a concurrent refresh for the same user as in progress', async () => {
 			let releaseFirstLock: (() => void) | undefined;
 
 			const firstRefresh = service.runWithRefreshLock(
@@ -352,7 +353,7 @@ describe('TokenStoreService', () => {
 
 			await expect(
 				service.runWithRefreshLock('user123', async () => undefined),
-			).rejects.toThrow('Refresh already in progress');
+			).rejects.toThrow(RefreshInProgressException);
 
 			releaseFirstLock?.();
 			await firstRefresh;

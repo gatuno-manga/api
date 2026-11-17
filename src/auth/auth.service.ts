@@ -99,11 +99,6 @@ export class AuthService {
 		};
 	}
 
-	private isMobileContext(context?: AuthRequestContext): boolean {
-		const platform = context?.clientPlatform?.toLowerCase().trim();
-		return ['mobile', 'flutter', 'app', 'native'].includes(platform ?? '');
-	}
-
 	async signUp(email: string, password: string, isAdmin = false) {
 		return this.signUpUseCase.execute(email, password, isAdmin);
 	}
@@ -156,9 +151,7 @@ export class AuthService {
 			normalizedContext,
 		);
 		const mfaEnabled = await this.mfaService.isTotpEnabled(user.id);
-		const stepUpEnabled =
-			this.configService.security.mfaStepUpEnabled &&
-			!this.isMobileContext(normalizedContext);
+		const stepUpEnabled = this.configService.security.mfaStepUpEnabled;
 
 		if (mfaEnabled && stepUpEnabled && riskLevel === 'high') {
 			const mfaToken = await this.createMfaChallengeToken(

@@ -119,9 +119,9 @@ describe('UsersService', () => {
 		expect(userRepository).toBeDefined();
 	});
 
-	it('should update user preferences successfully', async () => {
+	it('should update user profile fields successfully', async () => {
 		const userId = 'user-1';
-		const updateDto = { preferences: { theme: 'dark', language: 'pt' } };
+		const updateDto = { name: 'John Doe', preferredLanguage: 'en-US' };
 		const existingUser = { id: userId, userName: 'john' } as User;
 		const updatedUser = { ...existingUser, ...updateDto } as User;
 
@@ -139,6 +139,7 @@ describe('UsersService', () => {
 			where: { id: userId },
 		});
 		expect(userRepository.save).toHaveBeenCalled();
-		expect(result.preferences).toEqual(updateDto.preferences);
+		expect(result.name).toEqual(updateDto.name);
+		expect(result.preferredLanguage).toEqual(updateDto.preferredLanguage);
 	});
 });

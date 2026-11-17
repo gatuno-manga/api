@@ -189,7 +189,7 @@ export class BookResolver {
 
 			const availableLanguages = Array.from(
 				new Set(chapters.map((ch) => ch.languageCode).filter(Boolean)),
-			) as string[];
+			);
 
 			return {
 				data: chapters as ChapterModel[],
@@ -240,15 +240,14 @@ export class BookResolver {
 		);
 	}
 
+	// The optional guard still matters: it puts the caller on the request so
+	// that ChapterResolver can resolve the per-user `read` field.
 	@Query(() => ChapterModel, { name: 'chapter', nullable: true })
 	@UseGuards(OptionalGqlJwtAuthGuard)
 	@UseInterceptors(UserAwareCacheInterceptor)
 	@CacheTTL(600)
-	async getChapter(
-		@Args('id', { type: () => ID }) id: string,
-		@GqlCurrentUser() user?: CurrentUserDto,
-	) {
-		return this.chapterService.getChapter(id, user?.userId);
+	async getChapter(@Args('id', { type: () => ID }) id: string) {
+		return this.chapterService.getChapter(id);
 	}
 
 	@Query(() => PaginatedCommentResponseModel, { name: 'bookComments' })
